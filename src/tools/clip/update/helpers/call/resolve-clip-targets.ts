@@ -18,6 +18,7 @@ import {
   takeLaneLabel,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { recreateBlocker } from "#src/tools/shared/clip/recreate-clip.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { resolvePathEntry } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
@@ -141,13 +142,19 @@ function findClip(
   }
 
   try {
-    return {
-      clip: validateIdType(
-        id,
-        "clip",
-        target.param === "id" ? sentParam(target) : undefined,
-      ),
-    };
+    const clip = validateIdType(
+      id,
+      "clip",
+      target.param === "id" ? sentParam(target) : undefined,
+    );
+    const refusal = returnClipWriteRefusal(clip);
+
+    return refusal == null
+      ? { clip }
+      : {
+          skip: refusal,
+          atStart: target.param === "path" ? id : undefined,
+        };
   } catch (error) {
     return {
       skip: errorMessage(error),

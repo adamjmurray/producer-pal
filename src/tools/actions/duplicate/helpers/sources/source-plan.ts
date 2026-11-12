@@ -9,6 +9,7 @@
 // any number; several take one each, in order.
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import {
@@ -423,7 +424,7 @@ function typeLookup(
           regularTrackIndex(object);
         }
 
-        return null;
+        return type === "clip" ? returnClipWriteRefusal(object) : null;
       } catch (error) {
         return errorMessage(error);
       }

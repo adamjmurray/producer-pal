@@ -140,6 +140,15 @@ Part of [Skip entries, tool by tool](README.md).
   whatever `include` says; its timing, color and other clip fields read as a
   MIDI clip's. read-track drops a nested clip's type when it matches the
   track's, so there the type shows only on a step sequencer clip.
+- **A Live 13 return-track clip reads as `type: "envelope"`**: neither MIDI nor
+  audio (both flags 0), so it has no notes, sample, warp or scale fields, and
+  its timing reads in beats. Its `path` is `rt0/s3`. read-track and read-scene
+  list and count them (a scene entry names the return track in `trackName`); a
+  nested one keeps its type, since the track's isn't `"envelope"`. Its
+  `envelopes` say `envelopes on return-track clips can't be read yet`.
+- **update-clip skips a return-track clip** with
+  `return-track clips can't be changed yet`, by path or by id, and a `toPath`
+  naming a return slot is that clip's `not moved:` entry.
 - **read-clip shows a MIDI clip's `scale` (and `scalePitches`) only when it
   differs from the Live Set's.** Both off is the same. A clip with its scale off
   while the Live Set's is on reads `scale: ""` (no `scalePitches`). A clip with

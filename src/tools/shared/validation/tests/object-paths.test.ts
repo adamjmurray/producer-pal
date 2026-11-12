@@ -109,8 +109,8 @@ describe("requireClipPath", () => {
   it("rejects everything a clip can't occupy, in clip terms", () => {
     const cases: [string, RegExp][] = [
       ["t1/d0", /device paths hold no clips/],
-      ["rt0", /return and main tracks have no clips/],
-      ["mt", /return and main tracks have no clips/],
+      ["rt0", /return and main tracks have no arrangement clips/],
+      ["mt", /return and main tracks have no arrangement clips/],
       ["s3", /a scene alone names no track/],
     ];
 
@@ -120,6 +120,13 @@ describe("requireClipPath", () => {
         /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a clip slot \("t0\/s1"\)/,
       );
     }
+  });
+
+  // Well-formed, but no tool writes to a return-track clip yet.
+  it("refuses a return-track slot as a place to put a clip", () => {
+    expect(() => requireClipPath(parseObjectPath("rt0/s1"), "toPath")).toThrow(
+      'invalid toPath "rt0/s1" - return-track clips',
+    );
   });
 
   // A "+" root parses fine but names a place, not a thing, so a clip caller
@@ -199,6 +206,7 @@ describe("requireDeviceContainer", () => {
     const cases: [string, RegExp][] = [
       ["s3", /a scene holds no devices/],
       ["t0/s1", /a clip slot holds no devices/],
+      ["rt0/s1", /a clip slot holds no devices/],
       ["t0/l1", /a take lane holds no devices/],
     ];
 

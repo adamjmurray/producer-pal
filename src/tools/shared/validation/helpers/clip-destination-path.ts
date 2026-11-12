@@ -9,9 +9,15 @@
 // partial; see dev/specs/tool-behavior/object-paths/README.md, "Complete and partial".
 
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
-import { parseObjectPath, type ObjectPath } from "../object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+  type ObjectPath,
+} from "../object-path.ts";
+import { pathError } from "./object-path-lexer.ts";
 import {
   parseObjectPathList,
+  pathEntries,
   requireClipPath,
   type ClipPath,
 } from "./object-paths.ts";
@@ -54,6 +60,29 @@ export function parseClipDestinationList(
   return parseObjectPathList(input, label).map((path) =>
     requireClipDestinationPath(path, label),
   );
+}
+
+/**
+ * Refuses a destination list naming a return track's clip slot, for a tool that
+ * can never put a clip there. Other tools refuse one through
+ * {@link requireClipPath}, in the words that say it is not changed yet.
+ * @param input - Comma-separated destinations, already known to name something
+ * @param label - Param name for error messages
+ * @param reason - Says why no clip can go there; asked only when one is named
+ * @throws Error naming the first return-track slot
+ */
+export function refuseReturnSlotDestinations(
+  input: string,
+  label: string,
+  reason: () => string,
+): void {
+  for (const entry of pathEntries(input, label)) {
+    const path = parseObjectPath(entry, label, true);
+
+    if (path.kind === "return-slot") {
+      throw pathError(label, formatObjectPath(path), reason());
+    }
+  }
 }
 
 /**

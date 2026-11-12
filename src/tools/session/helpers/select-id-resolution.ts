@@ -5,6 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
+import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedParam,
@@ -146,6 +147,12 @@ export function resolveIdParam(id: string, label = "id"): ResolveIdResult {
   }
 
   if (type === "Clip") {
+    const refusal = returnClipWriteRefusal(object);
+
+    if (refusal != null) {
+      throw new Error(refusal);
+    }
+
     return { clipId: id, detectedType: "clip" };
   }
 

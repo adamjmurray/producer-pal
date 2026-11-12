@@ -15,6 +15,7 @@ objects. The grammar is in [README.md](README.md#grammar).
 | `rt+`          | a new return track                | —                                      |
 | `s+`           | a new scene, appended             | —                                      |
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
+| `rt0/s3`       | return track clip slot (Live 13)  | `return_tracks 0 clip_slots 3`         |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
 | `t0/l+`        | a new take lane, appended         | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
@@ -33,6 +34,28 @@ objects. The grammar is in [README.md](README.md#grammar).
 | `t0[5\|1]`     | arrangement clip on the main lane | `tracks 0 arrangement_clips N`         |
 | `t0/l1[5\|1]`  | arrangement clip on a take lane   | `... take_lanes 1 arrangement_clips N` |
 | `[5\|1]`       | a song position, lane unspecified | —                                      |
+
+## Return-track clips (Live 13)
+
+A Live 13 return track has a clip slot per scene (the main track has none). A
+clip in one is an **envelope clip**: neither MIDI nor audio, holding automation
+only. `rt0/s3` parses like `t0/s3` but is its own path kind, so the code that
+reads a null `sceneIndex` as "arrangement clip" never mistakes one for a regular
+slot.
+
+- Reads take it: read-clip by path or id, read-track, read-scene and
+  read-live-set list and count these clips (see
+  [read tool includes](../../../tools/read-tool-includes/README.md)).
+- A Live 12 call naming one refuses it: `return-track clips need Live 13`. Live
+  12 is never asked for a return track's slots.
+- Every write tool skips an envelope clip, by path or by id, with
+  `return-track clips can't be changed yet` (a lone target throws it). A
+  `toPath` naming a return slot is refused with the same words: update-clip
+  skips only that move; duplicate, whose destinations are checked before
+  anything is copied, refuses the call. create-clip refuses it for good:
+  `envelope clips can't be created; make one in Live`.
+- A return track has no arrangement and no take lanes: `rt0[1|1]` and `rt0/l0`
+  stay refused.
 
 ## Creating by path
 

@@ -10,12 +10,14 @@ import { type ArrangementLane } from "./helpers/object-path-position.ts";
 import {
   arrangementPath,
   arrangementPositionPath,
+  returnSlotPath,
   slotPath,
 } from "./helpers/object-paths.ts";
 import { formatObjectPath } from "./object-path.ts";
 
 const SCENE = /^live_set scenes (\d+)$/;
 const CLIP_SLOT = /^live_set tracks (\d+) clip_slots (\d+)/;
+const RETURN_CLIP_SLOT = /^live_set return_tracks (\d+) clip_slots (\d+)/;
 const TAKE_LANE = /^live_set tracks (\d+) take_lanes (\d+)$/;
 const ARRANGEMENT_CLIP =
   /^live_set tracks (\d+)(?: take_lanes (\d+))? arrangement_clips \d+$/;
@@ -58,6 +60,12 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
 
   if (slot) {
     return slotPath(Number(slot[1]), Number(slot[2]));
+  }
+
+  const returnSlot = RETURN_CLIP_SLOT.exec(path);
+
+  if (returnSlot) {
+    return returnSlotPath(Number(returnSlot[1]), Number(returnSlot[2]));
   }
 
   const lane = TAKE_LANE.exec(path);

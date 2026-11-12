@@ -18,6 +18,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { returnClipsExist } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   readFanOut,
@@ -164,8 +165,9 @@ function processSessionClips(
   nested: NestedClipReads,
   knownCount: number | undefined,
 ): SessionClipsResult {
-  if (isGroup || category !== "regular") {
-    // These tracks hold no session clips, so a count would always be 0.
+  // Live 13 return tracks have clip slots. Elsewhere these tracks hold no
+  // session clips, so a count would always be 0.
+  if (isGroup || !holdsSessionClips(category)) {
     return includeSessionClips ? { sessionClips: [] } : {};
   }
 
@@ -177,9 +179,23 @@ function processSessionClips(
           nested.isDrumMode,
           nested.include,
           nested.notation,
+          category,
         ),
       }
-    : { sessionClipCount: knownCount ?? countSessionClips(track, trackIndex) };
+    : {
+        sessionClipCount:
+          knownCount ?? countSessionClips(track, trackIndex, category),
+      };
+}
+
+/**
+ * @param category - Track category (regular, return, or master)
+ * @returns Whether tracks of this category have session clip slots here
+ */
+function holdsSessionClips(category: string): boolean {
+  return (
+    category === "regular" || (category === "return" && returnClipsExist())
+  );
 }
 
 /**

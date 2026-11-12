@@ -228,11 +228,27 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a scene segment anywhere a slot can't be", () => {
-    for (const path of ["rt0/s1", "mt/s1", "mt/d0/s1"]) {
+    for (const path of ["mt/s1", "mt/d0/s1"]) {
       expect(() => parseObjectPath(path)).toThrow(
-        'a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes',
+        'a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); the main track has no clip slots',
       );
     }
+  });
+
+  // Live 13 return tracks have a clip slot per scene.
+  it("parses a return track's clip slot, and refuses what can't follow it", () => {
+    expect(parseObjectPath("rt1/s2")).toStrictEqual({
+      kind: "return-slot",
+      returnIndex: 1,
+      sceneIndex: 2,
+    });
+    expect(formatObjectPath(parseObjectPath("rt1/s2"))).toBe("rt1/s2");
+    expect(() => parseObjectPath("rt0/s1/d0")).toThrow(
+      '"d0" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("rt0/d0/s1")).toThrow(
+      "clip slots belong to a track, not a device",
+    );
   });
 
   it("rejects a take lane anywhere a track's lanes can't be", () => {

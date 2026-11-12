@@ -41,6 +41,10 @@ const SEND_PARAMETER = /^send(\d+)$/;
 const UNREADABLE_ENVELOPES =
   "the clip has envelopes Producer Pal can't read (modulation, clip-level ones like Gain, or MIDI CC)";
 
+/** What a return-track clip's envelopes say until they can be read. */
+const RETURN_CLIP_ENVELOPES =
+  "envelopes on return-track clips can't be read yet";
+
 /** The note on every envelope of an unwarped audio clip. */
 const UNWARPED_ENVELOPE_NOTE =
   "doesn't play: the clip is unwarped. Turn warping on to hear it";
@@ -85,6 +89,10 @@ export async function clipEnvelopes(
 ): Promise<ClipEnvelope[] | string> {
   if (isArrangementClip) {
     return ARRANGEMENT_CLIP_NOTE;
+  }
+
+  if (clip.returnClipSlotIndex != null) {
+    return RETURN_CLIP_ENVELOPES;
   }
 
   const trackIndex = clip.trackIndex;

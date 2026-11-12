@@ -12,13 +12,17 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
-import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/group-track-clips.ts";
+import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/slot-contents/group-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import {
+  clipKind,
+  type ClipKind,
+} from "#src/tools/shared/clip/slot-contents/clip-kind.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -47,11 +51,13 @@ import {
   isDrumRackTrack,
   resolveClip,
   resolveClipLocation,
+  resolveReturnClip,
+  type ResolveClipResult,
 } from "./helpers/clip-resolution.ts";
 
 /** The args of a read-clip call; the fan-out adds the names the targets came under. */
 export interface ReadClipArgs extends ReadTargetParams {
-  /** Clip slot, "t<track>/s<scene>" */
+  /** Clip slot, "t<track>/s<scene>" ("rt<return>/s<scene>" on Live 13) */
   path?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
@@ -62,6 +68,9 @@ export interface ReadClipArgs extends ReadTargetParams {
   trackIndex?: number | null;
   /** Hidden alias for path; also used by batch readers with parsed indices */
   sceneIndex?: number | null;
+  /** @internal A batch reader walking a return track's slots passes its index
+   * with `sceneIndex`; the Live version was checked by the reader */
+  returnTrackIndex?: number | null;
   /** @internal Precomputed drum mode from a batch reader, so N clips of one
    * track don't each re-walk the track's device tree */
   drumMode?: boolean;
@@ -85,8 +94,9 @@ interface WarpMarker {
 export interface ReadClipResult {
   // Core properties
   id: string | null;
-  /** "step-sequencer" is a Live 13 MIDI clip whose steps can't be read */
-  type: "midi" | "step-sequencer" | "audio" | null;
+  /** "step-sequencer" is a Live 13 MIDI clip whose steps can't be read;
+   * "envelope" is a Live 13 clip of automation only (no notes, no sample) */
+  type: ClipKind | null;
   name?: string | null;
   color?: string | null;
   timeSignature?: string | null;
@@ -254,7 +264,7 @@ export function readOneClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadClipResult {
-  const { clipId, trackIndex, sceneIndex } = resolveClipLocation(args);
+  const location = resolveClipLocation(args);
 
   const {
     includeSample,
@@ -264,18 +274,7 @@ export function readOneClip(
     includeWarp,
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
-  if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error(idOrPathRequired("clip"));
-  }
-
-  const resolved = resolveClip(
-    clipId,
-    trackIndex,
-    sceneIndex,
-    args.slotValidated,
-    args.onEmptySlot,
-    args.targetNames?.idParam,
-  );
+  const resolved = resolveClipToRead(args, location);
 
   if (!resolved.found) {
     return resolved.emptySlotResponse;
@@ -286,12 +285,12 @@ export function readOneClip(
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
-  const isStepSequencer = isMidiClip && clip.midiClipIsStepSequencer;
+  const type = clipKind(clip, isMidiClip);
   const clipName = clip.getName();
 
   const result: ReadClipResult = {
     id: clip.id,
-    type: clipType(isMidiClip, isStepSequencer),
+    type,
     ...(clipName && { name: clipName }),
     ...(includeColor && { color: clip.getColor() }),
   };
@@ -306,11 +305,15 @@ export function readOneClip(
     addTimingProperties(result, clip, result.type === "audio", clipMeter);
   }
 
-  if (result.type !== "audio" && args.callScale != null) {
+  if (
+    result.type !== "audio" &&
+    result.type !== "envelope" &&
+    args.callScale != null
+  ) {
     addClipScale(result, clip, args.callScale);
   }
 
-  if (isStepSequencer) {
+  if (type === "step-sequencer") {
     appendDetail(result, STEPS_UNREADABLE);
   } else if (result.type === "midi") {
     processMidiClip(
@@ -334,19 +337,42 @@ export function readOneClip(
 const STEPS_UNREADABLE = "steps can't be read";
 
 /**
- * @param isMidiClip - Whether Live calls it a MIDI clip
- * @param isStepSequencer - Whether it is a step sequencer clip
- * @returns The type the read reports
+ * Find the clip a location names: by id, in a regular track's slot or in a
+ * return track's.
+ * @param args - The read-clip args
+ * @param location - What the args resolved to
+ * @returns The clip, or the response for an empty slot
+ * @throws Error when the location names no clip at all
  */
-function clipType(
-  isMidiClip: boolean,
-  isStepSequencer: boolean,
-): "midi" | "step-sequencer" | "audio" {
-  if (isStepSequencer) {
-    return "step-sequencer";
+function resolveClipToRead(
+  args: ReadClipArgs,
+  location: ReturnType<typeof resolveClipLocation>,
+): ResolveClipResult {
+  const { clipId, trackIndex, sceneIndex, returnIndex } = location;
+
+  if (
+    clipId == null &&
+    (sceneIndex == null || (trackIndex == null && returnIndex == null))
+  ) {
+    throw new Error(idOrPathRequired("clip"));
   }
 
-  return isMidiClip ? "midi" : "audio";
+  if (clipId == null && returnIndex != null) {
+    return resolveReturnClip(
+      returnIndex,
+      sceneIndex as number,
+      args.slotValidated,
+    );
+  }
+
+  return resolveClip(
+    clipId,
+    trackIndex,
+    sceneIndex,
+    args.slotValidated,
+    args.onEmptySlot,
+    args.targetNames?.idParam,
+  );
 }
 
 /**
@@ -506,6 +532,8 @@ function addClipLocationProperties(
       numerator,
       denominator,
     );
+  } else if (clip.returnClipSlotIndex != null) {
+    result.path = objectPathForApi(clip);
   } else {
     result.path = slotPath(
       clip.trackIndex as number,

@@ -14,7 +14,7 @@ import {
   clipOverwriteNote,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { emptySlotGroupReason } from "#src/tools/shared/clip/group-track-clips.ts";
+import { emptySlotGroupReason } from "#src/tools/shared/clip/slot-contents/group-track-clips.ts";
 import {
   recreatedClipLosses,
   recreateLossesNote,

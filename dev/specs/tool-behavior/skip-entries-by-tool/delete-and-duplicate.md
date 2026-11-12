@@ -100,6 +100,10 @@ Part of [Skip entries, tool by tool](README.md).
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
+- **delete and duplicate skip a Live 13 return-track clip** (an envelope clip)
+  with `return-track clips can't be changed yet`, by path or by id, as the clip
+  to delete or to copy. A return slot as a duplicate's `toPath` refuses the
+  call, like any destination that isn't a place a clip can go.
 - **A step sequencer clip is never rebuilt.** Live's API can't create one, so
   every copy that would re-create a clip from its notes is skipped before
   anything is made or deleted, with

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -34,11 +35,13 @@ export interface ClipSlotEntry {
   detail?: string;
 }
 
-/** One path entry, parsed, beside the spelling the caller wrote it in. */
-interface NamedSlotPath {
-  value: string;
-  position: ClipSlotPosition;
-}
+/**
+ * One path entry, parsed, beside the spelling the caller wrote it in. An entry
+ * that names a slot playback can't act on carries why instead of a position.
+ */
+export type NamedSlotPath =
+  | { value: string; position: ClipSlotPosition; skip?: undefined }
+  | { value: string; skip: string; position?: undefined };
 
 /**
  * The clip slots a call named, ids first, each as the caller wrote it. An id
@@ -58,9 +61,11 @@ export function sessionClipTargets(
 ): Array<Target<SlotPayload>> {
   return [
     ...targetEntries(ids, idParam).map((id) => idTarget(id, idParam)),
-    ...paths.map(({ value, position }) =>
-      slotTarget(targetNamed("path", value, pathParam), position),
-    ),
+    ...paths.map(({ value, position, skip }) => {
+      const named = targetNamed("path", value, pathParam);
+
+      return position == null ? { named, skip } : slotTarget(named, position);
+    }),
   ];
 }
 
@@ -85,6 +90,12 @@ function idTarget(id: string, idParam: string): Target<SlotPayload> {
 
   if (mismatch != null) {
     return { named, skip: mismatch };
+  }
+
+  const refusal = returnClipWriteRefusal(object);
+
+  if (refusal != null) {
+    return { named, skip: refusal };
   }
 
   const { trackIndex, sceneIndex } = object;

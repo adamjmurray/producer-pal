@@ -5,6 +5,7 @@
 
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
+  type NamedSlotPath,
   sessionClipTargets,
   type SlotPayload,
 } from "./session-clip-targets.ts";
@@ -29,9 +30,10 @@ import {
   requireClipSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
-  type ClipSlotPosition,
-  parseSlotList,
-} from "#src/tools/shared/validation/position-parsing.ts";
+  returnClipWriteRefusal,
+  returnSlotWriteRefusal,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
@@ -213,6 +215,14 @@ function pathSceneRefs(
       return { scene: entry.sceneIndex, source: quoteEntry(entry, source) };
     }
 
+    if (entry.kind === "return-slot") {
+      throw pathError(
+        source.label,
+        formatObjectPath(entry),
+        returnSlotWriteRefusal(),
+      );
+    }
+
     // Every other shape is missing the scene rather than carrying a spare one,
     // so there is nothing to recover.
     throw pathError(
@@ -260,13 +270,22 @@ function slotPathsFrom(
   action: string,
   entries: ObjectPath[],
   source: PathSource | null,
-): Array<{ value: string; position: ClipSlotPosition }> {
+): NamedSlotPath[] {
   if (source == null) {
     return [];
   }
 
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
+
+    // Well-formed, but no tool acts on a return-track clip yet: that entry is
+    // skipped and the rest go on.
+    if (entry.kind === "return-slot") {
+      return {
+        value: spellEntry(entry, source),
+        skip: returnSlotWriteRefusal(),
+      };
+    }
 
     return {
       value: spellEntry(entry, source),
@@ -360,6 +379,13 @@ function idSceneRefs(
 
     if (!object.exists()) {
       problems.push(idDoesNotExist(id, undefined, idParam));
+      continue;
+    }
+
+    const refusal = returnClipWriteRefusal(object);
+
+    if (refusal != null) {
+      problems.push(refusal);
       continue;
     }
 

@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  livePath,
+  type TrackPath,
+} from "#src/shared/live-api-path-builders.ts";
+import { returnClipsExist } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import {
   formatScale,
   readScalePitches,
@@ -62,7 +66,11 @@ export function readLiveSet(
   // each counts the same slots, so counting in both built every clip twice.
   const clipCounts =
     includeFlags.includeScenes || includeFlags.includeTracks
-      ? sessionClipCounts(trackIds.length, sceneIds.length)
+      ? sessionClipCounts(
+          trackIds.length,
+          sceneIds.length,
+          returnClipsExist() ? returnTrackIds.length : 0,
+        )
       : null;
 
   const liveSetName = liveSet.getName();
@@ -129,6 +137,7 @@ export function readLiveSet(
           include: trackInclude,
           returnTracks,
           notation: context.notation,
+          sessionClipCount: clipCounts?.perReturn[returnTrackIndex],
         });
       },
     );
@@ -182,7 +191,9 @@ function tempoAutomation(): string[] {
 interface SessionClipCounts {
   /** Clips on each track, indexed by track */
   perTrack: number[];
-  /** Clips in each scene, indexed by scene */
+  /** Clips on each Live 13 return track, indexed by return track; empty before Live 13 */
+  perReturn: number[];
+  /** Clips in each scene, indexed by scene, return tracks' included */
   perScene: number[];
 }
 
@@ -195,25 +206,34 @@ interface SessionClipCounts {
  * these totals.
  * @param trackCount - Number of regular tracks
  * @param sceneCount - Number of scenes, which is every track's slot count
+ * @param returnCount - Number of return tracks that have clip slots (Live 13),
+ *   or 0
  * @returns Clip counts per track and per scene
  */
 function sessionClipCounts(
   trackCount: number,
   sceneCount: number,
+  returnCount: number,
 ): SessionClipCounts {
-  const grid = Array.from({ length: trackCount }, (_, trackIndex) =>
-    Array.from({ length: sceneCount }, (__, sceneIndex) =>
-      LiveAPI.from(
-        livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
-      ).exists(),
-    ),
-  );
+  const gridOf = (
+    count: number,
+    owner: (index: number) => TrackPath,
+  ): boolean[][] =>
+    Array.from({ length: count }, (_, index) =>
+      Array.from({ length: sceneCount }, (__, sceneIndex) =>
+        LiveAPI.from(owner(index).clipSlot(sceneIndex).clip()).exists(),
+      ),
+    );
+  const grid = gridOf(trackCount, livePath.track);
+  const returnGrid = gridOf(returnCount, livePath.returnTrack);
 
   return {
     perTrack: grid.map((row) => row.filter(Boolean).length),
+    perReturn: returnGrid.map((row) => row.filter(Boolean).length),
     perScene: Array.from(
       { length: sceneCount },
-      (_, sceneIndex) => grid.filter((row) => row[sceneIndex]).length,
+      (_, sceneIndex) =>
+        [...grid, ...returnGrid].filter((row) => row[sceneIndex]).length,
     ),
   };
 }

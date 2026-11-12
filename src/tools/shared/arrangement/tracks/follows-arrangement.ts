@@ -20,7 +20,7 @@ export const AUTOMATION_UNKNOWN_FROM_SESSION =
  * Whether the track follows the arrangement, so its parameters' automation
  * state can be read. A regular track does when no session clip plays and it
  * wasn't stopped in Session (`playing_slot_index` is -1). Return and main
- * tracks have no clip slots, so they always do.
+ * tracks always do (Live 13 return tracks have clip slots, not yet checked).
  * @param track - A track
  * @returns False when the track plays from Session
  */

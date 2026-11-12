@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { returnClipsExist } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import {
   readOneClip,
   type ReadClipResult,
@@ -241,6 +242,22 @@ function readSceneClips(
     clips.push(clip);
   }
 
+  // Live 13 return tracks hold a clip per scene too, after the regular tracks.
+  for (const returnTrackIndex of returnTrackIndices(liveSet)) {
+    const clip: SceneClip = readOneClip(
+      { returnTrackIndex, sceneIndex, slotValidated: true, include },
+      { notation },
+    );
+
+    if (clip.id != null) {
+      clip.trackName = LiveAPI.from(
+        livePath.returnTrack(returnTrackIndex),
+      ).getProperty("name") as string;
+
+      clips.push(clip);
+    }
+  }
+
   return clips;
 }
 
@@ -263,5 +280,27 @@ function countSceneClips(liveSet: LiveAPI, sceneIndex: number): number {
     }
   }
 
+  for (const returnTrackIndex of returnTrackIndices(liveSet)) {
+    if (
+      LiveAPI.from(
+        livePath.returnTrack(returnTrackIndex).clipSlot(sceneIndex).clip(),
+      ).exists()
+    ) {
+      count++;
+    }
+  }
+
   return count;
+}
+
+/**
+ * The return tracks whose slots a scene read covers: every one on Live 13,
+ * none before it, which has no return-track slots to ask.
+ * @param liveSet - LiveAPI reference to the live set
+ * @returns The return track indices
+ */
+function returnTrackIndices(liveSet: LiveAPI): number[] {
+  return returnClipsExist()
+    ? liveSet.getChildIds("return_tracks").map((_id, index) => index)
+    : [];
 }

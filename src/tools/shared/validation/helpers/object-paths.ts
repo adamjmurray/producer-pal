@@ -13,6 +13,7 @@ import {
   livePath,
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
+import { returnSlotWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   type SongMeter,
@@ -49,6 +50,9 @@ export type ClipPath = Extract<
   { kind: "track" | "slot" | "take-lane" }
 >;
 
+/** A clip slot on a Live 13 return track. */
+export type ReturnSlotPath = Extract<ObjectPath, { kind: "return-slot" }>;
+
 /** A take lane, or the `l+` that appends one. */
 export type TakeLanePath = Extract<
   ObjectPath,
@@ -57,6 +61,9 @@ export type TakeLanePath = Extract<
 
 /** A path whose last segment could name a take lane. */
 const TAKE_LANE_ENTRY = /\/l(?:\d+|\+)$/;
+
+/** The path kind a return track's clip slot has. */
+const RETURN_SLOT = "return-slot";
 
 /** The path kind a spot on the arrangement timeline has. */
 const ARRANGEMENT_POSITION = "arrangement-position";
@@ -178,6 +185,19 @@ export function slotPath(trackIndex: number, sceneIndex: number): string {
 }
 
 /**
+ * The path a return-track clip slot spells.
+ * @param returnIndex - 0-based return track index
+ * @param sceneIndex - 0-based scene index
+ * @returns The path (e.g. "rt1/s0")
+ */
+export function returnSlotPath(
+  returnIndex: number,
+  sceneIndex: number,
+): string {
+  return formatObjectPath({ kind: RETURN_SLOT, returnIndex, sceneIndex });
+}
+
+/**
  * The path an arrangement clip's lane spells — the track itself for the main
  * lane, or the take lane it sits on.
  * @param trackIndex - 0-based track index
@@ -253,6 +273,12 @@ export function takeLanePathEntry(entry: string): TakeLanePath | null {
  * @returns The path, narrowed to the shapes a clip can use
  */
 export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
+  // Well-formed, but no tool writes to a return-track clip yet. Readers take
+  // the slot through requireClipSourcePath instead.
+  if (path.kind === RETURN_SLOT) {
+    throw pathError(label, formatObjectPath(path), returnSlotWriteRefusal());
+  }
+
   if (
     path.kind === "track" ||
     path.kind === "slot" ||
@@ -417,7 +443,7 @@ function describeNonClipPath(path: ObjectPath): string {
     case ARRANGEMENT_POSITION:
       return "a song position names one arrangement clip, not a place to put one";
     default:
-      return "return and main tracks have no clips";
+      return "return and main tracks have no arrangement clips";
   }
 }
 
@@ -435,6 +461,7 @@ function describeNonDevicePath(path: ObjectPath): string {
     case "scene":
       return "a scene holds no devices";
     case "slot":
+    case RETURN_SLOT:
       return "a clip slot holds no devices";
     case ARRANGEMENT_POSITION:
       return "a song position names a clip, not a device";

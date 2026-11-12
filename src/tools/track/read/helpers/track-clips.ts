@@ -26,10 +26,11 @@ export interface ReadTakeLaneResult {
 /**
  * Read all session clips from a track
  * @param track - Track object
- * @param trackIndex - Track index
+ * @param trackIndex - Track index (a return track's own index for a return track)
  * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
+ * @param category - "regular", or "return" for a Live 13 return track
  * @returns Array of clip objects (only clips that exist)
  */
 export function readSessionClips(
@@ -38,13 +39,17 @@ export function readSessionClips(
   isDrumMode: () => boolean,
   include?: string[],
   notation?: Notation,
+  category = "regular",
 ): ReadClipResult[] {
-  const drumMode = isDrumMode();
+  // A return track's clips hold no notes, so no device walk is worth its cost.
+  const drumMode = category === "return" ? false : isDrumMode();
+  const slotOwner =
+    category === "return" ? { returnTrackIndex: trackIndex } : { trackIndex };
 
   return readClips(
     track.getChildIds("clip_slots"),
     (_clipSlotId, sceneIndex) => ({
-      trackIndex,
+      ...slotOwner,
       sceneIndex,
       slotValidated: true,
       drumMode,
@@ -57,22 +62,24 @@ export function readSessionClips(
 /**
  * Count session clips in a track (faster than reading full clip details)
  * @param track - Track object
- * @param trackIndex - Track index
+ * @param trackIndex - Track index (a return track's own index for a return track)
+ * @param category - "regular", or "return" for a Live 13 return track
  * @returns Number of clips
  */
 export function countSessionClips(
   track: LiveAPI,
   trackIndex: number | null,
+  category = "regular",
 ): number {
+  const owner =
+    category === "return"
+      ? livePath.returnTrack(trackIndex as number)
+      : livePath.track(trackIndex as number);
+
   return track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) => {
-      const clip = LiveAPI.from(
-        livePath
-          .track(trackIndex as number)
-          .clipSlot(sceneIndex)
-          .clip(),
-      );
+      const clip = LiveAPI.from(owner.clipSlot(sceneIndex).clip());
 
       return clip.exists() ? clip : null;
     })
@@ -81,14 +88,16 @@ export function countSessionClips(
 
 /**
  * Drop the type from clips nested in a track: it matches the track's, so it says
- * nothing. A step sequencer clip's doesn't, and stays.
+ * nothing. A step sequencer or envelope clip's doesn't, and stays.
  * @param clips - The track's (or take lane's) clip entries, or undefined
  */
 export function stripRedundantClipType(
   clips: ReadClipResult[] | undefined,
 ): void {
   stripFields(
-    clips?.filter((clip) => clip.type !== "step-sequencer"),
+    clips?.filter(
+      (clip) => clip.type !== "step-sequencer" && clip.type !== "envelope",
+    ),
     "type",
   );
 }

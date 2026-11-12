@@ -13,13 +13,18 @@ import {
   type ArrangementPosition,
   type CompleteArrangementPosition,
 } from "./object-path-position.ts";
-import { requireClipPath, type ClipPath } from "./object-paths.ts";
+import {
+  requireClipPath,
+  type ClipPath,
+  type ReturnSlotPath,
+} from "./object-paths.ts";
 import { pathError } from "./object-path-lexer.ts";
 import { formatObjectPath, type ObjectPath } from "../object-path.ts";
 
 /** Where a clip that already exists can be found. */
 export type ClipSourcePath =
   | Extract<ClipPath, { kind: "slot" }>
+  | ReturnSlotPath
   | CompleteArrangementPosition;
 
 /**
@@ -35,6 +40,12 @@ export function requireClipSourcePath(
 ): ClipSourcePath {
   if (path.kind === "arrangement-position") {
     return requireCompletePosition(path, label);
+  }
+
+  // A return-track slot is a source like any other; it is only refused as a
+  // destination (requireClipPath), and by the write tools that act on it.
+  if (path.kind === "return-slot") {
+    return path;
   }
 
   const clip = requireClipPath(path, label);

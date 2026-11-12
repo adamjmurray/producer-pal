@@ -208,5 +208,19 @@ declare global {
      * behalf: call it only for a MIDI clip.
      */
     readonly midiClipIsStepSequencer: boolean;
+
+    /**
+     * Whether this is a Live 13 envelope clip: neither a MIDI nor an audio clip
+     * (it holds automation only). False on Live 12. Call it only for a clip
+     * whose `is_midi_clip` already read 0.
+     */
+    readonly nonMidiClipIsEnvelope: boolean;
+
+    /**
+     * The scene index of a clip slot on a return track, or null for anything
+     * else. Kept apart from `sceneIndex` and `clipSlotIndex`, which stay null
+     * for return-track slots.
+     */
+    readonly returnClipSlotIndex: number | null;
   }
 }

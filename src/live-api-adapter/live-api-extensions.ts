@@ -386,6 +386,13 @@ if (typeof LiveAPI !== "undefined") {
     );
   });
 
+  // Live 13 return tracks have clip slots. They are not regular tracks' slots,
+  // so `trackIndex`, `sceneIndex` and `clipSlotIndex` stay null for them: many
+  // callers read a null `sceneIndex` as "arrangement clip".
+  defineGetter("returnClipSlotIndex", function (this: LiveAPI) {
+    return pathIndex(this.path, /live_set return_tracks \d+ clip_slots (\d+)/);
+  });
+
   defineGetter("takeLaneIndex", function (this: LiveAPI) {
     return pathIndex(this.path, /take_lanes (\d+)/);
   });
@@ -413,6 +420,17 @@ if (typeof LiveAPI !== "undefined") {
   defineGetter("isStepSequencerClip", function (this: LiveAPI) {
     return (
       this.getProperty("is_midi_clip") === 1 && this.midiClipIsStepSequencer
+    );
+  });
+
+  // Live 13 envelope clips are neither MIDI nor audio. Live 12 has none, so it
+  // isn't asked, and a clip whose audio flag isn't 0 is not one. Call it only
+  // for a clip whose `is_midi_clip` read 0.
+  defineGetter("nonMidiClipIsEnvelope", function (this: LiveAPI) {
+    return requestMemo(
+      `envelope-clip ${this.id}`,
+      () =>
+        liveVersionAtLeast("13.0") && this.getProperty("is_audio_clip") === 0,
     );
   });
 

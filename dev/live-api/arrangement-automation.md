@@ -125,11 +125,12 @@ yet.
 **Whether it can be trusted.** A regular track follows the arrangement exactly
 when `Track.playing_slot_index` is -1. It is -2 when the track was stopped in
 Session (clip stop button) and >= 0 while a session clip plays or Back to
-Arrangement is lit. Return and main tracks have no clip slots
-(`playing_slot_index` throws), so they always follow. `ppal-read-track`
-(`mixer`) and `ppal-read-device` (param values) show `automation` only when the
-track follows, and otherwise say it's unknown. `ppal-read-live-set` (tempo) and
-rack chain mixers (`ppal-read-device` `chains`) work the same way.
+Arrangement is lit. Return and main tracks always follow: they have no clip
+slots on Live 12 (`playing_slot_index` throws), and Live 13 return tracks' slots
+aren't checked yet. `ppal-read-track` (`mixer`) and `ppal-read-device` (param
+values) show `automation` only when the track follows, and otherwise say it's
+unknown. `ppal-read-live-set` (tempo) and rack chain mixers (`ppal-read-device`
+`chains`) work the same way.
 
 The tempo (`master_track.mixer_device.song_tempo`) and return track parameters
 stay readable even with every track stopped in Session. A rack chain's mixer

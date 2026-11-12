@@ -23,6 +23,7 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { returnSlotWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import { type CompleteArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
@@ -428,6 +429,9 @@ function targetFromPath(path: ObjectPath): PathTarget {
         arrangementPosition: position,
       };
     }
+
+    case "return-slot":
+      throw pathError("path", formatObjectPath(path), returnSlotWriteRefusal());
 
     default:
       throw pathError(

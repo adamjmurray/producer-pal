@@ -27,7 +27,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .string()
       .optional()
       .describe(
-        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
+        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'; 'rt<return>/s<scene>' on a Live 13 return track), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
 
     ...clipSlotAliases("t0/s3"),

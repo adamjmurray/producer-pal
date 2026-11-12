@@ -20,6 +20,7 @@ import {
   type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { LIVE_13_OR_NEWER } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -70,7 +71,14 @@ describe("ppal-read-track", () => {
 
     expect(returnTrack.id).toBeDefined();
     expect(returnTrack.path).toBe("rt0");
-    expect(returnTrack).not.toHaveProperty("sessionClipCount");
+
+    // Live 13 return tracks have a clip slot per scene; Live 12's have none.
+    if (LIVE_13_OR_NEWER) {
+      expect(typeof returnTrack.sessionClipCount).toBe("number");
+    } else {
+      expect(returnTrack).not.toHaveProperty("sessionClipCount");
+    }
+
     expect(returnTrack).not.toHaveProperty("arrangementClipCount");
 
     // Test 4: Read master track

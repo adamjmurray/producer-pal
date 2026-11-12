@@ -633,12 +633,16 @@ export interface CreateTrackResult {
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
 export interface ReadClipResult {
   id: string | null;
-  type?: "midi" | "step-sequencer" | "audio" | null;
+  type?: "midi" | "step-sequencer" | "audio" | "envelope" | null;
   name?: string | null;
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
   muted?: boolean;
+  /** Only present when true */
+  playing?: boolean;
+  /** Session clips: the clip has automation. Only present when true */
+  envs?: boolean;
   start?: string;
   end?: string;
   length?: string;

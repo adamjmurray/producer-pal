@@ -29,7 +29,11 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
-import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import {
+  parseClipDestinationList,
+  refuseReturnSlotDestinations,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { returnSlotCreateRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type Call } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
@@ -247,8 +251,11 @@ function splitPathDestinations(path: string): SplitDestinations {
   const clipSlots: ClipSlotPosition[] = [];
   const slotOrdinals: number[] = [];
   const tracks: ArrangementTrackTarget[] = [];
+
   // The lane is settled before the locators are resolved, so a refusal quotes
   // the position the caller wrote rather than the bar|beat it names.
+  refuseReturnSlotDestinations(path, "path", returnSlotCreateRefusal);
+
   const entries = parseClipDestinationList(path, "path").map((entry) => ({
     position: entry.position,
     lane: entry.lane ?? noTrack(entry.position),
