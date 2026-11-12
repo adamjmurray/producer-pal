@@ -103,14 +103,17 @@ export function resolveInsertionPath(
  * `container` is then null) or in one only a drum pad's write could tell about.
  * @param path - Device insertion path
  * @param label - Param name the path came from, for error messages
+ * @param skipPadScan - Don't read a drum pad's chains: a path through a pad is
+ *   `undetermined`. Reading them takes a scan of the whole rack per path
  * @returns What resolving the path answers, plus what it would have made
  * @throws Error when resolving the path would throw
  */
 export function checkInsertionPath(
   path: string,
   label = "path",
+  skipPadScan = false,
 ): InsertionCheck {
-  const dry: DryWalk = { makesChain: false, undetermined: false };
+  const dry: DryWalk = { makesChain: false, undetermined: false, skipPadScan };
   const resolution = walkInsertionPath(path, label, dry);
 
   // The chain it would make isn't there to hand back.
@@ -367,7 +370,7 @@ function peekDrumPadContainer(
   }
 
   const container =
-    appendsChain && tail.length === 0
+    (appendsChain && tail.length === 0) || dry.skipPadScan
       ? null
       : resolveDrumPadFromPath(rack.path, note, tail).target;
 

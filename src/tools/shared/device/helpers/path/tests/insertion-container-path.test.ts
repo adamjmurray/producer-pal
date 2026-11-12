@@ -270,6 +270,17 @@ describe("checkInsertionPath", () => {
       },
     );
 
+    it("leaves a pad's chain unread, undetermined even where it is there, when asked", () => {
+      const rack = registerRack(true);
+
+      const check = checkInsertionPath("t0/d0/pC1/d+", "toPath", true);
+
+      expect(check).toStrictEqual(
+        expect.objectContaining({ container: null, undetermined: true }),
+      );
+      expect(rack.call).not.toHaveBeenCalled();
+    });
+
     it("finds no chain for a pad path on a rack with no pads", () => {
       const rack = registerRack();
 

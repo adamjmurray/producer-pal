@@ -15,7 +15,6 @@ import {
   insertNativeDevice,
 } from "../device-creation.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
-import { refuseIndexInNewChain } from "../index-in-new-chain.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
 import {
   hostedCall,
@@ -37,18 +36,15 @@ import { type CreatePayload } from "./parse-create-call.ts";
  * throw once the device is in the Set keeps its entry, with a detail for what
  * didn't happen. The device comes from a native insert, or from Live's browser,
  * which is awaited.
- * @param target - The target
+ * @param _target - The target (its plan is read off `step`)
  * @param step - The call's state for this target
  * @returns The target's entry
  */
 export function writeCreatedDevice(
-  target: AppliedTarget<CreatePayload>,
+  _target: AppliedTarget<CreatePayload>,
   step: Step<CreateChecked>,
 ): MaybePromise<CreateDeviceResult> {
   const plan = step.checked.plans[step.index] as DevicePlan;
-
-  // Before the path makes any chains: it would leave them behind when refused.
-  refuseIndexInNewChain(target.data.path);
 
   if (plan.hosted != null) {
     return createHostedDevice({ ...plan, hosted: plan.hosted }, step);

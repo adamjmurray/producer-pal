@@ -57,8 +57,8 @@ import {
   browserItemKind,
   loadedDeviceKind,
   misfitReason,
-  trackMisfitReason,
 } from "#src/tools/shared/device/helpers/path/device-fit.ts";
+import { checkCreationPath } from "./check-creation-path.ts";
 
 /**
  * Why a browser search stopped: it used up its share of the request's time. A
@@ -139,16 +139,20 @@ export async function createBrowserDevice(
   path: string,
   options: BrowserLoadOptions = {},
 ): Promise<CreatedDevice> {
-  // Checked before the path makes any chain or the temp track exists, so a
-  // load with no time to start makes nothing.
+  // Both checked before the path makes any chain or the temp track exists, so
+  // a path that can't take the device, or a load with no time to start, makes
+  // nothing.
+  checkCreationPath(path, deviceName, browserItemKind(item.type));
   loadWait(deviceName, options);
 
-  const target = resolveCreationTarget(path);
+  const target = resolveCreationTarget(
+    path,
+    deviceName,
+    browserItemKind(item.type),
+  );
   const arrival = { placed: false };
 
   try {
-    refuseKnownMisfit(item, deviceName, target);
-
     return await loadAndMove(item, deviceName, target, path, {
       ...options,
       onPlaced: (created) => {
@@ -553,29 +557,5 @@ function moveIntoPlace(
     throw new Error(
       misfit ?? insertRefusal(deviceName, target.position, path, move.reason),
     );
-  }
-}
-
-/**
- * Refuse before loading an item whose kind is known and doesn't fit the
- * container, so a doomed load makes no temp track.
- * @param item - What would be loaded
- * @param deviceName - The device as the call named it
- * @param target - Where it goes
- * @throws Error saying why the container won't take it
- */
-function refuseKnownMisfit(
-  item: BrowserItem,
-  deviceName: string,
-  target: CreationTarget,
-): void {
-  const misfit = trackMisfitReason(
-    deviceName,
-    browserItemKind(item.type),
-    target.container,
-  );
-
-  if (misfit != null) {
-    throw new Error(misfit);
   }
 }

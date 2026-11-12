@@ -23,6 +23,8 @@ export interface GrowingRackFixture {
   chainIdPrefix?: string;
   /** Methods on every chain, e.g. one that turns down an insert */
   chainMethods?: RegisteredMockObjectOptions["methods"];
+  /** More properties on the rack, e.g. its `type` */
+  rackProperties?: Record<string, unknown>;
 }
 
 /**
@@ -59,7 +61,12 @@ export function registerGrowingRack(
   return registerMockObject("rack", {
     path: rackPath,
     type: "RackDevice",
-    properties: { chains: chainIds, can_have_chains: 1, can_have_drum_pads: 0 },
+    properties: {
+      chains: chainIds,
+      can_have_chains: 1,
+      can_have_drum_pads: 0,
+      ...fixture.rackProperties,
+    },
     methods: { insert_chain: () => ["id", addChain()] },
   });
 }

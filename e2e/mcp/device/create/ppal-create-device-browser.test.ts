@@ -35,6 +35,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import { readChainCount } from "../helpers/chain-count-test-helpers";
 import { readTrackCount } from "../helpers/track-count-test-helpers";
 import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
@@ -99,6 +100,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       return trackIndexFromPath(track.path);
     }
 
+    const chainCount = (rackPath: string): Promise<number> =>
+      readChainCount(ctx.client!, rackPath);
+
     // How many regular tracks the Set has, to prove the temp track is gone.
     const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
@@ -143,6 +147,29 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       expect(lfo.path.startsWith(`${rack.path}/c0/d`)).toBe(true);
       expect(await idAt(lfo.path)).toBe(lfo.id);
+    });
+
+    // An item whose kind the browser gives is refused before the load, so the
+    // rack keeps its chains and no temp track is made.
+    it("refuses a browser instrument into an Audio Effect Rack's c+, making nothing", async () => {
+      const trackIndex = await createTrack("audio");
+      const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+      const chainsBefore = await chainCount(rack.path);
+      const tracksBefore = await trackCount();
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Instruments/Operator",
+          path: `${rack.path}/c+`,
+        },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toMatch(
+        /takes only audio effects; ".*Operator" is an instrument$/,
+      );
+      expect(await chainCount(rack.path)).toBe(chainsBefore);
+      expect(await trackCount()).toBe(tracksBefore);
     });
 
     it("loads LFO onto a return track", async () => {

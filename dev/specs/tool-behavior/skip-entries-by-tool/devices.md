@@ -160,16 +160,19 @@ Part of [Skip entries, tool by tool](README.md).
   return or main track) is refused before Live is asked, saying why:
   `group track t9 (id 12) takes only audio effects; "Operator" is an instrument`.
   The same for a chain of an audio effect rack (audio effects only) or a MIDI
-  effect rack (MIDI effects only), worked out once Live has turned the insert
-  down. A plug-in's kind shows once it is loaded, so it is refused then, or
-  `"X" may not be an audio effect` (`a MIDI effect` for a MIDI effect rack's
-  chain) when its kind can't be read. update-device's `toPath` move names the
-  same reasons, in the same words, when Live drops a move onto such a place
-  (checked once Live has refused it), with the move's usual skip or error shape.
-  A device that is in the Set keeps its normal entry (`id`, `path`) when a later
-  step threw (a name Live refused), plus a `detail` saying why and what landed:
-  `<error>; already changed: device created`. A browser load's temp track that
-  can't be deleted doesn't fail the load: the entry keeps `id` and `path`, plus
+  effect rack (MIDI effects only): for a chain the path would make, before it is
+  made, naming the chain by path with no id
+  (`chain t0/d0/c2 takes only audio effects; ...`); for one already there, once
+  Live has turned the insert down. A plug-in's kind shows once it is loaded, so
+  it is refused then, or `"X" may not be an audio effect` (`a MIDI effect` for a
+  MIDI effect rack's chain) when its kind can't be read. update-device's
+  `toPath` move names the same reasons, in the same words, when Live drops a
+  move onto such a place (checked once Live has refused it), with the move's
+  usual skip or error shape. A device that is in the Set keeps its normal entry
+  (`id`, `path`) when a later step threw (a name Live refused), plus a `detail`
+  saying why and what landed: `<error>; already changed: device created`. A
+  browser load's temp track that can't be deleted doesn't fail the load: the
+  entry keeps `id` and `path`, plus
   `the device was created, but the temporary track at <path> couldn't be deleted: <why>`.
   If the load itself failed, that goes on the end of its error. A track
   selection that won't go back is not reported. Entries name each device where
@@ -323,32 +326,42 @@ Part of [Skip entries, tool by tool](README.md).
   copy's `toPath` resolve a destination through one resolver, which makes the
   chains a path names past the last one. A success reports them as
   `created: "c1-c2"` on the entry (the rack's, for `wrapInRack`). A failure
-  after them — a refused insert or move, a browser load that fails, a path that
-  then names no device, Live making only some of the chains — ends its reason
-  with `; left 3 empty chains: c1-c3`, the chain a `c+` appended included, since
-  the path names that chain only once it exists. A failed move or copy names
-  them in its reason instead of `created`. A lone target throws that reason; in
-  a list it is the target's skip `detail`, the way created scenes are named: no
-  device landed, so `ok: false`. Chain and drum-pad copies make no chains
-  through a path (they append their own copy), so they have nothing to name.
-  Wrapping an instrument keeps its undo-then-throw, and the chains `toPath` made
-  before it began stay in the error. An instrument wrap's `toPath` slot reads
-  against the container as the call found it, though Live keeps an instrument
-  ahead of audio effects, so the rack may land before them.
-- **An update-device move or a device copy checks its `toPath` before making
-  chains.** What the destination refuses is known without making anything: no
-  such track, device or chain, a pad path on a rack with no pads (no
-  destination), a chain in a Drum Rack, a full fixed-chain rack, too many chains
-  to make, an index past the end (a chain the path would make holds none), and a
-  kind of device the place takes none of. For a chain the path would make, the
-  kind is the rack's: an instrument into an audio effect rack's new chain is
-  refused naming the chain by path
+  after them — a refused insert or move, a browser load that fails, Live making
+  only some of the chains — ends its reason with `; left 3 empty chains: c1-c3`,
+  the chain a `c+` appended included, since the path names that chain only once
+  it exists. For create-device, what still ends that way is a refusal only Live
+  or the write can give (a second instrument), and a chain a drum pad path
+  makes; a path that names no place, a missing container, an index past the end
+  and a kind the chain won't take are refused before any chain is made. A failed
+  move or copy names them in its reason instead of `created`. A lone target
+  throws that reason; in a list it is the target's skip `detail`, the way
+  created scenes are named: no device landed, so `ok: false`. Chain and drum-pad
+  copies make no chains through a path (they append their own copy), so they
+  have nothing to name. Wrapping an instrument keeps its undo-then-throw, and
+  the chains `toPath` made before it began stay in the error. An instrument
+  wrap's `toPath` slot reads against the container as the call found it, though
+  Live keeps an instrument ahead of audio effects, so the rack may land before
+  them.
+- **create-device, an update-device move or a device copy checks its path before
+  making chains.** What the destination refuses is known without making
+  anything: no such track, device or chain, a pad path on a rack with no pads
+  (no destination), a chain in a Drum Rack, a full fixed-chain rack, too many
+  chains to make, an index past the end (a chain the path would make holds
+  none), and a kind of device the place takes none of. For a chain the path
+  would make, the kind is the rack's: an instrument into an audio effect rack's
+  new chain is refused naming the chain by path
   (`chain t1/d0/c1 takes only audio effects; ...`), with no id since the chain
   isn't there. Those refuse the target with the same reason and no chains left,
   so no `; left N empty chains` follows them. `wrapInRack` checks its `toPath`
   the same way, for what the walk refuses (not the index or the kind). Only what
   Live's refusal shows (a second instrument) and a chain on a drum pad that the
   write would make are known after the move, and keep the `; left ...` wording.
-  A chain copy checks its destination rack before it adds the chain, and
-  create-device resolves its container before it loads or inserts; neither makes
-  a copy to delete.
+  create-device checks the same way, for a native or a browser device (before
+  the load and its temp track), with the kind of a plug-in or preset only known
+  once loaded. It also answers a path naming no place and a container that isn't
+  there in the same words. A pad path isn't read up front (a kit is built a pad
+  per path): a slot past the end of a pad's chain the write would make is
+  refused before it makes one, and the rest is left to the write. A path that is
+  only a slot on a track (`t0/d+`, `t0/d3`) makes no chain and isn't walked: the
+  resolve gives its refusals. A chain copy checks its destination rack before it
+  adds the chain, so no copy is left to delete.

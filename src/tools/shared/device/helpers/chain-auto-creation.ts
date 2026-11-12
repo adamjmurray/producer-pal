@@ -48,6 +48,9 @@ export interface DryWalk {
   newChain?: { rack: LiveAPI; index: number };
   /** The path ends where only a drum pad's write could tell */
   undetermined: boolean;
+  /** Leave a pad's chains unread: any pad path is then `undetermined`, for a
+   * caller that would rather not pay a rack-wide scan per pad */
+  skipPadScan?: boolean;
 }
 
 /**
