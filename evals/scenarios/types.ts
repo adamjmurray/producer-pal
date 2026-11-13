@@ -9,6 +9,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
+import { type LocalModelInfo } from "./run-scenario/local-model-info.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ToolCall } from "#evals/chat/shared/types.ts";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
@@ -351,5 +352,7 @@ export interface EvalScenarioResult {
   assertions: EvalAssertionResult[];
   totalDurationMs: number;
   totalUsage?: TokenUsage;
+  /** Which build of a local model ran (LM Studio only) */
+  localModel?: LocalModelInfo;
   error?: string;
 }

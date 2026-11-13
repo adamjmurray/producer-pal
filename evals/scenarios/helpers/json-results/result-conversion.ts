@@ -89,6 +89,7 @@ export function toJsonResult(
     totalDurationMs: result.totalDurationMs,
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
     ...(totalTiming && { totalTiming }),
+    ...(result.localModel && { localModel: result.localModel }),
     ...(result.error && { error: result.error }),
   };
 }

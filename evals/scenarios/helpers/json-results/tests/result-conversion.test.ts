@@ -618,4 +618,11 @@ describe("toJsonResult", () => {
       expect(json.totalTiming).toBeUndefined();
     });
   });
+
+  it("records the local model build only when the run has one", () => {
+    const localModel = { variant: "a/b@q4_k_m", quantization: "Q4_K_M" };
+
+    expect(convert({ localModel }).localModel).toStrictEqual(localModel);
+    expect(convert().localModel).toBeUndefined();
+  });
 });
