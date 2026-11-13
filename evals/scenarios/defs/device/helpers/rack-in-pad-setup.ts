@@ -19,6 +19,7 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { sleep } from "#evals/shared/sleep.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
+import { withConfig } from "../../helpers/with-config.ts";
 import {
   type LayerSpec,
   layersAreUntouched,
@@ -157,11 +158,22 @@ async function buildLayeredPad(
 
 /**
  * Seed the layered kick and snare. Both pads' own faders stay at 0 dB, so a
- * model that turns the pad down instead of a layer is told apart.
+ * model that turns the pad down instead of a layer is told apart. Small-model
+ * mode is off meanwhile: it hides `gainDb`, which the layers need.
+ *
+ * @param mcpClient - MCP client for tool calls
+ * @returns Resolves once both pads are built
+ */
+export function seedRacksInPads(mcpClient: Client): Promise<void> {
+  return withConfig({ smallModelMode: false }, () => buildKit(mcpClient));
+}
+
+/**
+ * Clear the pads and build both layered pads.
  *
  * @param mcpClient - MCP client for tool calls
  */
-export async function seedRacksInPads(mcpClient: Client): Promise<void> {
+async function buildKit(mcpClient: Client): Promise<void> {
   await callOrThrow(mcpClient, TOOLS.delete, {
     type: "drum-pad",
     path: [KICK_PAD, SPARE_SNARE_PAD, SNARE_PAD].join(","),

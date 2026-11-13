@@ -30,6 +30,7 @@ import {
 import { argText } from "../../arg-text.ts";
 import { asArrangementTrack, clipStarts } from "../../arrangement-readback.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
+import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 
 const TOOL_PLAYBACK = TOOLS.playback;
 
@@ -91,9 +92,16 @@ function assertStartedAtChorus(turn: number): EvalAssertion {
         throw new Error(`no ${TOOL_PLAYBACK} call in turn ${turn}`);
       }
 
-      if (call.result.startTime !== CHORUS) {
+      const sent = argText(call.args.startTime);
+      // The result reports startTime only when it is news. A bar|beat the
+      // model wrote that Live honored is not repeated; a `loc:` always is.
+      const landed =
+        call.result.startTime ??
+        (sent !== "" && locatorRef(sent) == null ? sent : undefined);
+
+      if (landed !== CHORUS) {
         throw new Error(
-          `expected the chorus (${CHORUS}), sent startTime=${argText(call.args.startTime) || "(unset)"}, got ${JSON.stringify(call.result)}`,
+          `expected playback to land on the chorus (${CHORUS}), sent startTime=${sent || "(unset)"}, got ${JSON.stringify(call.result)}`,
         );
       }
 

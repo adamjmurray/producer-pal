@@ -89,6 +89,35 @@ describe("locatorNavigation start turn", () => {
           { startTime: landed },
         ),
       ),
-    ).toThrow("expected the chorus (17|1)");
+    ).toThrow("expected playback to land on the chorus (17|1)");
   });
+
+  it("passes when the result omits startTime and the call sent the chorus bar", () => {
+    expect(
+      startGrader.assert(
+        startTurn(
+          { action: "play-arrangement", startTime: "17|1" },
+          { playing: true, loop: false },
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["another bar", { startTime: "25|1" }],
+    ["a loc: with no startTime in the result", { startTime: "loc:Chorus" }],
+    ["no startTime sent", {}],
+  ])(
+    "fails when the result omits startTime and the call sent %s",
+    (_l, args) => {
+      expect(() =>
+        startGrader.assert(
+          startTurn(
+            { action: "play-arrangement", ...args },
+            { playing: true, loop: false },
+          ),
+        ),
+      ).toThrow("expected playback to land on the chorus (17|1)");
+    },
+  );
 });

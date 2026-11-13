@@ -47,6 +47,7 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 33  | qwen3.8-27b       | `--small-model` | `6c1b9b427`? | 3      | 231 | 214 (93%) | 15.4M  | 4h05m  |
 | 34  | gpt-6-luna        | `thinking:high` | `fc8f151e6`  | 3      | 393 | 379 (96%) | 163.5M | 7h06m  |
 | 35  | claude-haiku-5-5  | default         | `fc8f151e6`  | 3      | 393 | 386 (98%) | 89.9M  | 1h26m  |
+| 36  | muse-glimmer-30b  | `--small-model` | `01219a45c`  | 3      | 228 | 201 (88%) | 14.9M  | 2h38m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -151,3 +152,10 @@ time.
 They ran together as one invocation on a debug build of `fc8f151e6`, with the
 same flags as runs 31 and 32: `--jev`, Luna at high effort judging escalations.
 Wall is scenario time.
+
+**Run 36 is muse-glimmer's first run** (`muse-glimmer:30b-mlx` on Ollama, 128K
+context; Live 12.4.16). It ran `--decider jev` with Luna judging escalations.
+Six trials errored in setup and three failed on a grader bug, both since fixed;
+`rack-in-pad-read-layers`, `rack-in-pad-add-layer` and `locator-navigation` were
+re-run (`2026-11-13T10-00-50Z`) and those trials replace the first ones in the
+total. Input and wall cover the main run only; wall is scenario time.
