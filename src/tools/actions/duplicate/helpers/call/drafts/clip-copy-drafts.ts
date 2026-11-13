@@ -362,16 +362,20 @@ function arrangementCovers(
 ): Cover[] | undefined {
   const { numerator, denominator } = meter;
   // A re-created copy of a session clip is its loop length; a duplicate is
-  // what copyLengthBeats says. Only a duplicate takes the length asked for.
-  const recreated = target.takeLane != null || isTakeLaneClip(clip);
+  // what copyLengthBeats says. A duplicate takes the length asked for. A
+  // re-created copy lands at its own length and is resized after: on a lane
+  // that clears nothing, but promoted to the main lane it clears ahead.
+  const toTakeLane = target.takeLane != null;
+  const recreated = toTakeLane || isTakeLaneClip(clip);
   const own =
     recreated && clip.sceneIndex != null
       ? clipLengthBeats(clip)
       : copyLengthBeats(clip);
-  const span =
-    label.length == null || recreated
+  const asked =
+    label.length == null
       ? own
       : parseArrangementLength(label.length, numerator, denominator);
+  const span = toTakeLane ? own : recreated ? Math.max(own, asked) : asked;
 
   if (!Number.isFinite(span) || span <= 0) {
     return undefined;

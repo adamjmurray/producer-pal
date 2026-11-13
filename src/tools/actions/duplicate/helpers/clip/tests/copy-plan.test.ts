@@ -34,12 +34,44 @@ function loopedWithPreRoll(): LiveAPI {
   return LiveAPI.from(CLIP_PATH);
 }
 
+/**
+ * A 4-beat MIDI clip on a take lane.
+ * @returns A handle on the clip
+ */
+function takeLaneClip(): LiveAPI {
+  const path = livePath.track(0).takeLane(0).arrangementClip(0);
+
+  registerMockObject("take", {
+    path,
+    properties: {
+      is_midi_clip: 1,
+      is_arrangement_clip: 1,
+      start_time: 0,
+      end_time: 4,
+      length: 4,
+    },
+  });
+
+  return LiveAPI.from(path);
+}
+
 describe("copySpanBeats", () => {
   it("counts a looped session clip's pre-roll in a plain copy", () => {
-    expect(copySpanBeats(loopedWithPreRoll(), undefined, 4, 4)).toBe(8);
+    expect(copySpanBeats(loopedWithPreRoll(), undefined, 4, 4, false)).toBe(8);
   });
 
   it("is the length asked for when one is", () => {
-    expect(copySpanBeats(loopedWithPreRoll(), "1bar", 4, 4)).toBe(4);
+    expect(copySpanBeats(loopedWithPreRoll(), "1bar", 4, 4, false)).toBe(4);
+  });
+
+  // Re-created at its own length, then resized: only the main lane clears
+  // ahead of a clip that grows.
+  it("is a take's own length on a take lane, whatever was asked", () => {
+    expect(copySpanBeats(takeLaneClip(), "4bar", 4, 4, true)).toBe(4);
+  });
+
+  it("is the longer of a take's length and the one asked on the main lane", () => {
+    expect(copySpanBeats(takeLaneClip(), "4bar", 4, 4, false)).toBe(16);
+    expect(copySpanBeats(takeLaneClip(), "n/4", 4, 4, false)).toBe(4);
   });
 });

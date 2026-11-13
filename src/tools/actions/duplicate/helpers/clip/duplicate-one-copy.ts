@@ -161,6 +161,7 @@ async function clearingCopy(
     options.arrangementLength,
     options.songTimeSigNumerator,
     options.songTimeSigDenominator,
+    options.target.takeLane != null,
   );
   const sourceBeats = copyLengthBeats(object);
   const { made, cleared } = await copyClearingAsync(

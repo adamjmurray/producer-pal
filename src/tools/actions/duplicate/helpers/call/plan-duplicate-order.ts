@@ -127,8 +127,14 @@ function landingOnSource(group: Group, run: DuplicateRun): Landing {
   }));
   const source = liveObject(run, first.sourceId);
   const { numerator, denominator } = meterOf(run);
-  const spans = copies.map(({ label }) =>
-    copySpanBeats(source, label.length, numerator, denominator),
+  const spans = copies.map(({ body, label }) =>
+    copySpanBeats(
+      source,
+      label.length,
+      numerator,
+      denominator,
+      body.target.takeLane != null,
+    ),
   );
   const over = copiesOverSource(
     source,

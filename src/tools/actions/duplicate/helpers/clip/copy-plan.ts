@@ -74,13 +74,15 @@ export function copiesOverSource(
  * this one parses.
  *
  * A take-lane source's copies are re-created at its own length and resized
- * after, and on a lane growing clears nothing, so they clear exactly the
- * source's length. Ordering a lane copy against a shorter one is how it lands
- * in the safe bucket while really truncating the source.
+ * after. On a lane growing clears nothing, so such a copy clears exactly the
+ * source's length. Promoted to the main lane, growing clears ahead, so it
+ * reaches the longer of the two. Ordering a copy against a shorter span is how
+ * it lands in the safe bucket while really overwriting a source.
  * @param source - The clip being copied
  * @param arrangementLength - The raw arrangementLength param
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
+ * @param toTakeLane - Whether the copy lands on a take lane
  * @returns Span in beats
  */
 export function copySpanBeats(
@@ -88,16 +90,25 @@ export function copySpanBeats(
   arrangementLength: string | undefined,
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
+  toTakeLane: boolean,
 ): number {
-  if (arrangementLength == null || isTakeLaneClip(source)) {
+  if (arrangementLength == null) {
     return knownCopyLength(source);
   }
 
-  return parseArrangementLength(
+  const asked = parseArrangementLength(
     arrangementLength,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
+
+  if (!isTakeLaneClip(source)) {
+    return asked;
+  }
+
+  const own = knownCopyLength(source);
+
+  return toTakeLane ? own : Math.max(own, asked);
 }
 
 /**
