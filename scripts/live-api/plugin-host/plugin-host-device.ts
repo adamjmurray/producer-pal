@@ -3,6 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { isPanelBox, panelBoxes, panelLines } from "./plugin-host-panel.ts";
+import { type Json, type Patchline, patchCord } from "./plugin-host-patch.ts";
+
 const SLOTS = 128;
 // Keep in step with NAME_WIDTH in wrapper.js
 const NAME_WIDTH = Math.max(2, String(SLOTS).length);
@@ -12,20 +15,14 @@ const SLOT_BOX = /^slot(dial|lim|prep)\d+$/;
 // Live sends a moving slot about 670 values a second (one per audio block).
 // Passing at most one per this many ms keeps the plug-in's CPU down.
 const SLOT_INTERVAL_MS = 20;
-const PANEL_BOXES = new Set(["pluginname", "openeditor", "openprep"]);
 const SLOT_ROUTE = "slotroute";
 // A pattr bound to vst~ re-reads the plug-in's whole state on every param
-// change, which glitches the audio while automation moves.
-const REMOVED_BOXES = new Set(["vstmirror"]);
-
-type Json = Record<string, unknown>;
+// change, which glitches the audio while automation moves. The slot list was
+// the panel before the knobs.
+const REMOVED_BOXES = new Set(["vstmirror", "slotlist"]);
 
 interface Box {
   box: Json;
-}
-
-interface Patchline {
-  patchline: { source: [string, number]; destination: [string, number] };
 }
 
 interface Patcher {
@@ -52,8 +49,8 @@ const RawJson = JSON as unknown as {
 /**
  * Rebuild one plug-in host .amxd: put the wrapper code into its v8.codebox and
  * replace the automation-slot dials, their prepends and cords, the vstslots
- * pattr, the slot list and the name and Open button, take vst~ out of the
- * panel, cut vststate off from vst~ and drop vstmirror. Never touches the
+ * pattr and the device panel, take vst~ out of the panel, cut vststate off
+ * from vst~ and drop vstmirror and the old slot list. Never touches the
  * patcher's "project" block (one missing fields crashes Live). Running it twice
  * gives the same bytes.
  *
@@ -152,9 +149,8 @@ function isOurs(id: unknown): boolean {
   return (
     typeof id === "string" &&
     (id === "vstslots" ||
-      id === "slotlist" ||
       id === SLOT_ROUTE ||
-      PANEL_BOXES.has(id) ||
+      isPanelBox(id) ||
       SLOT_BOX.test(id))
   );
 }
@@ -182,30 +178,18 @@ function ownedBoxes(): Json[] {
     ...slots.map(prepend),
     slotRoute(),
     vstslots(),
-    slotlist(),
-    pluginName(),
-    openButton(),
-    openPrepend(),
+    ...panelBoxes(SLOTS, NAME_WIDTH),
   ];
 }
 
 function ownedLines(): Patchline[] {
   const slotCords = Array.from({ length: SLOTS }, (_, i) => [
-    cord(`slotdial${i + 1}`, `slotlim${i + 1}`),
-    cord(`slotlim${i + 1}`, `slotprep${i + 1}`),
-    cord(`slotprep${i + 1}`, SLOT_ROUTE),
+    patchCord(`slotdial${i + 1}`, `slotlim${i + 1}`),
+    patchCord(`slotlim${i + 1}`, `slotprep${i + 1}`),
+    patchCord(`slotprep${i + 1}`, SLOT_ROUTE),
   ]).flat();
 
-  return [
-    ...slotCords,
-    cord(SLOT_ROUTE, "vst", 1),
-    cord("openeditor", "openprep"),
-    cord("openprep", "code"),
-  ];
-}
-
-function cord(from: string, to: string, outlet = 0): Patchline {
-  return { patchline: { source: [from, outlet], destination: [to, 0] } };
+  return [...slotCords, patchCord(SLOT_ROUTE, "vst", 1), ...panelLines()];
 }
 
 // Names are zero-padded so Live sorts them.
@@ -300,64 +284,6 @@ function vstslots(): Json {
         parameter_invisible: 1,
       },
     },
-  };
-}
-
-function slotlist(): Json {
-  return {
-    id: "slotlist",
-    maxclass: "live.comment",
-    varname: "slotlist",
-    numinlets: 1,
-    numoutlets: 0,
-    patching_rect: [300, 140, 300, 40],
-    presentation: 1,
-    presentation_rect: [4, 28, 220, 137],
-    text: "No automation slots mapped",
-  };
-}
-
-function pluginName(): Json {
-  return {
-    id: "pluginname",
-    maxclass: "live.comment",
-    varname: "pluginname",
-    numinlets: 1,
-    numoutlets: 0,
-    patching_rect: [1300, 20, 150, 20],
-    presentation: 1,
-    presentation_rect: [4, 4, 150, 18],
-    text: "No plug-in loaded",
-  };
-}
-
-// A button, not a Live parameter: no automation, no undo step.
-function openButton(): Json {
-  return {
-    id: "openeditor",
-    maxclass: "live.text",
-    varname: "openeditor",
-    mode: 0, // button; live.text defaults to a toggle
-    numinlets: 1,
-    numoutlets: 2,
-    outlettype: ["", ""],
-    parameter_enable: 0,
-    patching_rect: [1300, 50, 50, 20],
-    presentation: 1,
-    presentation_rect: [160, 4, 60, 18],
-    text: "Open",
-  };
-}
-
-function openPrepend(): Json {
-  return {
-    id: "openprep",
-    maxclass: "newobj",
-    text: "prepend openeditor",
-    numinlets: 1,
-    numoutlets: 1,
-    outlettype: [""],
-    patching_rect: [1300, 80, 120, 22],
   };
 }
 

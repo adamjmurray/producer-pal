@@ -69,15 +69,35 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 
 ### Device panel
 
-Presentation mode shows three things; `vst~` is not in it. A name row: the
-`pluginname` comment ("No plug-in loaded" until a plug-in is there) and an
-**Open** button (`openeditor`, a `live.text` button with `parameter_enable` 0,
-so no automation and no undo step; it must stay in button mode, `mode` 0, since
-the default is a toggle). Below it, the `slotlist` comment. A press sends `bang`
-and goes `openeditor` → `prepend openeditor` → code box, and `wrapper.js` sends
-`open` to `vst~`, which opens the plug-in's own window (`wclose` closes it). The
-name is set after a load, a failed load ("No plug-in loaded"), and once the
-Set's restore has run, from the same sources as `info`'s `plugin`.
+`plugin-host-panel.ts` builds it; neither `vst~` nor the slot dials are in it.
+
+- **Name row**: the `pluginname` comment ("No plug-in loaded" until a plug-in is
+  there), set after a load, a failed load, and once the Set's restore has run,
+  from the same sources as `info`'s `plugin`.
+- **Open** (`openeditor`, a `live.text` button with `parameter_enable` 0, so no
+  automation and no undo step; it must stay in button mode, `mode` 0, since the
+  default is a toggle). A press sends `bang` through `prepend openeditor` to the
+  code box, which sends `open` to `vst~` (`wclose` closes the window).
+- **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
+  by the `knobpage` `live.tab`. Each has a `knoblabel` ("Auto 003") and a
+  `knobname` (the mapped param, cut to about two lines, or "—"). A knob for an
+  unmapped slot is inactive (`active 0`) and reads 0.
+  - Knobs and tabs are Live parameters set to Hidden (`parameter_invisible` 2):
+    Live neither stores nor automates them, they add no undo steps, and Live's
+    parameter list stays Device On plus the slots. Without parameter mode,
+    `live.tab` shows no tabs and `live.dial` ignores its range.
+  - A knob shows `vst~`'s echo for its slot's param, so it follows automation,
+    Producer Pal and the plug-in window alike. Echoes are ignored for 150 ms
+    after a turn, so they don't pull the knob back mid-drag.
+  - Turning a knob sends its value through `prepend knob <n>` to the code box,
+    which sends it to the slot's dial (not `set`), so it reaches `vst~` through
+    the slot's own path, like a native knob: it overrides the slot's automation
+    and is an undo step. It also counts as an edit, saved to `vststate` 300 ms
+    later, since the wrapper never pushes dials into the plug-in on load.
+  - **Gotcha:** making a `live.dial` active sends the value it holds. On a page
+    change that was the old page's value, which drove the new page's slots. The
+    script remembers what it last set each knob to and ignores an output equal
+    to it, and sets a knob's value before activating it.
 
 ## Findings
 
@@ -389,7 +409,7 @@ together.
   `{"<slot>": {index, name, file}}`, where `file` is the plug-in file the entry
   was made for. Entries for another file are ignored, and dropped the next time
   the mapping is saved. `ppal-plugin-host` has `map`, `unmap` and `slots` (which
-  also gives the slot count). The panel shows the list ("3: Cutoff").
+  also gives the slot count). The panel's knobs show it (see Device panel).
 - **Running**: each dial goes through its `speedlim 20`, its `prepend` and one
   shared `route ignore` straight to `vst~`, never through the code box, so
   automation doesn't wait on the script. The script sets each `prepend` to its

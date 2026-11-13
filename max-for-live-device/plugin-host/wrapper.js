@@ -10,6 +10,8 @@
 //      pname <names...>      vst~ parameter names (params)
 //      pval <index> <value> <display>   vst~ get/changed output (valuemode 2)
 //      openeditor bang       the Open button: opens the plug-in's window
+//      knob <n> <value>      a panel knob was turned
+//      knobpage <page>       the panel's tab picked a page of knobs
 // Out: messages to vst~
 //
 // The plug-in's state is read from vst~ and restored through a short-lived
@@ -175,6 +177,7 @@ function pval(index, value, ...display) {
   }
 
   state.values[index] = { value, display: display.join(" ") };
+  showKnobValue(Number(index), value);
 
   // Our own writes echo back synchronously while busy is up.
   if (busy > 0) return;
@@ -777,7 +780,6 @@ const NAME_WIDTH = Math.max(2, String(SLOT_COUNT).length);
 const SLOTS_REFRESH_MS = 500;
 let slotsReady = false; // the stored mapping is readable, or a plug-in was loaded
 let slotCache = null; // {at, map}: re-read at most every SLOTS_REFRESH_MS
-let slotShown = null; // the list text last put in the display
 let slotWriteAt = 0; // when a slot last wrote to vst~
 const routed = {}; // slot -> what its prepend sends: a param index or "ignore"
 const slotOfIndex = new Map(); // param index -> the slot that drives it
@@ -914,8 +916,8 @@ function readSlots() {
   }
 
   slotCache = { at: now, map: storedSlots() };
-  showSlots(slotCache.map);
   routeSlots(slotCache.map);
+  showKnobs(slotCache.map);
 
   return slotCache.map;
 }
@@ -950,20 +952,108 @@ function saveSlots(map) {
   dict.set("json", JSON.stringify(map));
   this.patcher.getnamed("vstslots").message("dictionary", dict.name);
   slotCache = { at: Date.now(), map };
-  showSlots(map);
   routeSlots(map);
+  showKnobs(map);
 }
 
-function showSlots(map) {
-  const names = sortedSlots(map).map((n) => `${n}: ${map[n].name}`);
-  const text = names.length
-    ? `Automation slots: ${names.join("   ")}`
-    : "No automation slots mapped";
+// --- Panel knobs ---
+// The slot dials aren't in the panel. KNOB_COUNT knobs ("knob<n>") show one
+// page of slots, picked by the "knobpage" tab. They aren't Live parameters, so
+// setting them adds no undo step and overrides no automation. A knob shows its
+// param as the plug-in reports it (vst~'s echo), whatever moved it. Turning one
+// moves its slot's dial, which drives the plug-in and is what Live automates.
+// An unmapped slot's knob is inactive and reads 0.
+const KNOB_COUNT = 16;
+// Echoes trail a drag by up to one speedlim interval; showing them would pull
+// the knob back under the mouse.
+const DRAG_HOLD_MS = 150;
+const NAME_CHARS = 24; // about two lines under a knob
+let knobPage = 0;
+let knobsShown = null; // the page and mapping the knobs last showed
+const turnedAt = {}; // knob -> when the user last turned it
+const knobValue = {}; // knob -> the value this script last set it to
 
-  if (text === slotShown) return;
+function knobpage(page) {
+  knobPage = Number(page) || 0;
+  showKnobs(readSlots());
+}
 
-  slotShown = text;
-  this.patcher.getnamed("slotlist")?.message("set", text);
+// The dial's value reaches vst~ through the slot's own path. Live keeps the
+// dial, but the wrapper never pushes dials into the plug-in on load, so the
+// turn is saved into the plug-in's state too, like an edit in its window.
+// A knob also sends the value it holds when it's made active again (a page
+// change), which would drive the new page's slots to the old page's values.
+// So a value equal to the one this script last set isn't a turn.
+function knob(i, value) {
+  const n = knobSlot(i);
+
+  if (!isFinite(value) || readSlots()[n] == null) return;
+  if (Math.abs(Number(value) - (knobValue[i] ?? NaN)) < 1e-6) return;
+
+  turnedAt[i] = Date.now();
+  this.patcher.getnamed(`slotdial${n}`)?.message(Number(value));
+  markEdited();
+}
+
+function knobSlot(i) {
+  return knobPage * KNOB_COUNT + Number(i);
+}
+
+function showKnobs(map) {
+  const key = `${knobPage} ${JSON.stringify(map)}`;
+
+  if (key === knobsShown) return;
+
+  knobsShown = key;
+
+  for (let i = 1; i <= KNOB_COUNT; i++) {
+    const n = knobSlot(i);
+    const entry = map[n];
+    const knobBox = this.patcher.getnamed(`knob${i}`);
+
+    this.patcher.getnamed(`knoblabel${i}`)?.message("set", knobLabel(n));
+    this.patcher.getnamed(`knobname${i}`)?.message("set", knobName(entry));
+    // Set the value first: making a knob active sends what it holds.
+    // For a mapped knob, the echo of this read sets it.
+    if (entry) askValue(entry.index);
+    else setKnob(i, 0);
+    knobBox?.message("active", entry ? 1 : 0);
+  }
+}
+
+function knobName(entry) {
+  const name = entry?.name ?? "—";
+
+  return name.length > NAME_CHARS ? `${name.slice(0, NAME_CHARS - 1)}…` : name;
+}
+
+function knobLabel(n) {
+  return `Auto ${String(n).padStart(NAME_WIDTH, "0")}`;
+}
+
+function askValue(index) {
+  busy++;
+
+  try {
+    outlet(0, "get", Number(index));
+  } finally {
+    busy--;
+  }
+}
+
+function showKnobValue(index, value) {
+  const n = slotOfIndex.get(index);
+  const i = n - knobPage * KNOB_COUNT;
+
+  if (n == null || i < 1 || i > KNOB_COUNT || !isFinite(value)) return;
+  if (Date.now() - (turnedAt[i] ?? 0) < DRAG_HOLD_MS) return;
+
+  setKnob(i, value);
+}
+
+function setKnob(i, value) {
+  knobValue[i] = Number(value);
+  this.patcher.getnamed(`knob${i}`)?.message("set", Number(value));
 }
 
 function setParams(changes) {

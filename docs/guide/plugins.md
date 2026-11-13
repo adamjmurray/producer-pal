@@ -73,12 +73,17 @@ automate.
 
 - **Live shows slot names**, like "Automation 002", in the automation chooser,
   lane headers, the clip envelope editor, and on Push. To draw automation by
-  hand, check the wrapper's panel: it lists which slot drives which parameter.
+  hand, check the wrapper's panel: its knobs show the slots 16 at a time (pick a
+  page with the tabs), each labeled with its slot ("Auto 002") and the parameter
+  it drives.
+- **The panel's knobs act like the plug-in's own.** A knob shows the parameter's
+  current value, whatever moved it, and turning one changes the parameter and
+  its slot. Knobs for unassigned slots are greyed out.
 - **All 128 slots are always listed** in the automation chooser.
 - **Lanes show 0 to 100%**, not the plug-in's units.
 - **Slots don't follow the plug-in's window.** Turning an automated knob there
-  doesn't move its slot in Live, so the slot shows its old value until
-  automation or Producer Pal moves it.
+  moves the panel's knob but not its slot in Live, so Live shows the slot's old
+  value until automation, the panel or Producer Pal moves it.
 - **While Live plays**, an edit in the plug-in's window to an automated
   parameter, or a program change while automation is moving, may not save with
   the Set until you make another edit with Live stopped.

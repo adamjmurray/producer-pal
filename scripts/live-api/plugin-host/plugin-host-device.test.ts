@@ -46,6 +46,7 @@ const stale = amxd(`{
     { "box": { "id": "code", "maxclass": "v8.codebox", "code": "old" } },
     { "box": { "id": "slotdial999", "maxclass": "live.dial" } },
     { "box": { "id": "pluginname", "maxclass": "live.comment", "text": "old" } },
+    { "box": { "id": "slotlist", "maxclass": "live.comment", "text": "old" } },
     { "box": { "id": "vst", "maxclass": "newobj", "presentation": 1, "presentation_rect": [4, 4, 220, 40] } },
     { "box": { "id": "vststate", "maxclass": "newobj", "text": "pattr vststate @parameter_enable 1 @thru 2" } },
     { "box": { "id": "vstmirror", "maxclass": "newobj", "text": "pattr vstmirror @bindto vst" } },
@@ -60,6 +61,19 @@ const stale = amxd(`{
   ],
   "project": { "searchpath": {} }
 }`);
+
+// The stale device, rebuilt: its patcher, a box by id, and cords as "from>to"
+function builtStale() {
+  const { patcher } = parse(buildPluginHostDevice(stale, CODE));
+
+  return {
+    patcher,
+    box: (id: string) => patcher.boxes.find((b) => b.box.id === id)?.box,
+    cords: patcher.lines.map(
+      (l) => `${l.patchline.source[0]}>${l.patchline.destination[0]}`,
+    ),
+  };
+}
 
 describe("buildPluginHostDevice", () => {
   it.each(["PPal Plug-in Effect.amxd", "PPal Plug-in Instrument.amxd"])(
@@ -79,9 +93,11 @@ describe("buildPluginHostDevice", () => {
 
     expect(patcher.boxes[0]?.box.code).toBe("const SLOT_COUNT = 128;\n");
     expect(ids).not.toContain("slotdial999");
+    expect(ids).not.toContain("slotlist");
     expect(ids).toContain("slotdial128");
     expect(ids.filter((id) => id === "vstslots")).toHaveLength(1);
-    expect(patcher.lines).toHaveLength(1 + 128 * 3 + 1 + 2);
+    // other>code, 3 per slot, slotroute>vst, then the panel's
+    expect(patcher.lines).toHaveLength(1 + 128 * 3 + 1 + 4 + 16 * 2);
     expect(patcher.project).toStrictEqual({ searchpath: {} });
     expect(built.readUInt32LE(28)).toBe(built.length - 32);
     expect(built.toString()).toMatch(/\[\s+20\.0,\s+1\.5\s+\]/);
@@ -92,11 +108,7 @@ describe("buildPluginHostDevice", () => {
   });
 
   it("owns the name, the Open button and its cords, and hides vst~", () => {
-    const { patcher } = parse(buildPluginHostDevice(stale, CODE));
-    const box = (id: string) => patcher.boxes.find((b) => b.box.id === id)?.box;
-    const cords = patcher.lines.map(
-      (l) => `${l.patchline.source[0]}>${l.patchline.destination[0]}`,
-    );
+    const { patcher, box, cords } = builtStale();
 
     expect(box("pluginname")?.text).toBe("No plug-in loaded");
     expect(box("pluginname")?.presentation).toBe(1);
@@ -117,6 +129,58 @@ describe("buildPluginHostDevice", () => {
     expect(cords).toContain("openeditor>openprep");
     expect(box("vst")).not.toHaveProperty("presentation");
     expect(box("vst")).not.toHaveProperty("presentation_rect");
+  });
+
+  it("adds a page of knobs, labels and tabs that Live doesn't store or automate", () => {
+    const { box, cords } = builtStale();
+    const valueof = (id: string) =>
+      (box(id)?.saved_attribute_attributes as { valueof: unknown } | undefined)
+        ?.valueof;
+
+    expect(box("knob16")).toStrictEqual(
+      expect.objectContaining({
+        maxclass: "live.dial",
+        parameter_enable: 1,
+        active: 0,
+        presentation: 1,
+      }),
+    );
+    expect(box("knob17")).toBeUndefined();
+    expect(box("knoblabel16")?.text).toBe("Auto 016");
+    expect(box("knobname16")?.text).toBe("—");
+    expect(box("knobprep16")?.text).toBe("prepend knob 16");
+    expect(valueof("knob16")).toStrictEqual(
+      expect.objectContaining({ parameter_mmax: 1, parameter_invisible: 2 }),
+    );
+    expect(valueof("knobpage")).toStrictEqual(
+      expect.objectContaining({
+        parameter_invisible: 2,
+        parameter_enum: [
+          "1-16",
+          "17-32",
+          "33-48",
+          "49-64",
+          "65-80",
+          "81-96",
+          "97-112",
+          "113-128",
+        ],
+      }),
+    );
+    expect(cords).toContain("knob16>knobprep16");
+    expect(cords).toContain("knobprep16>code");
+    expect(cords).toContain("knobpage>knobpageprep");
+    expect(cords).toContain("knobpageprep>code");
+  });
+
+  it("keeps the panel inside Live's 169 px device height", () => {
+    const { patcher } = parse(buildPluginHostDevice(stale, CODE));
+    const bottoms = patcher.boxes
+      .map((b) => b.box.presentation_rect as number[] | undefined)
+      .filter((r) => r != null)
+      .map(([, y, , h]) => (y ?? 0) + (h ?? 0));
+
+    expect(Math.max(...bottoms)).toBeLessThanOrEqual(169);
   });
 
   it("cuts vststate off from vst~", () => {

@@ -26,6 +26,8 @@ export interface Rig {
   prepends: unknown[][];
   /** The slot dials' values, by box name */
   dials: Record<string, number>;
+  /** Messages sent to the slot dials and the panel's knobs, as [box, ...args] */
+  sent: unknown[][];
 }
 
 /**
@@ -44,6 +46,10 @@ export function loadWrapper(
   const failWrites = { on: false };
   const prepends: unknown[][] = [];
   const dials: Record<string, number> = {};
+  const sent: unknown[][] = [];
+  const recorder = (name: string) => ({
+    message: (...args: unknown[]) => sent.push([name, ...args]),
+  });
   let cancels = 0;
   let lastParsed = "";
 
@@ -100,8 +106,10 @@ export function loadWrapper(
         (name.startsWith("slotprep")
           ? { message: (...args: unknown[]) => prepends.push([name, ...args]) }
           : name.startsWith("slotdial")
-            ? { getvalueof: () => dials[name] ?? 0 }
-            : undefined),
+            ? { ...recorder(name), getvalueof: () => dials[name] ?? 0 }
+            : name.startsWith("knob")
+              ? recorder(name)
+              : undefined),
       newdefault: () => ({ message: () => {} }),
       remove: () => {},
     },
@@ -118,5 +126,6 @@ export function loadWrapper(
     cancelled: () => cancels,
     prepends,
     dials,
+    sent,
   };
 }
