@@ -14,6 +14,7 @@
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-rack-macros-remote-script
  */
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { afterEach, describe, expect, it } from "vitest";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
@@ -106,6 +107,28 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("rack macros: which are mapped", () => {
       expect((await readMacros()).count).toBe(before);
     }
   }
+
+  it("answers a drum_pads path on a rack that isn't a Drum Rack in its own entry", async () => {
+    // t0/d0 is the Instrument Rack that holds the Kit.
+    const port = String(await resolveRemoteScriptPort());
+    const response = await fetch(`http://127.0.0.1:${port}/device/macros`, {
+      method: "POST",
+      body: JSON.stringify({
+        device_paths: [
+          "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0",
+          "live_set tracks 0 devices 0 chains 0 devices 0",
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({
+      racks: [
+        { error: "device_path has nothing at 'drum_pads' here" },
+        { mapped: MAPPED },
+      ],
+    });
+  });
 
   it("names the mapped macros, hidden ones apart", async () => {
     const { count, mapped, hiddenMapped, hasMappings } = await readMacros();
