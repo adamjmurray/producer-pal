@@ -408,10 +408,12 @@ describe("remoteScriptRequest against a current remote script", () => {
     await remoteScriptRequest({ route: "/missing" });
     await remoteScriptRequest({ route: "/missing" });
 
+    // The last ping checks the kept port's error came from the script.
     expect(routesAsked(remote)).toStrictEqual([
       "/ping",
       "/missing",
       "/missing",
+      "/ping",
     ]);
   });
 

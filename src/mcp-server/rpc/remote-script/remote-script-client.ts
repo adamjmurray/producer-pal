@@ -3,21 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// HTTP to the Producer Pal remote script (remote-script/), which runs inside
-// Live. node:http with no keep-alive agent: Node's default fetch dispatcher can
-// stall a request by ~500ms.
+// Requests to the Producer Pal remote script (remote-script/), which runs
+// inside Live: finding its port, checking its version, and telling it from
+// another program on the port.
 
-import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import {
   type RemoteScriptAsker,
   type RemoteScriptUnavailable,
 } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
-import {
-  RemoteScriptConnectionLost,
-  RemoteScriptTimeout,
-} from "./remote-script-errors.ts";
+import { RemoteScriptTimeout } from "./remote-script-errors.ts";
 import {
   forgetRemoteScriptPort as forgetPort,
   remoteScriptPortFromEnv,
@@ -30,8 +26,7 @@ import {
   unknownRouteReason,
 } from "./port/remote-script-version.ts";
 import { notRunning, pingFromReply } from "./remote-script-ping-reply.ts";
-
-const HOST = "127.0.0.1";
+import { sendWireRequest, type WireReply } from "./port/remote-script-wire.ts";
 
 /**
  * Dev switch (POST /config `remoteScriptEnabled`): off makes every request here
@@ -49,9 +44,6 @@ let remoteScriptEnabled = true;
 export function setRemoteScriptEnabled(enabled: boolean): void {
   remoteScriptEnabled = enabled;
 }
-
-/** A remote script that hasn't taken the connection by now isn't running. */
-const CONNECT_TIMEOUT_MS = 1000;
 
 /** Skills assembly pings on every connect, so the ping can't wait long. */
 const PING_TIMEOUT_MS = 1000;
@@ -115,16 +107,11 @@ export interface RemoteScriptRequest {
  *   didn't answer in time, or `expiresInMs` was used up before the request left
  * @throws RemoteScriptConnectionLost when the connection broke after it was made
  */
-export async function remoteScriptRequest({
-  method = "GET",
-  route,
-  query,
-  body,
-  timeoutMs = REMOTE_SCRIPT_HTTP_TIMEOUT_MS,
-  expiresInMs,
-  port,
-  asker,
-}: RemoteScriptRequest): Promise<RemoteScriptReply> {
+export async function remoteScriptRequest(
+  request: RemoteScriptRequest,
+): Promise<RemoteScriptReply> {
+  const { expiresInMs, port, asker } = request;
+
   if (!remoteScriptEnabled) {
     return { available: false };
   }
@@ -138,38 +125,8 @@ export async function remoteScriptRequest({
 
   const started = Date.now();
 
-  const send = (
-    target: number,
-    elapsedMs: number,
-  ): Promise<RemoteScriptReply> => {
-    // Finding the port took part of the time the caller gave us.
-    const left = expiresInMs == null ? null : expiresInMs - elapsedMs;
-
-    if (left != null && left <= 0) {
-      return Promise.reject(
-        new RemoteScriptTimeout("ran out of time finding the port", false),
-      );
-    }
-
-    let wait = timeoutMs;
-    let search = query == null ? "" : `?${new URLSearchParams(query)}`;
-    let payload = body == null ? undefined : JSON.stringify(body);
-
-    if (left != null) {
-      wait = remoteScriptReplyWait(left);
-
-      if (body == null) {
-        search = `?${new URLSearchParams({ ...query, expires_in_ms: String(Math.floor(left)) })}`;
-      } else {
-        payload = JSON.stringify({ ...body, expires_in_ms: left });
-      }
-    }
-
-    return sendRequest(
-      { method, path: `${route}${search}`, payload, timeoutMs: wait },
-      target,
-    );
-  };
+  const send = (target: number, elapsedMs: number): Promise<WireReply> =>
+    sendWithin(request, target, elapsedMs);
 
   const fixedPort = port ?? remoteScriptPortFromEnv();
 
@@ -211,6 +168,8 @@ export async function remoteScriptRequest({
     target,
     fixedPort == null ? Date.now() - started : 0,
   );
+  const fromScript = async (answer: RemoteScriptAnswer): Promise<boolean> =>
+    answer.status < 400 || (await stillOurs(target));
 
   if (!reply.available) {
     // Nothing listening, or another program by now: Live may have restarted
@@ -220,6 +179,12 @@ export async function remoteScriptRequest({
     }
 
     return reply;
+  }
+
+  if (fixedPort == null && found.info == null && !(await fromScript(reply))) {
+    forgetRemoteScriptPort();
+
+    return { available: false, otherAnswered: true };
   }
 
   // A script too old to have the route says so; no other 404 does.
@@ -334,123 +299,6 @@ function findPort(): Promise<{ port: number; info: PingResult | null }> {
   });
 }
 
-interface WireRequest {
-  method: string;
-  path: string;
-  payload: string | undefined;
-  timeoutMs: number;
-}
-
-/**
- * One HTTP exchange with the remote script on `port`.
- * @param wire - The request on the wire
- * @param wire.method - GET or POST
- * @param wire.path - Route plus query string
- * @param wire.payload - JSON body, if any
- * @param wire.timeoutMs - How long to wait for the answer
- * @param port - Where to send it
- * @returns The reply, or `available: false`
- */
-function sendRequest(
-  { method, path, payload, timeoutMs }: WireRequest,
-  port: number,
-): Promise<RemoteScriptReply> {
-  return new Promise<RemoteScriptReply>((resolve, reject) => {
-    let connected = false;
-    let settled = false;
-    const timers: NodeJS.Timeout[] = [];
-
-    const settle = (outcome: () => void): void => {
-      if (!settled) {
-        settled = true;
-
-        for (const timer of timers) {
-          clearTimeout(timer);
-        }
-
-        outcome();
-      }
-    };
-
-    const request = http.request(
-      {
-        host: HOST,
-        port,
-        method,
-        path,
-        agent: false,
-        headers:
-          payload == null
-            ? {}
-            : {
-                "Content-Type": "application/json",
-                "Content-Length": Buffer.byteLength(payload),
-              },
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("error", (error) =>
-          settle(() => reject(new RemoteScriptConnectionLost(error))),
-        );
-        response.on("end", () => {
-          const parsed = jsonObject(Buffer.concat(chunks).toString("utf8"));
-
-          settle(() =>
-            resolve(
-              parsed == null
-                ? { available: false, otherAnswered: true }
-                : {
-                    available: true,
-                    status: response.statusCode ?? 0,
-                    body: parsed,
-                  },
-            ),
-          );
-        });
-      },
-    );
-
-    timers.push(
-      setTimeout(() => {
-        if (!connected) {
-          settle(() => resolve({ available: false }));
-          request.destroy();
-        }
-      }, CONNECT_TIMEOUT_MS),
-      setTimeout(() => {
-        // Not connected yet means nothing was sent.
-        settle(() =>
-          reject(
-            new RemoteScriptTimeout(
-              connected
-                ? `Live's browser did not answer within ${timeoutMs / 1000}s`
-                : "ran out of time before connecting to Live's browser",
-              connected,
-            ),
-          ),
-        );
-        request.destroy();
-      }, timeoutMs),
-    );
-
-    request.on("socket", (socket) => {
-      socket.once("connect", () => {
-        connected = true;
-      });
-    });
-    request.on("error", (error) => {
-      settle(() =>
-        connected
-          ? reject(new RemoteScriptConnectionLost(error))
-          : resolve({ available: false }),
-      );
-    });
-    request.end(payload);
-  });
-}
-
 /** What `/ping` reports. Versions are null when nothing of ours answered. */
 export interface RemoteScriptPing {
   running: boolean;
@@ -550,6 +398,70 @@ async function pingPort(
 }
 
 /**
+ * Send a request, giving Live what is left of the caller's time.
+ * @param request - What to send
+ * @param target - The port to send to
+ * @param elapsedMs - How much of `expiresInMs` finding the port used
+ * @returns The reply, or `available: false`
+ * @throws RemoteScriptTimeout when finding the port used the time up
+ */
+function sendWithin(
+  request: RemoteScriptRequest,
+  target: number,
+  elapsedMs: number,
+): Promise<WireReply> {
+  const {
+    method = "GET",
+    route,
+    query,
+    body,
+    timeoutMs = REMOTE_SCRIPT_HTTP_TIMEOUT_MS,
+    expiresInMs,
+  } = request;
+  // Finding the port took part of the time the caller gave us.
+  const left = expiresInMs == null ? null : expiresInMs - elapsedMs;
+
+  if (left != null && left <= 0) {
+    return Promise.reject(
+      new RemoteScriptTimeout("ran out of time finding the port", false),
+    );
+  }
+
+  let wait = timeoutMs;
+  let search = query == null ? "" : `?${new URLSearchParams(query)}`;
+  let payload = body == null ? undefined : JSON.stringify(body);
+
+  if (left != null) {
+    wait = remoteScriptReplyWait(left);
+
+    if (body == null) {
+      search = `?${new URLSearchParams({ ...query, expires_in_ms: String(Math.floor(left)) })}`;
+    } else {
+      payload = JSON.stringify({ ...body, expires_in_ms: left });
+    }
+  }
+
+  return sendWireRequest(
+    { method, path: `${route}${search}`, payload, timeoutMs: wait },
+    target,
+  );
+}
+
+/**
+ * Whether the script is still what answers on a kept port. An error reply
+ * could come from another program that took the port since its last ping, and
+ * it would get every later request too. A ping too slow to answer counts as
+ * the script: Live is busy, not gone.
+ * @param port - The port to ask
+ * @returns False when another program, or nothing, answers there
+ */
+async function stillOurs(port: number): Promise<boolean> {
+  const { kind } = await pingPort(port);
+
+  return kind === "ours" || kind === "slow";
+}
+
+/**
  * @param port - The port to ask
  * @param timeoutMs - How long to wait for the answer
  * @returns The ping, and what kind of answer it was
@@ -581,22 +493,5 @@ async function askForPing(
       ping: notRunning(),
       kind: error instanceof RemoteScriptTimeout ? "slow" : "none",
     };
-  }
-}
-
-/**
- * Parse a reply body.
- * @param text - The body
- * @returns The JSON object, or null when the body isn't one
- */
-function jsonObject(text: string): Record<string, unknown> | null {
-  try {
-    const value: unknown = JSON.parse(text);
-
-    return value != null && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
   }
 }

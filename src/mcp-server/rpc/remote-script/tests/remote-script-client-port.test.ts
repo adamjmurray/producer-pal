@@ -44,6 +44,7 @@ const OURS: FakeAnswer = {
   },
 };
 const NOT_OURS: FakeAnswer = { body: { ok: true } };
+const NOT_JSON: FakeAnswer = { raw: "<html>dev server</html>" };
 
 let fakes: FakeRemoteScript[] = [];
 let savedEnv: string | undefined;
@@ -317,20 +318,19 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
      * with the script back on the file's port.
      * @returns The switch, and the stand-in on the file's port
      */
-    async function takenOverLater(): Promise<{
+    async function takenOverLater(stranger: FakeAnswer = NOT_JSON): Promise<{
       taken: { over: boolean };
+      first: FakeRemoteScript;
       moved: FakeRemoteScript;
     }> {
       const taken = { over: false };
-      const first = await standIn(() =>
-        taken.over ? { raw: "<html>dev server</html>" } : OURS,
-      );
+      const first = await standIn(() => (taken.over ? stranger : OURS));
       const moved = await standIn(OURS);
 
       ports.preferred = first.port;
       ports.file = moved.port;
 
-      return { taken, moved };
+      return { taken, first, moved };
     }
 
     it("looks again after another program answers a request on the port", async () => {
@@ -348,6 +348,50 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
 
       expect(reply.available).toBe(true);
       expect(moved.requests.map((r) => r.route)).toContain("/list");
+    });
+
+    // A JSON error could be the script's own, so the port is pinged to tell.
+    it("looks again after another program answers a request with a JSON error", async () => {
+      const { taken, first, moved } = await takenOverLater({
+        status: 404,
+        body: { detail: "Not Found" },
+      });
+
+      await remoteScriptRequest({ route: "/list" });
+      taken.over = true;
+      first.requests.length = 0;
+
+      expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
+        available: false,
+        otherAnswered: true,
+      });
+      expect(first.requests.map((r) => r.route)).toStrictEqual([
+        "/list",
+        "/ping",
+      ]);
+
+      await remoteScriptRequest({ route: "/list" });
+
+      expect(first.requests.filter((r) => r.route === "/list")).toHaveLength(1);
+      expect(moved.requests.map((r) => r.route)).toContain("/list");
+    });
+
+    it("keeps the port when the script itself answers with an error", async () => {
+      const fake = await standIn((request) =>
+        request.route === "/ping"
+          ? OURS
+          : { status: 400, body: { error: "bad path" } },
+      );
+
+      ports.preferred = fake.port;
+
+      const reply = await remoteScriptRequest({ route: "/list" });
+      const again = await remoteScriptRequest({ route: "/list" });
+
+      expect([reply, again]).toStrictEqual([
+        { available: true, status: 400, body: { error: "bad path" } },
+        { available: true, status: 400, body: { error: "bad path" } },
+      ]);
     });
 
     it("looks again after another program answers a ping on the port", async () => {
