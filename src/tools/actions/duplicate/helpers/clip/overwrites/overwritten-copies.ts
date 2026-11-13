@@ -102,12 +102,11 @@ export function reportOverwrittenCopies(
 }
 
 /**
- * Every clip a duplicate result reports, flattening the groups nested under
- * `clips`. A copy that was cleared is left out — there is no
- * clip left to read or write.
+ * The clip each copy of a clip duplicate made. A copy that was cleared is left
+ * out — there is no clip left to read or write.
  * @param createdObjects - Result objects from clip duplication
- * @returns The clips in the order they were made, each with the index of the
- *   result entry (the copy) it belongs to
+ * @returns The clips in the order they were made, each with the index of its
+ *   copy's result entry
  */
 export function collectClipResults(
   createdObjects: object[],

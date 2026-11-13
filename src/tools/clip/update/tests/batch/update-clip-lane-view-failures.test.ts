@@ -13,7 +13,7 @@ import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/h
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { clearArrangementRange } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { clearArrangementRange } from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import { newClipReasons } from "../../helpers/entries/clip-reasons.ts";

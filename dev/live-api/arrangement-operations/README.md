@@ -182,18 +182,19 @@ can't reproduce Live's native shift.
 
 ## Source File Reference
 
-| File                               | Role                                                      |
-| ---------------------------------- | --------------------------------------------------------- |
-| `arrangement-operations.ts`        | Top-level dispatcher (lengthen vs shorten)                |
-| `arrangement-length-changes.ts`    | Lengthening and shortening                                |
-| `arrangement-clip-resize.ts`       | Resizing one clip in place, looped or not                 |
-| `clear-ahead-of-clip.ts`           | Clearing the span a lengthening clip grows into           |
-| `unlooped-lengthening.ts`          | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
-| `arrangement-tiling-workaround.ts` | Holding area, crash workaround, clip movement             |
-| `arrangement-tiling-clips.ts`      | Low-level primitives (temp clips, session clip creation)  |
-| `arrangement-splitting.ts`         | Clip splitting algorithm                                  |
-| `arrangement-move.ts`              | Update-clip integration (move + lengthen orchestration)   |
-| `arrangement-lane-view.ts`         | What is on each lane; writes that leave no clip report it |
+| File                                  | Role                                                      |
+| ------------------------------------- | --------------------------------------------------------- |
+| `arrangement-operations.ts`           | Top-level dispatcher (lengthen vs shorten)                |
+| `arrangement-length-changes.ts`       | Lengthening and shortening                                |
+| `arrangement-clip-resize.ts`          | Resizing one clip in place, looped or not                 |
+| `clear-ahead-of-clip.ts`              | Clearing the span a lengthening clip grows into           |
+| `unlooped-lengthening.ts`             | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
+| `arrangement-duplicate-workaround.ts` | Holding area, crash workaround, clip movement             |
+| `arrangement-holding-clip.ts`         | A shortened copy of a clip, made in the holding area      |
+| `scratch-clips.ts`                    | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-splitting.ts`            | Clip splitting algorithm                                  |
+| `arrangement-move.ts`                 | Update-clip integration (move + lengthen orchestration)   |
+| `arrangement-lane-view.ts`            | What is on each lane; writes that leave no clip report it |
 
 Sources are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`; tests are colocated in `tests/`.

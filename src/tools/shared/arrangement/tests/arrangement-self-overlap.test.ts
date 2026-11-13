@@ -15,12 +15,12 @@ import {
   setupArrangementClip,
   setupClip,
   setupTrack,
-  tilingTrackMethods,
-} from "./helpers/arrangement-tiling-test-helpers.ts";
+  duplicatingTrackMethods,
+} from "./helpers/arrangement-mock-objects.ts";
 import {
   duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
-} from "../arrangement-tiling-workaround.ts";
+} from "../arrangement-duplicate-workaround.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -154,7 +154,7 @@ describe("duplicateSelfOverlappingClip", () => {
     setupClip("500", { properties: { is_arrangement_clip: 1 } });
     const trackMock = setupTrack(0, {
       properties: { arrangement_clips: ["id", "100", "id", "900"] },
-      methods: tilingTrackMethods(),
+      methods: duplicatingTrackMethods(),
     });
 
     duplicateSelfOverlappingClip(
@@ -254,7 +254,7 @@ function runTwoDupSelfOverlap(target: number): {
 
   const trackMock = setupTrack(0, {
     properties: { arrangement_clips: ["id", "100"] },
-    methods: tilingTrackMethods(),
+    methods: duplicatingTrackMethods(),
   });
 
   const result = duplicateSelfOverlappingClip(

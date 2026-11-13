@@ -10,7 +10,7 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as scratchClips from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import * as scratchClips from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import {
   makeResizable,
   setupResizableClip,

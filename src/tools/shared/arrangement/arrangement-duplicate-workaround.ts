@@ -20,8 +20,8 @@ import {
 import { type ClipSpan } from "./helpers/arrangement-write-effects.ts";
 import {
   createAndDeleteTempClip,
-  type TilingContext,
-} from "./helpers/arrangement-tiling-clips.ts";
+  type ScratchClipContext,
+} from "./helpers/scratch-clips.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /**
@@ -71,7 +71,7 @@ export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
  * OWN target range — it cannot clear itself without destroying the content
  * being duplicated. The caller decides what to do with a false result:
  * duplicate/move route through `duplicateSelfOverlappingClip` (holding-area
- * copy → overwrite the original), while tiling skips the self-overlapping tile.
+ * copy → overwrite the original).
  *
  * @param track - LiveAPI track instance for the target track
  * @param sourceClipId - ID of the source clip being duplicated
@@ -87,7 +87,7 @@ export function clearClipAtDuplicateTarget(
   sourceClipId: string,
   targetPosition: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   source: LiveAPI | null = null,
 ): boolean {
   if (!arrangementDuplicateCrashWorkaround) {
@@ -107,8 +107,7 @@ export function clearClipAtDuplicateTarget(
   // The source overlapping its own target is the one clip we must never clear:
   // trimming it would destroy the content being duplicated, and leaving it in
   // place would trigger Ableton's overlap crash. Report it (return false) so the
-  // caller routes through the holding area (duplicateSelfOverlappingClip) or
-  // skips the tile.
+  // caller routes through the holding area (duplicateSelfOverlappingClip).
   //
   // Only a source on THIS track can be in the way — a cross-track source shares
   // beats with the target but not the timeline being cleared. An unknown index
@@ -155,7 +154,7 @@ export function clearArrangementRange(
   rangeStart: number,
   rangeEnd: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
 ): void {
   const inTheWay = laneViewOf(context).overlapping(
     trackLane(track),
@@ -195,7 +194,7 @@ export function moveClipFromHolding(
   track: LiveAPI,
   targetPosition: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   targetIsEmpty = false,
 ): LiveAPI {
   // Clear any *other* clip at the target before placing the holding copy. The
@@ -257,7 +256,7 @@ export function duplicateSelfOverlappingClip(
   sourceClipId: string,
   targetPosition: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   deleteSource = false,
 ): LiveAPI {
   // Copy the source to a far holding area FIRST (guaranteed empty → no crash),
@@ -323,7 +322,7 @@ function clearOverlappingClip(
   targetPosition: number,
   targetEnd: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
 ): void {
   const { start: clipStart, end: clipEnd, id: clipId } = overlappingClip;
 
@@ -429,7 +428,7 @@ export function holdingAreaStartAfter(blockEnd: number): number {
  * given — is blind to what this same call already wrote, so a request that
  * placed a clip past that point stages the next one on top of it: the Ableton
  * crash, or an overwrite that eats what was just placed. Verified in Live — a
- * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
+ * 1-bar clip lengthened to 12 bars loses the copy at `song_length`.
  *
  * The one exception is a caller that tracks its own staging and advances past
  * it with {@link holdingAreaStartAfter}: a larger start, not a cached one.

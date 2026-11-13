@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import * as scratchClips from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
 import {
   clipLandedNothing,
@@ -54,7 +54,7 @@ function run(opts: RunOpts) {
   const clearAhead = vi.fn();
 
   const spy = vi
-    .spyOn(tilingHelpers, "createAudioClipInSession")
+    .spyOn(scratchClips, "createAudioClipInSession")
     .mockReturnValue({
       clip: {
         getProperty: vi.fn((p: string) =>

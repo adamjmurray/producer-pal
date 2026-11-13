@@ -59,16 +59,14 @@ const EXEMPT: Record<string, string> = {
     "a scratch clip on the clip's own track, to write its lane",
   "src/tools/clip/arrangement/helpers/arrangement-length-changes.ts":
     "a scratch clip trimming a clip on its own track",
-  "src/tools/shared/arrangement/arrangement-tiling-holding.ts":
+  "src/tools/shared/arrangement/arrangement-holding-clip.ts":
     "copies on the clip's own track, through the holding area",
-  "src/tools/shared/arrangement/arrangement-tiling-full-tiles.ts":
-    "tiles of a clip, on its own track",
   "src/tools/shared/arrangement/arrangement-splitting.ts":
     "pieces of a clip, on its own track",
-  "src/tools/shared/arrangement/arrangement-tiling-workaround.ts":
+  "src/tools/shared/arrangement/arrangement-duplicate-workaround.ts":
     "the crash workaround around the copy primitive; callers note the copy",
-  "src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts":
-    "scratch clips used to trim or tile, on the clip's own track",
+  "src/tools/shared/arrangement/helpers/scratch-clips.ts":
+    "scratch clips used to trim, on the clip's own track",
 };
 
 describe("copies of a clip onto another track say what they drop", () => {

@@ -22,7 +22,7 @@ import {
   openScratchSlot,
   removeSessionClip,
   type SessionClipResult,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";

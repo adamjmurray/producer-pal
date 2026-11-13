@@ -47,9 +47,9 @@ export function refuseUnreadableCopyTransforms(
  * Delegates to updateClip so the duplicated clips reuse the exact transform DSL
  * and code-exec behavior as ppal-update-clip. transforms/code are single strings
  * broadcast across every duplicated clip — per-copy variation is expressed with
- * clip.index arithmetic and clipseq() inside the string. clip.index numbers the
- * copies, so every clip of a copy gets its copy's number, and clip.count is the
- * number of copies, skipped ones included. Resulting noteCount, transformed and
+ * clip.index arithmetic and clipseq() inside the string. clip.index is the
+ * copy's number and clip.count is the number of copies, skipped ones included.
+ * Resulting noteCount, transformed and
  * deletedNotes counts are merged back into the duplicate result objects.
  *
  * @param createdObjects - Result objects from clip duplication (mutated in place)

@@ -220,8 +220,8 @@ describe("duplicate clip fan-out order", () => {
     expect(opOrder).toStrictEqual(["t0", "t1"]);
   });
 
-  it("defers a copy whose arrangementLength tiles into the source", async () => {
-    // Same start, but 16 bars of tiling reaches the source at bar 9, so this
+  it("defers a copy whose arrangementLength reaches into the source", async () => {
+    // Same start, but a 16-bar copy reaches the source at bar 9, so this
     // copy does have to go last.
     setupSource(true, SOURCE_AT_BAR_9);
 

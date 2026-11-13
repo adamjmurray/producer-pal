@@ -12,8 +12,8 @@ import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
 import {
   createAndDeleteTempClip,
-  type TilingContext,
-} from "./helpers/arrangement-tiling-clips.ts";
+  type ScratchClipContext,
+} from "./helpers/scratch-clips.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 export interface HoldingClipResult {
@@ -39,7 +39,7 @@ export function createShortenedClipInHolding(
   targetLength: number,
   holdingAreaStart: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
 ): HoldingClipResult {
   // Store clip ID to prevent object staleness issues
   // sourceClip.id returns just the numeric ID string (e.g., "547")
@@ -55,8 +55,8 @@ export function createShortenedClipInHolding(
   );
 
   // Surface a refused copy before the caller relies on holdingClipId —
-  // otherwise downstream operations would no-op against id 0 and the partial
-  // tile would silently go missing.
+  // otherwise downstream operations would no-op against id 0 and the copy
+  // would silently go missing.
   if (!holdingClip.exists()) {
     throw new Error(
       `duplicate_clip_to_arrangement returned no clip for createShortenedClipInHolding (source ${sourceClipId} at ${holdingAreaStart})`,

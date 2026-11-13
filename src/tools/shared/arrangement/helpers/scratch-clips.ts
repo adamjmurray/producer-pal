@@ -4,9 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Primitive helpers for arrangement clip operations.
- * These are low-level building blocks used by arrangement-tiling.ts
- * and arrangement-splitting.ts.
+ * Temp and scratch clips: short-lived clips made to trim arrangement clips or
+ * to get an audio clip of a chosen length, then removed.
  */
 
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
@@ -20,17 +19,18 @@ import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
 
-export interface TilingContext {
+/** What the temp and scratch clip helpers, and the writes that use them, need. */
+export interface ScratchClipContext {
   /** Path to silence WAV file for audio clip operations */
   silenceWavPath: string;
   /**
    * Absolute timestamp the request must finish by, from computeLoopDeadline.
-   * Long tiling runs check it so they stop and report what they placed, instead
-   * of running past the Node-side timeout that replaces the whole response with
+   * Long runs check it so they stop and report what they placed, instead of
+   * running past the Node-side timeout that replaces the whole response with
    * an error. Undefined/null means no deadline.
    */
   deadline?: number | null;
-  /** Where to say what happened to a clip; unset drops what tiling reports. */
+  /** Where to say what happened to a clip; unset drops the report. */
   reportClip?: ClipReporter;
   /** What is on the arrangement lanes, kept true by every write that has this. */
   lanes?: LaneView;
@@ -239,7 +239,7 @@ export function createAndDeleteTempClip(
   position: number,
   length: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   removeTemp: (id: string) => void = (id) =>
     track.call("delete_clip", toLiveApiId(id)),
 ): void {

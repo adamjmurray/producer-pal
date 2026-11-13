@@ -15,7 +15,7 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
@@ -56,7 +56,7 @@ interface HandleArrangementStartArgs {
   destination: ArrangementTrack | null;
   landings: LandingLog;
   isMidiClip: boolean;
-  context: TilingContext;
+  context: ScratchClipContext;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
 }
@@ -368,7 +368,7 @@ function moveArrangementClip(args: HandleArrangementOperationsArgs): string {
     destination: args.destination ?? null,
     landings: args.landings,
     isMidiClip: !args.isAudioClip,
-    context: args.context as TilingContext,
+    context: args.context as ScratchClipContext,
     reasons: args.reasons,
   });
 }

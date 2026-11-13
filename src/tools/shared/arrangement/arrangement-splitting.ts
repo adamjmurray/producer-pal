@@ -19,13 +19,13 @@ import {
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import {
   createAndDeleteTempClip,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+  type ScratchClipContext,
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import {
   holdingAreaStartAfter,
   holdingAreaStartOnTrack,
   moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+} from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   rescanSplitClips,
@@ -156,7 +156,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   // Create boundaries: [0, ...splitPoints, clipLength]
   const boundaries = [0, ...validPoints, clipLength];
   const segmentCount = boundaries.length - 1;
-  const tilingCtx = context as TilingContext;
+  const scratchCtx = context as ScratchClipContext;
 
   // Reserve before staging anything, so a throw or a Live refusal below still
   // leaves the next clip clear of whatever this one got as far as writing.
@@ -213,7 +213,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
       clipArrangementStart + seg0End,
       rightTrimLen,
       isMidiClip,
-      tilingCtx,
+      scratchCtx,
     );
   }
 
@@ -229,7 +229,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     clipLength,
     holdingAreaStart,
     isMidiClip,
-    context: tilingCtx,
+    context: scratchCtx,
   });
 
   // The first `tailSegment` cuts landed.
@@ -247,7 +247,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
       sourcePos,
       lastSegStart,
       isMidiClip,
-      tilingCtx,
+      scratchCtx,
     );
   }
 
@@ -258,7 +258,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     track,
     lastSegFinalPos,
     isMidiClip,
-    tilingCtx,
+    scratchCtx,
     true,
   );
 
@@ -316,7 +316,7 @@ interface ExtractMiddleSegmentsArgs {
   clipLength: number;
   holdingAreaStart: number;
   isMidiClip: boolean;
-  context: TilingContext;
+  context: ScratchClipContext;
 }
 
 /**

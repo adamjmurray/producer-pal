@@ -11,11 +11,11 @@
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
-import { type TilingContext } from "./helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "./helpers/scratch-clips.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
-} from "./arrangement-tiling-workaround.ts";
+} from "./arrangement-duplicate-workaround.ts";
 
 /**
  * Duplicate a clip to a target arrangement position. Clears any other clips
@@ -38,7 +38,7 @@ export function duplicateToArrangementTarget(
   sourceClipId: string,
   targetBeats: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   source: LiveAPI | null = null,
   movesSource = false,
 ): LiveAPI {

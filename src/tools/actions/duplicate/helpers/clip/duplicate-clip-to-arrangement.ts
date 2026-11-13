@@ -6,12 +6,12 @@
 import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { finishCopy, type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { type CopyAttempt } from "./duplicate-one-copy.ts";
 import { withLaneWriteNote } from "./stamp-automation.ts";
 import {
-  createClipsForLength,
+  createClipForLength,
   parseArrangementLength,
 } from "./arrangement-length.ts";
 import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -40,7 +40,7 @@ export async function duplicateClipToArrangement(
   arrangementLength?: string,
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
-  context: Partial<ToolContext & TilingContext> = {},
+  context: Partial<ToolContext & ScratchClipContext> = {},
   sourceClip: LiveAPI | null = null,
   tracks: Map<number, LiveAPI> = new Map(),
 ): Promise<CopyAttempt> {
@@ -73,7 +73,7 @@ export async function duplicateClipToArrangement(
       songTimeSigDenominator,
     );
 
-    copy = await createClipsForLength(
+    copy = await createClipForLength(
       clip,
       track,
       arrangementStartBeats,
@@ -95,7 +95,7 @@ export async function duplicateClipToArrangement(
       clip.id,
       arrangementStartBeats,
       isMidiClip,
-      context as TilingContext,
+      context as ScratchClipContext,
       clip,
     );
 

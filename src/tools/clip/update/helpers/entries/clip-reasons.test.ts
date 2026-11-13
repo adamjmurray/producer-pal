@@ -123,14 +123,14 @@ describe("clip-reasons", () => {
     const reasons = newClipReasons();
     const reporter = clipReporterFor(reasons);
 
-    reporter.note("1", "placed 2 of 8 tiles");
+    reporter.note("1", "split into 2 pieces");
     reporter.refuse("2", "arrangementSplit ignored");
 
-    const tiled: ClipResult = { id: "1" };
+    const noted: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", tiled);
+    reportClipReasons(reasons, "1", noted);
 
-    expect(tiled).toStrictEqual({ id: "1", detail: "placed 2 of 8 tiles" });
+    expect(noted).toStrictEqual({ id: "1", detail: "split into 2 pieces" });
     // A note leaves the clip a real entry; a refusal with nothing else landing
     // makes it a skip.
     expect(clipLandedNothing(reasons, "1")).toBe(false);

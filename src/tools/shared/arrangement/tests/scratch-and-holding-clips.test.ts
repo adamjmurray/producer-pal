@@ -13,13 +13,13 @@ import {
   setupLiveSet,
   setupTrackWithQueuedMethods,
   setupScene,
-} from "./helpers/arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-mock-objects.ts";
 import {
   createAndDeleteTempClip,
   createAudioClipInSession,
-} from "../helpers/arrangement-tiling-clips.ts";
-import { createShortenedClipInHolding } from "../arrangement-tiling-holding.ts";
-import { moveClipFromHolding } from "../arrangement-tiling-workaround.ts";
+} from "../helpers/scratch-clips.ts";
+import { createShortenedClipInHolding } from "../arrangement-holding-clip.ts";
+import { moveClipFromHolding } from "../arrangement-duplicate-workaround.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -311,8 +311,8 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("throws when dup-to-holding silently fails", () => {
-    // Without protection, the partial-tile flow would silently use id 0,
-    // producing a missing tile that downstream code treats as real.
+    // Without protection, the caller would silently use id 0, producing a
+    // missing copy that downstream code treats as real.
     const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 0,
       loop_end: 16,

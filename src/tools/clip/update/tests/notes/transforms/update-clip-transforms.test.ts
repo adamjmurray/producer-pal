@@ -135,7 +135,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
-  // How duplicate numbers each tile of a copy by its copy.
+  // How duplicate numbers each clip by its copy.
   it("takes clip.index/clip.count from the caller when it numbers the clips", async () => {
     await updateClip(
       {

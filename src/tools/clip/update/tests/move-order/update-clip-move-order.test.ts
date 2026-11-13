@@ -355,7 +355,7 @@ describe("orderArrangementMoves", () => {
   it("refuses a resize that grows over a clip staying put", () => {
     const clips = registerRow(row);
 
-    // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1 — and
+    // 113 stays at 1|1 but grows to 8 bars, which reaches over 114 at 5|1 — and
     // 114 is going nowhere, so nothing can clear that span first.
     const { blockedIds } = orderMoves(
       clips,

@@ -10,7 +10,7 @@ import {
   type SceneSlotClip,
 } from "#src/tools/shared/clip/slot-contents/scene-slot-clips.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   landedColor,
@@ -21,7 +21,7 @@ import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   copyLengthBeats,
-  createClipsForLength,
+  createClipForLength,
   parseArrangementLength,
 } from "../clip/arrangement-length.ts";
 import { refusedCopy } from "../clip/copy-entries.ts";
@@ -224,7 +224,7 @@ export async function duplicateSceneToArrangement(
   arrangementLength?: string,
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
-  context: Partial<ToolContext & TilingContext> = {},
+  context: Partial<ToolContext & ScratchClipContext> = {},
   ledger: LaneLedger = copyLedger(),
   read?: ScenePass,
 ): Promise<{ clips: MinimalClipInfo[]; detail?: string } | TargetSkip> {
@@ -272,7 +272,7 @@ export async function duplicateSceneToArrangement(
       arrangementLengthBeats,
       ledger,
       () =>
-        createClipsForLength(
+        createClipForLength(
           clip,
           track,
           arrangementStartBeats,

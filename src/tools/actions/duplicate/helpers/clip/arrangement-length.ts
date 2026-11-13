@@ -17,12 +17,12 @@ import {
 } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { refuseEmptyLength } from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
-import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
+import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-holding-clip.ts";
 import {
   holdingAreaStartOnTrack,
   moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+} from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import {
   carriesAutomation,
@@ -78,17 +78,17 @@ export function parseArrangementLength(
  * the span first (see stamp-automation.ts) and is placed from a copy that
  * carries none.
  * @param sourceClip - The source clip to duplicate
- * @param track - The track to create clips on
+ * @param track - The track to create the copy on
  * @param arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
  * @param arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length for updateClip)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
- * @param name - Optional name for the clips
+ * @param name - Optional name for the copy
  * @param context - Context object with silenceWavPath (the adapter always sets it)
- * @param color - Optional color for the clips
+ * @param color - Optional color for the copy
  * @returns The copy, or undefined when Live made none
  */
-export async function createClipsForLength(
+export async function createClipForLength(
   sourceClip: LiveAPI,
   track: LiveAPI,
   arrangementStartBeats: number,
@@ -96,7 +96,7 @@ export async function createClipsForLength(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name?: string,
-  context: Partial<ToolContext & TilingContext> = {},
+  context: Partial<ToolContext & ScratchClipContext> = {},
   color?: string,
 ): Promise<MinimalClipInfo | undefined> {
   const copyFrom = (clip: LiveAPI): Promise<MinimalClipInfo | undefined> =>
@@ -138,14 +138,14 @@ export async function createClipsForLength(
  * Copy a clip to the arrangement at the length asked for, by holding area when
  * it is shorter and by update-clip when it is longer.
  * @param sourceClip - The clip to copy
- * @param track - The track to create clips on
+ * @param track - The track to create the copy on
  * @param arrangementStartBeats - Start time in Ableton beats
  * @param arrangementLengthBeats - Total length to fill in Ableton beats
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @param name - Optional name for the clips
+ * @param name - Optional name for the copy
  * @param context - Context object with silenceWavPath
- * @param color - Optional color for the clips
+ * @param color - Optional color for the copy
  * @returns The copy, or undefined when Live made none
  */
 async function copyForLength(
@@ -156,7 +156,7 @@ async function copyForLength(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name: string | undefined,
-  context: Partial<ToolContext & TilingContext>,
+  context: Partial<ToolContext & ScratchClipContext>,
   color: string | undefined,
 ): Promise<MinimalClipInfo | undefined> {
   const sourceClipLength = copyLengthBeats(sourceClip);
@@ -181,14 +181,14 @@ async function copyForLength(
       arrangementLengthBeats,
       holdingStart,
       isMidiClip,
-      context as TilingContext,
+      context as ScratchClipContext,
     );
     const newClip = moveClipFromHolding(
       holdingClipId,
       track,
       arrangementStartBeats,
       isMidiClip,
-      context as TilingContext,
+      context as ScratchClipContext,
     );
 
     return finishCopy(newClip, name, color);
@@ -202,7 +202,7 @@ async function copyForLength(
     sourceClip.id,
     arrangementStartBeats,
     isMidiClip,
-    context as TilingContext,
+    context as ScratchClipContext,
     sourceClip,
   );
 
@@ -257,7 +257,7 @@ async function lengthenCopy(
   songTimeSigDenominator: number,
   name: string | undefined,
   color: string | undefined,
-  context: Partial<ToolContext & TilingContext>,
+  context: Partial<ToolContext & ScratchClipContext>,
 ): Promise<MinimalClipInfo | undefined> {
   // Re-encode the target length in the SONG time signature — the same meter
   // updateClip's parser decodes arrangementLength with — so a bar-aligned length
@@ -322,7 +322,7 @@ export async function resizeCopy(
   arrangementLength: string,
   name: string | undefined,
   color: string | undefined,
-  context: Partial<ToolContext & TilingContext>,
+  context: Partial<ToolContext & ScratchClipContext>,
 ): Promise<{ id: string; color?: string; detail?: string }[]> {
   try {
     const result = await updateClip(

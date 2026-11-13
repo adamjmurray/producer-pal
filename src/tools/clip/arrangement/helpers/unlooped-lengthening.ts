@@ -7,7 +7,7 @@ import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.
 import {
   createAudioClipInSession,
   removeSessionClip,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   markClipLanded,

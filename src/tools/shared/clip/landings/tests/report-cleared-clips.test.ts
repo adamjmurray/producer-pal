@@ -128,9 +128,8 @@ describe("reportClearedClips - a clip a later write cut the tail off", () => {
 
 describe("reportClearedClips - a clip that ends sooner with no later write", () => {
   /**
-   * A 16-beat clip lengthened by tiles: Live left the first tile 12 beats
-   * long, and the tiles went in past its landed end. Nothing was written over
-   * its span.
+   * A clip that landed 16 beats long but Live left 12 beats long, and a resize
+   * written only past its landed end. Nothing was written over its span.
    * @param unnamed - Whether a later write that can't be named follows
    * @returns The first clip's entry, once reported on
    */
@@ -139,7 +138,7 @@ describe("reportClearedClips - a clip that ends sooner with no later write", () 
       path: livePath.liveSet,
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
-    registerMockObject("tile", {
+    registerMockObject("short", {
       path: livePath.track(0).arrangementClip(0),
       type: "Clip",
       properties: { start_time: 16, end_time: 28 },
@@ -150,27 +149,27 @@ describe("reportClearedClips - a clip that ends sooner with no later write", () 
       properties: { start_time: 16, end_time: 32 },
     });
     const log = newLandingLog();
-    const tile: ClearedClipEntry = { id: "tile", path: "t0[5|1]" };
+    const entry: ClearedClipEntry = { id: "short", path: "t0[5|1]" };
 
-    recordLandedClip(log, MAIN_LANE, 16, { id: "tile", length: 16 });
+    recordLandedClip(log, MAIN_LANE, 16, { id: "short", length: 16 });
     recordResize(log, LiveAPI.from("whole"), 48);
 
     if (unnamed) {
       recordLandedClip(log, MAIN_LANE, 20, { id: "x", length: null });
     }
 
-    reportBesideOther(log, tile);
+    reportBesideOther(log, entry);
 
-    return tile;
+    return entry;
   }
 
-  it("says nothing of a first tile cut to a whole loop", () => {
-    expect(reportLengthened()).toStrictEqual({ id: "tile", path: "t0[5|1]" });
+  it("says nothing of a clip Live left shorter, with nothing written over it", () => {
+    expect(reportLengthened()).toStrictEqual({ id: "short", path: "t0[5|1]" });
   });
 
   it("still says a clip was cut when a write that can't be named reached it", () => {
     expect(reportLengthened(true)).toStrictEqual({
-      id: "tile",
+      id: "short",
       path: "t0[5|1]",
       arrangementLength: "3bar",
       detail: "shortened later in this call",

@@ -22,8 +22,8 @@ import {
   openScratchSlot,
   removeSessionClip,
   type ScratchSessionSlot,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+  type ScratchClipContext,
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { clipRegionWrites } from "#src/tools/shared/clip/clip-region-writes.ts";
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
@@ -36,7 +36,7 @@ import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { contentSegments, type ContentSegment } from "./content-segments.ts";
 import { ChangedThenFailedError } from "./overwrites/copy-overwrites.ts";
 
-type StampContext = Partial<ToolContext & TilingContext>;
+type StampContext = Partial<ToolContext & ScratchClipContext>;
 
 /** What to stamp, and where. */
 export interface StampRequest {

@@ -31,7 +31,7 @@ import {
   createAudioClipInSession,
   openScratchSlot,
   removeSessionClip,
-} from "../helpers/arrangement-tiling-clips.ts";
+} from "../helpers/scratch-clips.ts";
 import { registerSceneWorld } from "./helpers/session-scene-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({

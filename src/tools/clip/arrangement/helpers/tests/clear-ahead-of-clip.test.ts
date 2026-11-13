@@ -15,7 +15,7 @@ import {
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import * as scratchClips from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { setupArrangementClipPath } from "../arrangement-length-changes-test-helpers.ts";
 import { clearAheadOfClip } from "../clear-ahead-of-clip.ts";
 
@@ -162,7 +162,7 @@ describe("clearAheadOfClip", () => {
     const track = tempClipTrack(true);
     const reportScratch = vi.fn();
     const shared = vi
-      .spyOn(arrangementTilingHelpers, "createAndDeleteTempClip")
+      .spyOn(scratchClips, "createAndDeleteTempClip")
       .mockImplementation((...args) => args[5]?.("arr-456"));
 
     expect(() => clear({ isAudioClip: true, reportScratch })).not.toThrow();

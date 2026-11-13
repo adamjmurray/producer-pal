@@ -17,7 +17,7 @@ import {
   setupArrangementAudioClip,
   setupArrangementAudioClipMock,
   setupArrangementClipPath,
-  setupSessionTilingMock,
+  setupSessionBoundaryMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Warped unlooped audio clip lengthening uses loop_end to extend in place.
@@ -56,7 +56,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
         file_path: "/audio/test.wav",
       });
 
-      const { mockCreate, clipSlot } = setupSessionTilingMock(20.0);
+      const { mockCreate, clipSlot } = setupSessionBoundaryMock(20.0);
 
       const result = await updateClip(
         { id: clipId, arrangementLength: "3bar+n/2" },
@@ -216,7 +216,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     const track = lookupMockObject(`track-${trackIndex}`);
 
-    const { mockCreate, clipSlot } = setupSessionTilingMock(20.0);
+    const { mockCreate, clipSlot } = setupSessionBoundaryMock(20.0);
 
     const result = await updateClip(
       {
@@ -247,7 +247,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     // Ensure source clip wasn't extended after move; only moved clip should be changed
     expect(sourceClip!.set).not.toHaveBeenCalledWith("loop_end", 8.0);
 
-    // Single moved clip returned (extended in place, no tiles)
+    // Single moved clip returned (extended in place)
     // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: movedClipId, path: "t0[3|1]" });
     mockCreate.mockRestore();

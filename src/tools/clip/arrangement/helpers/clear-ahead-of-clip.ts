@@ -11,7 +11,7 @@ import {
 import {
   createAndDeleteTempClip,
   removeTempArrangementClip,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 interface ClearAheadOfClipArgs {

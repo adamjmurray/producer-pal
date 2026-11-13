@@ -10,7 +10,7 @@ import {
   createAudioClipInSession,
   removeSessionClip,
   removeTempArrangementClip,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";

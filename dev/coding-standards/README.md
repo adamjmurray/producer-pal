@@ -19,14 +19,14 @@ and file extensions:
 
 **Allowed:**
 
-- `arrangement-tiling.ts` - descriptive kebab-case name
+- `arrangement-splitting.ts` - descriptive kebab-case name
 - `create-clip.test.ts` - unit test (`.test` suffix)
 - `create-clip.def.ts` - tool definition (`.def` suffix, tools only)
 - `index.d.ts` - TypeScript declaration (`.d` suffix)
 
 **Avoid:**
 
-- `arrangement.tiling.ts` - uses dot instead of hyphen
+- `arrangement.splitting.ts` - uses dot instead of hyphen
 - `clip.helper.ts` - uses dot instead of hyphen
 - `utils.config.ts` - uses dot instead of hyphen
 

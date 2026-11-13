@@ -133,7 +133,7 @@ describe("updateClip - code write beside muted notes", () => {
     expect(result).not.toHaveProperty("detail");
   });
 
-  it("says it once for the copies a tiled clip's code ran on", async () => {
+  it("says it once for the clips one target's code ran on", async () => {
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
     for (const clip of [mocks.clip123, mocks.clip456]) {

@@ -6,7 +6,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import {
   type ArrangementTrack,
   isTakeLaneClip,
@@ -40,7 +40,7 @@ interface PlaceMovedClipArgs {
   destTrackIndex: number;
   targetBeats: number;
   isMidiClip: boolean;
-  context: TilingContext;
+  context: ScratchClipContext;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
 }
