@@ -2,15 +2,20 @@
 
 ## Next
 
-- Improved automation: read and write automation envelopes in the units of the
-  underlying parameter
+- Plug-in control out of experimental: refine hosted plug-ins and make them an
+  official feature
 - Slicing a sample to a drum rack
+- Richer automation notation: generated values and repeat patterns
 
 In consideration:
 
-- Easier, one-click update process
+- A Claude plugin to replace the desktop extension, and plugins for other apps
+  like the ChatGPT desktop app
 - Fetch available local models instead of configuring manually in the built-in
   chat
+- Automation in the units of the parameter (dB, Hz, ms)
+- Moving and duplicating tracks, scenes and rack chains
+- Session clip launch settings (launch mode, quantization, legato)
 
 ## Changelog
 
