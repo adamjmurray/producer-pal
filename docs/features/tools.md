@@ -542,10 +542,10 @@ arrangement clip at the same position. Only the active take plays.
   and a warped audio clip comes back with the sample's default warp markers. The
   response says which applied.
 - Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
-  Live past that still work. A take-lane clip can't be split, resized, or
-  deleted through tools, and Producer Pal can't pick the active take or comp
-  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
-  header to see them.
+  Live past that still work. A take-lane clip can't be split or deleted through
+  tools, and Producer Pal can't pick the active take or comp lanes. All of that
+  stays in Live's UI. Expand the take-lane arrow on a track header to see them.
+  A lengthened take-lane clip stops at the next clip on its lane.
 
 ## Advanced Tools
 

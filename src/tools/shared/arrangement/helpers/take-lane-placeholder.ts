@@ -12,9 +12,9 @@
  * the UI.
  *
  * MIDI really does empty — the notes go. Audio can't: a clip's sample can't be
- * swapped, and writing a silent clip over it doesn't work either, because an
- * arrangement clip's extent can't be stretched from the LOM (see the API notes
- * in take-lanes.ts). So an audio take is muted and marked instead.
+ * swapped, and a silent clip laid over it can't grow past what's left of the
+ * take (see the API notes in take-lanes.ts). So an audio take is muted and
+ * marked instead.
  */
 
 import { removeEveryClipNote } from "#src/tools/shared/clip/clip-notes.ts";

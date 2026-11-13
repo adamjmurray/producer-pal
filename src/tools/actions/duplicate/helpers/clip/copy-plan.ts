@@ -73,11 +73,10 @@ export function copiesOverSource(
  * is the source's own length. Every length was checked before any copy, so
  * this one parses.
  *
- * A take-lane source ignores it, because every copy of one is re-created and a
- * re-created copy is never resized. The span is then the source's own, which is
- * exact for MIDI; an audio copy takes its sample's length, unknown until it is
- * made. Ordering a lane copy against a span nothing writes is how it lands in
- * the safe bucket while really truncating the source.
+ * A take-lane source's copies are re-created at its own length and resized
+ * after, and on a lane growing clears nothing, so they clear exactly the
+ * source's length. Ordering a lane copy against a shorter one is how it lands
+ * in the safe bucket while really truncating the source.
  * @param source - The clip being copied
  * @param arrangementLength - The raw arrangementLength param
  * @param songTimeSigNumerator - Song time signature numerator

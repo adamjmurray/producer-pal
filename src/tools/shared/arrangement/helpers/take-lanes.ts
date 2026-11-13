@@ -23,11 +23,10 @@
  *   (see recreate-clip.ts).
  * - Both no-ops return `id 0`, which a successful `delete_clip` returns too, so
  *   the return value can't be tested — check whether the clip is still there.
- * - An arrangement clip's extent (`end_time`) can't be set from the LOM.
- *   `end_marker` and `loop_end` accept the write and read back changed, but
- *   `end_time` doesn't follow, so a short sample can't be stretched to cover a
- *   longer clip. That's why an audio take is muted rather than overwritten with
- *   silence (see take-lane-placeholder.ts).
+ * - A clip resizes on a take lane as on the main lane (see
+ *   arrangement-clip-resize.ts), but growth stops at the next clip and nothing
+ *   can clear it. So a silent clip can't be grown over a take, which is why an
+ *   audio take is muted instead (see take-lane-placeholder.ts).
  */
 
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";

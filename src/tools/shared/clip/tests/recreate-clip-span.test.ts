@@ -9,6 +9,7 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { resizesLikeLiveClip } from "#src/test/mocks/registry/mock-clip-resize.ts";
 import { recreateClip, recreateClipInSlot } from "../recreate-clip.ts";
 
 const SOURCE_PATH = livePath.track(0).arrangementClip(0);
@@ -199,11 +200,46 @@ describe("recreateClip on a looping arrangement audio clip", () => {
     file_path: "/samples/loop.wav",
   };
 
-  it("says the new length and why when the sample gives a different one", () => {
+  /**
+   * Make the copy a 2-bar looped audio clip that resizes like Live's.
+   * @param nextClipStart - Where the next clip on the lane starts
+   * @returns The copy
+   */
+  function resizableCopy(
+    nextClipStart = Infinity,
+  ): ReturnType<typeof registerMockObject> {
+    const copy = lookupMockObject("copy") as ReturnType<
+      typeof registerMockObject
+    >;
+
+    Object.assign(copy.properties, {
+      looping: 1,
+      warping: 1,
+      loop_start: 0,
+      loop_end: 8,
+      start_marker: 0,
+      end_marker: 8,
+    });
+    resizesLikeLiveClip(copy, nextClipStart);
+
+    return copy;
+  }
+
+  it("resizes the copy to the source's span when the sample gives another", () => {
     registerWorld(AUDIO, "create_audio_clip", 8);
+    const copy = resizableCopy();
+
+    expect(recreate()).toStrictEqual([]);
+    expect(copy.properties.end_time).toBe(56);
+    expect(copy.properties.looping).toBe(1);
+  });
+
+  it("says the new length when Live stops the copy short", () => {
+    registerWorld(AUDIO, "create_audio_clip", 4);
+    resizableCopy(48);
 
     expect(recreate()).toStrictEqual([
-      "length is 2bar, not 4bar: Live rebuilds an audio clip from its sample",
+      "length is 2bar, not 4bar: Live shortened the new clip",
     ]);
   });
 

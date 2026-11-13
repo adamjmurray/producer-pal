@@ -425,16 +425,17 @@ function laneCovers(
   span: LandedSpan,
 ): Cover[] | undefined {
   const { clip, startBeats, lengthBeats } = payload;
+  // No lane is a resize where the clip sits, on its own lane.
   const landing = {
     trackIndex: lane?.trackIndex ?? (clip.trackIndex as number),
-    takeLane: lane?.kind === "take-lane" ? lane.laneIndex : null,
+    takeLane:
+      lane == null
+        ? takeLaneIndexOfClip(clip)
+        : lane.kind === "take-lane"
+          ? lane.laneIndex
+          : null,
   };
   const moves = startBeats != null || lane != null;
-
-  // A resize in place is refused on a take lane: there is nothing to write.
-  if (!moves && takeLaneIndexOfClip(clip) != null) {
-    return undefined;
-  }
 
   const isMidi = (clip.getProperty("is_midi_clip") as number) > 0;
 
@@ -445,6 +446,7 @@ function laneCovers(
   // A move to or from a take lane re-creates the clip, which not every clip can
   // be (no sample, a step sequencer clip), and then it writes nothing.
   if (
+    moves &&
     (landing.takeLane != null || takeLaneIndexOfClip(clip) != null) &&
     recreateBlocker(clip) != null
   ) {
@@ -452,11 +454,12 @@ function laneCovers(
   }
 
   const from = startBeats ?? span.start;
-  // Take-lane clips refuse arrangementLength; on the main lane the clip lands
-  // at the length it is resized to.
+  // The clip lands at the length it is resized to. On a take lane it grows only
+  // into empty space, stopping at the next clip, so growing covers nothing.
+  const own = span.end - span.start;
   const length =
-    landing.takeLane != null || lengthBeats == null
-      ? span.end - span.start
+    lengthBeats == null || (landing.takeLane != null && lengthBeats > own)
+      ? own
       : lengthBeats;
 
   return [

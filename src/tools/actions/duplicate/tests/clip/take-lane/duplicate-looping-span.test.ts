@@ -99,10 +99,10 @@ describe("duplicating a looping MIDI clip by re-creating it", () => {
   });
 });
 
-// create_audio_clip takes no length, and the mock gives the new clip 4 beats.
+// create_audio_clip takes no length, and the mock gives the new clip 4 beats
+// that no resize changes, as when Live stops it at the next clip.
 describe("duplicating a looping audio clip by re-creating it", () => {
-  const SAID =
-    "length is 1bar, not 4bar: Live rebuilds an audio clip from its sample";
+  const SAID = "length is 1bar, not 4bar: Live shortened the new clip";
 
   it("says on the copy's entry that its length changed, and why", async () => {
     registerLiveSet();

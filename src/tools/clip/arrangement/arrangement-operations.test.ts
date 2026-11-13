@@ -18,6 +18,7 @@ import {
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { handleArrangementLengthOperation } from "./arrangement-operations.ts";
 import * as helpers from "./helpers/arrangement-length-changes.ts";
+import * as takeLane from "./helpers/take-lane-lengthening.ts";
 
 interface MockClipOptions {
   id?: string;
@@ -75,12 +76,26 @@ describe("handleArrangementLengthOperation", () => {
     expectSkippedWithReason(clip, "ignored: this is a session clip");
   });
 
-  it("reports a take-lane clip on its own entry", () => {
+  it("lengthens a take-lane clip without clearing the lane", () => {
+    const takeLaneSpy = vi
+      .spyOn(takeLane, "lengthenTakeLaneClip")
+      .mockReturnValue([{ id: "789" }]);
+    const mainLaneSpy = vi.spyOn(helpers, "handleArrangementLengthening");
     const clip = createMockClip({
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithReason(clip, "ignored: this is a take-lane clip");
+    const result = handleArrangementLengthOperation({
+      clip,
+      isAudioClip: false,
+      arrangementLengthBeats: 16,
+      context: {},
+      reasons: newClipReasons(),
+    });
+
+    expect(takeLaneSpy).toHaveBeenCalledTimes(1);
+    expect(mainLaneSpy).not.toHaveBeenCalled();
+    expect(result).toStrictEqual([{ id: "789" }]);
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {

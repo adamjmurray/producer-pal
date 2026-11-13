@@ -280,7 +280,7 @@ async function lengthenClipAndCollectInfo(
     songTimeSigDenominator,
   );
 
-  const clipResults = await lengthenCopy(
+  const clipResults = await resizeCopy(
     newClipId,
     arrangementLength,
     name,
@@ -319,17 +319,17 @@ async function lengthenClipAndCollectInfo(
 }
 
 /**
- * Lengthen one copy, putting a refusal on its entry instead of letting it
- * escape. A lone target update-clip can't lengthen throws, and that throw
- * would fail a duplicate whose copies are all made.
- * @param clipId - The copy to lengthen
+ * Resize one copy through update-clip, putting a refusal on its entry instead
+ * of letting it escape. A lone target update-clip can't resize throws, and that
+ * throw would fail a duplicate whose copies are all made.
+ * @param clipId - The copy to resize
  * @param arrangementLength - The length to give it
  * @param name - Optional name
  * @param color - Optional color
  * @param context - Tool execution context
- * @returns update-clip's entries, or the copy with the reason it wasn't lengthened
+ * @returns update-clip's entries, or the copy with the reason it wasn't resized
  */
-async function lengthenCopy(
+export async function resizeCopy(
   clipId: string,
   arrangementLength: string,
   name: string | undefined,

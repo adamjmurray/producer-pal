@@ -11,6 +11,9 @@
  * clip instead. Whatever the clip grows over is overwritten, and its entry says
  * so.
  *
+ * A take-lane clip resizes too, but can't clear its lane, so it stops at the next
+ * clip there.
+ *
  * Uses: e2e-test-set (t8 = empty MIDI track)
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-arrangement-lengthen-in-place
@@ -232,6 +235,75 @@ describe("arrangementLength: one clip, resized in place", () => {
     expect(lengthBeats(clips[0])).toBeCloseTo(beats("10bar"), 5);
   });
 });
+
+// A take lane can't be cleared, so a lengthen there stops at the next clip.
+describe("arrangementLength on a take-lane clip", () => {
+  it("resizes it in place, stopping at the next clip on the lane", async () => {
+    const first = await createLaneClip("201|1");
+
+    await createLaneClip("205|1");
+
+    const grown = parseToolResultWithWarnings<{ id: string; detail?: string }>(
+      await callTool(ctx.client!, "ppal-update-clip", {
+        id: first,
+        arrangementLength: "8bar",
+      }),
+    );
+
+    expect(grown.data.id).toBe(first);
+    expect(grown.data.detail).toBe(
+      "arrangementLength landed at 4bar: the next clip on the lane starts there",
+    );
+    expect(await laneClipLengths()).toStrictEqual(["4bar", "1bar"]);
+
+    await callTool(ctx.client!, "ppal-update-clip", {
+      id: first,
+      arrangementLength: "2bar",
+    });
+
+    expect(await laneClipLengths()).toStrictEqual(["2bar", "1bar"]);
+  });
+});
+
+/**
+ * Create a 1-bar MIDI clip on the empty track's first take lane.
+ * @param position - Where it starts, in bar|beat format
+ * @returns The clip's id
+ */
+async function createLaneClip(position: string): Promise<string> {
+  const { data } = parseToolResultWithWarnings<{ id: string }>(
+    await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}/l0[${position}]`,
+      notes: "C3 1|1",
+      length: "1bar",
+    }),
+  );
+
+  await sleep(100);
+
+  return data.id;
+}
+
+/**
+ * @returns The arrangement length of each clip on the empty track's first
+ *   take lane, in lane order
+ */
+async function laneClipLengths(): Promise<string[]> {
+  await sleep(100);
+
+  const track = parseToolResult<{
+    takeLanes?: Array<{ clips: Array<{ arrangementLength?: string }> }>;
+  }>(
+    await callTool(ctx.client!, "ppal-read-track", {
+      path: `t${EMPTY_MIDI_TRACK}`,
+      include: ["arrangement-clips"],
+    }),
+  );
+
+  return (track.takeLanes?.[0]?.clips ?? []).map(
+    (clip) => clip.arrangementLength ?? "",
+  );
+}
 
 /**
  * Create a 1-bar-pattern arrangement clip on the empty MIDI track.

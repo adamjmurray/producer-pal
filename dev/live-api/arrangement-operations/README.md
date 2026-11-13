@@ -34,9 +34,11 @@ Things that look wrong but aren't:
 - `end_marker` on a looped clip is writable and doesn't change the span, so it
   can drift from `start_marker` + span.
 - **Growth stops at the next clip.** Live never lets a resized clip overlap the
-  next one on its lane: it stops there. Lengthening clears the span first (a
-  temp clip laid over it, then deleted) so the clip overwrites what it grows
-  over, as any write into an arrangement range does.
+  next one on its lane: it stops there. On the main lane, lengthening clears the
+  span first (a temp clip laid over it, then deleted) so the clip overwrites
+  what it grows over, as any write into an arrangement range does. A take lane
+  can't be cleared (Live deletes no clip there), so a take-lane clip stops at
+  its neighbor and its entry says so.
 
 See `resizeArrangementClip` (`arrangement-clip-resize.ts`) and
 [Lengthening](operations.md#lengthening).

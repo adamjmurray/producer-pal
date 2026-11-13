@@ -21,8 +21,9 @@ import {
   rawNotesToCopiedNotes,
   readEveryClipNote,
 } from "./clip-notes.ts";
-import { arrangementSpan, noteSpanLoss } from "./arrangement-span.ts";
+import { arrangementSpan, keptSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
+import { resizeArrangementClip } from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
 
 /**
  * Thrown when the clip was created but a later step — notes, properties, color
@@ -45,6 +46,9 @@ export class PartialRecreateError extends Error {
     this.partialClip = partialClip;
   }
 }
+
+/** Why a re-created clip came out shorter than its source. */
+const LIVE_SHORTENED_IT = "Live shortened the new clip";
 
 /** Why an audio clip with no sample can't be re-created. */
 const NO_SAMPLE_FILE =
@@ -85,8 +89,9 @@ interface RecreateTarget {
  * reach: a MIDI clip from its notes, an audio clip from its sample.
  *
  * An arrangement source keeps its span on the timeline, not its loop length. A
- * MIDI copy is created at that span; an audio copy can't be (Live sets no end
- * on `create_audio_clip`), so a different length is reported in `losses`.
+ * MIDI copy is created at that span; an audio copy is resized to it, since
+ * `create_audio_clip` takes no length. A different length is reported in
+ * `losses`.
  *
  * Used for both take-lane directions, because `duplicate_clip_to_arrangement`
  * handles neither: a TakeLane has no duplicate API, and the Track-scoped one
@@ -300,7 +305,7 @@ function recreateInto(
         newClip,
         span,
         meterOf(snapshot.properties),
-        "Live shortened the new clip",
+        LIVE_SHORTENED_IT,
         losses,
       );
     } catch (error) {
@@ -319,11 +324,21 @@ function recreateInto(
     newClip.setAll(snapshot.properties);
     applyColor(newClip, color, snapshot.color);
     noteGrooveLoss(newClip, snapshot.properties.groove, losses);
+
+    // Live sizes a new audio clip to its sample, so it is resized to the span.
+    if (span != null && !keptSpan(newClip, span)) {
+      resizeArrangementClip({
+        clip: newClip,
+        spanBeats: span,
+        isAudioClip: true,
+      });
+    }
+
     noteSpanLoss(
       newClip,
       span,
       meterOf(snapshot.properties),
-      "Live rebuilds an audio clip from its sample",
+      LIVE_SHORTENED_IT,
       losses,
     );
   } catch (error) {

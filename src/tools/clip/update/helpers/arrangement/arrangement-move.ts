@@ -23,6 +23,7 @@ import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   type ArrangementTrack,
   isTakeLaneClip,
+  takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
@@ -36,6 +37,7 @@ import {
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { recreateBlocker } from "#src/tools/shared/clip/recreate-clip.ts";
 import { removeMovedSource } from "./moved-source.ts";
 import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
@@ -372,20 +374,28 @@ function moveArrangementClip(args: HandleArrangementOperationsArgs): string {
 }
 
 /**
- * Whether to shorten the clip where it sits before moving it. Main lane to main
- * lane only: take-lane clips refuse arrangementLength, and a move to or from a
- * take lane re-creates the clip rather than copying it.
+ * Whether to shorten the clip where it sits before moving it. Not for a move
+ * that will be refused, so a refused move changes nothing: one to or from a
+ * take lane that can't re-create the clip, or onto a lane past the cap.
  * @param args - Operation arguments
  * @param lengthBeats - Target length in beats
- * @returns True when the resize shortens a main-lane clip bound for a main lane
+ * @returns True when the resize shortens a clip whose move can land
  */
 function shortensBeforeMove(
   args: HandleArrangementOperationsArgs,
   lengthBeats: number,
 ): boolean {
   const { clip, destination } = args;
+  const recreates = destination?.takeLane != null || isTakeLaneClip(clip);
 
-  if (destination?.takeLane != null || isTakeLaneClip(clip)) {
+  if (recreates && recreateBlocker(clip) != null) {
+    return false;
+  }
+
+  if (
+    destination?.takeLane != null &&
+    takeLaneTargetsThatFit([destination]).dropped.size > 0
+  ) {
     return false;
   }
 

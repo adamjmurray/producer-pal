@@ -894,7 +894,10 @@ row of clips, each with an entry after the target's. Now the clip itself grows
 and keeps looping, and the target gets one entry. `envelopes` beside it is no
 longer refused. An unlooped clip lengthened into the next clip now overwrites it
 and says so, as a looping one always did; it used to stop short there without a
-word.
+word. A take-lane clip, which used to refuse `arrangementLength`, now resizes
+too; a lengthen stops at the next clip on the lane and the entry says so. A copy
+`ppal-duplicate` re-creates on or off a lane takes `arrangementLength` instead
+of ignoring it, and a re-created audio copy keeps the source's length.
 
 ## Memory answers changed in 2.6.0
 

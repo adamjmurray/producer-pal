@@ -233,7 +233,7 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
   // No position of its own means "same place, other lane".
   const targetStart = intent.startBeats ?? start;
   const landing = intent.landing ?? { trackIndex, takeLane };
-  const cleared = clearedLength(start, end, takeLane, landing, intent);
+  const cleared = clearedLength(start, end, landing, intent);
 
   return {
     current,
@@ -245,7 +245,6 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
  * How much of the destination a clip's move and resize clear.
  * @param start - The clip's start_time
  * @param end - The clip's end_time
- * @param takeLane - The clip's take lane, or null for the main lane
  * @param landing - The lane it lands on
  * @param intent - What the call does to its span
  * @returns The cleared length in beats, from the landing position
@@ -253,21 +252,21 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
 function clearedLength(
   start: number,
   end: number,
-  takeLane: number | null,
   landing: ArrangementTrack,
   intent: MoveIntent,
 ): number {
   const { lengthBeats } = intent;
 
-  // Take-lane clips refuse arrangementLength, so they keep their own span.
-  if (landing.takeLane != null || lengthBeats == null) {
-    return end - start;
+  // A shortened clip is shortened before it moves, so the move clears only the
+  // new length.
+  if (lengthBeats != null && shortensArrangementClip(start, end, lengthBeats)) {
+    return lengthBeats;
   }
 
-  // Main lane to main lane, a shortened clip is shortened before it moves, so
-  // the move clears only the new length.
-  if (takeLane == null && shortensArrangementClip(start, end, lengthBeats)) {
-    return lengthBeats;
+  // On a take lane a clip grows only into empty space, stopping at the next
+  // clip, so growing clears nothing.
+  if (lengthBeats == null || landing.takeLane != null) {
+    return end - start;
   }
 
   // A longer arrangementLength grows forward and clears the span it fills.

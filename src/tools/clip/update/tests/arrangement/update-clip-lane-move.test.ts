@@ -299,12 +299,12 @@ function runMove(opts: MoveOptions = {}): string {
 // Through updateClip itself, because the bug was in the seam: the resize runs on
 // the clip the move re-created, so its reason was filed under an id the loop
 // never looks up, and the entry lost it.
-describe("a lane move whose resize can't run", () => {
+describe("a lane move with an arrangementLength", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("keeps both reasons on the moved clip's entry", async () => {
+  it("resizes the clip it re-created, saying nothing for the length it had", async () => {
     registerMockObject("live-set", {
       path: livePath.liveSet,
       type: "Song",
@@ -318,13 +318,10 @@ describe("a lane move whose resize can't run", () => {
       arrangementLength: "2bar",
     })) as { id: string; detail?: string };
 
-    // The clip moved, so its entry is real — and it carries what the move and
-    // the refused resize each had to say.
+    // A take-lane clip takes arrangementLength like any other, so the entry has
+    // only what the move said.
     expect(result.id).not.toBe(SOURCE_ID);
-    expect(result.detail).toBe(
-      `re-created on t${DEST_TRACK}/l0; ` +
-        "arrangementLength ignored: this is a take-lane clip; adjust it in Live's UI",
-    );
+    expect(result.detail).toBe(`re-created on t${DEST_TRACK}/l0`);
   });
 });
 

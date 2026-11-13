@@ -484,7 +484,7 @@ describe("arrangement clip moved to another lane", () => {
   });
 
   // An audio take can't be emptied — its sample can't be cleared, and a silent
-  // clip can't be stretched over it — so it is muted and marked instead.
+  // clip can't grow over it — so it is muted and marked instead.
   it("moves an audio take off its lane, leaving the take muted", async () => {
     const source = await createAudioClip("5|1", "Audio Take");
 

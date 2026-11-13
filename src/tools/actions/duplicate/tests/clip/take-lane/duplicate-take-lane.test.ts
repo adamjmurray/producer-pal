@@ -157,7 +157,7 @@ describe("duplicate take lane", () => {
     });
   });
 
-  it("says on the copy's entry that arrangementLength was ignored, with no warning", async () => {
+  it("takes arrangementLength without ignoring it or warning", async () => {
     registerLiveSet();
     registerArrangementSource(true, [SOURCE_NOTE], {
       extraProps: { end_time: 4 },
@@ -175,9 +175,7 @@ describe("duplicate take lane", () => {
     expect(consoleMock.emitWarning).not.toHaveBeenCalled();
     expect(result).toStrictEqual(
       expect.objectContaining({
-        detail: expect.stringContaining(
-          "arrangementLength ignored: the copy keeps the source's arrangement length",
-        ),
+        detail: expect.not.stringContaining("arrangementLength ignored"),
       }),
     );
   });

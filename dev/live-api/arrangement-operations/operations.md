@@ -19,6 +19,10 @@ One clip, same id. A start marker inside the loop or before it (pre-roll) needs
 nothing special: Live plays it the same way across the longer span. Every
 unlooped case below clears the same way before it grows.
 
+A take-lane clip skips the clearing (`lengthenTakeLaneClip`): the target is cut
+to where the next clip on the lane starts, and the entry says
+`arrangementLength landed at …: the next clip on the lane starts there`.
+
 ## Lengthening — Unlooped MIDI
 
 Entry: `handleUnloopedLengthening()` → `!isAudioClip` branch in
@@ -112,13 +116,14 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 
 **Order matters** when one call moves and resizes a clip:
 
-- **Shortening, main lane to main lane:** shorten first, where the clip sits,
-  then move. The move copies the clip at its current length and clears that
-  whole span, so moving first would wipe neighbors the shortened clip no longer
-  reaches. Shortening in place touches nothing else.
-- **Everything else:** move first, so lengthening grows from the new position
-  instead of over the clip's old neighbors. Take-lane moves re-create the clip
-  and take-lane clips refuse `arrangementLength`, so they keep this order too.
+- **Shortening:** shorten first, where the clip sits, then move. The move copies
+  (or re-creates) the clip at its current length and clears that whole span, so
+  moving first would wipe neighbors the shortened clip no longer reaches.
+  Shortening in place touches nothing else. A move that will be refused because
+  it can't re-create the clip shortens nothing.
+- **Lengthening:** move first, so the clip grows from the new position instead
+  of over its old neighbors. On a take lane it grows without clearing and stops
+  at the next clip, since nothing on a lane can be deleted.
 
 Neither step can be undone, so a move that would be refused (a track that won't
 take the clip) is checked first: nothing is moved or resized, and the refusal is

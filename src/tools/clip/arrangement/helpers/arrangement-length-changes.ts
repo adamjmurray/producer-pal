@@ -9,6 +9,7 @@ import {
   arrangementSpanOf,
   resizeArrangementClip,
 } from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   noteClipReason,
@@ -69,7 +70,14 @@ export function handleArrangementLengthening({
   reasons,
 }: HandleArrangementLengtheningArgs): ClipIdResult[] {
   const track = LiveAPI.from(livePath.track(requireTrackIndex(clip)));
-  const clearAhead = (targetEnd: number): void =>
+
+  // A take lane can't be cleared: Live deletes no temp clip there. The caller
+  // stops a take-lane clip at its neighbor instead.
+  const clearAhead = (targetEnd: number): void => {
+    if (isTakeLaneClip(clip)) {
+      return;
+    }
+
     clearAheadOfClip({
       track,
       isAudioClip,
@@ -79,6 +87,7 @@ export function handleArrangementLengthening({
       // A scratch clip Live won't remove is this clip's to report.
       reportScratch: (message) => noteClipReason(reasons, clip.id, message),
     });
+  };
 
   if ((clip.getProperty("looping") as number) === 0) {
     const grown = handleUnloopedLengthening({

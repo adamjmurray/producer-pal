@@ -20,6 +20,7 @@ import {
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
+import { lengthenTakeLaneClip } from "./helpers/take-lane-lengthening.ts";
 import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
@@ -63,30 +64,30 @@ export function handleArrangementLengthOperation({
     return updatedClips;
   }
 
-  // Lengthening clears its way with a temp clip on the main lane, and a take
-  // lane has no clip delete to remove one. The clip's own entry says so.
-  if (isTakeLaneClip(clip)) {
-    refuseClipWork(
-      reasons,
-      clip.id,
-      ignoredText(
-        "arrangementLength",
-        "this is a take-lane clip; adjust it in Live's UI",
-      ),
-    );
-
-    return updatedClips;
-  }
-
   // Get current clip dimensions
   const currentStartTime = clip.getProperty("start_time") as number;
   const currentEndTime = clip.getProperty("end_time") as number;
   const currentArrangementLength = currentEndTime - currentStartTime;
 
-  // Check if shortening, lengthening, or same. A length that differs by less
-  // than SAME_TIME_EPSILON is the same one: read-clip rounds, so a caller echoing back
-  // the length it read must not lengthen the clip.
-  if (arrangementLengthBeats > currentArrangementLength + SAME_TIME_EPSILON) {
+  // A length that differs by less than SAME_TIME_EPSILON is the same one:
+  // read-clip rounds, so a caller echoing back the length it read must not
+  // lengthen the clip.
+  const lengthens =
+    arrangementLengthBeats > currentArrangementLength + SAME_TIME_EPSILON;
+
+  if (lengthens && isTakeLaneClip(clip)) {
+    updatedClips.push(
+      ...lengthenTakeLaneClip({
+        clip,
+        isAudioClip,
+        arrangementLengthBeats,
+        currentStartTime,
+        currentEndTime,
+        context,
+        reasons,
+      }),
+    );
+  } else if (lengthens) {
     // Growing into the lane overwrites whatever sits after the clip, so note
     // the lane first and say what the growth cost. This clip's ledger starts
     // here, from the call's lane view, so it hears of nothing before it.
