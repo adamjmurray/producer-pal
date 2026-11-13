@@ -260,6 +260,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def log_request(self, code="-", size="-"):
+        # Not logged: a Log.txt line per request, pings included, and the log
+        # call is Live's, made from this worker thread. Errors still log.
+        pass
+
     def log_message(self, fmt, *args):
         self.server.log("http: " + (fmt % args))
 

@@ -36,10 +36,11 @@ def free_port():
 class ContentLengthTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
+        self.logged = []
         self.server = BridgeHTTPServer(
             [free_port()],
             lambda method, path, params: (200, {"params": params}),
-            lambda _message: None,
+            self.logged.append,
             os.path.join(self.dir, "port.txt"),
         )
         self.assertTrue(self.server.start())
@@ -87,6 +88,13 @@ class ContentLengthTest(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(payload, {"params": {"a": "body"}})
+
+    def test_a_request_is_not_logged(self):
+        # Answered or refused: the log is Live's, called from a worker thread.
+        self.post(b"2")
+        self.post(b"abc")
+
+        self.assertEqual([line for line in self.logged if line.startswith("http: ")], [])
 
     def test_missing_or_zero_length_means_no_body(self):
         for header in (None, b"0"):
