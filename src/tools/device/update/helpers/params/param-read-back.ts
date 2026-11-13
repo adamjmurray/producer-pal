@@ -101,7 +101,7 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
 function readWrittenParam(entry: WrittenParam): ParamValueResult | LandedParam {
   const param = LiveAPI.from(entry.id);
   const read = readParameter(param);
-  const result = writtenResult(entry, read.value);
+  const result = writtenResult(entry, read.value, read.display);
 
   return inactiveInMode(param, read)
     ? withDetail(result, INACTIVE_PARAM_DETAIL)
@@ -194,18 +194,23 @@ function unlandedPseudoParam(
  * param really moved to the same value.
  * @param entry - The param the write landed on
  * @param value - What it reads as now
+ * @param shown - What a raw-unit param displays now
  * @returns The result entry
  */
 function writtenResult(
   entry: WrittenParam,
   value: unknown,
+  shown?: unknown,
 ): ParamValueResult | LandedParam {
   const { id, name, requested } = entry;
   const changed =
     requested == null || differsAtPublishedResolution(requested, value);
+  // The raw number says nothing about what the plug-in shows, so this is
+  // reported even when the number landed as asked.
+  const display = typeof shown === "string" ? { display: shown } : {};
 
   if (!changed && entry.detail == null) {
-    return withOverride({ id, name }, entry);
+    return withOverride({ id, name, ...display }, entry);
   }
 
   // A value the write itself knew it changed says why; one only the read-back
@@ -215,7 +220,9 @@ function writtenResult(
     (changed && requested != null ? readBackDetail(["value"]) : undefined);
 
   return withOverride(
-    detail == null ? { id, name, value } : { id, name, value, detail },
+    detail == null
+      ? { id, name, value, ...display }
+      : { id, name, value, ...display, detail },
     entry,
   );
 }

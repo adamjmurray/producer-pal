@@ -13,22 +13,22 @@
  * their units recorded (in milliseconds and seconds respectively); S/C EQ Q
  * displays a bare number that measures nothing.
  *
- * Run with: npm run e2e:mcp -- device/update/ppal-update-device-param-units
+ * Run with: npm run e2e:mcp -- device/update/params/ppal-update-device-param-units
  */
 import { describe, expect, it } from "vitest";
 import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "../helpers/update-device-param-test-helpers";
+} from "../../helpers/update-device-param-test-helpers";
 import {
   createTestDevice,
   createTestDeviceAt,
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers";
-import { readParam } from "../helpers/device-param-test-helpers.ts";
+} from "../../../mcp-test-helpers";
+import { readParam } from "../../helpers/device-param-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

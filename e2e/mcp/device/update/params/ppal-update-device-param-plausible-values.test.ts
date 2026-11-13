@@ -11,16 +11,19 @@
  * spells them back, is Live's own answer — a mock can only assert what we
  * already believed.
  *
- * Run with: npm run e2e:mcp -- device/update/ppal-update-device-param-plausible-values
+ * Run with: npm run e2e:mcp -- device/update/params/ppal-update-device-param-plausible-values
  */
 import { describe, expect, it } from "vitest";
 import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "../helpers/update-device-param-test-helpers";
-import { createTestDevice, setupMcpTestContext } from "../../mcp-test-helpers";
-import { readParam } from "../helpers/device-param-test-helpers";
+} from "../../helpers/update-device-param-test-helpers";
+import {
+  createTestDevice,
+  setupMcpTestContext,
+} from "../../../mcp-test-helpers";
+import { readParam } from "../../helpers/device-param-test-helpers";
 
 const ctx = setupMcpTestContext();
 

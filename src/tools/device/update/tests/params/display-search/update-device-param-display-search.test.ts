@@ -501,7 +501,7 @@ describe("updateDevice - a plug-in that prints the same label at every value", (
 
     expect(expectValueSet(param)).toBe(Number(value));
     expect(paramsOf(result)).toStrictEqual([
-      { id: "ratio-param", name: "Above Ratio" },
+      { id: "ratio-param", name: "Above Ratio", display: "50.0 %" },
     ]);
   });
 

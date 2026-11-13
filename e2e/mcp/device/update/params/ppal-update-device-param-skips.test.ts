@@ -15,14 +15,14 @@
  * An ambiguous name has its own file (device/params/ppal-device-duplicate-param-name),
  * and a quantized param's options are covered by ppal-update-device-param-plausible-values.
  *
- * Run with: npm run e2e:mcp -- device/update/ppal-update-device-param-skips
+ * Run with: npm run e2e:mcp -- device/update/params/ppal-update-device-param-skips
  */
 import { describe, expect, it } from "vitest";
 import {
   createGlueCompressor,
   expectParamRefused,
   writeParam,
-} from "../helpers/update-device-param-test-helpers";
+} from "../../helpers/update-device-param-test-helpers";
 import {
   createMidiTrack,
   createTestDevice,
@@ -30,7 +30,7 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
-} from "../../mcp-test-helpers";
+} from "../../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 

@@ -407,6 +407,7 @@ describe("param-reading", () => {
         value: 0.3,
         min: 0,
         max: 1,
+        display: "50.0 %",
       });
     });
 

@@ -11,14 +11,14 @@
  * Uses: e2e-test-set
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- device/update/ppal-update-device-param-storage
+ * Run with: npm run e2e:mcp -- device/update/params/ppal-update-device-param-storage
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   parseToolResult,
   setConfig,
   setupMcpTestContext,
-} from "../../mcp-test-helpers";
+} from "../../../mcp-test-helpers";
 
 interface LiveApiResult {
   results: unknown[];

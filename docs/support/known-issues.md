@@ -85,18 +85,17 @@ remote script, the plug-in list has the same delay as samples.
 
 **Workaround:** quit and reopen Live. Reopening a Set is not enough.
 
-## Some Plug-in Settings Show Only Raw Values
+## Some Plug-in Settings Can't Be Set in Their Own Units
 
 Some plug-ins, such as ValhallaFreqEcho, don't tell Live what a setting would
-read at other values. For those settings Producer Pal can't use the plug-in's
-own units (Hz, ms, %), so it reads and sets them on Live's internal scale,
-usually 0 to 1. The AI can't tell what a number means in the plug-in. On
-ValhallaFreqEcho, Delay 0.5 is 100 ms, but nothing tells the AI that. Settings
-that pick from a list come through as plain numbers too. ValhallaFreqEcho's
-Delay Sync reads 0 where the plug-in shows "Free".
+read at other values. For those settings Producer Pal can't take the plug-in's
+own units (Hz, ms, %), so it sets them on Live's internal scale, usually 0 to 1.
+The AI sees what the plug-in shows for the current value ("250 ms", "Free"), but
+can't jump straight to a value: it sets a number, reads what the plug-in shows,
+and adjusts. Reaching an exact value can take a few tries.
 
-**Workaround:** check the plug-in's window after a change, and tell the AI what
-you see so it can adjust.
+**Workaround:** load the plug-in as a [hosted plug-in](/guide/plugins), which is
+set in its own units.
 
 ## Live's Memory Grows Over Very Long Sessions
 

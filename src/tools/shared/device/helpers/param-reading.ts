@@ -341,7 +341,8 @@ export function readParameter(
   const minLabel = strForValue(paramApi, rawMin);
   const maxLabel = strForValue(paramApi, rawMax);
 
-  // No display range to read, so report raw units — update-device takes them
+  // No display range to read, so report raw units — update-device takes them.
+  // `display` is what the raw value means; it can't be written back.
   if (isDisplayCollapsed(rawMin, rawMax, minLabel, maxLabel)) {
     const result: Record<string, unknown> = {
       id: paramApi.id,
@@ -349,6 +350,7 @@ export function readParameter(
       value: roundDisplayValue(rawValue, roundParamRaw),
       min: rawMin,
       max: rawMax,
+      display: valueLabel,
     };
 
     addStateFlags(result, paramApi, state, automationState);
@@ -561,6 +563,8 @@ export interface ParamValueResult {
   id: string;
   name: string;
   value: unknown;
+  /** What a raw-unit param shows now (read-only) */
+  display?: string;
   detail?: string;
 }
 
@@ -569,6 +573,8 @@ export interface ParamValueResult {
 export interface LandedParam {
   id: string;
   name: string;
+  /** What a raw-unit param shows now (read-only) */
+  display?: string;
 }
 
 /** What they report for a written pseudo-param, which has no id. */

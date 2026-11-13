@@ -146,6 +146,13 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
     (`live_set loop`) can't use this: a stale read would report the old value as
     a change.
   - `ppal-select` reports the selection the call produced, not an echo.
+- **A device param with no readable display range reports its `display`.** Such
+  a param (see `dev/live-api/device-param-labels.md`) is read and written as a
+  raw `value`; `display` is the text the plug-in shows for it, and can't be
+  written. A write's entry always carries `display`, even when the raw value
+  landed as asked and `value` is left out, because the number doesn't say what
+  the plug-in shows. A label that didn't change is reported as it is, with no
+  `detail`: it usually means the new value shows the same text.
 - **A write to an inactive device param says so.** A param that has no effect in
   the device's current mode (EQ Eight's B side in stereo, a Notch band's Gain, a
   synced LFO's Hz rate) still takes the write, since setting it before switching
