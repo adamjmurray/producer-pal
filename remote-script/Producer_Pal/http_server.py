@@ -262,7 +262,8 @@ class _Handler(BaseHTTPRequestHandler):
 
     def log_request(self, code="-", size="-"):
         # Not logged: a Log.txt line per request, pings included, and the log
-        # call is Live's, made from this worker thread. Errors still log.
+        # call is Live's, made from this worker thread. That covers every reply
+        # sent here, refusals too; http.server's own errors still log.
         pass
 
     def log_message(self, fmt, *args):

@@ -330,18 +330,19 @@ Part of [Skip entries, tool by tool](README.md).
   only some of the chains — ends its reason with `; left 3 empty chains: c1-c3`,
   the chain a `c+` appended included, since the path names that chain only once
   it exists. For create-device, what still ends that way is a refusal only Live
-  or the write can give (a second instrument), and a chain a drum pad path
-  makes; a path that names no place, a missing container, an index past the end
-  and a kind the chain won't take are refused before any chain is made. A failed
-  move or copy names them in its reason instead of `created`. A lone target
-  throws that reason; in a list it is the target's skip `detail`, the way
-  created scenes are named: no device landed, so `ok: false`. Chain and drum-pad
-  copies make no chains through a path (they append their own copy), so they
-  have nothing to name. Wrapping an instrument keeps its undo-then-throw, and
-  the chains `toPath` made before it began stay in the error. An instrument
-  wrap's `toPath` slot reads against the container as the call found it, though
-  Live keeps an instrument ahead of audio effects, so the rack may land before
-  them.
+  or the write can give (a second instrument), a plug-in, Max device or preset
+  of a kind the new chain won't take (its kind shows only once loaded), and a
+  chain a drum pad path makes; a path that names no place, a missing container,
+  an index past the end and a kind the chain won't take are refused before any
+  chain is made. A failed move or copy names them in its reason instead of
+  `created`. A lone target throws that reason; in a list it is the target's skip
+  `detail`, the way created scenes are named: no device landed, so `ok: false`.
+  Chain and drum-pad copies make no chains through a path (they append their own
+  copy), so they have nothing to name. Wrapping an instrument keeps its
+  undo-then-throw, and the chains `toPath` made before it began stay in the
+  error. An instrument wrap's `toPath` slot reads against the container as the
+  call found it, though Live keeps an instrument ahead of audio effects, so the
+  rack may land before them.
 - **create-device, an update-device move or a device copy checks its path before
   making chains.** What the destination refuses is known without making
   anything: no such track, device or chain, a pad path on a rack with no pads

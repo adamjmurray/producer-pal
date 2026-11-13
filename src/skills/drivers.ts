@@ -104,10 +104,11 @@ export const standardDriver = `${HEADER}
  * carve exists for, and at this size the authoring half is a third of the
  * document.
  *
- * The three remaining `## Rules` bullets stay inline as a DECISION, not an
- * oversight: their natural gates are the clip writers, the read tools, and
+ * The four `## Rules` bullets stay inline as a DECISION, not an oversight:
+ * their natural gates are the clip writers, ppal-duplicate, the read tools, and
  * everyone, and each is one line, so a fragment apiece is more include line and
- * more permanent slot name than the text it would save.
+ * more permanent slot name than the text it would save. The cost: a caller
+ * without ppal-duplicate still reads the bullet that names it.
  *
  * The audio bullet left, because its axis isn't size. "Say so if asked" is
  * conversation-only — the one thing NO toolset can decide — and inline driver
