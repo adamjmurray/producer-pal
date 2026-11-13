@@ -18,7 +18,7 @@ what you use. Producer Pal's Built-in Chat UI works with two:
 
 ## Recommended Models
 
-- **Gemini 3.8 Flash** - fast and capable
+- **Gemini 4 Argon** - fast and capable
 - **Claude Opus 5.5** - strong reasoning
 - **GPT-6.1 Sol** - solid all-rounder
 - **Mistral Large** - competitive performance and pricing

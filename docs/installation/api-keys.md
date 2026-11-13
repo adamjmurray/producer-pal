@@ -27,7 +27,7 @@ reach Gemini through an [AI router](./ai-routers), or use
    Google account, then click "Create API Key")
 2. Settings to use in step 3:
    - Provider: **Google**
-   - Model: `gemini-3.8-flash` (or `gemini-4-argon` for more complex tasks)
+   - Model: `gemini-4-argon`
 
 ### OpenAI
 

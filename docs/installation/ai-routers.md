@@ -26,7 +26,7 @@ An AI router with hundreds of models from every big AI company.
 2. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
 3. Settings to use in step 3:
    - Provider: **OpenRouter**
-   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-4-argon`
 
 ### Vercel AI Gateway
 
@@ -42,7 +42,7 @@ company's own prices.
    won't show it again.
 4. Settings to use in step 3:
    - Provider: **Vercel AI Gateway**
-   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-4-argon`
 
 ## 3. Connect
 
