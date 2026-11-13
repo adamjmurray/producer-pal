@@ -9,6 +9,10 @@
  * resize can be tested against Live's behavior rather than a call list.
  */
 import { vi } from "vitest";
+import {
+  DEFAULT_BEATS_PER_SECOND,
+  liveUnloopedSpan,
+} from "#src/test/mocks/registry/mock-clip-resize.ts";
 
 export interface FakeClipState {
   looping: boolean;
@@ -54,16 +58,19 @@ export function fakeArrangementClip(
     span: 4,
     warping: true,
     nextClipStart: Infinity,
-    beatsPerSecond: 2,
+    beatsPerSecond: DEFAULT_BEATS_PER_SECOND,
     trackIndex: 0,
     ...overrides,
   };
 
   const unloopedSpan = (end: number): number =>
-    Math.min(
-      (end - state.startMarker) * (state.warping ? 1 : state.beatsPerSecond),
-      state.nextClipStart - state.startTime,
-    );
+    liveUnloopedSpan({
+      end,
+      startMarker: state.startMarker,
+      inSeconds: !state.warping,
+      beatsPerSecond: state.beatsPerSecond,
+      room: state.nextClipStart - state.startTime,
+    });
 
   const read: Record<string, () => number> = {
     looping: () => (state.looping ? 1 : 0),

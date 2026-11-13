@@ -5,12 +5,26 @@
 
 import { type RegisteredMockObject } from "./mock-registry-helpers.ts";
 
+/** Arrangement beats per second at Live's default 120 BPM. */
+export const DEFAULT_BEATS_PER_SECOND = 2;
+
+interface LiveUnloopedSpanArgs {
+  /** Where the region ends (`loop_end`), in marker units. */
+  end: number;
+  startMarker: number;
+  /** Unwarped audio counts its markers in seconds, everything else in beats. */
+  inSeconds: boolean;
+  beatsPerSecond: number;
+  /** Room before the next clip on the lane, in beats; growth stops there. */
+  room: number;
+}
+
 /**
  * Make a registered arrangement clip answer `looping`, `loop_end` and the
  * markers the way Live does (see arrangement-clip-resize.ts): an unlooped
  * clip's span follows `loop_end`, and a looped one keeps its loop brace through
- * a toggle. Markers count in beats. Earlier `set` behavior is kept for every
- * other property.
+ * a toggle. Unwarped audio's markers count in seconds at 120 BPM, everything
+ * else's in beats. Earlier `set` behavior is kept for every other property.
  * @param clip - A registered clip with `start_time`, `end_time`, `looping`,
  *   `loop_start`, `loop_end`, `start_marker` and `end_marker`
  * @param nextClipStart - Where the next clip on the lane starts, or a function
@@ -31,7 +45,15 @@ export function resizesLikeLiveClip(
     const next =
       typeof nextClipStart === "function" ? nextClipStart() : nextClipStart;
 
-    p.end_time = start + Math.min(end - num("start_marker"), next - start);
+    p.end_time =
+      start +
+      liveUnloopedSpan({
+        end,
+        startMarker: num("start_marker"),
+        inSeconds: num("is_audio_clip") > 0 && num("warping") === 0,
+        beatsPerSecond: DEFAULT_BEATS_PER_SECOND,
+        room: next - start,
+      });
   };
 
   clip.set.mockImplementation((property: string, value: unknown) => {
@@ -63,4 +85,24 @@ export function resizesLikeLiveClip(
       before?.(property, value);
     }
   });
+}
+
+/**
+ * The span Live gives an unlooped clip whose region ends at `end`.
+ * @param args - The region and the room it has
+ * @param args.end - Where the region ends, in marker units
+ * @param args.startMarker - Where it starts, in marker units
+ * @param args.inSeconds - Whether the markers count in seconds
+ * @param args.beatsPerSecond - The rate seconds convert at
+ * @param args.room - Room before the next clip, in beats
+ * @returns The span in beats
+ */
+export function liveUnloopedSpan({
+  end,
+  startMarker,
+  inSeconds,
+  beatsPerSecond,
+  room,
+}: LiveUnloopedSpanArgs): number {
+  return Math.min((end - startMarker) * (inSeconds ? beatsPerSecond : 1), room);
 }
