@@ -118,6 +118,47 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       { path: "t99[3|1]", ok: false, detail: 'no track at toPath "t99"' },
     ]);
   });
+
+  // One destination covers every position, so its refusal must too.
+  it("refuses each position when the one track named is missing", async () => {
+    mockNonExistentObjects();
+
+    registerMidiSource();
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "1|1,5|1",
+      toPath: "t99",
+    });
+
+    expect(result).toStrictEqual([
+      { path: "t99[1|1]", ok: false, detail: 'no track at toPath "t99"' },
+      { path: "t99[5|1]", ok: false, detail: 'no track at toPath "t99"' },
+    ]);
+  });
+
+  it("refuses each position for an envelope clip, which has no arrangement", async () => {
+    mockNonExistentObjects();
+
+    registerMockObject("env1", {
+      path: livePath.returnTrack(0).clipSlot(0).clip(),
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "env1",
+      arrangementStart: "1|1,5|1",
+    });
+
+    const detail = "an envelope clip can only go to a return-track slot";
+
+    expect(result).toStrictEqual([
+      { path: "[1|1]", ok: false, detail },
+      { path: "[5|1]", ok: false, detail },
+    ]);
+  });
 });
 
 // Live returns a bare 1 when it refuses a copy, which reads as its Song object

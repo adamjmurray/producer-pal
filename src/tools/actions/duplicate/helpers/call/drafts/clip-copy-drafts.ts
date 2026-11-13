@@ -258,9 +258,9 @@ function arrangementDrafts(
     const target = plan.requestedTargets[request] as ArrangementTrack | null;
     const beats = plan.requestedPositions[request] as number;
     const label = destinationLabel(
-      where.arrangementTargets[request],
+      ofCopy(where.arrangementTargets, request),
       target,
-      resolved.destinations[request],
+      ofCopy(resolved.destinations, request),
     );
     const slot = where.arrangementRefusals[request];
     const named = addressed(
@@ -285,7 +285,7 @@ function arrangementDrafts(
 
     // A destination that can't take the copy says why.
     if (target == null) {
-      return { named, skip: resolved.refusals[request] as string };
+      return { named, skip: ofCopy(resolved.refusals, request) as string };
     }
 
     const refused = arrangementRefusal(source, target, dropped);
@@ -408,6 +408,14 @@ function unresolvedDestinations(
     ),
     refusals: targets.map(() => null),
   };
+}
+
+// One destination covers every position, so what was named and why it was
+// refused go to every copy too.
+function ofCopy<T>(perDestination: T[], request: number): T | undefined {
+  return perDestination.length === 1
+    ? perDestination[0]
+    : perDestination[request];
 }
 
 /**
