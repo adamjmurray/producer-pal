@@ -19,6 +19,17 @@ function mapped(outlet?: (...args: unknown[]) => void): Rig {
   return rig;
 }
 
+// A rig whose plug-in answers a "get" with the value given for that param.
+function answering(values: Record<number, number>): Rig {
+  const rig: Rig = mapped((_outlet, message, index) => {
+    if (message === "get" && values[index as number] != null) {
+      rig.run(`pval(${String(index)}, ${values[index as number]}, "")`);
+    }
+  });
+
+  return rig;
+}
+
 function sentTo(rig: Rig, box: string): unknown[][] {
   return rig.sent.filter(([name]) => name === box).map(([, ...args]) => args);
 }
@@ -33,7 +44,11 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knoblabel1")).toStrictEqual([["set", "Auto 001"]]);
     expect(sentTo(rig, "knobname3")).toStrictEqual([["set", "Cutoff"]]);
     expect(sentTo(rig, "knobname1")).toStrictEqual([["set", "—"]]);
-    expect(sentTo(rig, "knob3")).toStrictEqual([["active", 1]]);
+    // The plug-in doesn't answer here, so the knob takes its slot's dial.
+    expect(sentTo(rig, "knob3")).toStrictEqual([
+      ["set", 0],
+      ["active", 1],
+    ]);
     expect(sentTo(rig, "knob1")).toStrictEqual([
       ["set", 0],
       ["active", 0],
@@ -57,6 +72,8 @@ describe("wrapper panel knobs", () => {
   it("follows the plug-in's value for knobs on the shown page", () => {
     const rig = mapped();
 
+    rig.run("showKnobs(slotCache.map)");
+    rig.sent.length = 0;
     rig.run('pval(206, 0.4, "500")');
     rig.run('pval(300, 0.9, "9")');
     rig.run('pval(207, 0.1, "1")');
@@ -90,16 +107,75 @@ describe("wrapper panel knobs", () => {
     ]);
   });
 
-  it("ignores the old value a knob sends when a page change activates it", () => {
-    const rig = mapped();
+  // Making a knob active sends the value it holds, which is not a turn.
+  it("ignores the value a knob sends when a page change activates it", () => {
+    const rig = answering({ 206: 0.4, 300: 0.9 });
 
     rig.run("showKnobs(slotCache.map)");
     rig.run("knobpage(1)");
-    // Knob 2 read 0 on page 1 (slot 2 is unmapped); on page 2 it drives slot 18.
-    rig.run("knob(2, 0)");
+    rig.sent.length = 0;
+    // Knob 3 drove slot 3 at 0.4; on page 2 it drives slot 19, which reads 0.9.
+    rig.run("knob(3, 0.9)");
 
-    expect(sentTo(rig, "slotdial18")).toHaveLength(0);
+    expect(sentTo(rig, "slotdial19")).toHaveLength(0);
     expect(rig.run("edited")).toBe(false);
+  });
+
+  it("sets every knob of a param two slots drive before activating it", () => {
+    const rig = answering({ 5: 0.6 });
+    const both =
+      '{ "1": { index: 5, name: "A" }, "2": { index: 5, name: "A" } }';
+
+    rig.run(`slotCache = { at: Date.now(), map: ${both} }`);
+    rig.run("routeSlots(slotCache.map)");
+    rig.run("showKnobs(slotCache.map)");
+
+    for (const knob of ["knob1", "knob2"]) {
+      expect(sentTo(rig, knob).slice(0, 2)).toStrictEqual([
+        ["set", 0.6],
+        ["active", 1],
+      ]);
+    }
+
+    // What each knob sends on becoming active is the value it was just set to.
+    rig.sent.length = 0;
+    rig.run("knob(1, 0.6)");
+    rig.run("knob(2, 0.6)");
+    expect(rig.sent).toHaveLength(0);
+    expect(rig.run("edited")).toBe(false);
+
+    // Both follow the plug-in afterwards.
+    rig.run('pval(5, 0.2, "2")');
+    expect(sentTo(rig, "knob1")).toStrictEqual([["set", 0.2]]);
+    expect(sentTo(rig, "knob2")).toStrictEqual([["set", 0.2]]);
+  });
+
+  it("takes the slot's dial when the plug-in doesn't answer", () => {
+    const rig = mapped();
+
+    rig.dials.slotdial3 = 0.3;
+    rig.run("showKnobs(slotCache.map)");
+
+    expect(sentTo(rig, "knob3")).toStrictEqual([
+      ["set", 0.3],
+      ["active", 1],
+    ]);
+
+    rig.sent.length = 0;
+    rig.run("knob(3, 0.3)");
+    expect(rig.sent).toHaveLength(0);
+  });
+
+  it("takes a turn back to the value the knob started at", () => {
+    const rig = mapped();
+
+    rig.run('pval(206, 0.5, "500")');
+    rig.run("knob(3, 0.51)");
+    // The echo lands inside the drag hold, so the knob isn't set again.
+    rig.run('pval(206, 0.51, "510")');
+    rig.run("knob(3, 0.5)");
+
+    expect(sentTo(rig, "slotdial3")).toStrictEqual([[0.51], [0.5]]);
   });
 
   it("ignores a turn on an unmapped knob", () => {

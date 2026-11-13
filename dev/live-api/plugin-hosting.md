@@ -96,8 +96,11 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
     later, since the wrapper never pushes dials into the plug-in on load.
   - **Gotcha:** making a `live.dial` active sends the value it holds. On a page
     change that was the old page's value, which drove the new page's slots. The
-    script remembers what it last set each knob to and ignores an output equal
-    to it, and sets a knob's value before activating it.
+    script remembers the value each knob holds (last set or last turned to) and
+    ignores an output equal to it. Before activating a knob it sets the value
+    itself, from a read of the param, or the slot's dial when the plug-in
+    doesn't answer. It doesn't wait for the echo: two slots can drive one param,
+    and an echo names only the param.
 
 ## Findings
 
