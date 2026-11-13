@@ -884,7 +884,8 @@ write; its entry gets the `detail`
 
 **The Setup tab's Sample Folder setting and `ppal-library`'s `sample-folder`
 source are gone** (2.6.0). Add the folder to Places in Live's browser instead:
-`ppal-library` finds its files under `source: "user"`. A search sending
+`ppal-library` finds its files under `source: "user"`, once Live has been
+restarted (it reads the library index Live saves on quit). A search sending
 `source: "sample-folder"` (or `sampleFolder`) is refused, and `POST /config`
 ignores a `sampleFolder` field.
 

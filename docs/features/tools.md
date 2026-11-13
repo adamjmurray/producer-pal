@@ -120,7 +120,8 @@ Live, or make sure your standalone Max is up to date. See
   such as sample libraries, are hidden by Live's browser and left out unless you
   ask for them; plug-in presets there stay listed under Plugin
 - Finds the files in any folder you add to Places in Live's browser, listed
-  under User
+  under User. A folder or file added while Live is running may not show up until
+  Live restarts
 - Sort by `use-count` (Live's persistent usage counter, which surfaces what you
   actually use most), `mod-date`, or `name`
 - Enumerate available tags with `action: "list-tags"` so the AI can discover the
