@@ -29,7 +29,8 @@ so you can set all its parameters".
 ## What Works
 
 - **Formats:** VST3, AU and VST2 instruments and effects. When a plug-in is
-  installed in several formats, Producer Pal uses VST3, then AU, then VST2.
+  installed in several formats, Producer Pal uses VST3, then AU, then VST2. A
+  hosted plug-in can't be loaded in another format.
 - **Every parameter**, read and set in the plug-in's own units, by number or by
   the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows is
   refused, with the values it does show.

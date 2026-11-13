@@ -24,7 +24,10 @@ standard setup. It adds:
   devices by name, like "add Pro-Q 4 to the bass track". The AI finds them with
   the [Library](/features/tools#ppal-library) tool. Without the script,
   [Create Device](/features/tools#ppal-create-device) only adds Live's native
-  devices. [Hosted plug-ins](/guide/plugins) need it too.
+  devices. [Hosted plug-ins](/guide/plugins) need it too. When a plug-in is
+  installed in several formats, its name loads the VST3, then the AU, then the
+  VST2. To get another one, give the AI its path in Live's browser, like
+  `Plug-Ins/AUv2/FabFilter/Pro-Q 4`.
 - **Presets**: create a device or rack from a preset (`.adv` or `.adg`),
   including drum kits from your Packs, or swap a preset onto a device with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
