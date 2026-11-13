@@ -89,6 +89,17 @@ describe("handleArrangementLengthening", () => {
     expect(reasons.landed.has("1")).toBe(true);
   });
 
+  it("says a looped clip is unchanged when Live let it grow no further", () => {
+    const { result, reasons } = lengthen(16, { nextClipStart: 12 });
+
+    expect(result).toStrictEqual([]);
+    expect(joinedClipReason(reasons, "1")).toBe(
+      "arrangementLength unchanged: Live stopped the clip there",
+    );
+    expect(reasons.refused.has("1")).toBe(true);
+    expect(reasons.landed.has("1")).toBe(false);
+  });
+
   it("clears and grows an unlooped clip through loop_end", () => {
     const { state, clear } = lengthen(16, { looping: false });
 

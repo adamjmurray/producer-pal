@@ -14,6 +14,7 @@ import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-
 import {
   noteClipReason,
   noteLanded,
+  refuseClipWork,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { clearAheadOfClip } from "./clear-ahead-of-clip.ts";
@@ -119,6 +120,16 @@ export function handleArrangementLengthening({
   );
 
   // Clearing leaves nothing to stop it, so this is Live refusing the span.
+  if (landed <= currentArrangementLength + SAME_TIME_EPSILON) {
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `arrangementLength unchanged: ${LIVE_STOPPED_IT}`,
+    );
+
+    return [];
+  }
+
   if (landed < arrangementLengthBeats - SAME_TIME_EPSILON) {
     noteLandedShort(reasons, clip.id, landed, LIVE_STOPPED_IT);
   }
