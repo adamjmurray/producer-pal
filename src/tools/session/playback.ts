@@ -123,8 +123,8 @@ interface PlaybackChecked extends PlaybackCall {
   plan: TimelinePlan;
   writes: TimelineWrites;
   state: PlaybackState;
-  /** The tracks stop-session-clips has already stopped */
-  stopped: Set<number>;
+  /** The tracks stop-session-clips has already stopped, by Live path */
+  stopped: Set<string>;
 }
 
 const PLAY_SESSION_CLIPS = "play-session-clips";
@@ -384,13 +384,17 @@ function writeClip(
   const clipId = clip.exists() ? clip.id : undefined;
   let detail: string | undefined;
 
-  // A return track's slot only ever holds an envelope clip: no group slots,
-  // and its own stop, since the track-wide stop is for tracks with a grid.
+  // A return track's slot only ever holds an envelope clip: no group slots.
   if (isReturnSlotPosition(position)) {
-    slot.call(action === PLAY_SESSION_CLIPS ? "fire" : "stop");
-    step.call.landed(
-      action === PLAY_SESSION_CLIPS ? CLIPS_FIRED : CLIPS_STOPPED,
-    );
+    if (action === PLAY_SESSION_CLIPS) {
+      slot.call("fire");
+      step.call.landed(CLIPS_FIRED);
+    } else {
+      stopTrackOnce(
+        LiveAPI.from(livePath.returnTrack(position.returnIndex)),
+        step,
+      );
+    }
 
     return {
       ...(clipId != null && { id: clipId }),
@@ -409,19 +413,14 @@ function writeClip(
 
     slot.call("fire");
     step.call.landed(CLIPS_FIRED);
-  } else if (!stopped.has(position.trackIndex)) {
+  } else {
     const track = LiveAPI.from(livePath.track(position.trackIndex));
 
-    if (isGroupTrack(track)) {
+    if (!stopped.has(track.path) && isGroupTrack(track)) {
       detail = stoppedGroupSlotDetail(track);
     }
 
-    // A track stops all its clips at once, so two slots on it are one Live call.
-    // Not ClipSlot.stop or Clip.stop: they can't cancel a queued launch.
-    track.call("stop_all_clips");
-    // Only once it went through: after a throw, the next slot tries again.
-    stopped.add(position.trackIndex);
-    step.call.landed(CLIPS_STOPPED);
+    stopTrackOnce(track, step);
   }
 
   return {
@@ -429,6 +428,26 @@ function writeClip(
     path,
     ...(detail != null && { detail }),
   };
+}
+
+/**
+ * Stop every clip on a track, unless this call already has. A track stops all
+ * its clips at once, so two slots on it are one Live call. Not ClipSlot.stop or
+ * Clip.stop: they can't cancel a queued launch, on a return track either.
+ * @param track - The track, regular or return
+ * @param step - The slot's step in the call
+ */
+function stopTrackOnce(track: LiveAPI, step: Step<PlaybackChecked>): void {
+  const { stopped } = step.checked;
+
+  if (stopped.has(track.path)) {
+    return;
+  }
+
+  track.call("stop_all_clips");
+  // Only once it went through: after a throw, the next slot tries again.
+  stopped.add(track.path);
+  step.call.landed(CLIPS_STOPPED);
 }
 
 /**

@@ -42,8 +42,9 @@ Part of [Skip entries, tool by tool](README.md).
   `stopped the tracks in this group track: t10 (id 7), t11 (id 8)`.
 - **playback fires and stops an envelope clip** (Live 13) by path or by id like
   any session clip: its entry is `{id, path: "rt0/s0"}`. A return track's slot
-  stops through its own `stop`, since a return track has no group slots and no
-  track-wide stop here; an empty one is `no clip to play` like any empty slot.
+  stops through its track's `stop_all_clips`, like a regular track's, since the
+  slot's own `stop` can't cancel a queued launch there either. A return track
+  has no group slots; an empty one is `no clip to play` like any empty slot.
   `play-scene` takes `rt0/s3`, or an envelope clip's id, as the scene it sits
   in. Live 12 refuses a return slot with `return-track clips need Live 13`.
 - **select has one target**: nothing to list, so a refusal or a failed selection

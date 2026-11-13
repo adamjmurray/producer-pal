@@ -48,17 +48,16 @@ describe("ppal-playback - envelope clips", () => {
     },
   );
 
+  // The slot's own stop can't cancel a queued launch; the track's can.
   it.each([
     ["path", { path: "rt1/s0" }],
     ["id", { id: "with-env" }],
-  ])("stops a clip named by %s, on its own slot", (_how, target) => {
+  ])("stops a clip named by %s through its return track", (_how, target) => {
     const result = playback({ action: "stop-session-clips", ...target });
 
     expect(result.clip).toStrictEqual({ id: "with-env", path: "rt1/s0" });
-    expect(world.slots[1]?.[0]?.call).toHaveBeenCalledWith("stop");
-    expect(world.returnTracks[1]?.call).not.toHaveBeenCalledWith(
-      "stop_all_clips",
-    );
+    expect(world.returnTracks[1]?.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(world.slots[1]?.[0]?.call).not.toHaveBeenCalledWith("stop");
   });
 
   it("launches clips on both return tracks beside a regular clip", () => {
