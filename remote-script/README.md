@@ -86,12 +86,14 @@ got to `~/.producer-pal/remote-script-port.txt`, even when it's 3349, and leaves
 the file on shutdown. If no port is free it logs that and doesn't serve.
 
 Producer Pal uses 3349 when the remote script answers there, else the port in
-the file, else 3349 (2.4.0 and earlier write no file). With two Lives, every
-Producer Pal therefore talks to the one on 3349: it can't tell which Live it is
-in. It only trusts a `/ping` that has `script_version`, so another program on a
-port counts as "not running". It keeps the port it found until a call finds
-nothing listening there, then looks again; a busy Live that is slow to answer a
-ping doesn't lose it. `PPAL_REMOTE_SCRIPT_PORT` overrides all of it.
+the file when it answers there, else 3349 (2.4.0 and earlier write no file).
+With two Lives, every Producer Pal therefore talks to the one on 3349: it can't
+tell which Live it is in. It only trusts a `/ping` that has `script_version`, so
+another program on a port counts as "not running" and is sent nothing else: the
+file may be left over, with something else on its port by now. It keeps a port
+the script answered on until a call finds nothing or another program there, then
+looks again; a busy Live that is slow to answer a ping doesn't lose it.
+`PPAL_REMOTE_SCRIPT_PORT` overrides all of it.
 
 ## Routes
 

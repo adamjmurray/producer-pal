@@ -84,9 +84,9 @@ How each tool words this to the model: the
 ## Port
 
 The client uses 3349 if the script answers there, else the port in
-`~/.producer-pal/remote-script-port.txt`, else 3349. `PPAL_REMOTE_SCRIPT_PORT`
-overrides it (tests). Details in the script README's Port section;
-`port/remote-script-port.ts`.
+`~/.producer-pal/remote-script-port.txt` if it answers there, else 3349.
+`PPAL_REMOTE_SCRIPT_PORT` overrides it (tests). Details in the script README's
+Port section; `port/remote-script-port.ts`.
 
 ## Skills
 

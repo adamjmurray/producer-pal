@@ -177,17 +177,17 @@ export async function remoteScriptRequest({
     fixedPort == null ? await findPort() : { port: fixedPort, info: null };
   const target = found.port;
 
+  // Another program holds the port: it must not get the request.
+  if (found.info?.kind === "other") {
+    return { available: false, otherAnswered: true };
+  }
+
   // A probe (`port`) is how the version is learned, so it isn't held to it. A
   // fixed port is a test's: it is checked only against a version already known.
   // A version that reads too old is asked for again, since the script may have
   // been replaced on the same port; the call is refused either way. Finding
   // the port may have just pinged it.
-  if (
-    port == null &&
-    fixedPort == null &&
-    found.info == null &&
-    versionNeedsLearning(target)
-  ) {
+  if (fixedPort == null && found.info == null) {
     await learnScriptVersion(
       target,
       expiresInMs == null ? null : expiresInMs - (Date.now() - started),
@@ -213,9 +213,9 @@ export async function remoteScriptRequest({
   );
 
   if (!reply.available) {
-    // Nothing listening: Live may have restarted onto another port. Any
-    // answer, even an odd one, keeps the port.
-    if (fixedPort == null && reply.otherAnswered !== true) {
+    // Nothing listening, or another program by now: Live may have restarted
+    // onto another port.
+    if (fixedPort == null) {
       forgetRemoteScriptPort();
     }
 
@@ -240,8 +240,8 @@ export async function remoteScriptRequest({
 
 /**
  * The port requests go to. Probes 3349 first, so a second Live's script on
- * another port doesn't take over this one's requests, then keeps the port until
- * a call finds nothing listening there.
+ * another port doesn't take over this one's requests. A port the script
+ * answered on is kept until a call finds it gone from there.
  * @returns The port to send to
  */
 export async function resolveRemoteScriptPort(): Promise<number> {
@@ -286,9 +286,9 @@ function versionNeedsLearning(port: number): boolean {
 const learning = new Map<number, Promise<PingResult>>();
 
 /**
- * Ping a port to learn its script's version, which keeps the version with the
- * port: it costs one ping, not one per call. Calls for the same port share a
- * ping; one for another port makes its own.
+ * Ping a port to learn its script's version, unless it is known and new
+ * enough. The version is kept with the port: one ping, not one per call. Calls
+ * for the same port share a ping; one for another port makes its own.
  * @param port - The port requests go to
  * @param leftMs - How much of the caller's time is left, or null for no limit;
  *   the ping waits no longer, and isn't made when nothing is left
@@ -297,7 +297,7 @@ async function learnScriptVersion(
   port: number,
   leftMs: number | null,
 ): Promise<void> {
-  if (leftMs != null && leftMs <= 0) {
+  if (!versionNeedsLearning(port) || (leftMs != null && leftMs <= 0)) {
     return;
   }
 
@@ -486,7 +486,7 @@ export async function remoteScriptPing(): Promise<RemoteScriptPing> {
     return lastGoodPing.ping;
   }
 
-  if (kind === "none") {
+  if (kind === "none" || kind === "other") {
     forgetRemoteScriptPort();
   }
 

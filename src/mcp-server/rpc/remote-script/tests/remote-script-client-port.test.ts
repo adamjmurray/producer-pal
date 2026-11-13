@@ -149,6 +149,44 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     expect(reply.available).toBe(true);
   });
 
+  it("sends a left-over file's port nothing but a ping when another program holds it", async () => {
+    const stranger = await standIn(NOT_OURS);
+
+    ports.file = stranger.port;
+
+    expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
+      available: false,
+    });
+    expect(stranger.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
+  });
+
+  it("finds a script that starts on 3349 after a left-over file's port wasn't it", async () => {
+    const stranger = await standIn(NOT_OURS);
+
+    ports.file = stranger.port;
+    await remoteScriptRequest({ route: "/list" });
+
+    const started = await standIn(OURS);
+
+    ports.preferred = started.port;
+    const reply = await remoteScriptRequest({ route: "/list" });
+
+    expect(reply.available).toBe(true);
+    expect(started.requests.map((r) => r.route)).toContain("/list");
+  });
+
+  it("sends 3349 nothing but a ping when another program holds it and there is no file", async () => {
+    const stranger = await standIn(NOT_OURS);
+
+    ports.preferred = stranger.port;
+
+    expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
+      available: false,
+      otherAnswered: true,
+    });
+    expect(stranger.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
+  });
+
   it("goes to 3349 when its ping is slow, not to the file's port", async () => {
     const { preferred, other } = await preferredAndFilePorts(null);
 
@@ -272,6 +310,57 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
 
       expect(other.requests).toStrictEqual([]);
       expect(fake.requests.at(-1)?.route).toBe("/list");
+    });
+
+    /**
+     * A script on 3349 that another program replaces once `taken.over` is set,
+     * with the script back on the file's port.
+     * @returns The switch, and the stand-in on the file's port
+     */
+    async function takenOverLater(): Promise<{
+      taken: { over: boolean };
+      moved: FakeRemoteScript;
+    }> {
+      const taken = { over: false };
+      const first = await standIn(() =>
+        taken.over ? { raw: "<html>dev server</html>" } : OURS,
+      );
+      const moved = await standIn(OURS);
+
+      ports.preferred = first.port;
+      ports.file = moved.port;
+
+      return { taken, moved };
+    }
+
+    it("looks again after another program answers a request on the port", async () => {
+      const { taken, moved } = await takenOverLater();
+
+      await remoteScriptRequest({ route: "/list" });
+      taken.over = true;
+
+      expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
+        available: false,
+        otherAnswered: true,
+      });
+
+      const reply = await remoteScriptRequest({ route: "/list" });
+
+      expect(reply.available).toBe(true);
+      expect(moved.requests.map((r) => r.route)).toContain("/list");
+    });
+
+    it("looks again after another program answers a ping on the port", async () => {
+      const { taken, moved } = await takenOverLater();
+
+      await remoteScriptPing();
+      taken.over = true;
+
+      const after = await remoteScriptPing();
+      const later = await remoteScriptPing();
+
+      expect([after.running, later.running]).toStrictEqual([false, true]);
+      expect(moved.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
     });
 
     it("looks again after the port refuses a connection", async () => {

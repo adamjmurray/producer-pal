@@ -6,7 +6,7 @@
 // Which port the remote script is on. Another Live's script may hold 3349 and
 // ours sit on a later port, so 3349 wins whenever it answers as the script, or
 // this Live's requests could land in the other Live's Set. Only when it doesn't
-// do we use the port file.
+// do we try the port file's port.
 
 import {
   REMOTE_SCRIPT_DEFAULT_PORT,
@@ -48,9 +48,10 @@ export function remoteScriptPortFromEnv(): number | null {
 
 /**
  * Find the remote script's port: PPAL_REMOTE_SCRIPT_PORT, else 3349 if the
- * script answers there, else the port file, else 3349. The port is kept until
- * `forgetRemoteScriptPort`, so a Live too busy to answer a ping can't lose it.
- * A 3349 that is merely slow is used but not kept.
+ * script answers there, else the port file's if it answers there, else 3349.
+ * A port that answered as the script is kept until `forgetRemoteScriptPort`,
+ * so a Live too busy to answer a ping can't lose it. Any other port is used
+ * but not kept, so the next call looks again.
  * @param probe - Asks a port whether the remote script answers there
  * @returns The port, and the probe's `info` when it probed that port just now
  */
@@ -78,32 +79,53 @@ export async function resolveRemoteScriptPort<T>(
 }
 
 /**
- * Probe 3349, then fall back to the port file.
+ * Probe 3349, then the port file's port.
  * @param probe - Asks a port whether the remote script answers there
- * @returns The port, and the probe's `info` when it probed that port just now
+ * @returns The port, and the probe's `info` for it
  */
 async function probePorts<T>(
   probe: (port: number) => Promise<ProbeResult<T>>,
 ): Promise<FoundPort<T>> {
-  const result = await probe(REMOTE_SCRIPT_DEFAULT_PORT);
+  const preferred = await probeOne(REMOTE_SCRIPT_DEFAULT_PORT, probe);
 
-  if (result.kind === "slow") {
-    return { port: REMOTE_SCRIPT_DEFAULT_PORT, info: result.info };
+  if (preferred.usable) {
+    return preferred.found;
   }
 
-  if (result.kind === "ours") {
-    remembered = REMOTE_SCRIPT_DEFAULT_PORT;
-
-    return { port: remembered, info: result.info };
-  }
-
+  // The file can be left over from a Live that has quit, with another program
+  // on its port by now, so its port has to answer as the script too.
   const fromFile = remoteScriptPortFromFile();
 
-  remembered = fromFile ?? REMOTE_SCRIPT_DEFAULT_PORT;
+  if (fromFile != null && fromFile !== REMOTE_SCRIPT_DEFAULT_PORT) {
+    const filed = await probeOne(fromFile, probe);
+
+    if (filed.usable) {
+      return filed.found;
+    }
+  }
+
+  return preferred.found;
+}
+
+/**
+ * Probe one port, and keep it when the script answers there.
+ * @param port - The port to ask
+ * @param probe - Asks a port whether the remote script answers there
+ * @returns What was found, and whether the script is there (answering or slow)
+ */
+async function probeOne<T>(
+  port: number,
+  probe: (port: number) => Promise<ProbeResult<T>>,
+): Promise<{ usable: boolean; found: FoundPort<T> }> {
+  const result = await probe(port);
+
+  if (result.kind === "ours") {
+    remembered = port;
+  }
 
   return {
-    port: remembered,
-    info: remembered === REMOTE_SCRIPT_DEFAULT_PORT ? result.info : null,
+    usable: result.kind === "ours" || result.kind === "slow",
+    found: { port, info: result.info },
   };
 }
 
