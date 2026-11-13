@@ -33,8 +33,9 @@ describe("the kind of a device", () => {
   });
 });
 
-// A return chain is a chain of its rack, not a track: it is judged by the
-// rack, so a mock that reads like an audio track must not make it one.
+// A return chain is a chain of its rack, not a track, so a mock that reads
+// like an audio track must not make it one. It takes audio effects only,
+// whatever its rack takes: Live refuses an instrument or MIDI effect there.
 describe("a rack's return chain", () => {
   const RACK = "live_set tracks 0 devices 0";
 
@@ -58,13 +59,16 @@ describe("a rack's return chain", () => {
     return LiveAPI.from(`${RACK} return_chains 0`);
   }
 
-  it("takes any kind a rack that takes any kind takes", () => {
-    expect(misfitReason("Operator", "instrument", returnChainOf(1))).toBeNull();
+  it("takes an audio effect", () => {
+    expect(misfitReason("Reverb", "audio-effect", returnChainOf(1))).toBeNull();
   });
 
-  it("is judged by an audio effect rack, as a chain", () => {
-    expect(misfitReason("Operator", "instrument", returnChainOf(2))).toBe(
-      'chain t0/d0/rc0 (id return-chain) takes only audio effects; "Operator" is an instrument',
+  it.each([
+    ["Operator", "instrument", "an instrument"],
+    ["Arpeggiator", "midi-effect", "a MIDI effect"],
+  ] as const)("refuses %s in a Drum Rack's", (name, kind, what) => {
+    expect(misfitReason(name, kind, returnChainOf(1))).toBe(
+      `return chain t0/d0/rc0 (id return-chain) takes only audio effects; "${name}" is ${what}`,
     );
   });
 });

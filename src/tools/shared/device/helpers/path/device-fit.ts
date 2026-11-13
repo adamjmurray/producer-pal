@@ -40,6 +40,7 @@ const KIND_BY_DEVICE_TYPE: Record<number, DeviceKind> = {
 };
 
 const CHAIN_TAIL = / (?:return_)?chains \d+$/;
+const RETURN_CHAIN_TAIL = / return_chains \d+$/;
 
 /**
  * The kind of a native device, from its name.
@@ -201,7 +202,12 @@ function trackRestriction(container: LiveAPI): Restriction | null {
 }
 
 // Only an audio or MIDI effect rack limits its chains; the others take all.
+// A return chain takes audio effects only: Live refuses anything else there.
 function chainRestriction(chain: LiveAPI): Restriction | null {
+  if (RETURN_CHAIN_TAIL.test(chain.path)) {
+    return { place: "return chain", only: AUDIO_EFFECT };
+  }
+
   return rackRestriction(LiveAPI.from(chain.path.replace(CHAIN_TAIL, "")));
 }
 
