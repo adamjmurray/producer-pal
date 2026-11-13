@@ -10,7 +10,7 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
-  it("should preserve envelopes by tiling when exposing hidden content", async () => {
+  it("lengthens the clip itself to reveal hidden content", async () => {
     const trackIndex = 0;
     const handles = setupArrangementClipPath(trackIndex, [
       "789",
@@ -47,9 +47,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       arrangementLength: "1bar+n5/8", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });
 
-    // Should tile the content (note: updateClip doesn't actually do this yet, this tests the intent)
-    const firstResult = Array.isArray(result) ? result[0] : result;
-
-    expect(firstResult).toBeDefined();
+    // The one clip grows in place, keeping its id and envelopes.
+    expect(result).toStrictEqual(expect.objectContaining({ id: "789" }));
   });
 });

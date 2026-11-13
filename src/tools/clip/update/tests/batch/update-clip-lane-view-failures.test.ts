@@ -114,7 +114,8 @@ describe("a lane view after a write that threw", () => {
       context(),
     ).catch((error: unknown) => error);
 
-    expect(String(result)).toContain("Live refused loop_end");
+    // The clearing landed before the throw, so the clip keeps its entry.
+    expect(JSON.stringify(result)).toContain("Live refused loop_end");
 
     track?.call.mockClear();
     clearArrangementRange(

@@ -30,7 +30,7 @@ import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-
  * @param context - Context object with silenceWavPath
  * @param sourceClip - The clip, when the caller already resolved it
  * @param tracks - The destination tracks, keyed by index
- * @returns The copy — one clip, or the destination track's path with the tiled
+ * @returns The copy — one clip, or the destination track's path with the
  *   clips under it — or why the destination got none
  */
 export async function duplicateClipToArrangement(
@@ -103,7 +103,7 @@ export async function duplicateClipToArrangement(
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
-    // clip, matching the guards in arrangement-tiling and update-clip.
+    // clip, matching the guard in update-clip.
     if (newClip.exists()) {
       duplicatedClips.push(
         ...withLaneWriteNote(clip, [finishCopy(newClip, name, color)]),
@@ -112,12 +112,12 @@ export async function duplicateClipToArrangement(
   }
 
   // Nothing landed: Live declines a duplicate it can't do without raising, and
-  // the tiling helpers report what they couldn't place.
+  // the length helpers report what they couldn't place.
   if (duplicatedClips.length === 0) {
     return { refused: "Live made no copy there" };
   }
 
-  // One clip directly, or the track the tiled copies share
+  // One clip directly, or the track the copies share
   const [single] = duplicatedClips;
 
   return {

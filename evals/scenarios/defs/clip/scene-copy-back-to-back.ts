@@ -18,8 +18,7 @@
  * Starting at bar 17, the scenes begin at bars 17, 19 and 23.
  *
  * Graded on where clips end up on each track, however the model got them
- * there. A scene copy tiles a short clip to the scene's length, so Drums may
- * also carry a second 1-bar clip at bar 24.
+ * there.
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -77,25 +76,18 @@ async function seedScenes(mcpClient: Client): Promise<void> {
 
 /**
  * Check one track's arrangement: every `required` start is there, and nothing
- * starts anywhere outside `required` plus `allowed`. A scene placed by the
+ * starts anywhere else. A scene placed by the
  * wrong length (scene 3 at bar 21, say) shows up as a stray start.
  *
  * @param track - Track index
  * @param required - Bar|beat starts the track must have
- * @param allowed - Further starts that are fine
  * @returns A state assertion over the track's arrangement clips
  */
-function assertStarts(
-  track: number,
-  required: string[],
-  allowed: string[] = [],
-): EvalAssertion {
+function assertStarts(track: number, required: string[]): EvalAssertion {
   const problem = (result: unknown): string | null => {
     const starts = clipStarts(asArrangementTrack(result).arrangementClips);
     const missing = required.filter((start) => !starts.includes(start));
-    const stray = starts.filter(
-      (start) => !required.includes(start) && !allowed.includes(start),
-    );
+    const stray = starts.filter((start) => !required.includes(start));
 
     if (missing.length === 0 && stray.length === 0) {
       return null;
@@ -131,7 +123,7 @@ export const sceneCopyBackToBack: EvalScenario = {
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
     // Scene 1 at 17, scene 2 at 19 (after 2 bars), scene 3 at 23 (after 4 more).
-    assertStarts(DRUMS, ["17|1", "23|1"], ["24|1"]),
+    assertStarts(DRUMS, ["17|1", "23|1"]),
     assertStarts(BASS, ["19|1"]),
     assertStarts(LEAD, ["17|1", "23|1"]),
 

@@ -27,8 +27,7 @@ export interface ContentSegment {
  * The content playback goes through over `lengthBeats` of arrangement. A looped
  * clip plays from its start marker to the loop end (the pre-roll included),
  * then wraps to the loop start for the rest. An unlooped clip plays on from its
- * start marker. Lengthening tiles carry the same loop phase, so a longer copy
- * reads as one long looped clip.
+ * start marker. A lengthened copy plays the same way, as one long looped clip.
  * @param markers - The clip's markers
  * @param lengthBeats - How long the copy plays
  * @yields The stretches in playing order, each cut so none passes the length.

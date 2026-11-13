@@ -24,7 +24,7 @@ export interface LandingLog {
   landed: Map<string, LandedSpan>;
   /**
    * Every span written, whoever's clip it holds: the landings, a landing that
-   * failed but may have cleared a range, and a resize's tiles and temp clips.
+   * failed but may have cleared a range, and what a resize grows over.
    */
   written: LandedSpan[];
 }
@@ -103,7 +103,7 @@ export function recordFailedLanding(
 
 /**
  * Record what a resize is about to write: between the clip's end and its new
- * end, where any tiles or temp clips go. Not the clip's own span, or a clip
+ * end, which it clears and grows over. Not the clip's own span, or a clip
  * resized to its own length and then front-cut could never claim its rest.
  * Call it just before the resize. It belongs to no entry's clip, so it only
  * keeps earlier landings from claiming a piece there.

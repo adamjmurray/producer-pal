@@ -227,16 +227,32 @@ describe("performSplitting with a note across a cut", () => {
     expect(said).toStrictEqual(["1 note crossed a cut and now ends at it"]);
   });
 
+  /** A clip at beat 100 playing a 4-beat loop three times. */
+  const loopedThrice: SplittingClipProps = {
+    looping: true,
+    startTime: 100,
+    endTime: 112,
+    loopEnd: 4,
+  };
+
+  it("finds a cut in the first pass of a loop", () => {
+    // 2 beats in, before the loop first repeats.
+    const { said } = cutWithNotes(
+      loopedThrice,
+      [
+        { start_time: 1, duration: 2 },
+        { start_time: 2, duration: 1 },
+      ],
+      [102],
+    );
+
+    expect(said).toStrictEqual(["1 note crossed a cut and now ends at it"]);
+  });
+
   it("wraps a cut in a later loop pass to its place in the loop", () => {
     // 4-beat loop: the cut 6 beats in is 2 beats into the second pass.
-    const looped: SplittingClipProps = {
-      looping: true,
-      startTime: 100,
-      endTime: 112,
-      loopEnd: 4,
-    };
     const { said } = cutWithNotes(
-      looped,
+      loopedThrice,
       [
         { start_time: 1, duration: 2 },
         { start_time: 3, duration: 2 },

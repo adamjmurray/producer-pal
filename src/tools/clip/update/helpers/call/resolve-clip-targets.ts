@@ -452,8 +452,8 @@ function laneCovers(
   }
 
   const from = startBeats ?? span.start;
-  // update-clip never tiles on a take lane; on the main lane the clip lands at
-  // the length it is resized to.
+  // Take-lane clips refuse arrangementLength; on the main lane the clip lands
+  // at the length it is resized to.
   const length =
     landing.takeLane != null || lengthBeats == null
       ? span.end - span.start

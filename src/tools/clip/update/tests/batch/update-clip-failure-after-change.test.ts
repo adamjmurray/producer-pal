@@ -11,25 +11,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
-  requireMockObject,
-  requireMockTrack,
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   deleteMockObject,
-  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
-  setupArrangementClipPath,
   setupMidiClipMock,
-  setupMockProperties,
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { setUpArrangementPair } from "../move-order/arrangement-pair-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  registerNeighbourClip,
+  setupResizableClip,
+} from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { type ProcessSingleClipUpdateParams } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { writeClipProperties } from "#src/tools/clip/update/helpers/batch/write-clip-properties.ts";
@@ -327,40 +326,47 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
     ]);
   });
 
-  it("reports a tile that landed before its start marker was refused", async () => {
-    const clips = setupArrangementClipPath(0, ["789", "1000", "1001"]);
-    const track = requireMockTrack(0);
+  // The clear ahead of the clip landed, and the clip was unlooped for the
+  // resize, when Live refused its new span: it is looped again.
+  it("keeps the clip's entry when Live refuses a lengthening partway", async () => {
+    const { sourceClip, track } = setupResizableClip();
+    const resize = sourceClip.set.getMockImplementation() as (
+      property: string,
+      value: unknown,
+    ) => void;
 
-    setupMockProperties(clips.get("789") as RegisteredMockObject, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 4.0,
-      loop_start: 0.0,
-      loop_end: 4.0,
-      start_marker: 0.0,
-      end_marker: 4.0,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex: 0,
+    registerNeighbourClip(track);
+    overrideCall(track, function (method) {
+      if (method === "create_midi_clip") {
+        track.properties.arrangement_clips = children("789");
+      }
+
+      return USE_CALL_FALLBACK;
     });
-    setupMockProperties(requireMockObject("live_set"), { tracks: ["id", 0] });
-    track.properties.arrangement_clips = children("789");
-    failOnSet(clips.get("1000") as RegisteredMockObject, "start_marker");
+    // Unlooped for the resize, then Live refuses the new span.
+    sourceClip.set.mockImplementation((property: string, value: unknown) => {
+      if (property === "loop_end" && sourceClip.properties.looping === 0) {
+        throw new Error(LIVE_FAILURE);
+      }
 
-    const result = await updateClip({ id: "789", arrangementLength: "3bar" });
+      resize(property, value);
+    });
 
-    // The first tile exists in the Set although its marker write threw, and the
-    // entries name it.
-    expect(result).toStrictEqual([
-      {
-        id: "789",
-        path: "t0[1|1]",
-        detail: `arrangementLength didn't finish: ${LIVE_FAILURE}`,
-      },
-      { id: "1000", path: "t0[2|1]" },
-    ]);
+    const result = await updateClip({
+      id: "789",
+      arrangementLength: "3bar",
+      name: "X",
+    });
+
+    expect(result).toStrictEqual({
+      id: "789",
+      path: "t0[1|1]",
+      detail: `${LIVE_FAILURE}; already changed: name, overwrote the clip at t0[2|1]`,
+    });
+    // Looped again, its loop brace kept.
+    expect(sourceClip.properties).toStrictEqual(
+      expect.objectContaining({ looping: 1, loop_start: 0, loop_end: 4 }),
+    );
   });
 });
 

@@ -97,10 +97,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     arrangementLength: param(z.string().optional(), {
       default:
         "duration, e.g. '4bar' (see Skills), or comma-separated one per clip. Arrangement clips only; song meter. " +
-        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+        "Resizes the clip in place; a looping clip repeats its loop across the span",
       smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per clip. Arrangement clips only; song meter. " +
-        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+        "Resizes the clip in place; a looping clip repeats its loop across the span",
     }),
     arrangementSplit: param(z.string().optional(), {
       default:

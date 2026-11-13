@@ -42,11 +42,16 @@ function run(opts: RunOpts) {
   reasons = newClipReasons();
 
   const set = vi.fn();
+  const props: Record<string, unknown> = {
+    start_marker: opts.clipStartMarker,
+    ...opts.props,
+  };
   const clip = {
     id: "clip-1",
-    getProperty: vi.fn((p: string) => opts.props[p]),
+    getProperty: vi.fn((p: string) => props[p]),
     set,
   } as unknown as LiveAPI;
+  const clearAhead = vi.fn();
 
   const spy = vi
     .spyOn(tilingHelpers, "createAudioClipInSession")
@@ -65,12 +70,12 @@ function run(opts: RunOpts) {
     arrangementLengthBeats: opts.arrangementLengthBeats,
     currentArrangementLength: opts.currentArrangementLength,
     currentEndTime: opts.currentEndTime ?? 0,
-    clipStartMarker: opts.clipStartMarker,
     track: {} as unknown as LiveAPI,
+    clearAhead,
     reasons,
   });
 
-  return { result, set, spy };
+  return { result, set, spy, clearAhead };
 }
 
 const AUDIO_PROPS = { warping: 0, end_marker: 10, loop_start: 2, loop_end: 10 };
@@ -104,6 +109,7 @@ interface WarpedOpts {
   fileContentBoundary: number;
   currentArrangementLength: number;
   arrangementLengthBeats: number;
+  currentEndTime?: number;
 }
 
 /**
@@ -124,6 +130,7 @@ function warped(o: WarpedOpts) {
     currentArrangementLength: o.currentArrangementLength,
     arrangementLengthBeats: o.arrangementLengthBeats,
     fileContentBoundary: o.fileContentBoundary,
+    ...(o.currentEndTime != null && { currentEndTime: o.currentEndTime }),
   });
 }
 
@@ -165,6 +172,36 @@ describe("handleUnloopedLengthening", () => {
       expect(set).toHaveBeenCalledWith("end_marker", 8);
       expect(set).toHaveBeenCalledWith("loop_end", 10); // loop_start(2) + 8
       expect(result).toStrictEqual([{ id: "clip-1" }]);
+    });
+  });
+
+  describe("MIDI clip read-back", () => {
+    it("says where it landed when Live stopped it short", () => {
+      run({
+        props: { end_marker: 4, loop_start: 0, end_time: 20 },
+        isAudioClip: false,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 4,
+        currentEndTime: 12,
+        clipStartMarker: 0,
+      });
+
+      expect(clipReason()).toBe(
+        "arrangementLength landed at 3bar: Live stopped the clip there",
+      );
+    });
+
+    it("says nothing when it reached the full length", () => {
+      run({
+        props: { end_marker: 4, loop_start: 0, end_time: 24 },
+        isAudioClip: false,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 4,
+        currentEndTime: 12,
+        clipStartMarker: 0,
+      });
+
+      expect(clipReason()).toBe("");
     });
   });
 
@@ -381,6 +418,69 @@ describe("handleUnloopedLengthening", () => {
       expect(clipReason()).toBe(
         `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
       );
+    });
+  });
+
+  describe("clearing ahead", () => {
+    it("clears a MIDI clip's whole target span before it grows", () => {
+      const { clearAhead, set } = run({
+        props: { end_marker: 4, loop_start: 0 },
+        isAudioClip: false,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 4,
+        currentEndTime: 12,
+        clipStartMarker: 0,
+      });
+
+      expect(clearAhead).toHaveBeenCalledWith(24);
+      expect(clearAhead.mock.invocationCallOrder[0]).toBeLessThan(
+        set.mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it("clears warped audio only as far as its file reaches", () => {
+      const { clearAhead } = warped({
+        end_marker: 8,
+        clipStartMarker: 0,
+        fileContentBoundary: 12,
+        currentArrangementLength: 8,
+        arrangementLengthBeats: 16,
+        currentEndTime: 8,
+      });
+
+      expect(clearAhead).toHaveBeenCalledWith(12);
+    });
+
+    it("clears unwarped audio only as far as its file reaches", () => {
+      // 2 bps; the file holds 6s past loop_start(2), so 12 beats.
+      const { clearAhead } = run({
+        props: {
+          ...AUDIO_PROPS,
+          loop_end: 6,
+          sample_length: 8,
+          sample_rate: 1,
+          end_time: 12,
+        },
+        isAudioClip: true,
+        clipStartMarker: 0,
+        currentEndTime: 8,
+        currentArrangementLength: 8,
+        arrangementLengthBeats: 32,
+      });
+
+      expect(clearAhead).toHaveBeenCalledWith(12);
+    });
+
+    it("clears nothing for audio that shows nothing", () => {
+      const { clearAhead } = run({
+        props: { warping: 1, end_marker: 0 },
+        isAudioClip: true,
+        clipStartMarker: 0,
+        currentArrangementLength: 4,
+        arrangementLengthBeats: 8,
+      });
+
+      expect(clearAhead).not.toHaveBeenCalled();
     });
   });
 });

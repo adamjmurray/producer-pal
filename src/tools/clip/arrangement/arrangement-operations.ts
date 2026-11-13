@@ -33,7 +33,7 @@ interface HandleArrangementLengthOperationArgs {
 }
 
 /**
- * Handle arrangement length changes (lengthening via tiling/exposure or shortening)
+ * Handle arrangement length changes: resize the clip in place
  * @param args - Operation arguments
  * @param args.clip - The LiveAPI clip object
  * @param args.isAudioClip - Whether the clip is an audio clip
@@ -63,9 +63,8 @@ export function handleArrangementLengthOperation({
     return updatedClips;
   }
 
-  // The lengthening path uses duplicate_clip_to_arrangement (Track-only) and
-  // the shortening path uses a temp clip overlay that targets the main lane, so
-  // neither works on take-lane clips. The clip's own entry says so.
+  // Lengthening clears its way with a temp clip on the main lane, and a take
+  // lane has no clip delete to remove one. The clip's own entry says so.
   if (isTakeLaneClip(clip)) {
     refuseClipWork(
       reasons,
@@ -99,6 +98,10 @@ export function handleArrangementLengthOperation({
 
     ledger.scan(lane);
 
+    const reach = {
+      start: currentStartTime,
+      end: currentStartTime + arrangementLengthBeats,
+    };
     let result: ClipIdResult[];
 
     try {
@@ -113,26 +116,23 @@ export function handleArrangementLengthOperation({
         reasons,
       });
     } catch (error) {
-      // The clip may already have grown over its neighbours (the region is set
-      // in steps), and nothing will read the lane back, so the view forgets it.
+      noteClearedBeforeThrow(ledger, lane, clip.id, reach, reasons);
+      // The lane may have changed unseen, so the view forgets it.
       ledger.forget(lane);
       throw error;
     }
 
-    // The clip itself and every tile it laid describe themselves. Tiling clears
-    // ahead of what lands, so everything up to the target counts as written.
+    // The clip describes itself. Lengthening clears ahead of the clip, so
+    // everything up to the target counts as written.
     const displaced = ledger.afterWrite(
       lane,
       [clip.id, ...result.map(({ id }) => id)],
-      {
-        reach: {
-          start: currentStartTime,
-          end: currentStartTime + arrangementLengthBeats,
-        },
-      },
+      { reach },
     );
 
+    // What the clearing overwrote changed the Set, even if the clip didn't grow.
     if (displaced != null) {
+      markClipLanded(reasons, clip.id);
       noteClipReason(reasons, clip.id, displaced);
     }
 
@@ -144,16 +144,11 @@ export function handleArrangementLengthOperation({
       arrangementLengthBeats,
     )
   ) {
-    // Shortening: Use temp clip overlay pattern
     handleArrangementShortening({
       clip,
       isAudioClip,
       arrangementLengthBeats,
-      currentStartTime,
-      currentEndTime,
       context,
-      // A scratch clip Live won't remove is this clip's to report.
-      reportScratch: (message) => noteClipReason(reasons, clip.id, message),
       // The clip is cut in place, so it is updated, not a clip left as it was.
       onCut: () => {
         markClipLanded(reasons, clip.id);
@@ -179,4 +174,39 @@ export function shortensArrangementClip(
   arrangementLengthBeats: number,
 ): boolean {
   return arrangementLengthBeats < endTime - startTime - SAME_TIME_EPSILON;
+}
+
+/**
+ * Say what a lengthen overwrote before it threw: the clearing ahead of the clip
+ * has landed whatever the resize did, so the entry keeps it. A read-back that
+ * fails too says nothing more.
+ * @param ledger - The clip's lane ledger, scanned before the write
+ * @param lane - The clip's lane
+ * @param clipId - The clip
+ * @param reach - The span the lengthen was to cover
+ * @param reach.start - Where it begins, in beats
+ * @param reach.end - Where it ends, in beats
+ * @param reasons - What each clip has to say, carrying the journal
+ */
+function noteClearedBeforeThrow(
+  ledger: LaneLedger,
+  lane: ArrangementLane,
+  clipId: string,
+  reach: { start: number; end: number },
+  reasons: ClipReasons,
+): void {
+  let displaced: string | undefined;
+
+  try {
+    displaced = ledger.afterWrite(lane, [clipId], { reach });
+  } catch {
+    return;
+  }
+
+  // A throw that reaches the entry drops the clip's reasons, so the landing
+  // carries it too. One caught on the way (after a move) keeps the reason.
+  if (displaced != null) {
+    noteClipReason(reasons, clipId, displaced);
+    noteLanded(reasons, displaced, { id: clipId });
+  }
 }

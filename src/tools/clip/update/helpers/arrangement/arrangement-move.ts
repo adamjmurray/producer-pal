@@ -239,7 +239,7 @@ interface HandleArrangementOperationsArgs {
  * A move copies the clip at its current length and clears that whole span at
  * the destination, so a main-lane clip being shortened is shortened first:
  * moving first would wipe neighbors the shortened clip no longer reaches.
- * Everything else moves first, so lengthening tiles from the new position
+ * Everything else moves first, so lengthening grows from the new position
  * instead of over the clip's old neighbors.
  * @param args - Operation arguments
  * @param args.clip - The clip to operate on
@@ -326,20 +326,17 @@ export function handleArrangementOperations(
     moveClipReasons(reasons, currentClip.id, clip.id);
     finalNoteResult = recountNotesAfterLengthChange(finalClipId, noteResult);
 
-    if (results.length > 0) {
+    // A resize returns the one clip it changed, the one the notes went to.
+    const [resized] = results;
+
+    if (resized != null) {
       // The resize landed, so a move refused beside it keeps a real entry.
       markClipLanded(reasons, clip.id);
-      // The length helpers return ids only, and their first entry is always the
-      // clip the notes were written to (any tiles follow it), so the note stats
-      // go there. Each tile starts somewhere else, so each is asked its own
-      // path rather than sharing the first one's.
       updatedClips.push(
-        ...results.map((result, index) =>
-          buildClipResultObject(
-            result.id,
-            index === 0 ? finalNoteResult : null,
-            objectPathForApi(LiveAPI.from(result.id)),
-          ),
+        buildClipResultObject(
+          resized.id,
+          finalNoteResult,
+          objectPathForApi(LiveAPI.from(resized.id)),
         ),
       );
       hasArrangementLengthResults = true;

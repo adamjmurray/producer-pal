@@ -293,7 +293,7 @@ describe("orderArrangementMoves", () => {
     expect(order).toStrictEqual([0, 1, 2]);
   });
 
-  // arrangementLength runs after the move, at the destination, and tiles across
+  // arrangementLength runs after the move, at the destination, and grows across
   // the span it clears. Dropping these clips as movers switched the whole guard
   // off — one broadcast length covers every id, so nothing was left to order.
   it("still orders a row shifted later when the call also resizes it", () => {
@@ -341,7 +341,7 @@ describe("orderArrangementMoves", () => {
     expect(blockedIds).toStrictEqual(new Set(["113"]));
   });
 
-  it("refuses a resize that tiles over a clip staying put", () => {
+  it("refuses a resize that grows over a clip staying put", () => {
     const clips = registerRow(row);
 
     // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1 — and

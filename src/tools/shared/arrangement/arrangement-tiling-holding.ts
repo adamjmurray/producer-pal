@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Holding area operations for arrangement clip tiling.
- * These functions create shortened clips in a holding area and adjust pre-roll.
+ * Holding area operations: a shortened copy of a clip, made away from where it
+ * will land.
  */
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -84,43 +84,4 @@ export function createShortenedClipInHolding(
     holdingClipId: holdingClip.id,
     holdingClip,
   };
-}
-
-/**
- * Adjusts a clip's pre-roll by setting start_marker to loop_start and shortening.
- * Only performs adjustment if the clip has pre-roll (start_marker < loop_start).
- *
- * @param clip - LiveAPI clip instance
- * @param track - LiveAPI track instance
- * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param context - Context object with silenceWavPath for audio clips
- */
-export function adjustClipPreRoll(
-  clip: LiveAPI,
-  track: LiveAPI,
-  isMidiClip: boolean,
-  context: TilingContext,
-): void {
-  const startMarker = clip.getProperty("start_marker") as number;
-  const loopStart = clip.getProperty("loop_start") as number;
-
-  // Only adjust if clip has pre-roll
-  if (startMarker < loopStart) {
-    // Set start_marker to loop_start
-    clip.set("start_marker", loopStart);
-
-    // Shorten clip by the pre-roll amount
-    const preRollLength = loopStart - startMarker;
-    const clipEnd = clip.getProperty("end_time") as number;
-    const newClipEnd = clipEnd - preRollLength;
-    const tempClipLength = clipEnd - newClipEnd;
-
-    createAndDeleteTempClip(
-      track,
-      newClipEnd,
-      tempClipLength,
-      isMidiClip,
-      context,
-    );
-  }
 }

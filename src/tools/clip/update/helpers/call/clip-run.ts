@@ -42,7 +42,7 @@ export interface ClipRun {
   split?: SplitRun;
   /**
    * Clips refused before anything is written to them, and why, by clip id: a
-   * meter that can't read the note edits, or envelopes beside a tiling length
+   * meter that can't read the note edits
    */
   refused: Map<string, string>;
   /** How many clips the call set out to cut */

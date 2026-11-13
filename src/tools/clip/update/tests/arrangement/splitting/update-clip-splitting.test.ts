@@ -587,10 +587,10 @@ describe("updateClip - arrangementSplit next to a move", () => {
     expect(clip?.set).not.toHaveBeenCalled();
   });
 
-  it("refuses one arrangementLength, which tiles a piece over the next", async () => {
+  it("refuses one arrangementLength, which grows a piece over the next", async () => {
     const { callState } = setupClipSplittingMocks("clip_1");
 
-    // Lengthening tiles copies in from the clip's own end, and after a split
+    // Lengthening grows a clip from its own end, and after a split
     // that is exactly where the next piece starts, so the pieces bury each
     // other. Which lengths are safe needs each piece's length, and that needs
     // a Live read this has to answer before.

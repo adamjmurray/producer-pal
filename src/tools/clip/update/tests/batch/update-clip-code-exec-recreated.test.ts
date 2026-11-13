@@ -7,25 +7,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
-  overrideCall,
-  requireMockObject,
-  requireMockTrack,
-  USE_CALL_FALLBACK,
-} from "#src/test/helpers/mock-registry-test-helpers.ts";
-import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { codeExecFailure } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import {
-  setupArrangementClipPath,
   setupSingleArrangementClip,
   setupMidiClipMock,
   setupMockProperties,
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { setupResizableClip } from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { applyCodeToWrittenClips } from "#src/tools/clip/update/helpers/call/apply-clip-code.ts";
+import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import {
+  CLIP_IS_ENVELOPE,
+  ignoredText,
+} from "#src/shared/max/ignored-wording.ts";
 import { registerMoveToEmptySlot } from "../session/slot-move-fixtures.ts";
 
 vi.mock(
@@ -40,8 +40,8 @@ vi.mock(
 
 import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
 
-// A code failure on a clip the call re-creates (moved, or tiled into copies)
-// is filed under the clip the call named, which is what the entry is settled by.
+// A code failure on a clip the call re-creates by moving it is filed under the
+// clip the call named, which is what the entry is settled by.
 describe("updateClip - code failure on a re-created clip", () => {
   let mocks: UpdateClipMocks;
 
@@ -70,61 +70,22 @@ describe("updateClip - code failure on a re-created clip", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("reports it once on a tiled clip's entry", async () => {
-    const clips = setupArrangementClipPath(0, ["789", "1000"]);
-    const source = clips.get("789");
-    const copy = clips.get("1000");
+  // A clip resized in place keeps its id, but the resize landed: the failed
+  // code is a detail on a real entry, not a refusal that hides it.
+  it("keeps the entry of a lone clip that was lengthened", async () => {
+    const { sourceClip } = setupResizableClip();
 
-    if (source == null || copy == null) {
-      throw new Error("Expected arrangement clip mocks");
-    }
-
-    setupMockProperties(source, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
-      start_time: 0,
-      end_time: 4,
-      loop_start: 0,
-      loop_end: 12,
-      end_marker: 12,
-      start_marker: 0,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex: 0,
-    });
-    setupMockProperties(copy, { end_time: 12, start_marker: 0, loop_start: 0 });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
-      signature_numerator: 4,
-      signature_denominator: 4,
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
-    });
-    overrideCall(requireMockTrack(0), (method) =>
-      method === "duplicate_clip_to_arrangement"
-        ? "id 1000"
-        : USE_CALL_FALLBACK,
-    );
-
-    const result = await updateClip({
+    expect(
+      await updateClip({ id: "789", arrangementLength: "3bar", code: "x" }),
+    ).toStrictEqual({
       id: "789",
-      arrangementLength: "3bar",
-      code: "x",
+      path: "t0[1|1]",
+      detail: "code failed: Boom",
     });
-
-    expect(result).toStrictEqual([
-      { id: "789", path: "t0[1|1]", detail: "code failed: Boom" },
-      { id: "1000", path: "t0[1|1]" },
-      { id: "1000", path: "t0[1|1]" },
-    ]);
+    expect(sourceClip.properties.end_time).toBe(12);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  // A clip cut in place keeps its id, but the cut landed: the failed code is a
-  // detail on a real entry, not a refusal that hides it.
   describe("when the clip was updated in place", () => {
     beforeEach(() => {
       const { sourceClip } = setupSingleArrangementClip(0);
@@ -171,6 +132,54 @@ describe("updateClip - code failure on a re-created clip", () => {
         path: "t0/s0",
         detail: "code failed: Boom",
       });
+    });
+  });
+
+  // Pieces of one clip run the same code, so they would say the same thing.
+  describe("on several pieces of one clip", () => {
+    it("says a failure once", async () => {
+      setupMidiClipMock(mocks.clip123);
+      setupMidiClipMock(mocks.clip456);
+
+      const reasons = newClipReasons();
+
+      await applyCodeToWrittenClips(
+        [{ id: "123" }, { id: "456" }],
+        reasons,
+        "123",
+        0,
+        1,
+        "x",
+      );
+
+      expect(reasons.said.get("123")).toStrictEqual(["code failed: Boom"]);
+    });
+
+    it("says once that code can't reach their notes", async () => {
+      for (const [id, slot] of [
+        ["r1", 0],
+        ["r2", 1],
+      ] as const) {
+        registerMockObject(id, {
+          path: livePath.returnTrack(0).clipSlot(slot).clip(),
+          type: "Clip",
+        });
+      }
+
+      const reasons = newClipReasons();
+
+      await applyCodeToWrittenClips(
+        [{ id: "r1" }, { id: "r2" }],
+        reasons,
+        "r1",
+        0,
+        1,
+        "x",
+      );
+
+      expect(reasons.said.get("r1")).toStrictEqual([
+        ignoredText("code", CLIP_IS_ENVELOPE),
+      ]);
     });
   });
 });

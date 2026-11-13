@@ -146,7 +146,7 @@ export function noteClipReadBack(
 
 /**
  * A reporter for the shared arrangement steps, which own no entries of their
- * own. Splitting and tiling report through it instead of warning.
+ * own. Splitting reports through it instead of warning.
  * @param reasons - What each clip has to say, added to
  * @returns The reporter to put on the step's context
  */
@@ -379,8 +379,7 @@ export function moveClipReasons(
 
 /**
  * Put everything one clip's turn had to say onto the entry it wrote — the first,
- * since an arrangementLength tiles copies after it and the first is the clip the
- * target named.
+ * since a split's pieces follow it and the first is the clip the target named.
  * @param reasons - What each clip has to say
  * @param clipId - The clip, by the id the call found it at
  * @param entry - The first entry that clip's turn wrote

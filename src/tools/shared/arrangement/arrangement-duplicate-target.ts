@@ -26,7 +26,7 @@ import {
  * @param sourceClipId - ID of the clip to duplicate
  * @param targetBeats - Target position in Ableton beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param context - Tiling context with silenceWavPath for audio operations
+ * @param context - Context with silenceWavPath for audio operations
  * @param source - The source clip, when the caller already resolved it
  * @param movesSource - The caller deletes the source after: a self-overlapping
  *   one is deleted here instead, so none of it survives past the copy

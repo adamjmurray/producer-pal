@@ -155,8 +155,8 @@ Part of [Skip entries, tool by tool](README.md).
   `toPath` says `not moved: ` first): a copy to or from a take lane, an
   arrangement clip into a clip slot, and a lane copy's clips. A track's or
   lane's copy skips just those clips. Copies Live makes itself (slot to slot,
-  anything to the arrangement's main lane, split, tile, lengthen) keep the clip
-  a step sequencer clip.
+  anything to the arrangement's main lane, split, lengthen) keep the clip a step
+  sequencer clip.
 - **duplicate: automation written for another length.** A session clip with
   automation copied to the arrangement at an `arrangementLength` other than its
   own has its track automation lane written for the span first. If that stops

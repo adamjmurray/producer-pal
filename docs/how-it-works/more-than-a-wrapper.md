@@ -136,8 +136,8 @@ In Live's UI you hit **⌘E** to cut a clip in two. The Live API exposes **no
 split operation at all**. There is no `split_clip`, and the properties you'd
 reach for to fake it are walled off:
 
-- You can't shorten a clip by writing its `end_time`. For warped, looped clips
-  the arrangement length is effectively **immutable** once the clip exists.
+- You can't resize a clip by writing its `end_time`. The workarounds that do
+  resize one keep it a single clip; none of them cuts it in two.
 - You can't create an audio clip _in the arrangement_ with a specific length.
   `Track.create_audio_clip` takes a position but no length; only Session view's
   `ClipSlot.create_audio_clip` can be sized after the fact.

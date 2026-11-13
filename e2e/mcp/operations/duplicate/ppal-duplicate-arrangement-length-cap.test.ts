@@ -131,23 +131,22 @@ describe("arrangementLength over the longest Producer Pal takes", () => {
 
     expect(isToolError(result)).toBe(false);
 
-    // The 1-bar source tiles; the second tile starts on the last start
-    // position and ends past it.
-    const { clips: tiles } = parseToolResult<{ clips: { path: string }[] }>(
-      result,
-    );
+    // One clip, starting a bar before the last start position and ending past
+    // it.
+    const copy = parseToolResult<{ path: string; detail?: string }>(result);
 
-    expect(tiles.map(({ path }) => path)).toStrictEqual([
-      `${TRACK}[394200|1]`,
-      `${TRACK}[394201|1]`,
-    ]);
+    expect(copy.path).toBe(`${TRACK}[394200|1]`);
+    expect(copy.detail).toBeUndefined();
 
     await sleep(150);
 
     const clips = await readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK);
-
-    expect(clips.map(arrangementStartOf)).toStrictEqual(
-      expect.arrayContaining(["394200|1", "394201|1"]),
+    const landed = clips.filter(
+      (clip) => arrangementStartOf(clip) === "394200|1",
     );
+
+    expect(landed).toStrictEqual([
+      expect.objectContaining({ arrangementLength: "2bar" }),
+    ]);
   });
 });

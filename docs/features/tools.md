@@ -180,7 +180,7 @@ Live, or make sure your standalone Max is up to date. See
   - A clip slot past the last scene creates the scenes up to it, reported as
     `created`
   - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
+  - Lengthen or shorten a copy to fit an arrangement duration, as one clip
   - A session clip's automation is written onto the track's lane over the copy's
     span, replacing what that parameter's lane held there (see
     [Clip Automation](/guide/automation#arrangement-clips))
@@ -432,7 +432,7 @@ markers from beats to seconds when warping is off, and reports an unwarped
 session clip's `length` as though it were still warped. Producer Pal measures
 the region from the markers instead, so a 1.2-second one-shot reads as the beats
 it really occupies at your tempo rather than as 1.2 beats. That's also what
-keeps [Duplicate](#ppal-duplicate) from tiling copies over audio that's still
+keeps [Duplicate](#ppal-duplicate) from laying copies over audio that's still
 sounding.
 
 ## Device Tools

@@ -102,43 +102,6 @@ export function parseLengthenResult(result: unknown): {
 }
 
 /**
- * Calculate total arrangement length in bars from clips.
- * Assumes clips are contiguous and start at the same position.
- */
-export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
-  if (clips.length === 0) {
-    return 0;
-  }
-
-  // Get the range from first start to last end
-  const starts = clips
-    .map((c) => arrangementStartOf(c))
-    .filter((s): s is string => s != null)
-    .map(parseBarBeat);
-
-  const ends = clips
-    .map((c) => {
-      const startText = arrangementStartOf(c);
-
-      if (startText != null && c.arrangementLength) {
-        return parseBarBeat(startText) + parseBarBeat(c.arrangementLength);
-      }
-
-      return null;
-    })
-    .filter((e): e is number => e != null);
-
-  if (starts.length === 0 || ends.length === 0) {
-    return 0;
-  }
-
-  const minStart = Math.min(...starts);
-  const maxEnd = Math.max(...ends);
-
-  return maxEnd - minStart;
-}
-
-/**
  * Parse a bar|beat position OR an absolute-note-value duration to bars (decimal).
  *
  * Positions use pipe notation (1-indexed: "1|1" = bar 0, beat 0). Durations use
@@ -196,27 +159,38 @@ export type LengthenResult = {
 };
 
 /**
- * Assert a lengthening that tiles to a full 4-bar arrangement length.
- * Used by looped clip types (MIDI looped, audio looped warped): it got what it
- * asked for, so no entry has anything to say and the clips span exactly 4 bars
- * (±EPSILON).
+ * Assert a looping clip resized in place to the full 4 bars: still the same
+ * one looping clip, its loop region and start marker untouched, and nothing on
+ * its entry to report.
  */
-export function assertLengthenedToFullLength(
-  { resultClips, reasons, warnings }: LengthenResult,
+export function assertLoopedResizedInPlace(
+  { initialClips, resultClips, reasons, warnings }: LengthenResult,
   expectedClips: ExpectedClip[],
 ): void {
   expect(warnings).toHaveLength(0);
   expect(reasons).toStrictEqual([]);
 
-  const totalLength = calculateTotalLengthInBars(resultClips);
+  const [before] = initialClips;
 
-  expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
-  expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+  expect(resultClips).toHaveLength(1);
+
+  const [after] = resultClips;
+
+  expect(after).toStrictEqual(
+    expect.objectContaining({
+      id: before!.id,
+      looping: true,
+      start: before!.start,
+      end: before!.end,
+    }),
+  );
+  // Left out of a read when it equals start, so compared as read.
+  expect(after!.firstStart).toBe(before!.firstStart);
   assertClipDetails(resultClips, expectedClips);
 }
 
 /**
- * Assert a lengthening that extends a single clip in place (no tiles).
+ * Assert a lengthening that extends an unlooped clip in place.
  * Used by unlooped clip types: the clip keeps its ID and stays a single clip.
  * `reason` is what the clip's own entry must say — null for MIDI unlooped,
  * which reaches the full length via loop_end and has nothing to report.

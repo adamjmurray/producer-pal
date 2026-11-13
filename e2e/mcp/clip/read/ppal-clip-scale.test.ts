@@ -246,23 +246,21 @@ describe("ppal-clip-scale", () => {
       expect(moved.scale).toBe("E Minor");
     });
 
-    it("keeps the scale on every clip an arrangementLength lengthening makes", async () => {
+    it("keeps the scale on a looping clip an arrangementLength lengthens", async () => {
       const id = await makeArrangementClip("49|1");
       const { data } = await updateClip(ctx.client!, id, {
         scale: "E Minor",
         arrangementLength: "3bar",
       });
-      const entries = (Array.isArray(data) ? data : [data]) as ReadClipResult[];
 
-      expect(entries.length).toBeGreaterThan(1);
+      // Resized in place: one entry, the same clip.
+      expect(Array.isArray(data)).toBe(false);
+      expect(data.id).toBe(id);
 
-      const scales = [];
+      const clip = await readClipFully(ctx.client!, { id });
 
-      for (const entry of entries) {
-        scales.push((await readClipFully(ctx.client!, { id: entry.id })).scale);
-      }
-
-      expect(scales).toStrictEqual(entries.map(() => "E Minor"));
+      expect(clip.scale).toBe("E Minor");
+      expect(clip.arrangementLength).toBe("3bar");
     });
 
     it("ignores the scale on an audio clip and says so", async () => {

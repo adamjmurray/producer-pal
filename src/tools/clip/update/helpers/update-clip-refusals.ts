@@ -201,7 +201,7 @@ export interface SplitMoveArgs {
  * reaches that first piece and no other, and most of the request silently
  * doesn't happen. A single value is worse, because it reaches every piece:
  * one arrangementStart stacks them all on one bar, and one arrangementLength
- * longer than a piece tiles each piece over the next - the pieces a split
+ * longer than a piece grows each piece over the next - the pieces a split
  * makes are adjacent, so that collision is certain, and a duplicate landing on
  * an arrangement clip destroys it. Nothing here is a reading of the call, so
  * nothing is cut and the caller sends two calls instead.

@@ -34,8 +34,6 @@ interface DuplicateClipResult {
   path?: string;
   /** What the copy did to the clips it landed on, when it did anything. */
   detail?: string;
-  /** The clips of a copy that was tiled to fill a length. */
-  clips?: DuplicateClipResult[];
 }
 
 interface TrackResult {
@@ -65,15 +63,6 @@ async function dupToArr(
   await sleep(100);
 
   return clip;
-}
-
-/**
- * The detail of a copy, which a tiled copy carries on its first clip.
- * @param copy - The copy's entry
- * @returns Its detail
- */
-function firstDetail(copy: DuplicateClipResult): string | undefined {
-  return copy.detail ?? copy.clips?.[0]?.detail;
 }
 
 /**
@@ -548,7 +537,7 @@ describe("arrangement clip duplication crash workaround", () => {
 
       const result = await dupToArrLong(midiShortId, "401|1", "2bar");
 
-      expect(firstDetail(result)).toBe(`overwrote the clip at ${track}[402|1]`);
+      expect(result.detail).toBe(`overwrote the clip at ${track}[402|1]`);
     });
 
     // The copy splits the 4-bar clip at 421|1, and growing it cuts the tail it
@@ -559,7 +548,7 @@ describe("arrangement clip duplication crash workaround", () => {
 
       const result = await dupToArrLong(midiShortId, "422|1", "2bar");
 
-      expect(firstDetail(result)).toBe(
+      expect(result.detail).toBe(
         `split the clip at ${track}[421|1] into ${track}[421|1] and ${track}[424|1]`,
       );
     });
@@ -669,26 +658,18 @@ describe("a lengthened copy over an earlier copy in the same call", () => {
       path: `${track}[933|1]`,
       detail: `overwritten later in this call by ${track}[931|1]`,
     });
-    expect(firstDetail(second)).toContain(
-      `overwrote the clip at ${track}[931|1]`,
-    );
-    expect(firstDetail(second)).toContain(
-      `overwrote the clip at ${track}[933|1]`,
-    );
+    expect(second.detail).toContain(`overwrote the clip at ${track}[931|1]`);
+    expect(second.detail).toContain(`overwrote the clip at ${track}[933|1]`);
 
     const filled = clipsInBarRange(
       await readArrClips(EMPTY_MIDI_TRACK),
       931,
       934,
     );
-    const beats = filled.reduce(
-      (sum, clip) => sum + parseLengthToBeats(clip.arrangementLength as string),
-      0,
-    );
 
-    // Three bars from 931 are filled, and the clip at 935 was left alone.
-    expect(filled.map(arrangementStartOf)).toContain("931|1");
-    expect(beats).toBe(12);
+    // One 3-bar clip from 931, and the clip at 935 was left alone.
+    expect(filled.map(arrangementStartOf)).toStrictEqual(["931|1"]);
+    expect(parseLengthToBeats(filled[0]!.arrangementLength as string)).toBe(12);
     expect(
       clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 935, 935),
     ).toHaveLength(1);

@@ -97,8 +97,8 @@ describe("clip duration round-trips (absolute note values)", () => {
   });
 
   it("round-trips arrangementLength for an unlooped MIDI clip (create + update)", async () => {
-    // Unlooped arrangement clips extend in place via loop_end (single clip, no
-    // tiling), so arrangementLength round-trips cleanly through create + update.
+    // Unlooped arrangement clips extend in place via loop_end, so
+    // arrangementLength round-trips cleanly through create + update.
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {

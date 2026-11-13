@@ -38,7 +38,7 @@ export interface ClipPlanned {
 
 /**
  * Each target's clip.index and the call's clip.count, for a caller that numbers
- * the clips itself (duplicate numbers every tile of a copy by its copy).
+ * the clips itself (duplicate numbers each copy).
  */
 export interface ClipNumbering {
   indexes: number[];

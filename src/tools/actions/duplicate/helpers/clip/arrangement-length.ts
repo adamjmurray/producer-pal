@@ -24,10 +24,7 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import {
-  appendDetail,
-  joinDetails,
-} from "#src/tools/shared/helpers/entry-details.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   carriesAutomation,
   stampAutomation,
@@ -37,7 +34,6 @@ import {
   finishCopy,
   readCopyBack,
   type MinimalClipInfo,
-  withLandedColor,
 } from "../minimal-clip-info.ts";
 
 /**
@@ -212,9 +208,8 @@ async function copyForLength(
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
-    // phantom clip, matching the no-length path and the arrangement-tiling
-    // guards. The empty list is what the caller reports on the destination's
-    // own entry.
+    // phantom clip, matching the no-length path. The empty list is what the
+    // caller reports on the destination's own entry.
     if (!newClip.exists()) {
       return duplicatedClips;
     }
@@ -300,7 +295,7 @@ async function lengthenClipAndCollectInfo(
       .map(({ id }) => id),
   );
 
-  for (const [position, clipObj] of clipResults.entries()) {
+  for (const clipObj of clipResults) {
     if (onTrack.has(clipObj.id)) {
       const clipLiveAPI = LiveAPI.from(toLiveApiId(clipObj.id));
 
@@ -308,18 +303,9 @@ async function lengthenClipAndCollectInfo(
       // the copy was made. What the lengthening cleared is left out: the call's
       // ledger reports what the whole copy did, and the clips update-clip names
       // can be fragments the copy itself just made.
-      // Read each tile on its own: one that can't be read back still exists,
-      // so it keeps an entry of its own and the tiles after it are reported.
-      const said = (): string | undefined =>
-        withoutWriteEffects(clipObj.detail);
-      // update-clip says a snapped color on the first entry only. A tile after
-      // it is a copy of that clip, so it sits on the same swatch and says so.
-      const copy =
-        position > 0 && color != null
-          ? withLandedColor(clipLiveAPI, color, (snapped) =>
-              joinDetails([said(), snapped]),
-            )
-          : readCopyBack(clipLiveAPI, said);
+      const copy = readCopyBack(clipLiveAPI, () =>
+        withoutWriteEffects(clipObj.detail),
+      );
 
       // update-clip read the color back, so the palette color it landed on is
       // already known.

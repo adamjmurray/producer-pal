@@ -18,10 +18,7 @@ import {
   createAndDeleteTempClip,
   createAudioClipInSession,
 } from "../helpers/arrangement-tiling-clips.ts";
-import {
-  adjustClipPreRoll,
-  createShortenedClipInHolding,
-} from "../arrangement-tiling-holding.ts";
+import { createShortenedClipInHolding } from "../arrangement-tiling-holding.ts";
 import { moveClipFromHolding } from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
@@ -395,127 +392,5 @@ describe("moveClipFromHolding", () => {
     ).toThrow(/move from holding \(id 200\) to 500/);
 
     expect(track.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
-  });
-});
-
-describe("adjustClipPreRoll", () => {
-  it.each([
-    ["start_marker == loop_start", 4, 4],
-    ["start_marker > loop_start", 8, 4],
-  ] as const)(
-    "does nothing when no pre-roll (%s)",
-    (_desc, startMarker, loopStart) => {
-      setupClip("100", {
-        properties: { start_marker: startMarker, loop_start: loopStart },
-      });
-      const track = setupTrackWithQueuedMethods(0, {});
-      const clip = LiveAPI.from("id 100");
-
-      adjustClipPreRoll(clip, track, true, mockContext);
-
-      expect(track.call).not.toHaveBeenCalled();
-      expect(clip.set).not.toHaveBeenCalled();
-    },
-  );
-
-  it("adjusts start_marker and shortens clip when pre-roll exists", () => {
-    setupClip("100", {
-      properties: {
-        start_marker: 2,
-        loop_start: 6,
-        end_time: 100,
-      },
-    });
-    const track = setupTrackWithQueuedMethods(0, {
-      create_midi_clip: [["id", "300"]],
-      delete_clip: [null],
-    });
-
-    setupClip("300", {});
-    const clip = LiveAPI.from("id 100");
-
-    adjustClipPreRoll(clip, track, true, mockContext);
-
-    expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
-    expect(track.call).toHaveBeenNthCalledWith(1, "create_midi_clip", 96, 4);
-    expect(track.call).toHaveBeenNthCalledWith(2, "delete_clip", "id 300");
-  });
-
-  it("handles different pre-roll amounts correctly", () => {
-    setupClip("100", {
-      properties: {
-        start_marker: 0,
-        loop_start: 8,
-        end_time: 200,
-      },
-    });
-    const track = setupTrackWithQueuedMethods(1, {
-      create_midi_clip: [["id", "400"]],
-      delete_clip: [null],
-    });
-
-    setupClip("400", {});
-    const clip = LiveAPI.from("id 100");
-
-    adjustClipPreRoll(clip, track, true, mockContext);
-
-    expect(clip.set).toHaveBeenCalledWith("start_marker", 8);
-    expect(track.call).toHaveBeenNthCalledWith(1, "create_midi_clip", 192, 8);
-  });
-
-  it("adjusts audio clip with pre-roll using session view workflow", () => {
-    setupClip("100", {
-      properties: {
-        start_marker: 2,
-        loop_start: 6,
-        end_time: 100,
-      },
-    });
-
-    setupLiveSet({
-      properties: {
-        scenes: ["id", "500"],
-      },
-    });
-    setupScene("500", 0, {
-      properties: {
-        is_empty: 1,
-      },
-    });
-
-    const slot = setupClipSlot(0, 0, {
-      methods: {
-        create_audio_clip: () => null,
-        delete_clip: () => null,
-      },
-    });
-    const sessionClip = setupClip("700", {
-      path: "live_set tracks 0 clip_slots 0 clip",
-    });
-
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [["id", "800"]],
-      delete_clip: [null],
-    });
-
-    const clip = LiveAPI.from("id 100");
-
-    adjustClipPreRoll(clip, track, false, mockContext);
-
-    expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
-    expect(slot.call).toHaveBeenCalledWith(
-      "create_audio_clip",
-      "/tmp/test-silence.wav",
-    );
-    expect(sessionClip.set).toHaveBeenCalledWith("warping", 1);
-    expect(sessionClip.set).toHaveBeenCalledWith("looping", 1);
-    expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 4);
-    expect(track.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id 700",
-      96,
-    );
-    expect(slot.call).toHaveBeenCalledWith("delete_clip");
-    expect(track.call).toHaveBeenCalledWith("delete_clip", "id 800");
   });
 });

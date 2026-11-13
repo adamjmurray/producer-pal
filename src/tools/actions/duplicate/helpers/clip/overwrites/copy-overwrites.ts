@@ -9,7 +9,7 @@
 // view: a lane is read once, and after each copy only what the copy could have
 // changed is read again.
 //
-// A copy edits clips in other ways (clearing, tiling, lengthening) inside its
+// A copy edits clips in other ways (clearing, lengthening) inside its
 // own write, so each copy is wrapped whole: the lane is noted before the first
 // copy to it, and read back after the copy is finished. Those edits report to
 // the same view as they go.
@@ -195,7 +195,7 @@ export async function copyClearingAsync<T>(
 
 /**
  * The ids of the clips in a copy's entry, looking under a group's `clips`.
- * @param copy - A copy's entry: a clip, or the track path with its tiled clips
+ * @param copy - A copy's entry: a clip, or the track path with its clips
  * @returns Every clip id
  */
 export function copiedIds(copy: object): string[] {
@@ -209,8 +209,8 @@ export function copiedIds(copy: object): string[] {
 }
 
 /**
- * Say on a copy's entry what it cleared. A group of tiled clips says it once,
- * on its first clip.
+ * Say on a copy's entry what it cleared. A group of clips says it once, on its
+ * first clip.
  * @param copy - A copy's entry
  * @param cleared - What the copy overwrote, shortened or split
  */

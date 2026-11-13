@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 // A track whose arrangement answers the way Live's does, so a test drives the
-// real clearing and trimming code instead of a stand-in for it.
+// real clearing, trimming and resizing code instead of a stand-in for it.
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -13,7 +13,9 @@ import {
   deleteMockObject,
   lookupMockObject,
   registerMockObject,
+  type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { resizesLikeLiveClip } from "#src/test/mocks/registry/mock-clip-resize.ts";
 
 /** A 4/4 Live Set, which every arrangement path spelling needs. */
 export function registerLiveSet(): void {
@@ -29,14 +31,15 @@ export function registerLiveSet(): void {
  * @param index - Its place in the track's arrangement_clips
  * @param start - Its start, in beats
  * @param end - Its end, in beats
+ * @returns Its registration
  */
 export function registerArrangementClip(
   id: string,
   index: number,
   start: number,
   end: number,
-): void {
-  registerMockObject(id, {
+): RegisteredMockObject {
+  return registerMockObject(id, {
     path: livePath.track(0).arrangementClip(index),
     type: "Clip",
     properties: {
@@ -105,7 +108,7 @@ export function registerStackingTrack(lengths: number[]): string[] {
   });
 }
 
-/** What makes a clip tile when it is lengthened, and a copy keeps. */
+/** A clip's loop and region, which a copy keeps. */
 const LOOP_PROPERTIES = [
   "looping",
   "loop_start",
@@ -159,11 +162,37 @@ function laneClipSpan(id: string): [number, number] {
 function addLaneClip(start: number, end: number): string {
   const id = `clip${String(++nextLaneClipId)}`;
 
-  registerArrangementClip(id, nextLaneClipId, start, end);
+  resizesOnLane(registerArrangementClip(id, nextLaneClipId, start, end));
   laneClips.push(id);
   syncLaneClips();
 
   return id;
+}
+
+/**
+ * Give a lane clip an unlooped region as long as it is, and make it resize the
+ * way Live does: growth stops at the next clip on the track.
+ * @param clip - The clip's registration
+ */
+function resizesOnLane(clip: RegisteredMockObject): void {
+  const [start, end] = laneClipSpan(clip.id);
+  const length = end - start;
+
+  Object.assign(clip.properties, {
+    looping: 0,
+    loop_start: 0,
+    loop_end: length,
+    start_marker: 0,
+    end_marker: length,
+  });
+  resizesLikeLiveClip(clip, () => {
+    const [now] = laneClipSpan(clip.id);
+    const later = laneClips
+      .map((other) => laneClipSpan(other)[0])
+      .filter((otherStart) => otherStart > now);
+
+    return Math.min(Infinity, ...later);
+  });
 }
 
 /**
@@ -304,7 +333,7 @@ export function expectUntouchedClipsReadOnce(
 }
 
 /**
- * Make a clip loop over its own length, which is what lengthening tiles.
+ * Make a 4-beat clip loop over its own length.
  * @param id - The clip
  */
 export function makeLooping(id: string): void {

@@ -60,8 +60,8 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     // Doubling the tempo doubles what the loop is worth in beats — 2.2222
     // seconds is 8 beats at 216 BPM — but leaves Live's Clip.length reporting
     // the 4 beats it froze at. So the scene is two bars long, and duplicating
-    // it tiles the MIDI clip twice. Measure the loop by Clip.length instead and
-    // the scene comes out one bar, fitting the MIDI clip once.
+    // it stretches the MIDI clip to two bars. Measure the loop by Clip.length
+    // instead and the scene comes out one bar, leaving the MIDI clip at one.
     await call("ppal-create-clip", {
       path: `t${EMPTY_MIDI_TRACK}/s${SCENE}`,
       notes: "C3 1|1",
@@ -86,17 +86,21 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     const midiCopies = dup.clips.filter((c) =>
       c.path?.startsWith(`t${EMPTY_MIDI_TRACK}[`),
     );
-    const starts = [];
+    const copies = [];
 
     for (const copy of midiCopies) {
       const clip = await call<ReadClipResult>("ppal-read-clip", {
         id: copy.id,
+        include: ["timing"],
       });
 
-      starts.push(arrangementStartOf(clip));
+      copies.push({
+        start: arrangementStartOf(clip),
+        length: clip.arrangementLength,
+      });
     }
 
-    expect(starts).toStrictEqual(["49|1", "50|1"]);
+    expect(copies).toStrictEqual([{ start: "49|1", length: "2bar" }]);
   });
 
   it("fills arrangementLength from an unwarped source clip", async () => {

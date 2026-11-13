@@ -245,7 +245,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     );
 
     it.each(["midi", "audio"] as const)(
-      "carries a looping %s clip's automation across a longer copy, partial last tile included",
+      "carries a looping %s clip's automation across a copy longer than its loop",
       async (kind) => {
         const loop = LOOP_BEATS[kind];
         const length = loop + loop / 2 + 1;

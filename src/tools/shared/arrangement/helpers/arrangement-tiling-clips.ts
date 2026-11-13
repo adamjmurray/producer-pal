@@ -36,22 +36,6 @@ export interface TilingContext {
   lanes?: LaneView;
   /** Where to say a scratch clip or scene couldn't be removed; unset warns. */
   reportScratch?: (message: string) => void;
-  /** Collects each tile's place and where in the loop it starts playing. */
-  pieces?: TilePiece[];
-}
-
-/** A tile as tiling wrote it: where it sits and what it plays first. */
-export interface TilePiece {
-  /** Arrangement position, in beats. */
-  start: number;
-  /** Arrangement length, in beats. */
-  length: number;
-  /** The content position it starts playing from. */
-  startMarker: number;
-}
-
-export interface CreatedClip {
-  id: string;
 }
 
 export interface SessionClipResult {
@@ -247,6 +231,8 @@ export function removeTempArrangementClip(
  * @param length - Length of temp clip in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context object with silenceWavPath for audio clips
+ * @param removeTemp - Deletes the temp clip by id; by default a refused delete
+ *   throws
  */
 export function createAndDeleteTempClip(
   track: LiveAPI,
@@ -254,6 +240,8 @@ export function createAndDeleteTempClip(
   length: number,
   isMidiClip: boolean,
   context: TilingContext,
+  removeTemp: (id: string) => void = (id) =>
+    track.call("delete_clip", toLiveApiId(id)),
 ): void {
   // The temp clip is gone by the time anything looks, so say what it trimmed.
   context.lanes?.wroteOnTrack(track, position, position + length);
@@ -268,33 +256,36 @@ export function createAndDeleteTempClip(
       pathPrefix(track),
     );
 
-    track.call("delete_clip", toLiveApiId(tempClip.id));
-  } else {
-    const session = createAudioClipInSession(
-      track,
-      length,
-      context.silenceWavPath,
-      context.reportScratch,
-    );
+    removeTemp(tempClip.id);
 
-    let tempClip: LiveAPI;
-
-    // The scratch clip goes whether or not the copy landed: a throw would
-    // otherwise leave it, and its scene, in the Set with nothing to say so.
-    try {
-      tempClip = clipFromDuplicateResult(
-        track.call(
-          "duplicate_clip_to_arrangement",
-          toLiveApiId(session.clip.id),
-          position,
-        ),
-      );
-    } finally {
-      removeSessionClip(session, context.reportScratch);
-    }
-
-    track.call("delete_clip", toLiveApiId(tempClip.id));
+    return;
   }
+
+  // An audio track takes no MIDI clip, and an audio clip can't be made at a
+  // chosen length in place: copy a silent Session clip of that length instead.
+  const session = createAudioClipInSession(
+    track,
+    length,
+    context.silenceWavPath,
+    context.reportScratch,
+  );
+  let tempClipId: string | undefined;
+
+  // The scratch clips go whether or not the copy landed: a throw would
+  // otherwise leave them in the Set with nothing to say so.
+  try {
+    tempClipId = clipFromDuplicateResult(
+      track.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(session.clip.id),
+        position,
+      ),
+    ).id;
+  } finally {
+    removeSessionClip(session, context.reportScratch);
+  }
+
+  removeTemp(tempClipId);
 }
 
 // --- Helpers below main exports ---

@@ -59,7 +59,7 @@ export async function applyCodeToWrittenClips(
     if (applied != null && "error" in applied) {
       const reason = `code failed: ${applied.error}`;
 
-      // Tiled copies run the same code and fail the same way: say it once.
+      // A split's pieces run the same code and fail the same way: say it once.
       if (!reasons.said.get(sourceId)?.includes(reason)) {
         ignoreClipParams(reasons, sourceId, ["code"], reason);
       }
@@ -68,7 +68,7 @@ export async function applyCodeToWrittenClips(
 
       const dropped = droppedDuplicatesNote(applied.droppedDuplicates);
 
-      // Tiled copies run the same code: say it once, like a failure
+      // A split's pieces run the same code: say it once, like a failure
       if (dropped != null && !reasons.said.get(sourceId)?.includes(dropped)) {
         noteClipReason(reasons, sourceId, dropped);
       }

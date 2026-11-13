@@ -5,9 +5,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { makeResizable } from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -32,6 +34,30 @@ function movesTo(track: RegisteredMockObject): number[] {
  */
 function movedTo(track: RegisteredMockObject): number | null {
   return movesTo(track)[0] ?? null;
+}
+
+/**
+ * Make the 4-bar clips resize the way Live does.
+ * @param ids - The clips
+ */
+function resizable(ids: string[]): void {
+  for (const id of ids) {
+    makeResizable(lookupMockObject(id) as RegisteredMockObject, {
+      end_time: 16,
+    });
+  }
+}
+
+/**
+ * @param ids - Clips
+ * @returns Each one's span now, in beats
+ */
+function spansOf(ids: string[]): number[] {
+  return ids.map((id) => {
+    const { start_time, end_time } = lookupMockObject(id)?.properties ?? {};
+
+    return Number(end_time) - Number(start_time);
+  });
 }
 
 describe("updateClip - arrangement params per clip", () => {
@@ -67,18 +93,17 @@ describe("updateClip - arrangement params per clip", () => {
   });
 
   it("resizes every clip when one length is given", async () => {
+    resizable(["100", "101"]);
     await updateClip({ id: "100,101", arrangementLength: "2bar" });
 
-    for (const track of [tracks[0], tracks[1]]) {
-      expect(track?.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
-    }
+    expect(spansOf(["100", "101"])).toStrictEqual([8, 8]);
   });
 
   it("gives each clip its own length", async () => {
+    resizable(["100", "101"]);
     await updateClip({ id: "100,101", arrangementLength: "2bar,1bar" });
 
-    expect(tracks[0]?.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
-    expect(tracks[1]?.call).toHaveBeenCalledWith("create_midi_clip", 4, 12);
+    expect(spansOf(["100", "101"])).toStrictEqual([8, 4]);
   });
 
   it("refuses a short length list", async () => {

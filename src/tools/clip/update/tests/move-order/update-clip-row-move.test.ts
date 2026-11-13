@@ -394,7 +394,7 @@ describe("updateClip - a move Live turns down at write time", () => {
     ]);
   });
 
-  // The resize clears the span it tiles across just as the move clears its
+  // The resize clears the span it grows into just as the move clears its
   // destination, so a called-off move takes its arrangementLength with it.
   it("drops the resize of a called-off move too", async () => {
     const result = await moveOntoRefusedClip({ arrangementLength: "8bar" });

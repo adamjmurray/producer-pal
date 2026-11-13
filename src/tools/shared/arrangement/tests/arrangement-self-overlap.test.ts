@@ -20,7 +20,6 @@ import {
 import {
   duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
-  sourceOverlapsTarget,
 } from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
@@ -30,83 +29,6 @@ beforeEach(() => {
 
 afterEach(() => {
   setArrangementDuplicateCrashWorkaround(true);
-});
-
-describe("sourceOverlapsTarget", () => {
-  it("returns false when the crash workaround is disabled", () => {
-    setArrangementDuplicateCrashWorkaround(false);
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
-    });
-
-    // Source [0,4] would overlap a placement at [2,6], but with the workaround
-    // off we defer to Live entirely (matches clearClipAtDuplicateTarget's no-op).
-    expect(sourceOverlapsTarget("100", 2, 4)).toBe(false);
-  });
-
-  it("returns false when the source is a session clip", () => {
-    // Give the session clip a range that WOULD overlap [0,4] if the guard were
-    // skipped, so the is_arrangement_clip check is observable via the result.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 0, start_time: 0, end_time: 4 },
-    });
-
-    expect(sourceOverlapsTarget("100", 0, 4)).toBe(false);
-  });
-
-  it("returns false when the source lies entirely after the placement range", () => {
-    // Source [10,14]; a placement at [0,4] ends before the source starts, so
-    // `sourceStart < targetEnd` (10 < 4) is false — no overlap.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 10, end_time: 14 },
-    });
-
-    expect(sourceOverlapsTarget("100", 0, 4)).toBe(false);
-  });
-
-  it("returns false when the source starts exactly at the placement's end", () => {
-    // Source [4,8]; placement [0,4] ends exactly where the source starts. The
-    // strict `sourceStart < targetEnd` (4 < 4) makes this adjacent, not overlap.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 4, end_time: 8 },
-    });
-
-    expect(sourceOverlapsTarget("100", 0, 4)).toBe(false);
-  });
-
-  it("returns true when the source overlaps the target placement range", () => {
-    // Source [0,16] (4-bar clip); a partial tile of length 4 at position 4
-    // covers [4,8], which is inside the source — placing it would trim the source.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
-    });
-
-    expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);
-  });
-
-  it("has no track check, unlike clearClipAtDuplicateTarget", () => {
-    // Tiling always places tiles on the source clip's own track, so there is no
-    // second track to compare against and no track parameter. Pinned so a
-    // cross-track tiling caller can't appear without adding that check — it
-    // would read a cross-track source as a self-overlap and skip its tiles.
-    setupArrangementClip("100", 1, {
-      is_arrangement_clip: 1,
-      start_time: 0,
-      end_time: 16,
-    });
-
-    expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);
-  });
-
-  it("returns false when the placement abuts the source's end (the tiling case)", () => {
-    // Source [0,4]; tiling always starts at the source's end, so a tile at
-    // position 4 (range [4,8]) is adjacent, not overlapping — the common path.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
-    });
-
-    expect(sourceOverlapsTarget("100", 4, 4)).toBe(false);
-  });
 });
 
 describe("duplicateSelfOverlappingClip", () => {

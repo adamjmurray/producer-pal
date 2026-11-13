@@ -4,9 +4,9 @@ Part of [Skip entries, tool by tool](README.md).
 
 - **update-clip answers per target named, not per clip reached.** Its targets
   resolve up front, and the entries come back in call order: a split target's
-  pieces and a lengthened clip's tiles come right after its own. A path that
-  can't be parsed refuses the call, and so does a `toPath` entry that can't be
-  (`tX`). A path or id that finds no clip (a path into a group track's slot says
+  pieces come right after its own. A path that can't be parsed refuses the call,
+  and so does a `toPath` entry that can't be (`tX`). A path or id that finds no
+  clip (a path into a group track's slot says
   `track t9 (id 12) is a group track; it holds no clips`), a `toPath` entry that
   parses but names no place a clip can go (a scene), a target whose only
   requested work (a move, a position, a split) was refused, and a clip an
@@ -15,16 +15,13 @@ Part of [Skip entries, tool by tool](README.md).
   miss some, so those clips keep plain entries, and a call or position that cut
   nothing anywhere gets one WARNING for the call. A MIDI note that crosses a cut
   stays in the earlier piece and ends at the cut, so that clip's entry says
-  `N notes crossed a cut and now end at it`. Lengthening a looped MIDI clip says
-  the same: each tile starts where the clip before it stopped, which may be
-  mid-loop, so a note still sounding at that point loses its tail. Each note
-  counts once, however many cuts or boundaries it crosses, and only those that
-  landed count; a note that ends at a cut or loop end, or is muted, does not,
-  and neither does a boundary next to a tile Live refused. If the notes can't be
-  read, the cut or tiling goes ahead and says nothing: the count is only a
-  diagnostic. The `name` and `color` lists pair by the target's place, so a skip
-  doesn't slide them. The deadline skips every target it never reached; a split
-  that already cut keeps its pieces, each saying what did not run.
+  `N notes crossed a cut and now end at it`. Each note counts once, however many
+  cuts it crosses, and only cuts that landed count; a note that ends at a cut or
+  loop end, or is muted, does not. If the notes can't be read, the cut goes
+  ahead and says nothing: the count is only a diagnostic. The `name` and `color`
+  lists pair by the target's place, so a skip doesn't slide them. The deadline
+  skips every target it never reached; a split that already cut keeps its
+  pieces, each saying what did not run.
 - **update-clip: a skipped clip's path can go stale.** A conversion's new track,
   a move or a split changes what a later path names, so a skipped clip's entry
   adds `that clip is now <path> (id N)`, read after all the writes; see
@@ -46,19 +43,18 @@ Part of [Skip entries, tool by tool](README.md).
   what exists now (the copy a move made, not the source) and what landed:
   `<error>; already changed: name, copy at t1/s2`. A move is checked before it
   shortens or resizes, so a refused move leaves the clip as it was, and a
-  lengthen whose move fails anyway is skipped. A shortening clip is cut by a
-  temp clip that is deleted on every path; one Live won't delete is a `detail`
-  on the entry, and a throw after the cut keeps `already changed: shortened`. A
-  param the clip can't take is a detail on its entry, and a skip when it was all
-  the call asked. The move and arrangement helpers report on the clip's entry
-  through a per-call collector keyed by the clip id; a step that writes under a
-  new id hands what it reports back to the id the caller named. Moves are
-  written in an order that clears nobody's way, and one that can't be ordered is
-  refused with the clip it would land on named. Known gap: if Live fails while a
-  lengthened clip's last partial tile is in the holding area past the track's
-  clips, that holding copy can be left there unreported. Another known gap: when
-  a target throws partway, notes gathered for that clip before the throw are not
-  carried onto its failure entry.
+  lengthen whose move fails anyway is skipped. A resize changes the one clip in
+  place. A lengthen first clears what it grows over with a temp clip that is
+  deleted on every path; one Live won't delete is a `detail` on the entry. A
+  throw after a shorten keeps `already changed: shortened`. A param the clip
+  can't take is a detail on its entry, and a skip when it was all the call
+  asked. The move and arrangement helpers report on the clip's entry through a
+  per-call collector keyed by the clip id; a step that writes under a new id
+  hands what it reports back to the id the caller named. Moves are written in an
+  order that clears nobody's way, and one that can't be ordered is refused with
+  the clip it would land on named. Known gap: when a target throws partway,
+  notes gathered for that clip before the throw are not carried onto its failure
+  entry.
 - **update-clip: a step sequencer clip takes no note work.** A Live 13 step
   sequencer clip is a MIDI clip whose steps the API can't read or write (its
   notes calls reach a hidden list and change nothing visible). `notes`,
@@ -81,12 +77,6 @@ Part of [Skip entries, tool by tool](README.md).
   (not even its meter or name), and the other clips go on. The call is refused
   instead when every meter fails, or a clip the call will split fails: a cut
   can't be undone.
-- **update-clip: `envelopes` beside an `arrangementLength` that tiles is a
-  skip.** Lengthening a looped arrangement clip (looped as the call leaves it)
-  tiles it into new clips, and the envelopes would reach only the first. That
-  clip is `{id, ok: false, detail}`, written nothing, and the other clips go on.
-  An unlooped clip grows in place and a shorten makes no tiles, so both still
-  take envelopes.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer

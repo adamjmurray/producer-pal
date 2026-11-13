@@ -4,14 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 // A cut ends a note that crosses it: the note stays in the earlier piece, and
-// the later pieces start after its start, so nothing plays the rest. Lengthening
-// a looped clip does the same where one tile stops and the next begins. Nothing
-// in the pieces shows that, so the clip's entry has to.
+// the later pieces start after its start, so nothing plays the rest. Nothing in
+// the pieces shows that, so the clip's entry has to.
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
-import { type TilePiece } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 
 interface PlayedClip {
   looping: boolean;
@@ -47,54 +45,6 @@ export function firstCutsCrossed(clip: LiveAPI, offsets: number[]): number[] {
   return crossedBy(clip, (played) =>
     offsets.map((offset) => contentPosition(played, offset)),
   );
-}
-
-/**
- * Say how many notes the tile boundaries of a lengthened looped clip ended.
- * Wherever a piece stops, a note still sounding there is cut off, whatever the
- * next piece plays. Counts a note once, however many boundaries it crosses.
- * Boundaries next to a gap are skipped: a missing tile is silence, not a cut.
- * Says nothing if the clip can't be read: the count is only a diagnostic.
- * @param report - Where to say what happened to the clip, if anywhere
- * @param clip - The MIDI clip that was lengthened, as it is now
- * @param tiles - What tiling placed after it, in order, as it wrote them
- */
-export function reportTileCrossedNotes(
-  report: ClipReporter | undefined,
-  clip: LiveAPI,
-  tiles: TilePiece[],
-): void {
-  if (report == null || tiles.length === 0) {
-    return;
-  }
-
-  const cuts = crossedBy(clip, (played) => {
-    const start = clip.getProperty("start_time") as number;
-    const first: TilePiece = {
-      start,
-      length: (clip.getProperty("end_time") as number) - start,
-      startMarker: played.startMarker,
-    };
-    const pieces = [first, ...tiles.toSorted((a, b) => a.start - b.start)];
-
-    // A piece's stop is a cut only when the next piece starts right there.
-    return pieces.flatMap((piece, i) => {
-      const next = pieces[i + 1];
-
-      return next != null &&
-        Math.abs(piece.start + piece.length - next.start) <= SAME_TIME_EPSILON
-        ? [
-            contentPosition(
-              { ...played, startMarker: piece.startMarker },
-              piece.length,
-            ),
-          ]
-        : [];
-    });
-  });
-
-  // Every boundary is of pieces that landed.
-  reportCrossedNotes(report, clip.id, cuts, Infinity);
 }
 
 /**

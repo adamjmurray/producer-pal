@@ -11,32 +11,43 @@ from scratch.
 These constraints drive every design decision; when something seems
 over-engineered, one of these is usually why.
 
-### Arrangement length is Immutable for Looped Clips
+### Resizing a Clip in Place
 
-Arrangement clip length cannot be changed after creation by any means for warped
-**looped** clips. You cannot extend a warped looped clip's arrangement length by
-setting `end_time`, `end_marker`, `loop_end`, or any other property. The only
-way to get a warped looped clip with a specific arrangement length is to create
-it with that length (via session-based tiling or duplication).
+An arrangement clip's span (`end_time` − `start_time`) can't be written
+directly. Two moves change it, and both keep the clip's id, notes, warp markers
+and envelopes (probed in Live 12.3.8 and 12.4.6):
 
-This is _the_ fundamental constraint for warped looped clips. It's why
-session-based tiling exists for warped looped audio clips, why we
-duplicate-and-delete instead of resizing, and why lengthening produces multiple
-clips instead of stretching one.
+- **Unlooped**: the span follows `loop_end`, counted from `start_marker`.
+- **Looped**: the span ignores every property, but survives a toggle. Set
+  `looping` 0, set `loop_end` to `start_marker` + the span, set `looping` 1.
+  Live puts the loop brace back by itself.
 
-**Exception — unlooped clips**: For unlooped clips (MIDI, warped audio, and
-unwarped audio), `loop_end` is writable and extends the clip's arrangement
-length.
+Units: `loop_end` is in **beats** for MIDI and warped audio, and in **seconds**
+for unwarped audio. A looped audio clip is always warped: Live turns `looping`
+off when warp goes off, and turns warp on when `looping` is set.
 
-- **MIDI**: `loop_end` is in **beats**. No boundary — MIDI content is notes, so
-  `loop_end` can be set to any value. See
-  [Lengthening — Unlooped MIDI](operations.md#lengthening--unlooped-midi).
-- **Unwarped audio**: `loop_end` is in **seconds**. Ableton auto-clamps to the
-  file boundary. See
+Things that look wrong but aren't:
+
+- While unlooped, `loop_start` reads as `start_marker` and `loop_end` as the end
+  marker. Turning `looping` off swaps in Live's remembered unlooped end, so for
+  a moment the span can be anything: write `loop_end` right after.
+- `end_marker` on a looped clip is writable and doesn't change the span, so it
+  can drift from `start_marker` + span.
+- **Growth stops at the next clip.** Live never lets a resized clip overlap the
+  next one on its lane: it stops there. Lengthening clears the span first (a
+  temp clip laid over it, then deleted) so the clip overwrites what it grows
+  over, as any write into an arrangement range does.
+
+See `resizeArrangementClip` (`arrangement-clip-resize.ts`) and
+[Lengthening](operations.md#lengthening).
+
+**Unlooped audio boundaries**:
+
+- **Unwarped audio**: Ableton auto-clamps `loop_end` to the file boundary. See
   [Lengthening — Unlooped Unwarped Audio](operations.md#lengthening--unlooped-unwarped-audio).
-- **Warped audio**: `loop_end` is in **content beats** (1:1 with arrangement
-  beats). Ableton does **not** auto-clamp — the clip extends with silence past
-  the file boundary. Manual boundary detection and clamping is required. See
+- **Warped audio**: Ableton does **not** auto-clamp — the clip extends with
+  silence past the file boundary. Manual boundary detection and clamping is
+  required. See
   [Lengthening — Unlooped Warped Audio](operations.md#lengthening--unlooped-warped-audio).
 
 ### Mid-Clip Splitting Doesn't Work
@@ -73,24 +84,13 @@ that rather than fix it.
 the actual file content length. Use content boundary detection instead (see
 [File Content Boundary Detection](core-techniques.md#file-content-boundary-detection)).
 
-### `loop_end` Reverts on Looped Warped Arrangement Clips
-
-When looping is disabled on a warped arrangement clip that was looping,
-`loop_end` reverts to its default. Don't rely on `loop_end` persisting after
-toggling looping off on warped clips.
-
-**Exception — unlooped clips**: For clips that are already unlooped, `loop_end`
-is writable and persists. This is the mechanism used for all unlooped
-lengthening (MIDI, warped audio, and unwarped audio).
-
 ### Warped vs Unwarped Beats
 
 - **Warped clips**: content beats = arrangement beats. 1 beat of content = 1
-  beat of arrangement time. Tiling math is straightforward.
+  beat of arrangement time.
 - **Unwarped clips**: content plays at native sample rate. Arrangement length
-  depends on the sample rate vs project tempo. The same file content produces
-  different arrangement lengths at different tempos. This requires completely
-  different tiling strategies.
+  depends on the sample rate vs project tempo, so the same file content produces
+  different arrangement lengths at different tempos.
 
 ### Audio Clip Creation in Arrangement
 
@@ -173,23 +173,25 @@ can't reproduce Live's native shift.
 
 ## Where the rest lives
 
-| Part                                     | Covers                                                                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [core-techniques.md](core-techniques.md) | Holding area, edge trimming, session-based tiling, the duplicate crash workaround, stamping automation, file content boundary detection |
-| [operations.md](operations.md)           | Lengthening (looped, unlooped MIDI, warped and unwarped audio), shortening, moving, splitting                                           |
+| Part                                     | Covers                                                                                                            |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [core-techniques.md](core-techniques.md) | Holding area, edge trimming, the duplicate crash workaround, stamping automation, file content boundary detection |
+| [operations.md](operations.md)           | Lengthening (looped, unlooped MIDI, warped and unwarped audio), shortening, moving, splitting                     |
 
 ## Source File Reference
 
-| File                            | Role                                                      |
-| ------------------------------- | --------------------------------------------------------- |
-| `arrangement-operations.ts`     | Top-level dispatcher (lengthen vs shorten)                |
-| `arrangement-length-changes.ts` | Looped lengthening, shortening, temp clip truncation      |
-| `unlooped-lengthening.ts`       | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
-| `arrangement-tiling.ts`         | Tiling, holding area, crash workaround, clip movement     |
-| `arrangement-tiling-clips.ts`   | Low-level primitives (temp clips, session clip creation)  |
-| `arrangement-splitting.ts`      | Clip splitting algorithm                                  |
-| `arrangement-move.ts`           | Update-clip integration (move + lengthen orchestration)   |
-| `arrangement-lane-view.ts`      | What is on each lane; writes that leave no clip report it |
+| File                               | Role                                                      |
+| ---------------------------------- | --------------------------------------------------------- |
+| `arrangement-operations.ts`        | Top-level dispatcher (lengthen vs shorten)                |
+| `arrangement-length-changes.ts`    | Lengthening and shortening                                |
+| `arrangement-clip-resize.ts`       | Resizing one clip in place, looped or not                 |
+| `clear-ahead-of-clip.ts`           | Clearing the span a lengthening clip grows into           |
+| `unlooped-lengthening.ts`          | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
+| `arrangement-tiling-workaround.ts` | Holding area, crash workaround, clip movement             |
+| `arrangement-tiling-clips.ts`      | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-splitting.ts`         | Clip splitting algorithm                                  |
+| `arrangement-move.ts`              | Update-clip integration (move + lengthen orchestration)   |
+| `arrangement-lane-view.ts`         | What is on each lane; writes that leave no clip report it |
 
 Sources are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`; tests are colocated in `tests/`.

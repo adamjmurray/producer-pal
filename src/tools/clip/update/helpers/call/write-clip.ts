@@ -100,7 +100,7 @@ const CONTENT_PARAMS = [
  * @param run - The call's shared state
  * @param target - The target, which names a clip
  * @param step - The call's state for this target
- * @returns The target's entry, and the entries of any piece or tile after it
+ * @returns The target's entry, and the entries of any piece after it
  */
 export async function writeClip(
   run: ClipRun,
@@ -133,7 +133,7 @@ export async function writeClip(
     }
 
     // Refused before anything is written to it (its meter can't read the note
-    // edits, or its envelopes would miss the tiles), so the clip is unchanged.
+    // edits), so the clip is unchanged.
     const refused = run.refused.get(clip.id);
 
     if (refused != null) {
@@ -180,7 +180,7 @@ export async function writeClip(
 /**
  * What the call does with this clip's position, after the plan: a move the plan
  * gave up on, or one whose way is blocked by a clip that stayed put, is called
- * off together with its resize — a resize clears the span it tiles across just
+ * off together with its resize — a resize clears the span it grows into just
  * as a move clears its destination.
  * @param run - The call's shared state
  * @param payload - The target's payload

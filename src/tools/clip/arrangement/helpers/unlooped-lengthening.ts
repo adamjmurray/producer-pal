@@ -16,7 +16,11 @@ import {
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { type ClipIdResult } from "./arrangement-length-changes.ts";
+import { audioClipSampleSeconds } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+
+/** Why a clip that should have grown stopped short, with nothing in its way. */
+export const LIVE_STOPPED_IT = "Live stopped the clip there";
 
 /** An unlooped audio clip can only show what its file holds. */
 const NO_MORE_CONTENT = "the audio file has no more content to show";
@@ -27,8 +31,9 @@ interface HandleUnloopedLengtheningArgs {
   arrangementLengthBeats: number;
   currentArrangementLength: number;
   currentEndTime: number;
-  clipStartMarker: number;
   track: LiveAPI;
+  /** Empties the lane up to where the clip will end, so it can grow there. */
+  clearAhead: (targetEnd: number) => void;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
 }
@@ -41,8 +46,8 @@ interface HandleUnloopedLengtheningArgs {
  * @param options.arrangementLengthBeats - Target length in beats
  * @param options.currentArrangementLength - Current length in beats
  * @param options.currentEndTime - Current end time in beats
- * @param options.clipStartMarker - Clip start marker position
  * @param options.track - The LiveAPI track object
+ * @param options.clearAhead - Empties the lane up to a target end, in beats
  * @param options.reasons - What each clip has to say beyond its result
  * @returns The clip when it was resized, or empty when it couldn't grow
  */
@@ -52,12 +57,20 @@ export function handleUnloopedLengthening({
   arrangementLengthBeats,
   currentArrangementLength,
   currentEndTime,
-  clipStartMarker,
   track,
+  clearAhead,
   reasons,
 }: HandleUnloopedLengtheningArgs): ClipIdResult[] {
+  const clipStartMarker = clip.getProperty("start_marker") as number;
+  const clipStartTime = currentEndTime - currentArrangementLength;
+  // Live stops a growing clip at the next one, so clear up to where it'll end.
+  const clearTo = (spanBeats: number): void =>
+    clearAhead(clipStartTime + spanBeats);
+
   // MIDI clip handling — set loop_end to extend arrangement length directly
   if (!isAudioClip) {
+    clearTo(arrangementLengthBeats);
+
     const currentEndMarker = clip.getProperty("end_marker") as number;
     const targetEndMarker = clipStartMarker + arrangementLengthBeats;
 
@@ -71,17 +84,22 @@ export function handleUnloopedLengthening({
 
     clip.set("loop_end", loopStart + arrangementLengthBeats);
 
+    // Clearing leaves nothing to stop it, so this is Live refusing the span.
+    const landed = (clip.getProperty("end_time") as number) - clipStartTime;
+
+    if (landed < arrangementLengthBeats - SAME_TIME_EPSILON) {
+      noteLandedShort(reasons, clip.id, landed, LIVE_STOPPED_IT);
+    }
+
     return [{ id: clip.id }];
   }
 
-  // Audio clip handling - tile with chunks matching the current arrangement length
-  // Each tile shows a different portion of the audio content
-  // Markers are in the audio file's beat grid for both warped and unwarped clips
+  // Audio: the clip can only grow as far as its file reaches.
   const isWarped = (clip.getProperty("warping") as number) === 1;
   const clipEndMarkerBeats = clip.getProperty("end_marker") as number;
   const contentLength = clipEndMarkerBeats - clipStartMarker;
 
-  // Zero-content clips have nothing to tile
+  // Zero-content clips have nothing to show
   if (contentLength <= SAME_TIME_EPSILON) {
     refuseClipWork(
       reasons,
@@ -99,13 +117,15 @@ export function handleUnloopedLengthening({
         arrangementLengthBeats,
         currentArrangementLength,
         clipStartMarker,
+        clearTo,
         reasons,
       )
     : lengthenUnwarpedAudio(
         clip,
         arrangementLengthBeats,
         currentArrangementLength,
-        currentEndTime,
+        clipStartTime,
+        clearTo,
         reasons,
       );
 
@@ -124,6 +144,7 @@ export function handleUnloopedLengthening({
  * @param arrangementLengthBeats - Target arrangement length in beats
  * @param currentArrangementLength - Current arrangement length in beats
  * @param clipStartMarker - Clip's start_marker position
+ * @param clearTo - Empties the lane up to a span from the clip's start
  * @param reasons - What each clip has to say beyond its result
  * @returns Whether the clip grew
  */
@@ -133,6 +154,7 @@ function lengthenWarpedUnloopedAudio(
   arrangementLengthBeats: number,
   currentArrangementLength: number,
   clipStartMarker: number,
+  clearTo: (spanBeats: number) => void,
   reasons: ClipReasons,
 ): boolean {
   const filePath = clip.getProperty("file_path") as string;
@@ -171,8 +193,10 @@ function lengthenWarpedUnloopedAudio(
   );
 
   if (effectiveTarget < arrangementLengthBeats - SAME_TIME_EPSILON) {
-    noteCappedAt(reasons, clip.id, effectiveTarget);
+    noteLandedShort(reasons, clip.id, effectiveTarget, NO_MORE_CONTENT);
   }
+
+  clearTo(effectiveTarget);
 
   // For warped clips: loop_end is in content beats, 1:1 with arrangement beats
   const loopStart = clip.getProperty("loop_start") as number;
@@ -197,7 +221,8 @@ function lengthenWarpedUnloopedAudio(
  * @param clip - The unwarped audio clip
  * @param arrangementLengthBeats - Target arrangement length in beats
  * @param currentArrangementLength - Current arrangement length in beats
- * @param currentEndTime - Current end time in beats
+ * @param clipStartTime - Where the clip starts, in beats
+ * @param clearTo - Empties the lane up to a span from the clip's start
  * @param reasons - What each clip has to say beyond its result
  * @returns Whether the clip grew
  */
@@ -205,7 +230,8 @@ function lengthenUnwarpedAudio(
   clip: LiveAPI,
   arrangementLengthBeats: number,
   currentArrangementLength: number,
-  currentEndTime: number,
+  clipStartTime: number,
+  clearTo: (spanBeats: number) => void,
   reasons: ClipReasons,
 ): boolean {
   const loopStart = clip.getProperty("loop_start") as number;
@@ -216,13 +242,19 @@ function lengthenUnwarpedAudio(
   const beatsPerSecond = currentArrangementLength / currentDurationSec;
   const targetDurationSec = arrangementLengthBeats / beatsPerSecond;
   const targetLoopEnd = loopStart + targetDurationSec;
+  // Clear only as far as the file lets it grow, when its length is known.
+  const sampleSeconds = audioClipSampleSeconds(clip);
+  const reachBeats =
+    sampleSeconds > 0
+      ? (sampleSeconds - loopStart) * beatsPerSecond
+      : arrangementLengthBeats;
 
+  clearTo(Math.min(arrangementLengthBeats, reachBeats));
   clip.set("loop_end", targetLoopEnd);
 
-  // Read back end_time to check achieved arrangement length
-  const newEndTime = clip.getProperty("end_time") as number;
-  const clipStartTime = currentEndTime - currentArrangementLength;
-  const actualArrangementLength = newEndTime - clipStartTime;
+  // Read back the span to check what Live allowed
+  const actualArrangementLength =
+    (clip.getProperty("end_time") as number) - clipStartTime;
 
   if (actualArrangementLength <= currentArrangementLength + SAME_TIME_EPSILON) {
     noteNothingToShow(reasons, clip.id);
@@ -231,7 +263,7 @@ function lengthenUnwarpedAudio(
   }
 
   if (actualArrangementLength < arrangementLengthBeats - SAME_TIME_EPSILON) {
-    noteCappedAt(reasons, clip.id, actualArrangementLength);
+    noteLandedShort(reasons, clip.id, actualArrangementLength, NO_MORE_CONTENT);
   }
 
   return true;
@@ -252,15 +284,17 @@ function noteNothingToShow(reasons: ClipReasons, clipId: string): void {
 }
 
 /**
- * Note that the clip grew, but only as far as the file reaches.
+ * Note that the clip grew, but short of the length asked for.
  * @param reasons - What each clip has to say, added to
  * @param clipId - The clip that grew
  * @param landedBeats - The arrangement length it reached, in beats
+ * @param why - Why it stopped there
  */
-function noteCappedAt(
+export function noteLandedShort(
   reasons: ClipReasons,
   clipId: string,
   landedBeats: number,
+  why: string,
 ): void {
   const { numerator, denominator } = songMeter();
 
@@ -268,6 +302,6 @@ function noteCappedAt(
   noteClipReason(
     reasons,
     clipId,
-    `arrangementLength landed at ${abletonBeatsToDuration(landedBeats, numerator, denominator)}: ${NO_MORE_CONTENT}`,
+    `arrangementLength landed at ${abletonBeatsToDuration(landedBeats, numerator, denominator)}: ${why}`,
   );
 }

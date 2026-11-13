@@ -514,9 +514,9 @@ describe("Behavioral splitting tests", () => {
       },
     );
 
-    // Lengthening tiles copies in from the clip's own end, which after a cut
-    // is where the next piece starts — one length would bury the piece after
-    // each piece it lengthens. Refused with the rest.
+    // Lengthening grows a clip over whatever follows it, which after a cut is
+    // the next piece — one length would bury the piece after each piece it
+    // lengthens. Refused with the rest.
     it("refuses one arrangementLength, leaving both the clip and the bars after it", async () => {
       const clipId = await createFourBarClip(460);
 

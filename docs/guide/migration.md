@@ -888,6 +888,14 @@ source are gone** (2.6.0). Add the folder to Places in Live's browser instead:
 `source: "sample-folder"` (or `sampleFolder`) is refused, and `POST /config`
 ignores a `sampleFolder` field.
 
+**`arrangementLength` resizes the one clip in place** (`ppal-update-clip`,
+`ppal-duplicate`). Lengthening a looping arrangement clip used to tile copies: a
+row of clips, each with an entry after the target's. Now the clip itself grows
+and keeps looping, and the target gets one entry. `envelopes` beside it is no
+longer refused. An unlooped clip lengthened into the next clip now overwrites it
+and says so, as a looping one always did; it used to stop short there without a
+word.
+
 ## Memory answers changed in 2.6.0
 
 **`ppal-context` reads and deletes memories by list, and one name answers like

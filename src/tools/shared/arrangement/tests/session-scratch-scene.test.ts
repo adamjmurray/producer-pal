@@ -12,7 +12,8 @@ import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
 import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { handleUnloopedLengthening } from "#src/tools/clip/arrangement/helpers/unlooped-lengthening.ts";
-import { handleArrangementShortening } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
+import { clearAheadOfClip } from "#src/tools/clip/arrangement/helpers/clear-ahead-of-clip.ts";
+import { type LaneView } from "../helpers/arrangement-lane-view.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -72,6 +73,7 @@ function lengthenWarpedAudio(reasons: ClipReasons): void {
   handleUnloopedLengthening({
     clip: registerAudioClip({
       warping: 1,
+      start_marker: 0,
       end_marker: 4,
       loop_start: 0,
       loop_end: 4,
@@ -81,8 +83,8 @@ function lengthenWarpedAudio(reasons: ClipReasons): void {
     arrangementLengthBeats: 12,
     currentArrangementLength: 4,
     currentEndTime: 4,
-    clipStartMarker: 0,
     track: track(),
+    clearAhead: () => undefined,
     reasons,
   });
 }
@@ -97,7 +99,7 @@ type Report = (message: string) => void;
  */
 const CALLERS: Array<[string, (report: Report) => void]> = [
   [
-    "an arrangement tile",
+    "a temp arrangement clip",
     (report) => {
       createAndDeleteTempClip(track(), 8, 4, false, {
         ...context,
@@ -106,15 +108,20 @@ const CALLERS: Array<[string, (report: Report) => void]> = [
     },
   ],
   [
-    "a shortened audio clip",
+    "an audio clip clearing its way to lengthen",
     (report) => {
-      handleArrangementShortening({
-        clip: registerAudioClip({}),
+      clearAheadOfClip({
+        track: track(),
         isAudioClip: true,
-        arrangementLengthBeats: 4,
-        currentStartTime: 0,
-        currentEndTime: 8,
-        context,
+        from: 8,
+        to: 12,
+        context: {
+          ...context,
+          lanes: {
+            overlapping: () => [{ id: "in-the-way" }],
+            wroteOnTrack: () => undefined,
+          } as unknown as LaneView,
+        },
         reportScratch: report,
       });
     },

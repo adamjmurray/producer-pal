@@ -491,7 +491,7 @@ function readIfChanged(state: LaneState, id: string): ClipSpan | null {
 
 /**
  * Whether a clip shares time with a stretch. A clip reaching in from outside by
- * less than SAME_TIME_EPSILON doesn't: Live rounds clip times, so tiles laid end to end
+ * less than SAME_TIME_EPSILON doesn't: Live rounds clip times, so clips laid end to end
  * overlap by a hair, and trimming that hair off leaves a zero-length clip Live
  * won't delete. A clip wholly inside counts however short it is.
  * @param clip - A clip's span

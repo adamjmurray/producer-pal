@@ -6,7 +6,7 @@
 // Copying a session clip to the arrangement writes its automation into the
 // track's lane over the copy's own span. Copy it at another length and that
 // lands in the wrong place (a shortened copy goes through the holding area) or
-// stops short (a lengthened one is tiled from copies that carry none).
+// stops short (a lengthened one grows past the span its copy wrote).
 //
 // So the lane is written first, by stamps: for each stretch of content the
 // final copy will play, a scratch session copy is set to show just that and

@@ -14,7 +14,8 @@
  * Uses: e2e-test-set — t3 "Lead" (MIDI, one clip at 9|1 spanning 8 bars), t4
  * "Audio 1" (audio, a "kick" clip at 17|1), t5 "Audio 2" (audio, no
  * arrangement clips), t8 for an anchor clip that keeps the song long enough to
- * read past the clips.
+ * read past the clips. A lane needs a track that plays: t8 has no instrument,
+ * so its pan can't be automated.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- clip/remote-script/ppal-update-clip-arrangement-automation
@@ -155,6 +156,42 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       expect(after.id).toBe(result.id);
       expect(await readWithoutId(after.id as string)).toStrictEqual(kept);
+    });
+
+    // The envelopes go on last, so they cover the span the clip was resized to.
+    it("writes the lane over a looping clip's new span when arrangementLength comes too", async () => {
+      const track = `t${String(MIDI_TRACK)}`;
+      const start = 400;
+      const id = await createClipInSlot(ctx, `${track}[101|1]`, {
+        notes: "C3 1|1",
+        length: "1bar",
+        looping: true,
+      });
+      const baseline = await lane(MIDI_TRACK, start - 4);
+
+      const result = await update({
+        id,
+        arrangementLength: "4bar",
+        envelopes: "pan: 1|1 0.6",
+      });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({ envelopes: 1, path: `${track}[101|1]` }),
+      );
+      expect(result.detail).toBeUndefined();
+      await expectLane(MIDI_TRACK, [
+        [start + 0.5, 0.6],
+        // Past the clip's old 1-bar end
+        [start + 14, 0.6],
+        [start + 20, baseline],
+      ]);
+
+      const clip = await clipOn(MIDI_TRACK, "101|1");
+
+      expect(clip).toStrictEqual(
+        expect.objectContaining({ id: result.id, looping: true }),
+      );
+      expect(beats(clip.arrangementLength as string)).toBe(16);
     });
 
     it("leaves the clips beside it alone", async () => {
