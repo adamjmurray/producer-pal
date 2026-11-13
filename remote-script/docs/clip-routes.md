@@ -27,7 +27,9 @@ track, whose Live 13 envelope clips sit in Session slots and whose mixer and
 devices are the parameters; the main track has no clips), `slot` (0-based
 Session slot) or `arrangement_index` (regular tracks only), and a parameter:
 `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device` (`d0`,
-`d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based index.
+`d0/c1/d0` into rack chains, `d0/rc0/d0` into a Drum Rack's return chains) plus
+`parameter` as an exact name or 0-based index. A rack chain's own mixer isn't
+reached, so an envelope on one is never listed.
 
 | Route    | Params                                 | Returns                                                                                                                                                                              |
 | -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

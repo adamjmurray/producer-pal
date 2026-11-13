@@ -29,6 +29,7 @@ import re
 
 from .clip_address import clip_in_track, clip_track, whole_number
 from .errors import RouteError
+from .producer_pal_device import members
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6
@@ -269,14 +270,18 @@ def clear(bridge, params):
 # --- resolving ---------------------------------------------------------
 
 
+# A path's word for a rack's chains -> where the rack keeps them.
+_CHAIN_LISTS = {"c": "chains", "rc": "return_chains"}
+
+
 def _device(track, path):
-    """Walk d0, d0/c1/d0... to a device or chain."""
+    """Walk d0, d0/c1/d0, d0/rc0/d0... to a device or chain."""
     obj = track
     for part in str(path).split("/"):
-        m = re.fullmatch(r"([dc])(\d+)", part)
+        m = re.fullmatch(r"(d|c|rc)(\d+)", part)
         if not m:
             raise RouteError(400, "device must be d0, or d0/c0/d1 for rack chains")
-        children = obj.devices if m[1] == "d" else obj.chains
+        children = members(obj, "devices" if m[1] == "d" else _CHAIN_LISTS[m[1]])
         i = int(m[2])
         if i >= len(children):
             raise RouteError(404, "no %s in %s" % (part, path))
@@ -340,9 +345,12 @@ def _devices(holder, prefix):
     for i, device in enumerate(holder.devices):
         path = "%sd%d" % (prefix, i)
         yield path, device
-        if getattr(device, "can_have_chains", False):
-            for j, chain in enumerate(device.chains):
-                for found in _devices(chain, "%s/c%d/" % (path, j)):
+        if not getattr(device, "can_have_chains", False):
+            continue
+        # Only a Drum Rack has return chains.
+        for word, chains in _CHAIN_LISTS.items():
+            for j, chain in enumerate(members(device, chains)):
+                for found in _devices(chain, "%s/%s%d/" % (path, word, j)):
                     yield found
 
 

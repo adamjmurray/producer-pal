@@ -72,13 +72,13 @@ def count_producer_pal(song):
 
 
 def _inner_devices(device):
-    chains = _members(device, "chains") + _members(device, "return_chains")
-    for pad in _members(device, "drum_pads"):
-        chains += _members(pad, "chains")
+    chains = members(device, "chains") + members(device, "return_chains")
+    for pad in members(device, "drum_pads"):
+        chains += members(pad, "chains")
     return [inner for chain in chains for inner in chain.devices]
 
 
-def _members(obj, name):
+def members(obj, name):
     """`obj.name` as a list, or [] where it has none. Live raises rather than
     answering empty: drum_pads on a rack that isn't a Drum Rack is a
     RuntimeError ("Only drum racks can have pads!")."""

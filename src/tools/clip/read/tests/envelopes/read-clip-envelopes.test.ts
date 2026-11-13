@@ -335,6 +335,32 @@ describe("readClip - envelopes", () => {
     ]);
   });
 
+  it("walks a Drum Rack's return chain to the parameter", async () => {
+    setupClip();
+    registerMockObject("decay-param", {
+      path: livePath.track(0).device(0).returnChain(0).device(0).parameter(1),
+    });
+    mockNonExistentObjects();
+    answerEnvelopeRoutes([
+      {
+        device: "d0/rc0/d0",
+        parameter_index: 1,
+        parameter: parameterInfo("Decay"),
+        event_count: 2,
+      },
+    ]);
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Decay",
+        id: "decay-param",
+        device: "t0/d0/rc0/d0",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+    ]);
+  });
+
   it("falls back to the listed count when a read gives none", async () => {
     setupClip();
     answerEnvelopeRoutes([{ ...MIXER_VOLUME, event_count: 5 }], {

@@ -37,7 +37,13 @@ import {
 const MAX_ENVELOPE_EVENTS = 32;
 
 /** A device segment of the remote script's device path: d0, or c1 for a chain. */
-const DEVICE_SEGMENT = /^([dc])(\d+)$/;
+const DEVICE_SEGMENT = /^(d|c|rc)(\d+)$/;
+/** Where a segment's letters lead. */
+const SEGMENT_CHILDREN: Record<string, string> = {
+  d: "devices",
+  c: "chains",
+  rc: "return_chains",
+};
 
 /** A mixer send, as the remote script names it: send0, send1, ... */
 const SEND_PARAMETER = /^send(\d+)$/;
@@ -364,7 +370,7 @@ function deviceParameter(
 }
 
 /**
- * Walk d0, d0/c1/d0 to a device.
+ * Walk d0, d0/c1/d0, d0/rc0/d0 to a device.
  * @param track - The clip's track
  * @param device - The remote script's device path
  * @returns The device, or null when the path isn't one we can walk
@@ -380,7 +386,7 @@ function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
     }
 
     container = container.child(
-      match[1] === "d" ? "devices" : "chains",
+      SEGMENT_CHILDREN[match[1] as string] as string,
       match[2] as string,
     );
   }
