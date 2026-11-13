@@ -121,7 +121,7 @@ export const locatorNavigation: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Start playback from the chorus",
-    "Now loop from the bridge to the outro",
+    "Now loop the bridge, up to where the outro starts",
     "Copy the bass part from the verse into the bridge",
     "Stop playback",
   ],

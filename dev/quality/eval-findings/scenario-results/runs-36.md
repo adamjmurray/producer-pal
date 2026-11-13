@@ -71,3 +71,11 @@ decided 32 of the 39 judged replies and escalated 7 to Luna.
   trial.
 - `rhythm-grid-midi-json`: wrote C3 as MIDI 48 instead of 60 in 2 of 3 trials.
 - `surgical-note-duration-edit`: once made no update call.
+
+**Follow-up re-run** (3 trials each, after this run):
+
+- `locator-navigation`: "loop from the bridge to the outro" read two ways, so
+  the prompt now says "loop the bridge, up to where the outro starts". The loop
+  turn went 3/3 on muse-glimmer (`2026-11-13T14-51-57Z`; scenario 2/3, the miss
+  never started playback or made the copy) and 3/3 on luna
+  (`2026-11-13T14-54-47Z`), which looped `loc:Bridge` to `loc:Outro`.
