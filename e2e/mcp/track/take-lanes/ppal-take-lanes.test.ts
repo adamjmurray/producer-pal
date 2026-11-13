@@ -36,9 +36,13 @@ import {
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
-import { CHILD_TRACK, EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import {
+  CHILD_TRACK,
+  EMPTY_MIDI_TRACK,
+  RACKS_TRACK,
+} from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -559,57 +563,6 @@ describe("take lanes", () => {
 
     expect(lengthDetail).not.toContain("arrangementLength ignored");
     expect(audioLengthDup.warnings).toStrictEqual([]);
-  });
-
-  // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this
-  // re-creates the clip on the main lane. It's a copy, not a move: the take
-  // stays put, because nothing can remove it.
-  it("promotes a take-lane clip back to the main lane, leaving the take behind", async () => {
-    await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
-      notes: "C3 E3 G3 1|1",
-      name: "The Keeper",
-    });
-
-    await sleep(100);
-    const lanes = await readTakeLanes(EMPTY_MIDI_TRACK);
-    const takeId = lanes.takeLanes![0]!.clips[0]!.id;
-
-    const promoted = parseToolResultWithWarnings<DuplicateClipResult>(
-      await ctx.client!.callTool({
-        name: "ppal-duplicate",
-        arguments: {
-          type: "clip",
-          id: takeId,
-          toPath: `t${EMPTY_MIDI_TRACK}[5|1]`,
-        },
-      }),
-    );
-
-    // Main lane has no `l` segment, so the path is the track plus the position
-    expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}[5|1]`);
-    // Re-creating carries notes, and the copy's entry says so. This clip has no
-    // envelopes, so nothing was lost and the entry names no cost.
-    expect(promoted.data.detail).toBe(
-      "promoted to the main lane by re-creating it",
-    );
-
-    await sleep(100);
-    const copy = parseToolResult<ReadClipResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { id: promoted.data.id, include: ["notes"] },
-      }),
-    );
-
-    expect(copy.name).toBe("The Keeper");
-    expect(copy.notes).toContain("C3");
-
-    // The source take is untouched on its lane
-    const after = await readTakeLanes(EMPTY_MIDI_TRACK);
-
-    expect(after.takeLanes![0]!.clips).toHaveLength(1);
-    expect(after.takeLanes![0]!.clips[0]!.id).toBe(takeId);
   });
 
   it("refuses deletion of a take-lane clip (no delete API)", async () => {

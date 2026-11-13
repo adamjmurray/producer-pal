@@ -156,7 +156,7 @@ fails with "Unable to find application named" even though the app is there:
 
 ```bash
 ABLETON_APP="/Applications/Ableton Live 12 Suite 12.3.app" \
-  npm run e2e:mcp -- track/ppal-take-lanes
+  npm run e2e:mcp -- track/take-lanes/ppal-take-lanes
 ```
 
 A suite that opens a Live 13 Set skips itself on Live 12:

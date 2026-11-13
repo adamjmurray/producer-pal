@@ -16,7 +16,7 @@
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track, t9 "Parent" a group.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- track/ppal-take-lanes-update-track
+ * Run with: npm run e2e:mcp -- track/take-lanes/ppal-take-lanes-update-track
  */
 import { describe, expect, it } from "vitest";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
@@ -28,8 +28,8 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+} from "../../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 

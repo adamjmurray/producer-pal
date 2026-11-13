@@ -177,33 +177,7 @@ describe("arrangementLength: one clip, resized in place", () => {
   });
 
   it("keeps a start marker inside the loop where it is", async () => {
-    // A 4-bar session clip looped over bars 2-4 with a 1-bar pre-roll: a plain
-    // arrangement copy spans 4 bars of a 3-bar loop.
-    const session = parseToolResult<{ id: string }>(
-      await callTool(ctx.client!, "ppal-create-clip", {
-        path: `t${EMPTY_MIDI_TRACK}/s5`,
-        notes: "C3 2|1",
-        length: "4bar",
-        looping: true,
-      }),
-    );
-
-    await sleep(200);
-    await callTool(ctx.client!, "ppal-update-clip", {
-      id: session.id,
-      start: "2|1",
-      length: "3bar",
-      firstStart: "1|1",
-    });
-    await sleep(200);
-
-    const copy = parseToolResult<{ id: string }>(
-      await callTool(ctx.client!, "ppal-duplicate", {
-        type: "clip",
-        id: session.id,
-        toPath: `t${EMPTY_MIDI_TRACK}[351|1]`,
-      }),
-    );
+    const copy = await copyPreRollClipTo(5, "351|1");
 
     await sleep(200);
 
@@ -233,6 +207,25 @@ describe("arrangementLength: one clip, resized in place", () => {
       }),
     );
     expect(lengthBeats(clips[0])).toBeCloseTo(beats("10bar"), 5);
+  });
+
+  // Cut inside the pre-roll, the clip ends before its loop begins.
+  it("shortens a clip to less than its pre-roll, and grows it back", async () => {
+    const copy = await copyPreRollClipTo(6, "371|1");
+
+    await sleep(200);
+
+    const cut = await lengthen({ id: copy.id }, "n/2");
+
+    expect(cut.warnings).toStrictEqual([]);
+    expect(cut.data.id).toBe(copy.id);
+    await expectPreRollClipAt(copy.id, 371, "n/2");
+
+    const grown = await lengthen({ id: copy.id }, "8bar");
+
+    expect(grown.warnings).toStrictEqual([]);
+    expect(grown.data.id).toBe(copy.id);
+    await expectPreRollClipAt(copy.id, 371, "8bar");
   });
 });
 
@@ -264,6 +257,71 @@ describe("arrangementLength on a take-lane clip", () => {
     expect(await laneClipLengths()).toStrictEqual(["2bar", "1bar"]);
   });
 });
+
+/**
+ * Copy a session clip to the arrangement: 4 bars, looped over bars 2-4 with a
+ * 1-bar pre-roll, so the copy spans 4 bars of a 3-bar loop.
+ * @param slot - The session slot to build the clip in
+ * @param position - Where the copy lands, in bar|beat format
+ * @returns The arrangement copy
+ */
+async function copyPreRollClipTo(
+  slot: number,
+  position: string,
+): Promise<{ id: string }> {
+  const session = parseToolResult<{ id: string }>(
+    await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}/s${slot}`,
+      notes: "C3 2|1",
+      length: "4bar",
+      looping: true,
+    }),
+  );
+
+  await sleep(200);
+  await callTool(ctx.client!, "ppal-update-clip", {
+    id: session.id,
+    start: "2|1",
+    length: "3bar",
+    firstStart: "1|1",
+  });
+  await sleep(200);
+
+  return parseToolResult<{ id: string }>(
+    await callTool(ctx.client!, "ppal-duplicate", {
+      type: "clip",
+      id: session.id,
+      toPath: `t${EMPTY_MIDI_TRACK}[${position}]`,
+    }),
+  );
+}
+
+/**
+ * Assert the pre-roll clip is still the one clip at its bar, at the given
+ * length, with its loop and start marker where they were.
+ * @param id - The clip it must be
+ * @param bar - The bar it starts at
+ * @param length - Its expected arrangement length
+ */
+async function expectPreRollClipAt(
+  id: string,
+  bar: number,
+  length: string,
+): Promise<void> {
+  const clips = clipsInBarRange(await readArrClips(), bar, bar + 9);
+
+  expect(clips).toHaveLength(1);
+  expect(clips[0]).toStrictEqual(
+    expect.objectContaining({
+      id,
+      looping: true,
+      start: "2|1",
+      end: "5|1",
+      firstStart: "1|1",
+    }),
+  );
+  expect(lengthBeats(clips[0])).toBeCloseTo(beats(length), 5);
+}
 
 /**
  * Create a 1-bar MIDI clip on the empty track's first take lane.
