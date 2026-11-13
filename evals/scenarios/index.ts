@@ -27,7 +27,7 @@ import {
   parseThinkingArgs,
   type ThinkingByModel,
 } from "./run-env/parse-thinking-arg.ts";
-import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
+import { DEFAULT_JUDGE_MODEL } from "#evals/shared/provider-configs.ts";
 import { keepDisplayAwake } from "./helpers/open-live-set/keep-display-awake.ts";
 import { type DeciderSettings } from "./helpers/judge/decider-first-judge.ts";
 import { type JudgeOverride } from "./helpers/judge/judge-section.ts";
@@ -148,7 +148,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-3.8-flash, local/qwen3.8)",
+    "Model(s) to test (e.g., gemini-4-argon, local/qwen3.8)",
     collectValues,
     [],
   )
@@ -181,7 +181,7 @@ program
   )
   .option(
     "-j, --judge <provider/model>",
-    `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
+    `Override judge LLM (default: ${DEFAULT_JUDGE_MODEL})`,
   )
   .option(
     "--judge-thinking <level>",
@@ -435,7 +435,7 @@ function parseThinkingOrExit(
 function parseJudgeOrExit(options: CliOptions): JudgeOverride {
   const spec = parseModelArgOrExit(
     program,
-    options.judge ?? GEMINI_CONFIG.defaultModel,
+    options.judge ?? DEFAULT_JUDGE_MODEL,
   );
 
   try {

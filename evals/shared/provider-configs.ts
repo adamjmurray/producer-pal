@@ -44,11 +44,14 @@ export const CODEX_CODE_CONFIG: ProviderConfig = {
   apiKeyOptional: true,
 };
 
+/** Judge for `llm_judge` assertions when `-j` is not given. */
+export const DEFAULT_JUDGE_MODEL = "codex-code/luna";
+
 /** Google Gemini provider configuration */
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3.8-flash",
+  defaultModel: "gemini-4-argon",
 };
 
 /** OpenAI provider configuration */
@@ -62,14 +65,14 @@ export const OPENAI_CONFIG: ProviderConfig = {
 export const OPENROUTER_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENROUTER_KEY",
   providerName: "OpenRouter",
-  defaultModel: "google/gemini-3.8-flash",
+  defaultModel: "google/gemini-4-argon",
 };
 
 /** Vercel AI Gateway provider configuration */
 export const VERCEL_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "VERCEL_AI_GATEWAY_KEY",
   providerName: "Vercel AI Gateway",
-  defaultModel: "google/gemini-3.8-flash",
+  defaultModel: "google/gemini-4-argon",
 };
 
 /** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */

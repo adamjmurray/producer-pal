@@ -102,7 +102,7 @@ scripts/eval [options]
 | `--live-api`                 | Enable the Direct Live API tool (`ppal-live-api`)            |
 | `--thinking <spec>`          | Thinking level, for all models or `model=level`              |
 | `-o, --output-tokens <n>`    | Max output tokens per call (default 8192; 32768 for `local`) |
-| `-j, --judge <model>`        | Judge model (default: `gemini-3.8-flash`)                    |
+| `-j, --judge <model>`        | Judge model (default: `codex-code/luna`)                     |
 | `--judge-thinking <lvl>`     | Thinking level for the judge (default: none sent)            |
 | `--decider <provider/model>` | A decider judges first; `-j` decides what it escalates       |
 | `-s, --skip-setup`           | Skip Live Set setup (reuse existing connection)              |
@@ -125,10 +125,10 @@ be inferred from the prefix:
 
 | Format                        | Provider    |
 | ----------------------------- | ----------- |
-| `gemini-3.8-flash`            | google      |
+| `gemini-4-argon`              | google      |
 | `claude-sonnet-5-5`           | anthropic   |
 | `gpt-6.1-sol`                 | openai      |
-| `google/gemini-3.8-flash`     | google      |
+| `google/gemini-4-argon`       | google      |
 | `anthropic/claude-sonnet-5-5` | anthropic   |
 | `codex-code/sol`              | codex-code  |
 | `codex-code/luna`             | codex-code  |
@@ -172,10 +172,10 @@ another: each run saves to its own folder.
 
 ```bash
 # Run all scenarios with a specific model
-scripts/eval -a -m gemini-3.8-flash
+scripts/eval -a -m gemini-4-argon
 
 # Compare two models on one scenario
-scripts/eval -t connect-to-ableton -m gemini-3.8-flash -m claude-sonnet-5-5
+scripts/eval -t connect-to-ableton -m gemini-4-argon -m claude-sonnet-5-5
 
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
@@ -185,13 +185,13 @@ scripts/eval -t connect-to-ableton \
 scripts/eval -t connect-to-ableton -m codex-code/luna -m claude-code/sonnet
 
 # Run one family instead of the whole suite
-scripts/eval --tag notation -m gemini-3.8-flash
+scripts/eval --tag notation -m gemini-4-argon
 
 # Two families at once (repeat the flag or comma-separate)
-scripts/eval --tag paths,clips -m gemini-3.8-flash
+scripts/eval --tag paths,clips -m gemini-4-argon
 
 # Narrow a family to named scenarios (both filters must match)
-scripts/eval --tag paths -t path-session-slot -m gemini-3.8-flash
+scripts/eval --tag paths -t path-session-slot -m gemini-4-argon
 
 # Run Luna at high reasoning effort, the other model at its default
 scripts/eval -m codex-code/luna -m openai/gpt-6.1-sol --thinking codex-code/luna=high -t connect-to-ableton
@@ -349,13 +349,13 @@ the run stops when no model is left.
 
 ```bash
 # Default environment
-scripts/eval -t connect-to-ableton -m gemini-3.8-flash
+scripts/eval -t connect-to-ableton -m gemini-4-argon
 
 # Small-model mode (transforms/bracket scenarios will skip)
 scripts/eval -a -m local/qwen3.8 --small-model
 
 # A restricted toolset (scenarios needing other tools will skip)
-scripts/eval -a -m gemini-3.8-flash --tools connect,read-track,create-clip
+scripts/eval -a -m gemini-4-argon --tools connect,read-track,create-clip
 ```
 
 **Know what an environment grades before you pay for the run.** `--list` takes
@@ -487,8 +487,8 @@ The **Score** shown per scenario and in the comparison table is the check pass
 rate (or the trial pass rate under `-r N`), discounted by that penalty. A clean
 run outranks a recovered one without either being marked a failure.
 
-The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
-with `--skip-judge`.
+The judge defaults to Luna via the Codex CLI (`codex-code/luna`). Override with
+`-j`, or skip it entirely with `--skip-judge`.
 
 With `--decider`, a decider judges every `llm_judge` assertion first. A clear
 pass or fail stands. When the decider is unsure, or its call fails, the `-j` LLM
@@ -693,7 +693,7 @@ model is tested.
 
 ```bash
 # 2 scenarios x 2 models = 4 runs, one table
-scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5-5
+scripts/eval -a -m gemini-4-argon -m claude-sonnet-5-5
 ```
 
 To compare environments (e.g. default vs `--small-model`), do a run per
@@ -741,7 +741,7 @@ Without `-i` they use the agent-CLI system prompt, not the built-in one.
 
 ```bash
 # Quick one-shot test with Gemini
-scripts/chat -m gemini-3.8-flash -1 "list tracks in the set"
+scripts/chat -m gemini-4-argon -1 "list tracks in the set"
 
 # Interactive session with Claude
 scripts/chat -m claude-sonnet-5-5
