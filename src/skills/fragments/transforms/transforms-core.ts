@@ -128,5 +128,6 @@ export const transformsBasic = `## Editing a clip that already has notes (ppal-u
 - \`v0\` — delete all notes
 - \`[range]: v0\` — delete notes in a range
 - ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`3|2-<3|4\` (beats 2-3 of bar 3, up to but not including 3|4)
+- a plain \`-\` end is inclusive: \`1|1-1|3\` also deletes a note starting on beat 3. To stop before a beat, use \`-<\`.
 
 Ranges always use pitch names in Ableton's octaves (C3 = middle C = 60) and **bar|beat** positions counting from 1, whatever notation you write notes in.`;

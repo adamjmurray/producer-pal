@@ -131,6 +131,7 @@ export const basicDriver = `${HEADER}
 ## Rules
 
 - Set clip length explicitly: \`4bar\`, \`1bar\`, \`n/4\`.
+- To copy a clip, scene, track or device, use \`ppal-duplicate\` — don't re-create it by hand.
 - Read the set/track/clip to get IDs, indices, scale, and drum map — don't ask the user for what you can look up, and never guess a track.
 - If a tool call errors, read the message, fix the arguments, retry — don't claim it's unsupported.
 

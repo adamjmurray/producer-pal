@@ -189,6 +189,32 @@ nothing anchoring `s0`. Worth trying if this regresses.
 then 1-of-2 the other way, which reads as partial progress and is a coin flip.
 At gemma's flip rate, n=1 on a two-scenario pair says nothing.
 
+**Three basic-tier gaps, filled for muse-glimmer.** In run 36,
+muse-glimmer:30b-mlx (`--small-model`) missed things the small Skills never
+said. Each fix names the case the model was in. Muse, ×5 per arm
+(`2026-11-13T15-00-51Z` baseline, `15-16-06Z` and `15-33-40Z` after):
+
+- **Range ends.** `transforms-basic` showed only `3|2-<3|4`. Asked to clear the
+  first half of bar 1, muse wrote `1|1-1|3` every trial and deleted the beat-3
+  note. One line saying a plain `-` end is inclusive took
+  `range-clear-boundaries` from 0/3 to 5/5.
+- **Copy means duplicate.** Nothing in the small Skills named `ppal-duplicate`.
+  A Rules line ("to copy a clip, scene, track or device, use `ppal-duplicate`")
+  took `path-topath-devices` from 2/5 to 5/5. `path-topath-clips` stayed 4/5,
+  and one `duplicate` guard trial still re-created a clip by hand: for clips the
+  habit holds.
+- **Context consent as cases.** The one-sentence consent rule became three
+  bullets (empty, mentioned, asked), then "never" joined "always" and "for
+  everything" as words that pick a scope but aren't a yes: muse wrote global
+  context right after reading "Never suggest a third-party plugin".
+  `context-write-layer-project` + `-global` went 3/10, then 6/10 with the
+  bullets, then 8/10 with "never".
+
+Guards, ×3 on the final build (`15-37-57Z`): the context, duplicate and
+pretransforms scenarios held at 43/45. The two misses were a clip re-created by
+hand and a scene copy that assumed every scene was 4 bars, neither caused by the
+new lines.
+
 ## Where a fragment sits can cost more than what it says
 
 Everything above is about what the skills say. This one is about where it sits,

@@ -91,6 +91,7 @@ export const contextStandardKnownUser = contextStandard.replace(
  *    clobber guard covers the destructive case regardless of tier. Mention vs
  *    ask is spelled out because qwen read "for everything I make" as a yes, and
  *    asked again after "save that"; naming both cases moved it 5/10 to 8/10.
+ *    muse-glimmer read "Never suggest X" as a yes too, hence "never".
  *
  * Both are stated WITH their release condition (write on agreement; fill an
  * empty document freely) — a bare prohibition here makes the model refuse to
@@ -100,6 +101,11 @@ export const contextBasic = `## Context
 
 Put a fact in exactly ONE \`ppal-context\` scope, never both.
 
-Writing replaces the whole document — read the same scope first. Already has content? If they only mentioned the fact, propose what you'd add and wait for a yes ("always" or "for everything" picks the scope; it isn't a yes). If they asked you to save it, or said yes, write it now. Empty? Just write it. Either way, say what you saved.
+Writing replaces the whole document — read the same scope first, then:
+- Empty: just write it.
+- Has content, and they only mentioned the fact: DON'T write yet. Propose what you'd add and wait for a yes. "Always", "never" or "for everything" picks the scope; it isn't a yes.
+- They asked you to save it, or said yes: write it now.
+
+Either way, say what you saved.
 
 Write for a future assistant who can't see this chat: the whole structure, not one detail.`;
