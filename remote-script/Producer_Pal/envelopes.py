@@ -64,8 +64,8 @@ def read(bridge, params):
     if env is None:
         return {"exists": False, "parameter": _describe(param)}
 
-    start = _num(params.get("from", 0))
-    end = _num(params.get("to", MAX_TIME))
+    start = _query_num(params.get("from", 0))
+    end = _query_num(params.get("to", MAX_TIME))
     limit = MAX_EVENTS
     if params.get("limit") is not None:
         limit = min(whole_number(params["limit"], "limit", 1), MAX_EVENTS)
@@ -381,6 +381,16 @@ def _num(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
         raise RouteError(400, "expected a finite number, got %r" % (v,))
     return float(v)
+
+
+def _query_num(v):
+    """A number that may have come as a query-string value, so as text."""
+    if isinstance(v, str):
+        try:
+            v = float(v)
+        except ValueError:
+            pass
+    return _num(v)
 
 
 def _curve(raw):
