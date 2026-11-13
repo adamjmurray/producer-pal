@@ -79,19 +79,17 @@ export function writesLane(source: LiveAPI): boolean {
 }
 
 /**
- * Say on a copy's first entry that Live wrote the clip's automation to the lane.
+ * Say on a copy's entry that Live wrote the clip's automation to the lane.
  * @param source - The clip that was copied
- * @param placed - The copy's entries
- * @returns The same entries
+ * @param placed - The copy's entry, if a copy landed
+ * @returns The same entry
  */
 export function withLaneWriteNote(
   source: LiveAPI,
-  placed: MinimalClipInfo[],
-): MinimalClipInfo[] {
-  const [first] = placed;
-
-  if (first != null && writesLane(source)) {
-    appendDetail(first, LANE_WRITE_NOTE);
+  placed: MinimalClipInfo | undefined,
+): MinimalClipInfo | undefined {
+  if (placed != null && writesLane(source)) {
+    appendDetail(placed, LANE_WRITE_NOTE);
   }
 
   return placed;
@@ -122,21 +120,21 @@ export function carriesAutomation(
 /**
  * Write a session clip's automation to the lane over `lengthBeats`, then place
  * the clip from an envelope-free copy. The scratch copy is always removed.
- * What the stamping couldn't do goes on the first clip's entry; a failure after
- * the lane changed says so.
+ * What the stamping couldn't do goes on the clip's entry; a failure after the
+ * lane changed says so.
  * @param request - What to stamp, and where
  * @param place - Places the clip from the envelope-free copy it is handed
- * @returns The placed clips
+ * @returns The placed clip, if one landed
  */
 export async function stampAutomation(
   request: StampRequest,
-  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo[]>,
-): Promise<MinimalClipInfo[]> {
+  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo | undefined>,
+): Promise<MinimalClipInfo | undefined> {
   const { lengthBeats, context } = request;
   const stamped: Stamped = { beats: 0 };
   const notes: string[] = [];
   const report = context.reportScratch ?? ((message) => notes.push(message));
-  let placed: MinimalClipInfo[];
+  let placed: MinimalClipInfo | undefined;
 
   try {
     const scratch = openScratchSlot(request.track, report);
@@ -150,13 +148,11 @@ export async function stampAutomation(
     throw failureWithChanges(error, stamped, lengthBeats, notes);
   }
 
-  const [first] = placed;
-
-  if (first != null) {
+  if (placed != null) {
     const said = joinDetails([stampedNote(stamped, lengthBeats), ...notes]);
 
     if (said != null) {
-      appendDetail(first, said);
+      appendDetail(placed, said);
     }
 
     return placed;
@@ -180,14 +176,14 @@ export async function stampAutomation(
  * @param scratch - The slot for the scratch copies
  * @param stamped - Filled in as the lane is written
  * @param place - Places the clip from the envelope-free copy
- * @returns The placed clips
+ * @returns The placed clip, if one landed
  */
 async function stampThenPlace(
   request: StampRequest,
   scratch: ScratchSessionSlot,
   stamped: Stamped,
-  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo[]>,
-): Promise<MinimalClipInfo[]> {
+  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo | undefined>,
+): Promise<MinimalClipInfo | undefined> {
   const { source, track, startBeats, lengthBeats, context } = request;
   const sourceSlot = LiveAPI.from(
     livePath

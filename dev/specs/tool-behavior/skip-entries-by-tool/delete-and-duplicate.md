@@ -172,7 +172,7 @@ Part of [Skip entries, tool by tool](README.md).
   session clip with automation (MIDI, or warped audio) to the arrangement, at
   any length, makes Live write that automation to the track's arrangement lane
   over the copy's span, replacing what the lane held there for those parameters.
-  The copy's first entry (a clip copy's, or each track's in a scene copy) says
+  The copy's entry (a clip copy's, or each track's in a scene copy) says
   `wrote its automation to the track's arrangement lane over this span`, once. A
   copy that stopped early says its own note above instead. A clip with no
   automation, an unwarped audio clip and an arrangement source write nothing, so

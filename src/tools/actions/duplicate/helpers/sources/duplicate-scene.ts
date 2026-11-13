@@ -28,16 +28,15 @@ import { refusedCopy } from "../clip/copy-entries.ts";
 import {
   changedBefore,
   clearedBefore,
-  copiedIds,
   copyClearingAsync,
   copyLedger,
   copyReach,
   mainLaneOf,
-  noteCleared,
 } from "../clip/overwrites/copy-overwrites.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
+  noteCopyEffects,
 } from "../minimal-clip-info.ts";
 import { readSceneClips, type ScenePass, sceneIndexOf } from "./scene-clips.ts";
 
@@ -265,7 +264,7 @@ export async function duplicateSceneToArrangement(
 
   for (const { clip, trackIndex } of regularClips) {
     const track = LiveAPI.from(livePath.track(trackIndex));
-    const { clips, cleared, changed, failure } = await copyTrackClip(
+    const { copy, cleared, changed, failure } = await copyTrackClip(
       clip,
       trackIndex,
       track,
@@ -286,11 +285,11 @@ export async function duplicateSceneToArrangement(
         ),
     );
 
-    duplicatedClips.push(...clips);
+    if (copy != null) {
+      duplicatedClips.push(copy);
 
-    if (clips[0] != null) {
       if (cleared != null) {
-        noteCleared(clips[0], cleared);
+        noteCopyEffects(copy, cleared);
       }
 
       continue;
@@ -361,7 +360,7 @@ function returnClipsLeftOut(returnClips: string[]): string | undefined {
  * @param lengthBeats - How long the copy is
  * @param ledger - The call's arrangement lanes
  * @param write - Makes the copy
- * @returns The clips that landed, what they cleared, whether the Set changed,
+ * @returns The copy if one landed, what it cleared, whether the Set changed,
  *   and why it failed if it did
  */
 async function copyTrackClip(
@@ -371,9 +370,9 @@ async function copyTrackClip(
   startBeats: number,
   lengthBeats: number,
   ledger: LaneLedger,
-  write: () => Promise<MinimalClipInfo[]>,
+  write: () => Promise<MinimalClipInfo | undefined>,
 ): Promise<{
-  clips: MinimalClipInfo[];
+  copy?: MinimalClipInfo;
   cleared?: string;
   /** Whether the copy changed the Set (cleared clips, wrote the lane) */
   changed: boolean;
@@ -387,11 +386,11 @@ async function copyTrackClip(
       mainLaneOf(trackIndex, track),
       copyReach(startBeats, copyLengthBeats(clip), lengthBeats),
       write,
-      (clips) => clips.flatMap(copiedIds),
+      (copy) => (copy == null ? [] : [copy.id]),
     );
 
     return {
-      clips: made,
+      ...(made != null && { copy: made }),
       changed: cleared != null,
       ...(cleared != null && { cleared }),
     };
@@ -400,7 +399,6 @@ async function copyTrackClip(
     const cleared = clearedBefore(error);
 
     return {
-      clips: [],
       failure: errorMessage(error),
       changed: changedBefore(error),
       ...(cleared != null && { cleared }),

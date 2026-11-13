@@ -6,7 +6,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { finishCopy, getMinimalClipInfo } from "../minimal-clip-info.ts";
+import {
+  copyEffectsOf,
+  finishCopy,
+  getMinimalClipInfo,
+  noteCopyEffects,
+} from "../minimal-clip-info.ts";
+
+describe("noteCopyEffects", () => {
+  it("says it on a clip's entry, and remembers it", () => {
+    const entry = { id: "a", detail: "first" };
+
+    noteCopyEffects(entry, "overwrote the clip at t0[1|1]");
+
+    expect(entry.detail).toBe("first; overwrote the clip at t0[1|1]");
+    expect(copyEffectsOf(entry)).toBe("overwrote the clip at t0[1|1]");
+  });
+});
 
 describe("getMinimalClipInfo", () => {
   beforeEach(() => {

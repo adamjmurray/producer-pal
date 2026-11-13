@@ -160,10 +160,8 @@ describe("createClipsForLength holding area", () => {
     );
 
     expect(track.call).toHaveBeenCalledWith("delete_clip", "id 700");
-    expect(result).toStrictEqual([
-      // TARGET_START 64 in 4/4 is bar 17 beat 1
-      { id: "400", path: "t0[17|1]" },
-    ]);
+    // TARGET_START 64 in 4/4 is bar 17 beat 1
+    expect(result).toStrictEqual({ id: "400", path: "t0[17|1]" });
   });
 });
 

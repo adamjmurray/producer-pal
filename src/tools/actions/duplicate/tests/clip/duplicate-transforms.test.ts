@@ -362,44 +362,6 @@ describe("duplicate - transforms/code", () => {
   });
 
   describe("applyTransformsToDuplicatedClips", () => {
-    it("flattens nested arrangement-tiled clips into one updateClip call", async () => {
-      const createdObjects: object[] = [
-        { path: "t0", clips: [{ id: "a" }, { id: "b" }] },
-      ];
-
-      updateClipMock.mockReturnValueOnce([
-        { id: "a", noteCount: 1, transformed: 1 },
-        { id: "b", noteCount: 2 },
-      ]);
-
-      await applyTransformsToDuplicatedClips(
-        createdObjects,
-        "velocity *= 2",
-        undefined,
-        {},
-      );
-
-      // Tiled clips flatten into a single id batch; transforms broadcasts.
-      expect(updateClipMock).toHaveBeenCalledWith(
-        {
-          ids: "a,b",
-          transforms: "velocity *= 2",
-          code: undefined,
-        },
-        {},
-        { indexes: [0, 0], count: 1 },
-      );
-      expect(createdObjects).toStrictEqual([
-        {
-          path: "t0",
-          clips: [
-            { id: "a", noteCount: 1, transformed: 1 },
-            { id: "b", noteCount: 2 },
-          ],
-        },
-      ]);
-    });
-
     it("broadcasts the same transform string across multiple logical duplicates", async () => {
       const createdObjects: object[] = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
@@ -452,28 +414,6 @@ describe("duplicate - transforms/code", () => {
         expect.objectContaining({ ids: "b,c" }),
         {},
         { indexes: [1, 2], count: 3 },
-      );
-    });
-
-    it("numbers each tile by its copy", async () => {
-      const createdObjects: object[] = [
-        { path: "t0", clips: [{ id: "a" }, { id: "b" }] },
-        { path: "t0", clips: [{ id: "c" }, { id: "d" }] },
-      ];
-
-      updateClipMock.mockReturnValueOnce([]);
-
-      await applyTransformsToDuplicatedClips(
-        createdObjects,
-        "pitch += clip.index * 12",
-        undefined,
-        {},
-      );
-
-      expect(updateClipMock).toHaveBeenCalledWith(
-        expect.objectContaining({ ids: "a,b,c,d" }),
-        {},
-        { indexes: [0, 0, 1, 1], count: 2 },
       );
     });
 

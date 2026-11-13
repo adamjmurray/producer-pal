@@ -88,9 +88,7 @@ export async function writeArrangementCopy(
   const left = madeFromSpare(run, body.sourceId);
 
   if (left != null) {
-    const { clips } = entry as { clips?: object[] };
-
-    appendDetail(clips?.[0] ?? entry, left);
+    appendDetail(entry, left);
   }
 
   return entry;
@@ -165,9 +163,7 @@ async function copyFrom(
     step.coverLanded();
 
     if (loss != null) {
-      const { clips } = attempt.copy as { clips?: object[] };
-
-      appendDetail(clips?.[0] ?? attempt.copy, loss);
+      appendDetail(attempt.copy, loss);
     }
 
     // On the entry itself: a copy would lose the span recorded for it.

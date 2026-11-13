@@ -29,7 +29,6 @@ import {
   copyClearing,
   copyReach,
   mainLaneOf,
-  noteCleared,
   takeLaneOf,
   type CopyLane,
 } from "../clip/overwrites/copy-overwrites.ts";
@@ -41,6 +40,7 @@ import {
 import {
   type ClearedCopy,
   clearedCopy,
+  noteCopyEffects,
   skippedCopy,
   withLandedColor,
   type MinimalClipInfo,
@@ -109,7 +109,7 @@ export function copyClipToLane(
     return clearedCopy(made.path, `${made.detail}; ${cleared}`);
   }
 
-  noteCleared(made, cleared);
+  noteCopyEffects(made, cleared);
 
   return made;
 }

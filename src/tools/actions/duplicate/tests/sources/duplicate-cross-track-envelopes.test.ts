@@ -373,7 +373,7 @@ describe("ppal-duplicate - a session clip copied to another track's arrangement"
     expect(requestNode).toHaveBeenCalledTimes(1);
   });
 
-  it("says it on the first clip of a copy at another length", async () => {
+  it("says it on a copy at another length", async () => {
     const result = (await duplicate({
       type: "clip",
       id: "clip1",

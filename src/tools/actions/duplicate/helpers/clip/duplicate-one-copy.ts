@@ -12,7 +12,7 @@ import {
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
-import { withLandedColor } from "../minimal-clip-info.ts";
+import { noteCopyEffects, withLandedColor } from "../minimal-clip-info.ts";
 import {
   changedBefore,
   clearedBefore,
@@ -20,7 +20,6 @@ import {
   copyClearingAsync,
   copyReach,
   mainLaneOf,
-  noteCleared,
   takeLaneOf,
   type CopyLane,
 } from "./overwrites/copy-overwrites.ts";
@@ -181,7 +180,7 @@ async function clearingCopy(
     return { refused: made.refused, cleared };
   }
 
-  noteCleared(made.copy, cleared);
+  noteCopyEffects(made.copy, cleared);
 
   return made;
 }

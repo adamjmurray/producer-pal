@@ -16,7 +16,7 @@ export const LANE_WRITE_NOTE =
  * @param world - The Set
  * @param lengthBeats - The arrangementLength, in beats
  * @param context - Overrides for the call's context
- * @returns The entries createClipsForLength gave
+ * @returns The copy createClipsForLength gave
  */
 export function copyAtLength(
   world: StampWorld,

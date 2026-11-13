@@ -24,7 +24,6 @@ import {
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   carriesAutomation,
   stampAutomation,
@@ -74,7 +73,7 @@ export function parseArrangementLength(
 }
 
 /**
- * Create clips to fill the specified arrangement length. A session clip with
+ * Copy a clip to the arrangement at the length asked for. A session clip with
  * automation, copied at another length than its own, has the lane written for
  * the span first (see stamp-automation.ts) and is placed from a copy that
  * carries none.
@@ -87,7 +86,7 @@ export function parseArrangementLength(
  * @param name - Optional name for the clips
  * @param context - Context object with silenceWavPath (the adapter always sets it)
  * @param color - Optional color for the clips
- * @returns Array of minimal clip info objects
+ * @returns The copy, or undefined when Live made none
  */
 export async function createClipsForLength(
   sourceClip: LiveAPI,
@@ -99,8 +98,8 @@ export async function createClipsForLength(
   name?: string,
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
-): Promise<MinimalClipInfo[]> {
-  const copyFrom = (clip: LiveAPI): Promise<MinimalClipInfo[]> =>
+): Promise<MinimalClipInfo | undefined> {
+  const copyFrom = (clip: LiveAPI): Promise<MinimalClipInfo | undefined> =>
     copyForLength(
       clip,
       track,
@@ -147,7 +146,7 @@ export async function createClipsForLength(
  * @param name - Optional name for the clips
  * @param context - Context object with silenceWavPath
  * @param color - Optional color for the clips
- * @returns Array of minimal clip info objects
+ * @returns The copy, or undefined when Live made none
  */
 async function copyForLength(
   sourceClip: LiveAPI,
@@ -159,10 +158,9 @@ async function copyForLength(
   name: string | undefined,
   context: Partial<ToolContext & TilingContext>,
   color: string | undefined,
-): Promise<MinimalClipInfo[]> {
+): Promise<MinimalClipInfo | undefined> {
   const sourceClipLength = copyLengthBeats(sourceClip);
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
-  const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLengthBeats < sourceClipLength) {
     // Case 1: Shortening - use holding area approach (preserves clip data including envelopes)
@@ -193,63 +191,54 @@ async function copyForLength(
       context as TilingContext,
     );
 
-    duplicatedClips.push(finishCopy(newClip, name, color));
-  } else {
-    // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
-    // Routes a self-overlapping source through the holding area (overwrite
-    // semantics) instead of skipping; clears other overlapping clips otherwise.
-    const newClip = duplicateToArrangementTarget(
-      track,
-      sourceClip.id,
-      arrangementStartBeats,
-      isMidiClip,
-      context as TilingContext,
-      sourceClip,
-    );
+    return finishCopy(newClip, name, color);
+  }
 
-    // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
-    // phantom clip, matching the no-length path. The empty list is what the
-    // caller reports on the destination's own entry.
-    if (!newClip.exists()) {
-      return duplicatedClips;
-    }
+  // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
+  // Routes a self-overlapping source through the holding area (overwrite
+  // semantics) instead of skipping; clears other overlapping clips otherwise.
+  const newClip = duplicateToArrangementTarget(
+    track,
+    sourceClip.id,
+    arrangementStartBeats,
+    isMidiClip,
+    context as TilingContext,
+    sourceClip,
+  );
 
-    const newClipId = newClip.id;
+  // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
+  // phantom clip, matching the no-length path. The caller reports the missing
+  // copy on the destination's own entry.
+  if (!newClip.exists()) {
+    return undefined;
+  }
 
-    if (arrangementLengthBeats > sourceClipLength) {
-      try {
-        await lengthenClipAndCollectInfo(
-          track,
-          newClipId,
-          arrangementLengthBeats,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-          name,
-          color,
-          context,
-          duplicatedClips,
-        );
-      } catch (error) {
-        // The copy exists, so a failure reading it back is on its entry.
-        const detail = `couldn't finish reading the copy: ${errorMessage(error)}`;
-        const [first] = duplicatedClips;
-
-        if (first == null) {
-          duplicatedClips.push({ id: newClipId, detail });
-        } else {
-          appendDetail(first, detail);
-        }
-      }
-    } else {
-      duplicatedClips.push(finishCopy(newClip, name, color));
+  if (arrangementLengthBeats > sourceClipLength) {
+    try {
+      return await lengthenCopy(
+        track,
+        newClip.id,
+        arrangementLengthBeats,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+        name,
+        color,
+        context,
+      );
+    } catch (error) {
+      // The copy exists, so a failure reading it back is on its entry.
+      return {
+        id: newClip.id,
+        detail: `couldn't finish reading the copy: ${errorMessage(error)}`,
+      };
     }
   }
 
-  return duplicatedClips;
+  return finishCopy(newClip, name, color);
 }
 
 /**
- * Lengthens a clip and collects info about resulting clips
+ * Lengthen a copy through update-clip and read it back.
  * @param track - Track containing the clip
  * @param newClipId - ID of the new clip to lengthen
  * @param targetBeats - Target length in beats
@@ -258,9 +247,9 @@ async function copyForLength(
  * @param name - Optional name
  * @param color - Optional color
  * @param context - Context object
- * @param duplicatedClips - Array to push results to
+ * @returns The copy's entry, or undefined when update-clip names no clip on the track
  */
-async function lengthenClipAndCollectInfo(
+async function lengthenCopy(
   track: LiveAPI,
   newClipId: string,
   targetBeats: number,
@@ -269,8 +258,7 @@ async function lengthenClipAndCollectInfo(
   name: string | undefined,
   color: string | undefined,
   context: Partial<ToolContext & TilingContext>,
-  duplicatedClips: MinimalClipInfo[],
-): Promise<void> {
+): Promise<MinimalClipInfo | undefined> {
   // Re-encode the target length in the SONG time signature — the same meter
   // updateClip's parser decodes arrangementLength with — so a bar-aligned length
   // round-trips to the same beats even when the clip's own meter differs.
@@ -280,42 +268,42 @@ async function lengthenClipAndCollectInfo(
     songTimeSigDenominator,
   );
 
-  const clipResults = await resizeCopy(
+  // One id in, so update-clip answers with one entry.
+  const entries = await resizeCopy(
     newClipId,
     arrangementLength,
     name,
     color,
     context,
   );
-  // Which of them are on the track comes from the call's lane view, so no clip
-  // on it is looked up but the ones asked about.
+  // Whether it is on the track comes from the call's lane view, so no clip on
+  // it is looked up but the one asked about.
   const onTrack = new Set(
     laneViewOf(context)
       .clips(trackLane(track), track)
       .map(({ id }) => id),
   );
+  const clipObj = entries.find(({ id }) => onTrack.has(id));
 
-  for (const clipObj of clipResults) {
-    if (onTrack.has(clipObj.id)) {
-      const clipLiveAPI = LiveAPI.from(toLiveApiId(clipObj.id));
-
-      // The copy's entry keeps update-clip's detail but never its `ok: false`:
-      // the copy was made. What the lengthening cleared is left out: the call's
-      // ledger reports what the whole copy did, and the clips update-clip names
-      // can be fragments the copy itself just made.
-      const copy = readCopyBack(clipLiveAPI, () =>
-        withoutWriteEffects(clipObj.detail),
-      );
-
-      // update-clip read the color back, so the palette color it landed on is
-      // already known.
-      if (clipObj.color != null) {
-        copy.color = clipObj.color;
-      }
-
-      duplicatedClips.push(copy);
-    }
+  if (clipObj == null) {
+    return undefined;
   }
+
+  // The copy's entry keeps update-clip's detail but never its `ok: false`: the
+  // copy was made. What the lengthening cleared is left out: the call's ledger
+  // reports what the whole copy did, and the clips update-clip names can be
+  // fragments the copy itself just made.
+  const copy = readCopyBack(LiveAPI.from(toLiveApiId(clipObj.id)), () =>
+    withoutWriteEffects(clipObj.detail),
+  );
+
+  // update-clip read the color back, so the palette color it landed on is
+  // already known.
+  if (clipObj.color != null) {
+    copy.color = clipObj.color;
+  }
+
+  return copy;
 }
 
 /**
