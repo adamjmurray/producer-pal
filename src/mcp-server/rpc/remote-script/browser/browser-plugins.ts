@@ -11,6 +11,7 @@
 
 import { listBrowser, listedItems } from "./browser-device-lookup.ts";
 import { type PluginFormat } from "../../../live-library/library-types.ts";
+import { pluginFolderFormat } from "./plugin-folder-format.ts";
 
 /** How long to wait for the browser. The first listing can be slow. */
 const BROWSER_WAIT_MS = 5000;
@@ -53,31 +54,10 @@ export async function listBrowserPlugins(): Promise<BrowserPlugin[] | null> {
       return {
         name,
         vendor: folders[1] ?? null,
-        format: formatOfFolder(folders[0]),
+        format: pluginFolderFormat(folders[0]),
       };
     });
   } catch {
     return null;
   }
-}
-
-/**
- * The plug-in format a browser format folder holds.
- *
- * @param folder - The top folder of a plug-in's path (VST3, VST, Audio Units...)
- * @returns The format, or null when the folder isn't one we know
- */
-function formatOfFolder(folder: string | undefined): PluginFormat | null {
-  const name = folder?.toLowerCase() ?? "";
-
-  if (name === "vst3") {
-    return "VST3";
-  }
-
-  if (name === "vst") {
-    return "VST";
-  }
-
-  // Live's folder name for Audio Units isn't confirmed, so match it loosely.
-  return name.startsWith("au") || name.includes("audio unit") ? "AU" : null;
 }

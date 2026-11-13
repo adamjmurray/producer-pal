@@ -21,6 +21,11 @@ import {
   unavailableReply,
 } from "../remote-script-client.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
+import { pluginFolderFormat } from "./plugin-folder-format.ts";
+import { type PluginFormat } from "../../../live-library/library-types.ts";
+
+/** Which format a name loads when a plug-in has several, best first. */
+const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
 export const SECTIONS = [
@@ -475,19 +480,9 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
  * @returns The rank, or null for a folder that isn't a format
  */
 function formatRank(path: string): number | null {
-  const slash = path.indexOf("/");
-  const folder = (slash === -1 ? path : path.slice(0, slash)).toLowerCase();
+  const format = pluginFolderFormat(path.split("/")[0]);
 
-  if (folder === "vst3") {
-    return 0;
-  }
-
-  // Live's name for this folder isn't confirmed, so match it loosely.
-  if (folder.includes("audio unit")) {
-    return 1;
-  }
-
-  return folder === "vst" ? 2 : null;
+  return format == null ? null : FORMAT_ORDER.indexOf(format);
 }
 
 /**

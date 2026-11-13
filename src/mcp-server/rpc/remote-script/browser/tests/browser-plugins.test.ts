@@ -41,7 +41,7 @@ describe("listBrowserPlugins", () => {
     answer([
       { name: "ValhallaRoom", path: "VST3/Valhalla DSP/ValhallaRoom" },
       { name: "Serum", path: "VST/Xfer Records/Serum" },
-      { name: "AUDelay", path: "Audio Units/Apple/AUDelay" },
+      { name: "AUDelay", path: "AUv2/Apple/AUDelay" },
       { name: "Odd", path: "Mystery/Co/Odd" },
       { name: "Loose", path: "VST3/Loose" },
       { name: "Bare", path: "Bare" },

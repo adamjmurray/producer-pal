@@ -161,7 +161,7 @@ describe("lookUpBrowserDevice", () => {
   it("loads a plug-in's VST3 over its AU and VST", async () => {
     const plugin = [
       "VST/FabFilter/Pro-Q 4",
-      "Audio Units/FabFilter/Pro-Q 4",
+      "AUv2/FabFilter/Pro-Q 4",
       "VST3/FabFilter/Pro-Q 4",
     ];
 
@@ -172,13 +172,13 @@ describe("lookUpBrowserDevice", () => {
   });
 
   it("loads a plug-in's AU over its VST", async () => {
-    const plugin = ["VST/FabFilter/Pro-L 2", "Audio Units/FabFilter/Pro-L 2"];
+    const plugin = ["VST/FabFilter/Pro-L 2", "AUv2/FabFilter/Pro-L 2"];
 
     expect(await lookUpIn({ plugin }, "Pro-L 2")).toStrictEqual({
       available: true,
       item: {
         type: "plugin",
-        path: "Audio Units/FabFilter/Pro-L 2",
+        path: "AUv2/FabFilter/Pro-L 2",
         name: "Pro-L 2",
       },
     });
