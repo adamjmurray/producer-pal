@@ -54,7 +54,7 @@ describe("useSettings", () => {
     expect(result.current).toStrictEqual(
       expect.objectContaining({
         apiKey: "",
-        model: "gemini-3.8-flash",
+        model: "gemini-4-argon",
         thinking: "Default",
         hasApiKey: false,
       }),
@@ -86,7 +86,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.8-flash",
+        model: "gemini-4-carbon",
         thinking: "Max",
       }),
     );
@@ -95,7 +95,7 @@ describe("useSettings", () => {
 
     expect(result.current).toStrictEqual(
       expect.objectContaining({
-        model: "gemini-3.8-flash",
+        model: "gemini-4-carbon",
         thinking: "Max",
       }),
     );
@@ -111,7 +111,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.8-flash",
+        model: "gemini-4-carbon",
         thinking: "Adaptive",
       }),
     );
@@ -119,7 +119,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.model).toBe("gemini-3.8-flash");
+    expect(result.current.model).toBe("gemini-4-carbon");
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
@@ -156,27 +156,29 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3.8-flash");
+      result.current.setModel("gemini-4-carbon");
     });
 
-    expect(result.current.model).toBe("gemini-3.8-flash");
+    expect(result.current.model).toBe("gemini-4-carbon");
   });
 
   it("savedModel only updates on saveSettings, not setModel", async () => {
     const { result } = renderHook(() => useSettings());
+
+    await waitFor(() => expect(result.current.settingsLoaded).toBe(true));
     const initialSavedModel = result.current.savedModel;
 
     await act(() => {
-      result.current.setModel("gemini-3.8-flash");
+      result.current.setModel("gemini-4-carbon");
     });
     // In-modal change should NOT flip the App-level routing model.
-    expect(result.current.model).toBe("gemini-3.8-flash");
+    expect(result.current.model).toBe("gemini-4-carbon");
     expect(result.current.savedModel).toBe(initialSavedModel);
 
     await act(async () => {
       await result.current.saveSettings();
     });
-    expect(result.current.savedModel).toBe("gemini-3.8-flash");
+    expect(result.current.savedModel).toBe("gemini-4-carbon");
   });
 
   it("savedProvider only updates on saveSettings, not setProvider", async () => {
@@ -276,7 +278,7 @@ describe("useSettings", () => {
     await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3.8-flash");
+      result.current.setModel("gemini-4-carbon");
       result.current.setThinking("Max");
     });
 
@@ -300,7 +302,7 @@ describe("useSettings", () => {
     });
 
     await expectStored("gemini", "new-key", {
-      model: "gemini-3.8-flash",
+      model: "gemini-4-carbon",
       thinking: "Max",
     });
   });

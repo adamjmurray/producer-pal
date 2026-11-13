@@ -219,7 +219,7 @@ export const demoMessages: UIMessage[] = [
       },
     ],
     // Differs from DemoMode's requestedModel, so the "responded as" badge shows
-    responseModel: "gemini-3.5-flash-lite",
+    responseModel: "gemini-4-hydrogen",
     usage: { inputTokens: 9496, outputTokens: 178 },
   }),
 

@@ -120,7 +120,7 @@ const BASE_STORAGE: Body = {
   producer_pal_current_provider: "gemini",
   producer_pal_provider_gemini: {
     apiKey: FAKE_KEY,
-    model: "gemini-3.8-flash",
+    model: "gemini-4-carbon",
     thinking: "Default",
   },
   producer_pal_provider_openai: {
