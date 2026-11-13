@@ -116,6 +116,19 @@ export function envelopeValues(events: string | undefined): number[] {
 }
 
 /**
+ * The time of each point of an envelope's notation, as written ("1|1", "2|2.5").
+ *
+ * @param events - An envelope's `events` notation
+ * @returns One time per point, in order
+ */
+export function envelopeTimes(events: string | undefined): string[] {
+  return withoutDisplays(events)
+    .split(CONNECTOR)
+    .map((point) => point.trim().split(/\s+/)[0] ?? "")
+    .filter((time) => time !== "");
+}
+
+/**
  * The amounts of an envelope's curved ramps (`~N`), in time order. A straight
  * ramp (`/`) and a jump (`_`) have none.
  *
@@ -142,6 +155,9 @@ export function risesOverTime(envelope: ClipEnvelopeRead): boolean {
 
   return values.length >= 2 && first != null && last != null && first < last;
 }
+
+/** How much of a rise ramps must carry for it to count as a fade, not a jump. */
+export const MIN_RAMP_SHARE = 0.5;
 
 /** A connector with its token kept, to tell a ramp (`/`, `~N`) from a jump. */
 const CONNECTOR_TOKEN = /\s+(\/|_|~[-+]?[\d.]+)\s+/;

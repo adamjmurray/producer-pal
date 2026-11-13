@@ -330,7 +330,8 @@ server-side state applied before each scenario:
 | `--live-api`     | Add the opt-in Direct Live API tool on top of the toolset         |
 
 Tests declare what they need via `requires` (e.g. the transforms DSL, bracket
-notation, a specific tool, a small-model-excluded param). When the active
+notation, a specific tool, a small-model-excluded param, a minimum Live major
+version via `liveVersion`, checked against `ABLETON_APP`). When the active
 environment can't satisfy a requirement — e.g. a transforms scenario under
 `--small-model`, or a scenario needing a tool you left out of `--tools` — the
 scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
@@ -771,6 +772,10 @@ Set these in `.env` at the project root:
 | `LOCAL_API_KEY`         | Local server API key (optional)                         |
 | `LOCAL_BASE_URL`        | Local server URL (default: `http://localhost:11434/v1`) |
 | `MCP_URL`               | MCP server URL (default: `http://localhost:3350/mcp`)   |
+| `ABLETON_APP`           | Live to open Sets in (default: `Ableton Live 12 Suite`) |
+
+The `live-13-*` scenarios need `ABLETON_APP` set to a Live 13 bundle (the full
+path to the .app); on Live 12 they skip.
 
 The subscription CLIs take no key. `CLAUDE_CODE_BIN` and `CODEX_BIN` override
 which executable is spawned (see

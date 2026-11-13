@@ -7,7 +7,7 @@
  * Tests for run-env.ts
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
@@ -19,6 +19,10 @@ import {
 } from "./run-env.ts";
 
 const LIVE_API = toolDefLiveApi.toolName;
+
+vi.mock(import("../helpers/open-live-set/live-app-major-version.ts"), () => ({
+  liveAppMajorVersion: () => 13,
+}));
 
 describe("resolveTools", () => {
   it("returns all standard tools when no argument is given", () => {
@@ -85,6 +89,7 @@ describe("buildRunEnv", () => {
       jsonOutput: false,
       tools: [...TOOL_NAMES],
       liveApiEnabled: false,
+      liveMajorVersion: 13,
     });
   });
 
@@ -116,6 +121,7 @@ describe("envLabel", () => {
       jsonOutput: false,
       tools: [...TOOL_NAMES],
       liveApiEnabled: false,
+      liveMajorVersion: 13,
       ...overrides,
     };
   }

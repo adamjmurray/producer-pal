@@ -131,6 +131,13 @@ import {
   upgradeFirstMessageFullConnect,
   upgradeRemoteScriptRestartCheck,
   writeTrustSilentResult,
+  stepSequencerClip,
+  returnEnvelopeClip,
+  sceneReturnClips,
+  fixedChainRack,
+  macroCountLanding,
+  drumSynthInactiveParam,
+  transientShaperSidechain,
 } from "../defs/index.ts";
 import { type EvalScenario } from "../types.ts";
 
@@ -267,6 +274,14 @@ export const allScenarios: EvalScenario[] = [
   noteOpsSplitWithTransform,
   noteOpsMergeWithTransform,
   noteOpsSplitDirectNotes,
+  // Live 13 features. Need ABLETON_APP pointed at Live 13 (else they skip).
+  stepSequencerClip,
+  returnEnvelopeClip,
+  sceneReturnClips,
+  fixedChainRack,
+  macroCountLanding,
+  drumSynthInactiveParam,
+  transientShaperSidechain,
   ...drumBackbeatMatrix,
   ...melodyPitchMatrix,
   ...rhythmGridMatrix,

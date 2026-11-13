@@ -7,9 +7,9 @@
 // track indexes, and the sample files tests load. Import these instead of
 // writing the value again; each Set's layout is in e2e/live-sets/specs/.
 
-import { execFileSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { liveAppMajorVersion } from "#evals/scenarios/helpers/open-live-set/live-app-major-version.ts";
 import { ABLETON_APP } from "#evals/scenarios/open-live-set.ts";
 
 /** Opened before each test unless a suite names another Set. */
@@ -83,38 +83,7 @@ export const DRUM_LOOP_8BAR_FILE = resolve(
 // A suite for a Live 13 feature skips itself with
 // `describe.skipIf(!LIVE_13_OR_NEWER)`, since Live 12 can't open the Sets it needs.
 
-/**
- * The major version of the Live app `ABLETON_APP` names, from its bundle.
- * @returns The major version, or null when it can't be read
- */
-function liveAppMajorVersion(): number | null {
-  const bundle = ABLETON_APP.startsWith("/")
-    ? ABLETON_APP
-    : `/Applications/${ABLETON_APP}.app`;
-
-  try {
-    // Reads like "13.0b25 (2026-11-03_a87e6d71e7)".
-    const version = execFileSync(
-      "/usr/bin/plutil",
-      [
-        "-extract",
-        "CFBundleShortVersionString",
-        "raw",
-        "-o",
-        "-",
-        `${bundle}/Contents/Info.plist`,
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-    );
-    const major = /^\d+/.exec(version.trim())?.[0];
-
-    return major == null ? null : Number(major);
-  } catch {
-    return null;
-  }
-}
-
-const LIVE_MAJOR = liveAppMajorVersion();
+const LIVE_MAJOR = liveAppMajorVersion(ABLETON_APP);
 
 if (LIVE_MAJOR == null) {
   process.stderr.write(

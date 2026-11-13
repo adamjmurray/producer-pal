@@ -168,6 +168,10 @@ export interface ScenarioRequirements {
 
   /** Explicit frontier-only escape hatch. Skipped under `smallModelMode`. */
   largeModel?: boolean;
+
+  /** Minimum Live major version, for Sets older Lives can't open. Skipped when
+   *  `ABLETON_APP` is older, or its version can't be read. */
+  liveVersion?: number;
 }
 
 /**

@@ -10,7 +10,11 @@ import { deviceKitByName } from "../device/presets/device-kit-by-name.ts";
 import { rackInPadLayerGain } from "../device/pads/rack-in-pad-layer-gain.ts";
 import { devicePresetSwapByName } from "../device/presets/device-preset-swap-by-name.ts";
 
-const smallEnv = { smallModelMode: true, tools: [] as string[] };
+const smallEnv = {
+  smallModelMode: true,
+  tools: [] as string[],
+  liveMajorVersion: 13,
+};
 
 describe("scenarios that need what small-model mode hides", () => {
   it.each([

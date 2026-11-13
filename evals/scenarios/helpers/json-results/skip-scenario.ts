@@ -8,11 +8,11 @@
  * and build the synthetic `skipped` result for runs that are.
  *
  * A scenario declares `requires` (transforms DSL, bracket notation, specific
- * tools, a small-model-excluded param, a large model). When the run environment
- * can't satisfy a requirement — e.g. small-model mode doesn't teach the
- * transforms DSL or hides a needed tool, or the `--tools` subset omits it — the scenario is
- * reported as `skipped` instead of being run and failed, so scores stay
- * apples-to-apples.
+ * tools, a small-model-excluded param, a large model, a Live version). When the
+ * run environment can't satisfy a requirement — e.g. small-model mode doesn't
+ * teach the transforms DSL or hides a needed tool, the `--tools` subset omits
+ * it, or `ABLETON_APP` is an older Live — the scenario is reported as
+ * `skipped` instead of being run and failed, so scores stay apples-to-apples.
  */
 
 import {
@@ -28,13 +28,15 @@ interface SkipEnv {
   smallModelMode: boolean;
   /** Full tool names available this run (the resolved `--tools` subset). */
   tools: string[];
+  /** Major version of the Live `ABLETON_APP` names, or null if unreadable. */
+  liveMajorVersion: number | null;
 }
 
 /**
  * Decide whether a scenario should be skipped under the given run environment.
  *
  * @param scenario - The scenario to check
- * @param env - The active run environment (small-model mode + tool subset)
+ * @param env - The active run environment (small-model mode, tool subset, Live version)
  * @returns A human-readable skip reason, or null if the scenario should run
  */
 export function shouldSkipScenario(
@@ -92,7 +94,31 @@ export function shouldSkipScenario(
     }
   }
 
-  return null;
+  return liveVersionSkipReason(req.liveVersion, env.liveMajorVersion);
+}
+
+/**
+ * Skip reason for a Live version requirement the run's Live doesn't meet.
+ *
+ * @param required - Minimum Live major version the scenario needs, if any
+ * @param actual - Major version of the Live `ABLETON_APP` names, or null if unreadable
+ * @returns A skip reason, or null if the requirement is met or absent
+ */
+function liveVersionSkipReason(
+  required: number | undefined,
+  actual: number | null,
+): string | null {
+  if (required == null) {
+    return null;
+  }
+
+  if (actual == null) {
+    return `requires Live ${required} or newer (could not read the Live version from ABLETON_APP)`;
+  }
+
+  return actual < required
+    ? `requires Live ${required} or newer (ABLETON_APP is Live ${actual})`
+    : null;
 }
 
 /**

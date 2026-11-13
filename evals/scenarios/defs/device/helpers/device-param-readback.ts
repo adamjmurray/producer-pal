@@ -55,6 +55,28 @@ export function paramNumber(result: unknown, name: string): number | undefined {
 }
 
 /**
+ * What is wrong with a named param's number, for a scenario that wants it set.
+ *
+ * @param result - Parsed ppal-read-device result
+ * @param name - Exact param name
+ * @param wanted - The number the param should read as
+ * @param tolerance - How far off it may read (a display rounds)
+ * @returns A description of what is wrong, or null when it reads as wanted
+ */
+export function paramProblem(
+  result: unknown,
+  name: string,
+  wanted: number,
+  tolerance = 0.5,
+): string | null {
+  const actual = paramNumber(result, name);
+
+  return actual != null && Math.abs(actual - wanted) <= tolerance
+    ? null
+    : `${name} reads ${actual ?? "no number"}, wanted ${wanted}`;
+}
+
+/**
  * Where each rack macro sits in its range, 0 (down) to 1 (up), by macro number.
  * A renamed macro reads as "Name (Macro 6)", an unrenamed one as "Macro 6".
  *

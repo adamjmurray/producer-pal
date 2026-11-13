@@ -9,6 +9,7 @@ import {
   macroProblem,
   optionValues,
   paramNumber,
+  paramProblem,
   paramText,
 } from "./device-param-readback.ts";
 
@@ -55,6 +56,25 @@ describe("paramNumber", () => {
     expect(paramNumber(result, "Gain")).toBeUndefined();
     expect(paramNumber(result, "Mode")).toBeUndefined();
     expect(paramNumber({}, "Gain")).toBeUndefined();
+  });
+});
+
+describe("paramProblem", () => {
+  const result = { parameters: [{ name: "Decay", value: "60 %" }] };
+
+  it("is null for a number within the tolerance", () => {
+    expect(paramProblem(result, "Decay", 60)).toBeNull();
+    expect(paramProblem(result, "Decay", 60.4)).toBeNull();
+  });
+
+  it("says what the param reads as when it is off", () => {
+    expect(paramProblem(result, "Decay", 50)).toBe("Decay reads 60, wanted 50");
+  });
+
+  it("says so when the param has no number", () => {
+    expect(paramProblem(result, "Gain", 6)).toBe(
+      "Gain reads no number, wanted 6",
+    );
   });
 });
 

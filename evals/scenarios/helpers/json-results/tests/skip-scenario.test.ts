@@ -29,10 +29,18 @@ function makeScenario(requires?: ScenarioRequirements): EvalScenario {
 }
 
 /** Default run env: not small-model, full tool set. */
-const fullEnv = { smallModelMode: false, tools: [...TOOL_NAMES] };
+const fullEnv = {
+  smallModelMode: false,
+  tools: [...TOOL_NAMES],
+  liveMajorVersion: 13,
+};
 
 /** Small-model run env with the full tool set. */
-const smallModelEnv = { smallModelMode: true, tools: [...TOOL_NAMES] };
+const smallModelEnv = {
+  smallModelMode: true,
+  tools: [...TOOL_NAMES],
+  liveMajorVersion: 13,
+};
 
 describe("shouldSkipScenario", () => {
   it("returns null when the scenario has no requirements", () => {
@@ -124,6 +132,7 @@ describe("shouldSkipScenario", () => {
     const restrictedEnv = {
       smallModelMode: false,
       tools: ["ppal-connect", "ppal-create-clip"],
+      liveMajorVersion: 13,
     };
 
     it("skips when the run's --tools subset excludes a required tool", () => {
@@ -192,6 +201,36 @@ describe("shouldSkipScenario", () => {
           fullEnv,
         ),
       ).toBeNull();
+    });
+  });
+
+  describe("liveVersion requirement", () => {
+    const scenario = makeScenario({ liveVersion: 13 });
+
+    it("skips when ABLETON_APP is an older Live", () => {
+      expect(
+        shouldSkipScenario(scenario, { ...fullEnv, liveMajorVersion: 12 }),
+      ).toBe("requires Live 13 or newer (ABLETON_APP is Live 12)");
+    });
+
+    it("does not skip when ABLETON_APP is the required version", () => {
+      expect(
+        shouldSkipScenario(scenario, { ...fullEnv, liveMajorVersion: 13 }),
+      ).toBeNull();
+    });
+
+    it("does not skip when ABLETON_APP is newer", () => {
+      expect(
+        shouldSkipScenario(scenario, { ...fullEnv, liveMajorVersion: 14 }),
+      ).toBeNull();
+    });
+
+    it("skips when the Live version can't be read", () => {
+      expect(
+        shouldSkipScenario(scenario, { ...fullEnv, liveMajorVersion: null }),
+      ).toBe(
+        "requires Live 13 or newer (could not read the Live version from ABLETON_APP)",
+      );
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   assertLeadEnvelopes,
   type ClipEnvelopeRead,
   envelopeValues,
+  MIN_RAMP_SHARE,
   parameterNames,
   rampShareOfRise,
   risesOverTime,
@@ -32,9 +33,6 @@ import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
 /** A device on the Lead track; the parameter name picks out the Utility. */
 const LEAD_DEVICE_PATH = /^t3\/d\d+$/;
-
-/** How much of the volume's rise ramps must carry for it to count as a fade. */
-const MIN_RAMP_SHARE = 0.5;
 
 export const automationWriteDeviceParam: EvalScenario = {
   ...ON_BARE_LEAD_CLIP,
