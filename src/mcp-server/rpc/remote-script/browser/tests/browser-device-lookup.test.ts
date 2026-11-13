@@ -198,6 +198,25 @@ describe("lookUpBrowserDevice", () => {
     });
   });
 
+  it("refuses a name two makers' plug-ins share across formats", async () => {
+    const plugin = ["VST3/Acme/Limiter", "AUv2/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 2 devices"),
+    );
+
+    await fake?.close();
+
+    // A VST sits in no maker's folder, so it can't tell the makers apart.
+    const withVst = ["VST/Limiter", "VST3/Acme/Limiter"];
+
+    expect(await lookUpIn({ plugin: withVst }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
+  });
+
   it("refuses two copies of a plug-in in one format, or in no format", async () => {
     const twoVst3 = { plugin: ["VST3/A/Pro-Q 4", "VST3/B/Pro-Q 4"] };
 

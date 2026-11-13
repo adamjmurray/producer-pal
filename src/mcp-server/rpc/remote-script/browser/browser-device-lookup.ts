@@ -443,8 +443,8 @@ async function searchSections(
 }
 
 /**
- * The one match to load when every match is the same plug-in in different
- * formats: VST3, then AU, then VST.
+ * The one match to load when every match is the same plug-in, from the same
+ * maker, in different formats: VST3, then AU, then VST.
  * @param matches - The matches, more than one
  * @returns That match, or null when the matches are different things
  */
@@ -458,9 +458,14 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
     return rank == null ? [] : [{ match, rank }];
   });
   const ranks = new Set(ranked.map(({ rank }) => rank));
+  // Two makers can share a plug-in name. A VST sits in no maker's folder.
+  const makers = new Set(
+    matches.flatMap(({ path }) => path.split("/").slice(1, -1).join("/") || []),
+  );
 
   if (
     names.size !== 1 ||
+    makers.size > 1 ||
     ranked.length !== matches.length ||
     ranks.size !== matches.length
   ) {
