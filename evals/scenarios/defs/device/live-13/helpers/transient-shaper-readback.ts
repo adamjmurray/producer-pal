@@ -30,7 +30,10 @@ export function transientShaperArgs(
   const call = getToolCalls(turns).findLast(
     (candidate) =>
       candidate.name === TOOLS.createDevice &&
-      /transient\s*shaper/i.test(argText(candidate.args.deviceName)),
+      /transient\s*shaper/i.test(
+        // `device` is an alias models reach for unprompted.
+        argText(candidate.args.deviceName ?? candidate.args.device),
+      ),
   );
   const parsed = call == null ? null : parsedToolResult(call);
   const created = (Array.isArray(parsed) ? parsed[0] : parsed) as {

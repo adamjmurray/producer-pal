@@ -47,7 +47,13 @@ export const drumSynthInactiveParam: EvalScenario = {
       explain: (result) => drumSynthProblem(result) ?? "",
     },
 
-    { type: "response_contains", pattern: /inactive|no effect/i, turn: 1 },
+    // Loose on purpose: the judge decides whether the reply got it right.
+    {
+      type: "response_contains",
+      pattern:
+        /inactive|no effect|(only|doesn't|does not|won't) (appl|affect|work|do)/i,
+      turn: 1,
+    },
     { type: "token_usage", maxTokens: 3_000 },
 
     {

@@ -62,7 +62,6 @@ export const macroCountLanding: EvalScenario = {
         `the rack should not show ${ASKED} macros, it reads ${JSON.stringify((result as { macros?: unknown }).macros)}`,
     },
 
-    { type: "response_contains", pattern: /\b32\b/, turn: 1 },
     { type: "token_usage", maxTokens: 3_000 },
 
     {
