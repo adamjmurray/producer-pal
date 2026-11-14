@@ -21,14 +21,17 @@ import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reas
 import { applyCodeToWrittenClips } from "#src/tools/clip/update/helpers/call/apply-clip-code.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
-  executeNoteCode: vi.fn(),
-  executeNoteCodeWithData: vi.fn(),
-  requestCodeExecution: vi.fn(),
-  handleCodeExecResult: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/code-exec-v8-protocol.ts"),
+  () => ({
+    executeNoteCode: vi.fn(),
+    executeNoteCodeWithData: vi.fn(),
+    requestCodeExecution: vi.fn(),
+    handleCodeExecResult: vi.fn(),
+  }),
+);
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
 
 /**
  * A note as Live reads it back.
@@ -130,7 +133,7 @@ describe("updateClip - code write beside muted notes", () => {
     expect(result).not.toHaveProperty("detail");
   });
 
-  it("says it once for the copies a tiled clip's code ran on", async () => {
+  it("says it once for the clips one target's code ran on", async () => {
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
     for (const clip of [mocks.clip123, mocks.clip456]) {

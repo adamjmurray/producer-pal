@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { returnClipsExist } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import {
   readOneClip,
   type ReadClipResult,
@@ -31,6 +32,7 @@ import {
   readFanOut,
   type ReadResult,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { sceneApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -44,6 +46,8 @@ interface ReadSceneArgs {
   paths?: string;
   /** Hidden alias for id */
   sceneId?: string;
+  /** @internal The names `id` and `path` were sent under, set by the fan-out */
+  targetNames?: TargetNames;
   include?: string[];
   /**
    * Clips in this scene, when the caller already knows. A Live Set read counts
@@ -121,7 +125,7 @@ export function readOneScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("scene"));
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -137,8 +141,8 @@ export function readOneScene(
     // Validate an id names a scene; a path says so by its own spelling
     scene =
       sceneId != null
-        ? validateIdType(sceneId, "scene")
-        : sceneApiAtPath(scenePath as string);
+        ? validateIdType(sceneId, "scene", args.targetNames?.idParam)
+        : sceneApiAtPath(scenePath as string, args.targetNames?.pathParam);
 
     // Determine scene index from the scene's Live path
     resolvedSceneIndex = scene.sceneIndex;
@@ -148,9 +152,7 @@ export function readOneScene(
   }
 
   if (!scene.exists()) {
-    throw new Error(
-      `no scene at "s${String(resolvedSceneIndex ?? sceneIndex)}"`,
-    );
+    throw new Error(`no scene at "s${String(resolvedSceneIndex)}"`);
   }
 
   const isTempoEnabled = (scene.getProperty("tempo_enabled") as number) > 0;
@@ -238,6 +240,22 @@ function readSceneClips(
     clips.push(clip);
   }
 
+  // Live 13 return tracks hold a clip per scene too, after the regular tracks.
+  for (const returnTrackIndex of returnTrackIndices(liveSet)) {
+    const clip: SceneClip = readOneClip(
+      { returnTrackIndex, sceneIndex, slotValidated: true, include },
+      { notation },
+    );
+
+    if (clip.id != null) {
+      clip.trackName = LiveAPI.from(
+        livePath.returnTrack(returnTrackIndex),
+      ).getProperty("name") as string;
+
+      clips.push(clip);
+    }
+  }
+
   return clips;
 }
 
@@ -260,5 +278,27 @@ function countSceneClips(liveSet: LiveAPI, sceneIndex: number): number {
     }
   }
 
+  for (const returnTrackIndex of returnTrackIndices(liveSet)) {
+    if (
+      LiveAPI.from(
+        livePath.returnTrack(returnTrackIndex).clipSlot(sceneIndex).clip(),
+      ).exists()
+    ) {
+      count++;
+    }
+  }
+
   return count;
+}
+
+/**
+ * The return tracks whose slots a scene read covers: every one on Live 13,
+ * none before it, which has no return-track slots to ask.
+ * @param liveSet - LiveAPI reference to the live set
+ * @returns The return track indices
+ */
+function returnTrackIndices(liveSet: LiveAPI): number[] {
+  return returnClipsExist()
+    ? liveSet.getChildIds("return_tracks").map((_id, index) => index)
+    : [];
 }

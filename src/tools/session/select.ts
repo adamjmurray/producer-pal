@@ -5,7 +5,8 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
+import { type AnySlotPosition } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   applyPluginEditorWindow,
@@ -252,7 +253,7 @@ function writeSelection(
     // Said after the writes: a lane that isn't there stops nothing, so the
     // warning reports what the call did rather than what it refused.
     if (resolved.missingTakeLane != null) {
-      console.warn(resolved.missingTakeLane);
+      emitWarning(resolved.missingTakeLane);
     }
   }
 
@@ -341,7 +342,7 @@ interface ValidateParametersOptions {
   deviceId?: string;
   devicePath?: string;
   devicePathParam: "path" | "devicePath";
-  slot?: { trackIndex: number; sceneIndex: number };
+  slot?: AnySlotPosition;
 }
 
 /**

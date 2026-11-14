@@ -91,10 +91,10 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     arrangementLength: param(z.string().optional(), {
       default:
         "clip/scene copies to the arrangement only. duration, e.g. '4bar' (see Skills), or comma-separated one per copy; song meter. " +
-        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+        "Shorter than the source trims the copy; longer extends it, a looping one repeating its loop",
       smallModel:
         "clip/scene copies to the arrangement only. duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per copy; song meter. " +
-        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+        "Shorter than the source trims the copy; longer extends it, a looping one repeating its loop",
     }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
@@ -102,19 +102,15 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: param(z.coerce.string().optional(), {
       default:
         "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
-        "'t2[5|1]' or 't2[loc:Chorus]' = that spot (bar|beat, or loc:<locator name or id>) on that track's arrangement, " +
-        "and '[5|1]' the same spot on the source clip's own track " +
-        "(an arrangement track must match the clip's MIDI/audio type; copying an arrangement clip leaves the track's automation behind, while a session clip's envelopes are written to the track's lane over the copy's span); 't2/l0' = its first take lane, and lanes are created up to that " +
-        "index; " +
-        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
-        "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +
+        "'t2[5|1]' or 't2[loc:Chorus]' = that spot on the track's arrangement (bar|beat, or loc:<locator name or id> - use loc: when the user names a section, so the clip still lands right if they move it); " +
+        "'t2/l0' = its first take lane (created if missing). '[5|1]' alone = that spot on the source clip's own track; 't2' alone needs a position; no toPath = the source's own track. " +
+        "The track must match the clip's MIDI/audio type. An arrangement clip's automation stays behind; a session clip's envelopes are written to the track's lane over the copy's span. " +
+        "Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
+        "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); no toPath = the chain's own rack. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
-        "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane, " +
-        "at the positions they already have. A track source copies its main lane, a 't2/l0' source that lane. " +
-        "A 't2/l0' source onto a bare 't2' promotes the lane's clips to the main lane, over the clips already there. " +
-        "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
-        "A track copy needs no toPath otherwise. " +
-        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
+        "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane at their own positions; " +
+        "a 't2/l0' source copies that lane, and onto a bare 't2' it promotes the lane's clips to the main lane, over what's there. No toPath otherwise. " +
+        "Pads: 't0/d0/pD1', required, same rack. " +
         "Comma-separated, one per copy; several sources need one each, except a bare '[5|1]' for clips",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]' (a session clip's automation goes to the track's lane; an arrangement clip's isn't copied), device 't1/d0', drum pad 't0/d0/pD1'",
@@ -128,7 +124,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation. Note-count operations (ratchet()/repeat()/split()/merge()) change how many notes exist",
+        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation. Note-count operations (ratchet()/repeat()/split()/merge()) change how many notes exist; waveform periods are note values (sin(1bar)), never radians",
       smallModel: null,
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"

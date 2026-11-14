@@ -87,12 +87,20 @@ export interface PresetScope {
 /**
  * What remoteScript.resolve answers. `error` is worded for the model;
  * `outOfTime` marks a search that ran out of its time, not one that found a
- * problem.
+ * problem. `notFound` marks a name nothing in the browser has; `candidates`, a device
+ * name several devices have.
  */
 export type BrowserItemResolution =
   | RemoteScriptUnavailable
   | { available: true; item: BrowserItem }
-  | { available: true; error: string; outOfTime?: true };
+  | {
+      available: true;
+      error: string;
+      outOfTime?: true;
+      notFound?: true;
+      /** The devices an ambiguous name matched */
+      candidates?: BrowserItem[];
+    };
 
 /**
  * What remoteScript.load answers. `error` is worded for the model; `unfinished`

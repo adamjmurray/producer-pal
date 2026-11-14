@@ -9,7 +9,7 @@
 // view: a lane is read once, and after each copy only what the copy could have
 // changed is read again.
 //
-// A copy edits clips in other ways (clearing, tiling, lengthening) inside its
+// A copy edits clips in other ways (clearing, lengthening) inside its
 // own write, so each copy is wrapped whole: the lane is noted before the first
 // copy to it, and read back after the copy is finished. Those edits report to
 // the same view as they go.
@@ -25,7 +25,6 @@ import {
   type Reach,
 } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { noteCopyEffects } from "../../minimal-clip-info.ts";
 
 /** The lane a copy writes to, and the object holding its clips. */
 export interface CopyLane {
@@ -75,13 +74,6 @@ export function clearedBefore(error: unknown): string | undefined {
  */
 export function changedBefore(error: unknown): boolean {
   return error instanceof ChangedThenFailedError;
-}
-
-/** An entry that names a clip, or a group of clips. */
-interface CopyEntry {
-  id?: string;
-  detail?: string;
-  clips?: CopyEntry[];
 }
 
 /**
@@ -194,30 +186,14 @@ export async function copyClearingAsync<T>(
 }
 
 /**
- * The ids of the clips in a copy's entry, looking under a group's `clips`.
- * @param copy - A copy's entry: a clip, or the track path with its tiled clips
- * @returns Every clip id
+ * The id of the clip in a copy's entry.
+ * @param copy - A copy's entry
+ * @returns The clip's id, or none for an entry that names no clip
  */
 export function copiedIds(copy: object): string[] {
-  const { id, clips } = copy as CopyEntry;
-
-  if (clips != null) {
-    return clips.flatMap(copiedIds);
-  }
+  const { id } = copy as { id?: string };
 
   return id == null ? [] : [id];
-}
-
-/**
- * Say on a copy's entry what it cleared. A group of tiled clips says it once,
- * on its first clip.
- * @param copy - A copy's entry
- * @param cleared - What the copy overwrote, shortened or split
- */
-export function noteCleared(copy: object, cleared: string): void {
-  const entry = copy as CopyEntry;
-
-  noteCopyEffects(entry.clips?.[0] ?? entry, cleared);
 }
 
 // --- Helpers below main exports ---

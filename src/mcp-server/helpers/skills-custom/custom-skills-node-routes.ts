@@ -21,18 +21,19 @@ import {
   readCustomSkill,
   regenerateSkillsIndex,
   rememberCustomSkill,
+  slugifyCustomSkillName,
 } from "./custom-skills-store.ts";
 
 /**
- * Register the `skills.read` / `skills.remember` / `skills.forget` /
- * `skills.list` routes. The underlying registry throws on duplicate
+ * Register the `skills.remember` / `skills.list` / `skills.readMany` /
+ * `skills.forgetMany` routes. The underlying registry throws on duplicate
  * registration, so call once.
  */
 export const registerCustomSkillsNodeRoutes = makeCollectionNodeRoutes({
   namespace: "skills",
   noun: "custom skill",
   emptyIndex: "(no custom skills)",
-  missingDeleteNote: (name) => `No custom skill to delete for "${name}".`,
+  slugify: slugifyCustomSkillName,
   read: readCustomSkill,
   remember: rememberCustomSkill,
   forget: forgetCustomSkill,

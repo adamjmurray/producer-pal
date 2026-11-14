@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import {
   filterSchemaForSmallModel,
   unpublishEnumValues,
@@ -413,6 +414,24 @@ describe("unpublishEnumValues", () => {
 
     expect(published.include!.description).toBeUndefined();
     expect(getEnumOptions(published.include)).toStrictEqual(["notes", "warp"]);
+  });
+
+  it("keeps the values an aliased enum already hides", () => {
+    const schema = {
+      kind: aliasedEnum(["a", "b", "c"], {}, ["b"]).default("a"),
+    };
+
+    const published = unpublishEnumValues(schema, { kind: ["c"] });
+    const json = z.toJSONSchema(z.object(published));
+
+    expect(json.properties?.kind).toStrictEqual(
+      expect.objectContaining({ enum: ["a"] }),
+    );
+    expect(published.kind!.safeParse("b").success).toBe(true);
+    expect(published.kind!.safeParse("c").success).toBe(true);
+    expect(published.kind!.safeParse("x").error?.issues[0]?.message).toBe(
+      'Invalid option: expected one of "a"',
+    );
   });
 });
 

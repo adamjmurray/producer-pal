@@ -3,11 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { externalizeInjectedBlocks } from "../injected-blocks.ts";
+import {
+  externalizeInjectedBlocks,
+  restoreInjectedBlocks,
+} from "../injected-blocks.ts";
 import { type JsonEvalResult, type JsonToolCall } from "../types.ts";
 
 const SKILLS = "# Skills\nlots of text";
@@ -52,17 +62,17 @@ function blocksOf(result: JsonEvalResult, index: number): string[] | undefined {
   return result.turns[0]?.toolCalls[index]?.injectedBlocks;
 }
 
+let dir: string;
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "ppal-blocks-"));
+});
+
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
 describe("externalizeInjectedBlocks", () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "ppal-blocks-"));
-  });
-
-  afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
-  });
-
   it("replaces each block with a hash and writes its text out", async () => {
     const out = await externalizeInjectedBlocks(
       resultWith([
@@ -121,5 +131,37 @@ describe("externalizeInjectedBlocks", () => {
     );
 
     expect(readdirSync(dir)).toStrictEqual([]);
+  });
+});
+
+describe("restoreInjectedBlocks", () => {
+  it("gives back the text externalize stored", async () => {
+    const original = resultWith([
+      { name: "ppal-connect", args: {}, injectedBlocks: [SKILLS, NEXT_STEP] },
+      { name: "ppal-read-clip", args: {} },
+    ]);
+    const stored = await externalizeInjectedBlocks(original, dir);
+    const restored = await restoreInjectedBlocks(stored, dir);
+
+    expect(blocksOf(restored, 0)).toStrictEqual([SKILLS, NEXT_STEP]);
+    expect(blocksOf(restored, 1)).toBeUndefined();
+  });
+
+  it("drops a hash with no file or that is not a hash", async () => {
+    mkdirSync(join(dir, "blocks"));
+    writeFileSync(join(dir, "blocks", "abc123.txt"), NEXT_STEP);
+
+    const restored = await restoreInjectedBlocks(
+      resultWith([
+        {
+          name: "ppal-connect",
+          args: {},
+          injectedBlocks: ["abc123", "ffff", "../../x"],
+        },
+      ]),
+      dir,
+    );
+
+    expect(blocksOf(restored, 0)).toStrictEqual([NEXT_STEP]);
   });
 });

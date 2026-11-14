@@ -6,7 +6,7 @@
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../transform-warning-label.ts";
+import { clipDetail } from "../transform-warning-label.ts";
 import {
   type ExpressionNode,
   type NoteOp,
@@ -133,7 +133,7 @@ function processAssignment(
 
     return { value: evaluateExpression(assignment.expression, ctx) };
   } catch (error) {
-    console.clipDetail(
+    clipDetail(
       `${assignment.parameter} transform failed: ${errorMessage(error)}`,
     );
 
@@ -298,9 +298,7 @@ export function evaluateExpression(
       // (neutral) + warn instead of failing the transform — mirrors the audio
       // evaluator so the condition is recoverable on both note and audio paths.
       if (node.namespace === "clip" && node.name === "position") {
-        console.clipDetail(
-          "clip.position isn't available on a session clip; used 0",
-        );
+        clipDetail("clip.position isn't available on a session clip; used 0");
 
         return 0;
       }

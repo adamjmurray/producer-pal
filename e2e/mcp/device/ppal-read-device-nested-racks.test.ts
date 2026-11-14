@@ -46,6 +46,8 @@ describe("read-device on nested racks", () => {
     const outer = await read("t0/d0");
 
     expect(outer.type).toBe("instrument-rack");
+    // Only fixed-chain racks (Live 13) show a chain limit.
+    expect(outer).not.toHaveProperty("maxChains");
 
     const kit = await read(KIT);
 

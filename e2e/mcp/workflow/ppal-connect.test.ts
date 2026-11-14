@@ -14,7 +14,9 @@ import { connectMcp } from "#evals/chat/mcp.ts";
 import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
+import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
+import { NEW_USER_MARKER } from "#src/skills/fragments/context.ts";
 import {
   fetchSkillOverrides,
   parseToolResult,
@@ -25,11 +27,18 @@ import {
   remoteScriptAnswers,
   serverHasCodeExec,
 } from "./helpers/server-capability-test-helpers";
+import {
+  backupGlobalContext,
+  restoreGlobalContext,
+} from "./helpers/global-context-backup-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
 /** The section the skills add only while the remote script answers. */
 const PLUGINS_HEADING = "### Plug-Ins, Max for Live Devices & Presets";
+
+/** Live's version string. Betas carry a build suffix ("13.0b25"). */
+const LIVE_VERSION = /^\d+\.\d+(\.\d+)?(b\d+)?$/;
 
 /** Helper to call ppal-connect and return the raw MCP result. */
 async function callConnectRaw(): Promise<unknown> {
@@ -53,6 +62,31 @@ function extractBlock(result: unknown, prefix: string): string {
 /** Extract the injected "# Producer Pal Skills" block (see {@link extractBlock}). */
 function extractSkills(result: unknown): string {
   return extractBlock(result, "# Producer Pal Skills");
+}
+
+/** Whether the connect result marks the user as new (see NEW_USER_MARKER). */
+function marksNewUser(result: unknown): boolean {
+  const typed = result as { content?: Array<{ text?: string }> } | null;
+
+  return (
+    typed?.content?.some((c) => c.text?.includes(NEW_USER_MARKER)) ?? false
+  );
+}
+
+/**
+ * Write a throwaway memory entry over REST. The caller deletes it.
+ * @param url - The memory entry's REST URL
+ * @returns The PUT response
+ */
+async function putProbeMemory(url: string): Promise<Response> {
+  return fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: "e2e probe body",
+      description: "e2e probe — safe to delete",
+    }),
+  });
 }
 
 /**
@@ -116,13 +150,34 @@ describe("ppal-connect", () => {
 
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
-    expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
+    expect(parsed.abletonLiveVersion).toMatch(LIVE_VERSION);
 
     // Live Set info
     expect(parsed.liveSet).toBeDefined();
     expect(typeof parsed.liveSet.regularTrackCount).toBe("number");
     expect(typeof parsed.liveSet.returnTrackCount).toBe("number");
     expect(typeof parsed.liveSet.sceneCount).toBe("number");
+
+    // The overview lists tracks as { path, name }; an empty or 257+ list is left out
+    const { liveSet } = parsed;
+
+    for (const [list, count, prefix] of [
+      [liveSet.tracks, liveSet.regularTrackCount, /^t\d+$/],
+      [liveSet.returnTracks, liveSet.returnTrackCount, /^rt\d+$/],
+    ] as const) {
+      if (count === 0 || count > 256) {
+        expect(list).toBeUndefined();
+      } else {
+        expect(list).toHaveLength(count);
+        expect(
+          list?.every(
+            (track) =>
+              prefix.test(track.path) && typeof track.name === "string",
+          ),
+        ).toBe(true);
+      }
+    }
+
     expect(parsed.liveSet.tempo).toBeDefined();
     expect(
       parsed.liveSet.timeSignature === null ||
@@ -137,9 +192,10 @@ describe("ppal-connect", () => {
     // runs against a live config dir, so they're part of what the server serves.
     const skills = extractSkills(result);
 
+    // The New user paragraph rides on the dev machine's own context and memory.
     expect(skills).toBe(
       buildSkills(
-        { notation: "barbeat", remoteScript },
+        { notation: "barbeat", remoteScript, newUser: marksNewUser(result) },
         await fetchSkillOverrides(),
       ),
     );
@@ -210,14 +266,7 @@ describe("ppal-connect", () => {
       // Seed a transient memory so the standard-mode presence is real, not
       // vacuous. Localhost write — a node fetch sends no Origin, so it passes
       // the collection route's foreign-origin gate.
-      const putRes = await fetch(MEMORY_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: "e2e probe body",
-          description: "e2e probe — safe to delete",
-        }),
-      });
+      const putRes = await putProbeMemory(MEMORY_URL);
 
       try {
         expect(putRes.ok).toBe(true);
@@ -237,6 +286,38 @@ describe("ppal-connect", () => {
         // Always restore standard mode and delete the probe so the dev machine's
         // real ~/.producer-pal/memory/ is left untouched.
         await setConfig({ smallModelMode: false });
+        await fetch(MEMORY_URL, { method: "DELETE" });
+      }
+    });
+  });
+
+  describe("New user paragraph", () => {
+    // The Skills carry the New user paragraph exactly when the connect result
+    // marks the user as new; both come from one check.
+    const PARAGRAPH = "**New user** (connect says";
+    const MEMORY_NAME = "e2e-new-user-probe";
+    const MEMORY_URL = `${REST_BASE_URL}/memory/${MEMORY_NAME}`;
+
+    it("is sent with the marker and withheld once a memory exists", async () => {
+      await setConfig({ smallModelMode: false });
+
+      const before = await callConnectRaw();
+
+      expect(extractSkills(before).includes(PARAGRAPH)).toBe(
+        marksNewUser(before),
+      );
+
+      const putRes = await putProbeMemory(MEMORY_URL);
+
+      try {
+        expect(putRes.ok).toBe(true);
+
+        const after = await callConnectRaw();
+
+        expect(marksNewUser(after)).toBe(false);
+        expect(extractSkills(after)).toContain("## Context & Memory");
+        expect(extractSkills(after)).not.toContain(PARAGRAPH);
+      } finally {
         await fetch(MEMORY_URL, { method: "DELETE" });
       }
     });
@@ -295,6 +376,106 @@ describe("ppal-connect", () => {
     });
   });
 
+  describe("version check", () => {
+    // versionCheck: true re-checks versions after an install, update or restart
+    // without re-sending the Skills, contexts, memory index or next step.
+    const SCRIPT_PREFIX = "remoteScript:";
+    const CURRENT_SCRIPT = /^remoteScript: (v\S+ )?running$/;
+
+    /**
+     * Call ppal-connect with versionCheck on a fresh connection, optionally
+     * sending a portal version.
+     * @param portalVersion - Header value, or undefined to send no header
+     * @returns The raw tool result
+     */
+    async function versionCheck(portalVersion?: string): Promise<unknown> {
+      const { client } = await connectMcp(MCP_URL, {
+        headers:
+          portalVersion == null
+            ? undefined
+            : { [PORTAL_VERSION_HEADER]: portalVersion },
+      });
+
+      try {
+        return await client.callTool({
+          name: "ppal-connect",
+          arguments: { versionCheck: true },
+        });
+      } finally {
+        await client.close();
+      }
+    }
+
+    /**
+     * @param result - Raw tool result
+     * @returns The text of every content block
+     */
+    function texts(result: unknown): string[] {
+      const typed = result as { content?: Array<{ text?: string }> };
+
+      return (typed.content ?? []).map((c) => c.text ?? "");
+    }
+
+    it("returns only the versions and the version lines", async () => {
+      await setConfig({
+        smallModelMode: false,
+        projectContext: "e2e version-check project context",
+      });
+
+      const result = await versionCheck(VERSION);
+      const blocks = texts(result);
+      const parsed = parseToolResult<Partial<ConnectResult>>(result);
+
+      expect(parsed.connected).toBe(true);
+      expect(parsed.producerPalVersion).toBe(VERSION);
+      expect(parsed.abletonLiveVersion).toMatch(LIVE_VERSION);
+      expect(parsed.liveSet).toBeUndefined();
+      expect(blocks[1]).toBe(`portalVersion: ${VERSION}`);
+      expect(extractSkills(result)).toBe("");
+      expect(extractBlock(result, "Project context")).toBe("");
+      expect(extractBlock(result, "Memory index")).toBe("");
+      expect(blocks.some((b) => b.includes("Report the connection"))).toBe(
+        false,
+      );
+    });
+
+    it("ends with the new-chat line exactly when the remote script is current", async () => {
+      const blocks = texts(await versionCheck(VERSION));
+      const script = blocks.find((b) => b.startsWith(SCRIPT_PREFIX));
+      const current = script != null && CURRENT_SCRIPT.test(script);
+
+      expect(blocks.at(-1) === UP_TO_DATE_NEW_CHAT).toBe(current);
+    });
+
+    // Whatever state the real script is in, small-model mode never reports a
+    // copy that is only behind or needs a Live restart.
+    it("leaves the version-only remote script lines out in small-model mode", async () => {
+      await setConfig({ smallModelMode: true });
+
+      try {
+        const script = texts(await versionCheck(VERSION)).find((b) =>
+          b.startsWith(SCRIPT_PREFIX),
+        );
+
+        expect(script).toBeDefined();
+        expect(script).not.toMatch(
+          /is installed, but this device ships|different build than this device ships|Live is running|To update it/,
+        );
+      } finally {
+        await setConfig({ smallModelMode: false });
+      }
+    });
+
+    it("withholds the new-chat line when the portal and device versions differ", async () => {
+      expect(texts(await versionCheck("99.0.0"))).not.toContain(
+        UP_TO_DATE_NEW_CHAT,
+      );
+      expect(texts(await versionCheck("1.0.0"))).not.toContain(
+        UP_TO_DATE_NEW_CHAT,
+      );
+    });
+  });
+
   describe("injected block order", () => {
     // The per-block tests above use extractBlock, which finds a block by prefix
     // regardless of its position — so none of them catch a reordered
@@ -311,6 +492,10 @@ describe("ppal-connect", () => {
     const GLOBAL_CONTEXT_URL = `${ROOT_URL}/global-context`;
     const ORDER_MEMORY_NAME = "e2e-connect-order-probe";
     const ORDER_MEMORY_URL = `${ROOT_URL}/memory/${ORDER_MEMORY_NAME}`;
+
+    // The finally below doesn't survive a hard abort; this copy does.
+    beforeAll(backupGlobalContext);
+    afterAll(restoreGlobalContext);
 
     it("appends blocks in skills → project → global → memory order", async () => {
       // Snapshot the dev machine's real global context BEFORE mutating it, so the
@@ -388,6 +573,8 @@ interface ConnectResult {
     sceneCount: number;
     regularTrackCount: number;
     returnTrackCount: number;
+    tracks?: { path: string; name: string }[];
+    returnTracks?: { path: string; name: string }[];
     isPlaying?: boolean;
     scale?: string;
     scalePitches?: string;

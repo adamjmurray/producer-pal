@@ -90,7 +90,13 @@ function convert(overrides?: Partial<EvalScenarioResult>) {
  * @returns An llm_judge assertion result
  */
 function judgeAssertion(
-  details: { pass: boolean; issues: string[] },
+  details: {
+    pass: boolean;
+    issues: string[];
+    provider?: string;
+    model?: string;
+    judgeError?: true;
+  },
   message: string,
 ): EvalAssertionResult {
   return makeAssertion({
@@ -123,6 +129,14 @@ describe("toJsonResult", () => {
       results: [expect.objectContaining({ type: "tool_called", pass: true })],
     });
     expect(result.judge).toBeUndefined();
+  });
+
+  it("records the thinking level the model ran at", () => {
+    expect(convert({ thinking: "high" }).thinking).toBe("high");
+  });
+
+  it("leaves thinking out when none was set", () => {
+    expect("thinking" in convert()).toBe(false);
   });
 
   it("includes turns with aggregated step usage", () => {
@@ -169,6 +183,32 @@ describe("toJsonResult", () => {
     // there were zero checks, so the overall result hard-failed even though the
     // judge passed — a judge-only scenario could never report pass.
     expect(result.result).toBe("pass");
+  });
+
+  it("records which provider and model gave the judge verdict", () => {
+    const result = convert({
+      assertions: [
+        judgeAssertion(
+          { ...PASSING_JUDGE, provider: "codex-code", model: "luna" },
+          "LLM judge: pass",
+        ),
+      ],
+    });
+
+    expect(result.judge).toStrictEqual({
+      pass: true,
+      issues: [],
+      provider: "codex-code",
+      model: "luna",
+    });
+  });
+
+  it("omits provider and model when the assertion has none", () => {
+    const result = convert({
+      assertions: [judgeAssertion(PASSING_JUDGE, "LLM judge: pass")],
+    });
+
+    expect(result.judge).toStrictEqual({ pass: true, issues: [] });
   });
 
   it("derives judge from llm_judge assertion (failing)", () => {
@@ -235,9 +275,106 @@ describe("toJsonResult", () => {
   it.each([
     ["errored before the first turn", [], "Live would not swap Sets", "error"],
     ["was refused by the provider", [makeTurn()], "usage limit", "error"],
-    ["hit some other error mid-run", [makeTurn()], "timed out", "pass"],
+    ["errored after its last turn", [makeTurn()], "timed out", "pass"],
   ])("grades a run that %s", (_label, turns, error, outcome) => {
     expect(convert({ turns, error }).result).toBe(outcome);
+  });
+
+  describe("a run that threw before its scripted turns all ran", () => {
+    const scenario = {
+      ...makeResult().scenario,
+      messages: ["Connect to Ableton", "Make a clip", "Name it"],
+    };
+    const twoTurns = [makeTurn(), makeTurn({ turnIndex: 1 })];
+
+    it("is an error, so it is not scored or kept on resume", () => {
+      const result = convert({
+        scenario,
+        turns: twoTurns,
+        error: "Live died",
+      });
+
+      expect(result.result).toBe("error");
+    });
+
+    it("stays a fail when the step budget stopped the turn", () => {
+      const result = convert({
+        scenario,
+        turns: twoTurns,
+        assertions: [makeAssertion({ earned: 0 })],
+        error: "codex CLI hit the step budget of 2 steps and was stopped.",
+      });
+
+      expect(result.result).toBe("fail");
+    });
+
+    it("stays graded when every turn ran and the error came later", () => {
+      const result = convert({
+        scenario,
+        turns: [...twoTurns, makeTurn({ turnIndex: 2 })],
+        error: "judge crashed",
+      });
+
+      expect(result.result).toBe("pass");
+    });
+  });
+
+  describe("a judge that gave no verdict", () => {
+    const failedJudge = judgeAssertion(
+      { pass: false, issues: ["timeout"], judgeError: true },
+      "LLM judge error: timeout",
+    );
+
+    it("is an error, so it is not scored or kept on resume", () => {
+      const result = convert({ assertions: [makeAssertion(), failedJudge] });
+
+      expect(result.result).toBe("error");
+      expect(result.error).toBe("LLM judge error: timeout");
+    });
+
+    it("is an error for a judge-only scenario", () => {
+      expect(convert({ assertions: [failedJudge] }).result).toBe("error");
+    });
+
+    it("stays a fail when a check already failed the run", () => {
+      const result = convert({
+        assertions: [makeAssertion({ earned: 0 }), failedJudge],
+      });
+
+      expect(result.result).toBe("fail");
+      expect(result).not.toHaveProperty("error");
+    });
+
+    it("does not stop an advisory judge from passing on its checks", () => {
+      const result = convert({
+        scenario: { ...makeResult().scenario, judgeAdvisory: true },
+        assertions: [makeAssertion(), failedJudge],
+      });
+
+      expect(result.result).toBe("pass");
+    });
+
+    it("stays a fail when the judge returned a real fail verdict", () => {
+      const result = convert({
+        assertions: [
+          makeAssertion(),
+          judgeAssertion(FAILING_JUDGE, "LLM judge: fail (2 issue(s))"),
+        ],
+      });
+
+      expect(result.result).toBe("fail");
+    });
+  });
+
+  it("grades a turn that ended in a transport error as an error", () => {
+    const result = convert({
+      turns: [makeTurn({ assistantResponse: "" })],
+      error: "Incorrect API key provided (HTTP 401)",
+      infraError: true,
+      assertions: [],
+    });
+
+    expect(result.result).toBe("error");
   });
 
   it("handles zero checks gracefully", () => {
@@ -325,6 +462,24 @@ describe("toJsonResult", () => {
     const result = convert();
 
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
+  });
+
+  it("keeps the turn's reasoning text and finish reason in full", () => {
+    const reasoningText =
+      "step one thought\n\nstep two thought " + "x".repeat(5000);
+    const result = convert({
+      turns: [makeTurn({ reasoningText, finishReason: "length" })],
+    });
+
+    expect(result.turns[0]?.reasoningText).toBe(reasoningText);
+    expect(result.turns[0]?.finishReason).toBe("length");
+  });
+
+  it("omits reasoning text and finish reason when the turn has none", () => {
+    const result = convert();
+
+    expect(result.turns[0]).not.toHaveProperty("reasoningText");
+    expect(result.turns[0]).not.toHaveProperty("finishReason");
   });
 
   it("sums cache reads and writes across steps, omitting them when zero", () => {
@@ -451,7 +606,6 @@ describe("toJsonResult", () => {
 
       expect(json.toolErrors).toStrictEqual({
         count: 1,
-        total: 2,
         errors: [
           {
             turnIndex: 0,
@@ -462,6 +616,29 @@ describe("toJsonResult", () => {
       });
       // A recovered error never gates.
       expect(json.result).toBe("pass");
+    });
+
+    it("leaves out a refusal the scenario expects", () => {
+      const base = makeResult();
+      const json = convert({
+        scenario: {
+          ...base.scenario,
+          expectedRefusals: [{ tool: "ppal-create-clip", message: "bad" }],
+        },
+        turns: [
+          makeTurn({
+            toolCalls: [
+              {
+                name: "ppal-create-clip",
+                args: {},
+                result: "Error: bad notes",
+              },
+            ],
+          }),
+        ],
+      });
+
+      expect(json.toolErrors).toStrictEqual({ count: 0, errors: [] });
     });
 
     it("omits toolErrors when the run made no tool calls", () => {
@@ -499,5 +676,12 @@ describe("toJsonResult", () => {
       expect(json.turns[0]?.timing).toBeUndefined();
       expect(json.totalTiming).toBeUndefined();
     });
+  });
+
+  it("records the local model build only when the run has one", () => {
+    const localModel = { variant: "a/b@q4_k_m", quantization: "Q4_K_M" };
+
+    expect(convert({ localModel }).localModel).toStrictEqual(localModel);
+    expect(convert().localModel).toBeUndefined();
   });
 });

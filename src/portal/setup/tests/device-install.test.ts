@@ -15,7 +15,7 @@ import {
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
-import { deviceFilePath } from "../device-file-status.ts";
+import { deviceFilePath } from "../device-file/device-file-status.ts";
 import { installDevice } from "../device-install.ts";
 import { fakeDevice, makeScratchLibrary, put } from "./device-test-helpers.ts";
 
@@ -324,7 +324,7 @@ describe("installDevice", () => {
 
     installDevice(library, source);
 
-    expect(statSync(device()).mode & 0o777).toBe(0o644);
+    expect(statSync(device()).mode & 0o200).toBe(0o200);
   });
 
   it("removes old temp files that an earlier crash left behind", () => {

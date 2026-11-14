@@ -8,7 +8,8 @@ import { withClipWarningLabel } from "#src/notation/transform/transform-warning-
 import { type Notation } from "#src/shared/notation.ts";
 import { readBackAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
+import { type CallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
+import { type ScaleRequest } from "#src/tools/shared/schema/scale/scale-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
@@ -31,14 +32,19 @@ import {
 } from "../entries/clip-reasons.ts";
 import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  type ClipPath,
+  type ReturnSlotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { checkRegionUpFront } from "./check-region-up-front.ts";
 import { writeClipMeter } from "./write-clip-meter.ts";
+import { writeClipScaleParam } from "./write-clip-scale.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
+import { ignoreParamsWithoutNotes } from "../notes/params-without-notes.ts";
 import {
   CLIP_IS_AUDIO,
   CLIP_IS_MIDI,
@@ -84,16 +90,20 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   arrangementStartBeats?: number | null;
   /** Where this clip moves, from toPath (or the deprecated toSlot). */
   destination?: ClipPath | null;
+  /** The return track slot an envelope clip moves to. */
+  returnDestination?: ReturnSlotPath | null;
   /** A clip slot sent beside an arrangement start or length, to be noted as ignored. */
-  ignoredDestination?: ClipPath | null;
+  ignoredDestination?: ClipPath | ReturnSlotPath | null;
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
   /** Destination tracks the batch has already resolved, keyed by track index. */
   destinationTracks?: Map<number, LiveAPI>;
   context: Partial<ToolContext>;
-  /** The call's shared scale mask reader; each clip reads the Set when absent. */
-  scaleMask?: ScaleMaskReader;
+  /** What the call asked Live about scales */
+  callScale: CallScale;
+  /** The scale this clip is asked to take, if the call sets one. */
+  scaleRequest?: ScaleRequest;
   updatedClips: ClipResult[];
   landings: LandingLog;
   /** What each clip has to say beyond its result, for the clip's own entry. */
@@ -120,7 +130,10 @@ export function processSingleClipUpdate(
   // What a transform skips on this kind of clip goes to the clip's own entry.
   withClipWarningLabel(
     `clip ${targetLabel(params.clip)}`,
-    () => updateOneClip(checkTransformsForClipType(params)),
+    () =>
+      updateOneClip(
+        checkTransformsForClipType(ignoreParamsWithoutNotes(params)),
+      ),
     (reason) => noteTransformReason(params, reason),
   );
 }
@@ -166,6 +179,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     landings,
     reasons,
   } = params;
+  const { callScale } = params;
 
   // Before the first write: a start or length the clip can't take skips it
   // with nothing changed.
@@ -178,6 +192,15 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   );
 
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+
+  // Before any note or transform, so they see the scale the clip ends up with.
+  writeClipScaleParam(
+    clip,
+    params.scaleRequest,
+    reasons,
+    isAudioClip,
+    callScale,
+  );
 
   if (isAudioClip) {
     writeAudioParams(params);
@@ -212,27 +235,15 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   );
 
   // Context for transform variables (clip.*, bar.*). Built only when the call
-  // edits notes, because building it reads the Live Set's scale and nothing
-  // else uses it — a batch of renames would otherwise read the scale per clip.
+  // edits notes, because building it reads the scale and nothing else uses
+  // it — a batch of renames would otherwise read the scale per clip.
   // prettier-ignore
   const clipContext = hasNoteEdits(notationString, transformString, preTransformString)
-    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator, params.scaleMask)
+    ? buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator, callScale)
     : undefined;
 
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
-
-    // Audio clips can't hold MIDI notes. Say so on the clip's entry rather than
-    // letting the note write throw (mirrors create-clip's guard), so a
-    // multi-clip batch keeps going. Transforms still ran above.
-    if (notationString != null) {
-      ignoreClipParams(
-        reasons,
-        clip.id,
-        ["notes"],
-        ignoredText("notes", CLIP_IS_AUDIO),
-      );
-    }
   }
 
   const noteResult = resolveNoteResult(params, {
@@ -275,6 +286,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     clip,
     isAudioClip,
     destination: params.destination,
+    returnDestination: params.returnDestination,
     ignoredDestination: params.ignoredDestination,
     destinationParam: params.destinationParam,
     startParam: params.startParam,
@@ -369,7 +381,7 @@ function resolveNoteResult(
       clipIndex,
       clipCount,
       notation,
-      scaleMask: params.scaleMask,
+      callScale: params.callScale,
     });
   }
 
@@ -390,8 +402,8 @@ function resolveNoteResult(
 }
 
 /**
- * Apply audio-clip-only updates: the transforms, and the reason preTransforms
- * leaves on the entry. The audio parameters ran earlier, before the region
+ * Apply audio-clip-only updates: the transforms, and the reasons preTransforms
+ * and notes leave on the entry. The audio parameters ran earlier, before the region
  * write — see the call site. Audio clips have no MIDI notes, so preTransforms
  * is unconditionally ignored.
  * @param clip - The audio clip to update
@@ -411,6 +423,18 @@ function handleAudioClipUpdate(
       clip.id,
       ["preTransforms"],
       ignoredText("preTransforms", CLIP_IS_AUDIO),
+    );
+  }
+
+  // Audio clips can't hold MIDI notes. Say so on the clip's entry rather than
+  // letting the note write throw (mirrors create-clip's guard), so a
+  // multi-clip batch keeps going. Transforms still ran above.
+  if (params.notationString != null) {
+    ignoreClipParams(
+      params.reasons,
+      clip.id,
+      ["notes"],
+      ignoredText("notes", CLIP_IS_AUDIO),
     );
   }
 }

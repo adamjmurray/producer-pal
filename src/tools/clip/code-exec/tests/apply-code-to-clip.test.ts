@@ -7,9 +7,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { applyCodeToSingleClip } from "../apply-code-to-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
-  executeNoteCode: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/code-exec-v8-protocol.ts"),
+  () => ({
+    executeNoteCode: vi.fn(),
+  }),
+);
 
 describe("applyCodeToSingleClip", () => {
   beforeEach(() => {

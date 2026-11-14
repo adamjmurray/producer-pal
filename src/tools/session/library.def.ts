@@ -8,7 +8,6 @@ import {
   LIBRARY_ACTION_ALIASES,
   LIBRARY_ACTION_VALUES,
   LIBRARY_SORT_ALIASES,
-  LIBRARY_SOURCE_ALIASES,
   LIBRARY_DEVICE_KIND_VALUES,
   LIBRARY_KIND_VALUES,
   LIBRARY_SORT_VALUES,
@@ -25,9 +24,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description: {
     default:
-      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Items from the user's configured sample folder always appear before Live's library items (sample-folder is an explicit user choice); within each group, results sort by use-count desc by default.",
+      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Results sort by use-count desc by default. A search needs a query or a filter. For several sounds at once (e.g. kick, snare, hat), put each in `searches` and make one call. To save space, items leave out what their path or your filters already say: name and folder (the path's last two segments), useCount when 0, kind and source when they match your filter.",
     smallModel:
-      "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
+      "Search Live's library by name/tags. Defaults to audio samples. A search needs a query or a filter. Items leave out name (it ends the path), useCount when 0, and kind/source when they match your filter.",
   },
 
   annotations: {
@@ -87,7 +86,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; audio is the only kind loadable into clips/Simpler). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sample-folder)",
+        "content kind filter (search only; audio is the only kind loadable into clips/Simpler). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -147,15 +146,12 @@ export const toolDefLibrary = defineTool("ppal-library", {
       smallModel: null,
     }),
 
-    source: param(
-      aliasedEnum(LIBRARY_SOURCE_VALUES, LIBRARY_SOURCE_ALIASES).optional(),
-      {
-        default:
-          "where the file lives (search only). sample-folder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
-        smallModel:
-          "where the file lives. sample-folder | user | pack | builtin | cloud | plugin | preset-folder (other files in plug-ins' preset folders, hidden in Live's browser)",
-      },
-    ),
+    source: param(z.enum(LIBRARY_SOURCE_VALUES).optional(), {
+      default:
+        "where the file lives (search only). user=your User Library and folders added to Places | pack=installed Packs (factory + 3rd-party) | builtin=what ships with Live (Core Library and its built-in samples) | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
+      smallModel:
+        "where the file lives. user | pack | builtin | cloud | plugin | preset-folder (other files in plug-ins' preset folders, hidden in Live's browser)",
+    }),
 
     inFolder: param(z.coerce.string().optional(), {
       default:
@@ -178,8 +174,17 @@ export const toolDefLibrary = defineTool("ppal-library", {
     }),
 
     limit: param(z.coerce.number().optional(), {
-      default: "max results; defaults to 50 (search) or 200 (list-tags)",
-      smallModel: "max results; defaults to 50 (search) or 200 (list-tags)",
+      default:
+        "max results; defaults to 50 (search, at most 200) or 200 (list-tags); lists allow 1000 and report `more` when cut off",
+      smallModel:
+        "max results; defaults to 50 (search, at most 200) or 200 (list-tags); a cut-off list reports `more`: raise limit (max 1000) or filter",
+    }),
+
+    offset: param(z.coerce.number().optional(), {
+      default:
+        "search only: matches to skip. A cut-off search returns `more` (matches left) and `nextOffset`; pass nextOffset for the next page. Works per searches entry too.",
+      smallModel:
+        "matches to skip. If the result has `nextOffset`, pass it for the next page",
     }),
   },
 });

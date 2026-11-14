@@ -21,9 +21,7 @@ import {
   copyLedger,
   copyReach,
   mainLaneOf,
-  noteCleared,
 } from "#src/tools/actions/duplicate/helpers/clip/overwrites/copy-overwrites.ts";
-import { copyEffectsOf } from "#src/tools/actions/duplicate/helpers/minimal-clip-info.ts";
 
 /**
  * A promise that parks the request the way a Node round trip does, which lets
@@ -51,33 +49,8 @@ describe("copiedIds", () => {
     expect(copiedIds({ id: "a", path: "t0[1|1]" })).toStrictEqual(["a"]);
   });
 
-  it("lists the clips of a group, and an entry with none as empty", () => {
-    expect(
-      copiedIds({ path: "t0", clips: [{ id: "a" }, { id: "b" }] }),
-    ).toStrictEqual(["a", "b"]);
+  it("lists none for an entry that names no clip", () => {
     expect(copiedIds({ path: "t0[1|1]", ok: false })).toStrictEqual([]);
-  });
-});
-
-describe("noteCleared", () => {
-  it("says it on a clip's entry, and remembers it", () => {
-    const entry = { id: "a", detail: "first" };
-
-    noteCleared(entry, "overwrote the clip at t0[1|1]");
-
-    expect(entry.detail).toBe("first; overwrote the clip at t0[1|1]");
-    expect(copyEffectsOf(entry)).toBe("overwrote the clip at t0[1|1]");
-  });
-
-  it("says it once for a group, on its first clip", () => {
-    const group = { path: "t0", clips: [{ id: "a" }, { id: "b" }] };
-
-    noteCleared(group, "overwrote the clip at t0[1|1]");
-
-    expect(group.clips).toStrictEqual([
-      { id: "a", detail: "overwrote the clip at t0[1|1]" },
-      { id: "b" },
-    ]);
   });
 });
 

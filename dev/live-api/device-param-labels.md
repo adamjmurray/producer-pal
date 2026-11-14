@@ -60,15 +60,28 @@ one binary search serves both directions; the search would otherwise walk the
 wrong way and land anywhere.
 
 **Some plug-ins print the same label at every value.** Every Valhalla plug-in
-answers `str_for_value` with its current display, whatever value is asked about,
-and the display only updates some time after the request that set it ends. With
-the same label at both ends there is no display range, so the param is read and
-written in raw units: read-device reports the raw value (at Live's six
+answers `str_for_value` with its current display, whatever value is asked about.
+With the same label at both ends there is no display range, so the param is read
+and written in raw units: read-device reports the raw value (at Live's six
 significant digits), `min` and `max` with no unit, and update-device takes a
 bare number in that range and refuses anything else. A write is checked by its
-raw value, which does update within the request; comparing labels would prove
-nothing. Out of range is refused, not clamped: 30 there most likely means 30 %
-on the plug-in, not its maximum.
+raw value; comparing labels would prove nothing. Out of range is refused, not
+clamped: 30 there most likely means 30 % on the plug-in, not its maximum.
+
+The current label is still true of the current value, so reads and write entries
+report it as `display` (`value: 0.42, display: "250 ms"`). It is read-only: the
+caller sets a raw value, reads `display`, and adjusts. `str_for_value` shows the
+new label in the same tick as the write (Valhalla VST3s, Live 12.3 and 12.4), so
+a write reads it back with no wait. The param's `__str__` text is one write
+behind; don't read the label from it.
+
+Only VST3 builds collapse like this. An AU or VST2 build answers `str_for_value`
+with the number it was given, so it reads as a plain 0 to 1 param with no
+`display`.
+
+One param can drive another: ValhallaDelay's delay time in ms follows its sync
+mode and note value. Write them together and the plug-in overwrites the ms value
+after the call returns, so that entry's value and `display` are already stale.
 
 **A display range that parses to a single number is not writable.** Ends that
 print differently but parse the same (`"1 : 1.00"` and `"1 : 1.0"`) leave no way

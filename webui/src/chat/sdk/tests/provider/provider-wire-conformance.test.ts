@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetOpenRouterReasoningCache } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
-import { isAlwaysOnThinkingModel } from "#webui/hooks/settings/config-builders";
+import { isAlwaysOnThinkingModel } from "#webui/chat/sdk/provider/thinking-effort";
 import { PROVIDER_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
@@ -148,7 +148,7 @@ describe("provider wire conformance", () => {
       }
     });
 
-    it("sends adaptive thinking at the Default effort", async () => {
+    it("sends adaptive thinking with no effort at Default", async () => {
       const body = await wireBody(
         "anthropic",
         model,
@@ -156,7 +156,7 @@ describe("provider wire conformance", () => {
       );
 
       expect(body.thinking?.type).toBe("adaptive");
-      expect(body.output_config?.effort).toBe("high");
+      expect(body.output_config?.effort).toBeUndefined();
     });
 
     it("sends adaptive thinking at the Max effort", async () => {
@@ -184,6 +184,16 @@ describe("provider wire conformance", () => {
         expect(body.reasoning?.effort).toBe(wanted);
       },
     );
+
+    it("asks for a reasoning summary with no effort at Default", async () => {
+      const body = await wireBody(
+        "openai",
+        model,
+        buildProviderOptions("openai", "Default", model),
+      );
+
+      expect(body.reasoning).toStrictEqual({ summary: "auto" });
+    });
 
     it("asks for no reasoning summary when Off", async () => {
       const body = await wireBody(
@@ -247,6 +257,16 @@ describe("provider wire conformance", () => {
         expect(body.reasoning?.effort).toBe(reasoning?.effort);
       },
     );
+
+    it("enables reasoning with no effort at Default", async () => {
+      const body = await wireBody(
+        "openrouter",
+        model,
+        buildProviderOptions("openrouter", "Default", model),
+      );
+
+      expect(body.reasoning).toStrictEqual({ enabled: true });
+    });
   });
 
   describe.each([

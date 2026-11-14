@@ -12,14 +12,11 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
-import {
-  getLiveApiEnabled,
-  getSmallModelMode,
-  setConfig,
-} from "#evals/shared/config.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
+import { sleep } from "#evals/shared/sleep.ts";
+import { withConfig } from "./with-config.ts";
 
 const TOOL_LIVE_API = "ppal-live-api";
-const TOOL_READ_CLIP = "ppal-read-clip";
 
 /** The one note to write, in Ableton beats (a quarter note is 1). */
 export interface MutedNote {
@@ -58,45 +55,49 @@ export async function seedMutedNote(
     return;
   }
 
-  await withLiveApi(async () => {
-    const result = await mcpClient.callTool({
-      name: TOOL_LIVE_API,
-      arguments: {
-        path: `id ${before.id}`,
-        operations: [
-          {
-            type: "call",
-            method: "add_new_notes",
-            // A JSON string is the only form that reaches the dictionary
-            // call. Never Live's older note protocol: it opens a modal that
-            // stalls every Live call.
-            args: [
-              JSON.stringify({
-                notes: [
-                  {
-                    pitch: note.pitch,
-                    start_time: note.start,
-                    duration: note.duration,
-                    velocity: 90,
-                    mute: 1,
-                  },
-                ],
-              }),
-            ],
-          },
-        ],
-      },
-    });
+  // Small-model mode hides the tool whatever `liveApiEnabled` says.
+  await withConfig(
+    { liveApiEnabled: true, smallModelMode: false },
+    async () => {
+      const result = await mcpClient.callTool({
+        name: TOOL_LIVE_API,
+        arguments: {
+          path: `id ${before.id}`,
+          operations: [
+            {
+              type: "call",
+              method: "add_new_notes",
+              // A JSON string is the only form that reaches the dictionary
+              // call. Never Live's older note protocol: it opens a modal that
+              // stalls every Live call.
+              args: [
+                JSON.stringify({
+                  notes: [
+                    {
+                      pitch: note.pitch,
+                      start_time: note.start,
+                      duration: note.duration,
+                      velocity: 90,
+                      mute: 1,
+                    },
+                  ],
+                }),
+              ],
+            },
+          ],
+        },
+      });
 
-    if (result.isError === true) {
-      throw new Error(
-        `seeding a muted note failed: ${extractToolResultText(result)}`,
-      );
-    }
-  });
+      if (result.isError === true) {
+        throw new Error(
+          `seeding a muted note failed: ${extractToolResultText(result)}`,
+        );
+      }
+    },
+  );
 
   // Let Live settle before the check read, as the e2e muted-note tests do.
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await sleep(100);
 
   const after = await readClip(mcpClient, path);
 
@@ -114,7 +115,7 @@ export async function seedMutedNote(
  */
 async function readClip(mcpClient: Client, path: string): Promise<ClipRead> {
   const result = await mcpClient.callTool({
-    name: TOOL_READ_CLIP,
+    name: TOOLS.readClip,
     arguments: { path, include: ["notes"] },
   });
 
@@ -123,27 +124,4 @@ async function readClip(mcpClient: Client, path: string): Promise<ClipRead> {
   }
 
   return parseToolResult(extractToolResultText(result)) as ClipRead;
-}
-
-/**
- * Run a callback with the Direct Live API tool on, then put it back as found
- * (a `--live-api` run keeps it on). Small-model mode hides the tool whatever
- * `liveApiEnabled` says, so it is off for the callback too.
- *
- * @param run - What to do while the tool is available
- */
-async function withLiveApi(run: () => Promise<void>): Promise<void> {
-  const wasEnabled = await getLiveApiEnabled();
-  const wasSmallModel = await getSmallModelMode();
-
-  await setConfig({ liveApiEnabled: true, smallModelMode: false });
-
-  try {
-    await run();
-  } finally {
-    await setConfig({
-      liveApiEnabled: wasEnabled,
-      smallModelMode: wasSmallModel,
-    });
-  }
 }

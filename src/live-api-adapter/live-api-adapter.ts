@@ -26,7 +26,11 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  emitWarning,
+  maxError,
+  maxLog,
+} from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   changedNothing,
@@ -38,11 +42,13 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";
+import { pluginHost } from "#src/tools/advanced/plugin-host/plugin-host.ts";
+import { handlePluginHostResponse } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { connect } from "#src/tools/core/connect.ts";
+import { connect, connectVersions } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
 import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
@@ -59,18 +65,22 @@ import { select } from "#src/tools/session/select.ts";
 import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
-import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { handleCodeExecResult } from "./protocols/code-exec-v8-protocol.ts";
 import {
   beginLiveApiBuildStats,
   reportLiveApiBuildStats,
 } from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
-import { handleNodeResponse, requestNode } from "./node-request-v8-protocol.ts";
+import {
+  handleNodeResponse,
+  requestNode,
+} from "./protocols/node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
   noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 // One outlet: MCP responses. Warnings ride inside the response JSON, not as
 // trailing Max atoms.
@@ -80,13 +90,12 @@ setoutletassist(0, "tool call results");
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.
  * This object is the single source of truth for projectContext/smallModelMode/
- * sampleFolder; per-request contexts snapshot from it.
+ * notation; per-request contexts snapshot from it.
  */
 interface SessionState {
   projectContext: { content: string };
   smallModelMode: boolean;
   notation: Notation;
-  sampleFolder: string | null;
 }
 
 const sessionState: SessionState = {
@@ -95,7 +104,6 @@ const sessionState: SessionState = {
   },
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
-  sampleFolder: null,
 };
 
 /**
@@ -115,7 +123,6 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
     projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
-    sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
 
@@ -133,14 +140,17 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (silenceWavPath, deadline, etc.)
 Exception: ppal-connect takes args only — its signature intentionally dropped ctx
-(see the `connect(args)` line below), so it does not follow this pattern.
+(see the `ppal-connect` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const toolDispatch: Record<
   string,
   (args: unknown, ctx: ToolContext) => unknown
 > = {
-  "ppal-connect": (args) => connect(args as any),
+  "ppal-connect": (args) =>
+    (args as { versionCheck?: unknown }).versionCheck === true
+      ? connectVersions()
+      : connect(),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
   "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),
@@ -161,15 +171,19 @@ const toolDispatch: Record<
   "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-manage": (args, ctx) => manage(args as any, ctx),
-  "ppal-library": (args, ctx) => library(args as any, ctx),
+  "ppal-library": (args) => library(args as any),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
+  // Debug tool: only a dev build (ENABLE_LIVE_API) carries it.
+  ...(process.env.ENABLE_LIVE_API === "true"
+    ? { "ppal-plugin-host": (args: unknown) => pluginHost(args as any) }
+    : {}),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**
  * Names of every tool the V8 adapter can dispatch. Exported so a parity test can
  * assert this hand-maintained map stays in sync with the registered tool defs
- * (STANDARD_TOOL_DEFS + the opt-in ppal-live-api) — a missing entry would make a
+ * (STANDARD_TOOL_DEFS + the opt-in OPT_IN_TOOL_DEFS) — a missing entry would make a
  * shipped tool fail at runtime with "Unknown tool".
  */
 export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(toolDispatch);
@@ -321,7 +335,7 @@ function applyRestoredProjectContext(
   }
 
   if (sessionState.projectContext.content !== snapshot) {
-    console.warn(
+    emitWarning(
       "Project context changed while the backup restore was in flight; " +
         "keeping the newer content.",
     );
@@ -331,17 +345,6 @@ function applyRestoredProjectContext(
 
   sessionState.projectContext.content = restored;
   outlet(0, "update_project_context", restored);
-}
-
-/**
- * Set the sample folder path
- *
- * @param path - Sample folder path
- */
-export function sampleFolder(path: unknown): void {
-  const value = textEditParamToString(path);
-
-  sessionState.sampleFolder = value;
 }
 
 // The device fans the server's whole config outlet at both V8 and the Setup
@@ -370,6 +373,11 @@ export function tools(): void {}
 export function updateDismissed(): void {}
 
 /**
+ * Ignore the network access setting. Only the Setup tab's toggle shows it.
+ */
+export function allowNetwork(): void {}
+
+/**
  * Ignore the "Finish installation" notice toggle. It only tells the device's
  * Main tab to show or hide its notice.
  */
@@ -386,7 +394,7 @@ export function reportDevice(): void {
   const filepath = patcher?.filepath;
 
   if (typeof filepath !== "string" || filepath === "") {
-    console.warn("Could not read this device's file path.");
+    emitWarning("Could not read this device's file path.");
 
     return;
   }
@@ -398,7 +406,7 @@ export function reportDevice(): void {
     const response = await requestNode(DEVICE_REPORT_ROUTE, args);
 
     if (!response.success) {
-      console.warn(
+      emitWarning(
         `Could not report this device's file path: ${response.error}`,
       );
     }
@@ -508,15 +516,28 @@ export function node_response(requestId: string, ...rest: unknown[]): void {
     // Wire-format error (missing delimiter, etc.). Surface as a failure
     // response so the pending Promise resolves rather than hanging until
     // the 10s timeout — and log loudly so it shows in the Max console.
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
-    console.error(
+    maxError(
       `node_response wire-format error [requestId=${requestId}]: ${message}`,
     );
     json = JSON.stringify({ success: false, error: message });
   }
 
   handleNodeResponse(requestId, json);
+}
+
+/**
+ * Handle plugin_host_response message from a plug-in host wrapper device.
+ *
+ * @param requestId - Request identifier
+ * @param chunks - The reply's JSON, split to fit Max's 32 KB symbol limit
+ */
+export function plugin_host_response(
+  requestId: string,
+  ...chunks: string[]
+): void {
+  handlePluginHostResponse(requestId, chunks.join(""));
 }
 
 // Handle messages from Node for Max
@@ -574,12 +595,9 @@ async function handleRequest(
       try {
         incomingContext = JSON.parse(contextJSON) as Partial<ToolContext>;
       } catch (contextError) {
-        const message =
-          contextError instanceof Error
-            ? contextError.message
-            : String(contextError);
+        const message = errorMessage(contextError);
 
-        console.warn(`Failed to parse contextJSON: ${message}`);
+        emitWarning(`Failed to parse contextJSON: ${message}`);
       }
     }
 
@@ -626,8 +644,7 @@ async function handleRequest(
       // failed after a round trip, leaving a later request's capture active.
       resumeWarningCapture(warnings);
 
-      const message =
-        toolError instanceof Error ? toolError.message : String(toolError);
+      const message = errorMessage(toolError);
 
       result = formatErrorResponse(`Error: ${message}`);
     } finally {
@@ -641,7 +658,7 @@ async function handleRequest(
     // throw after its await.
     resumeWarningCapture(warnings);
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }
@@ -655,7 +672,7 @@ async function handleRequest(
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
-console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
+maxLog(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
 // while changing the code repeatedly during development. The patch answers it

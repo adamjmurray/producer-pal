@@ -34,7 +34,11 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import {
+  type BrowserPlugin,
+  listBrowserPlugins,
+} from "../rpc/remote-script/browser/browser-plugins.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
@@ -46,6 +50,10 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath, findLivePluginsDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { unknownCategoryNote } from "./query/notes/unknown-category-note.ts";
+import { filterPlugins } from "./query/plugins/filter-plugins.ts";
+import { mergeBrowserPlugins } from "./query/plugins/merge-browser-plugins.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Name of the plugin table in Live's DB (per spike notes — see file header). */
 const PLUGINS_TABLE = "plugins";
@@ -67,11 +75,17 @@ interface PluginRow {
  *
  * @param args - Filter parameters (name/vendor substrings, format, category)
  * @returns Result with plugin items, plus dbAvailable flag for graceful
- *   fallback when no plugin source DB is installed.
+ *   fallback when no plugin source DB is installed. The browser's plug-ins
+ *   still list then, without version or category.
  */
 export async function listPlugins(
   args: ListPluginsArgs = {},
 ): Promise<ListPluginsResult> {
+  // Live's DB lags behind new installs, but its browser doesn't. It never
+  // throws, so it is asked first: its list survives a DB that can't be read.
+  const browserPlugins = await listBrowserPlugins();
+  let failure: string;
+
   // Guard the entire DB-selection + open + query path: selectPluginDb probes
   // the files DB (Live 11 / 12.0–12.1 fallback), which can throw if openLiveDb
   // fails on a corrupt/inaccessible file. The plugin schema is also the
@@ -82,56 +96,96 @@ export async function listPlugins(
     const source = await selectPluginDb();
 
     if (!source) {
-      return {
-        dbAvailable: false,
-        plugins: [],
-        detail: "Live plugin database not found",
-      };
-    }
-
-    // Best-effort advisory: flag when an unclean Live exit left a pending WAL
-    // that our immutable read can't see. Spread into every success return so the
-    // signal sits at the top alongside dbAvailable; omitted when there's no risk.
-    // Mirrors librarySearch / listTags / listCategories.
-    const stalenessRisk = await detectStalenessRisk(source);
-    const db = await openLiveDb(source);
-
-    try {
-      // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
-      // enabled = 1, so this surfaces all real plugins and would hide only ones
-      // Live has explicitly disabled.
-      const rows = db
-        .prepare(
-          `SELECT name, vendor, version, scanstate, enabled,
-                  subcategories, dev_identifier
-           FROM ${PLUGINS_TABLE}
-           WHERE enabled = 1
-           ORDER BY name COLLATE NOCASE ASC`,
-        )
-        .all() as unknown as PluginRow[];
-      const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-      const plugins = rows
-        .map(buildPluginItem)
-        .filter((item) => matchesFilters(item, args))
-        .slice(0, limit);
-
-      return {
-        dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
-        plugins,
-      };
-    } finally {
-      db.close();
+      failure = "Live plugin database not found";
+    } else {
+      return await listFromDb(source, browserPlugins, args);
     }
   } catch (error) {
-    return {
-      dbAvailable: false,
-      plugins: [],
-      detail: `Failed to read Live plugin database: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
+    failure = `Failed to read Live plugin database: ${errorMessage(error)}`;
   }
+
+  // No readable DB: the browser's plug-ins still list, without version or
+  // category. Without the browser too there is nothing to list.
+  return {
+    dbAvailable: false,
+    ...listResult([], browserPlugins, args),
+    detail: failure,
+  };
+}
+
+/**
+ * List from the plug-in DB at `source`, merged with the browser's list when
+ * there is one.
+ *
+ * @param source - Path of the DB holding the plugin table
+ * @param browserPlugins - The browser's plug-ins, or null when it can't answer
+ * @param args - Filter parameters
+ * @returns The result
+ */
+async function listFromDb(
+  source: string,
+  browserPlugins: BrowserPlugin[] | null,
+  args: ListPluginsArgs,
+): Promise<ListPluginsResult> {
+  // Without the browser (remote script unavailable) the DB may be stale, and
+  // says so.
+  const stale =
+    browserPlugins == null ? await stalenessNote(source) : undefined;
+  const db = await openLiveDb(source);
+
+  try {
+    // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
+    // enabled = 1, so this surfaces all real plugins and would hide only ones
+    // Live has explicitly disabled.
+    const rows = db
+      .prepare(
+        `SELECT name, vendor, version, scanstate, enabled,
+                subcategories, dev_identifier
+         FROM ${PLUGINS_TABLE}
+         WHERE enabled = 1
+         ORDER BY name COLLATE NOCASE ASC`,
+      )
+      .all() as unknown as PluginRow[];
+
+    return {
+      dbAvailable: true,
+      ...(stale && { stalenessNote: stale }),
+      ...listResult(rows.map(buildPluginItem), browserPlugins, args),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Filter and trim the plug-ins to list: the browser's, with what the DB knows
+ * about each, else the DB's alone.
+ *
+ * @param dbPlugins - Plug-ins read from the DB (none when it can't be read)
+ * @param browserPlugins - The browser's plug-ins, or null when it can't answer
+ * @param args - Filter parameters
+ * @returns The plugins, and `more` and `note` when they apply
+ */
+function listResult(
+  dbPlugins: PluginItem[],
+  browserPlugins: BrowserPlugin[] | null,
+  args: ListPluginsArgs,
+): Pick<ListPluginsResult, "plugins" | "more" | "note"> {
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
+  const { matches, unknownCategoryLeftOut } = filterPlugins(
+    browserPlugins == null
+      ? dbPlugins
+      : mergeBrowserPlugins(dbPlugins, browserPlugins),
+    args,
+  );
+  const note = unknownCategoryNote(unknownCategoryLeftOut);
+  const more = matches.length - limit;
+
+  return {
+    plugins: matches.slice(0, limit),
+    ...(more > 0 && { more }),
+    ...(note != null && { note }),
+  };
 }
 
 /**
@@ -141,7 +195,7 @@ export async function listPlugins(
  *
  * @returns Absolute path to a DB containing plugin tables, or null if none.
  */
-async function selectPluginDb(): Promise<string | null> {
+export async function selectPluginDb(): Promise<string | null> {
   const pluginsDbPath = await findLivePluginsDbPath();
 
   if (pluginsDbPath != null) {
@@ -201,54 +255,6 @@ function buildPluginItem(row: PluginRow): PluginItem {
 }
 
 /**
- * Apply the in-memory filters (name/vendor substring, format, category).
- * Substring matches are case-insensitive.
- *
- * @param item - Candidate plugin
- * @param args - Filter parameters
- * @returns true if the item passes every active filter
- */
-function matchesFilters(item: PluginItem, args: ListPluginsArgs): boolean {
-  if (args.query && !includesIgnoreCase(item.name, args.query)) {
-    return false;
-  }
-
-  if (args.vendor && !includesIgnoreCase(item.vendor ?? "", args.vendor)) {
-    return false;
-  }
-
-  if (args.format && item.format !== args.format) {
-    return false;
-  }
-
-  if (args.category && item.category !== args.category) {
-    return false;
-  }
-
-  const subFilter = args.subcategory;
-
-  if (
-    subFilter &&
-    !item.subcategories.some((sub) => includesIgnoreCase(sub, subFilter))
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Case-insensitive substring test.
- *
- * @param haystack - String to search within
- * @param needle - Substring to look for
- * @returns true if haystack contains needle (ignoring case)
- */
-function includesIgnoreCase(haystack: string, needle: string): boolean {
-  return haystack.toLowerCase().includes(needle.toLowerCase());
-}
-
-/**
  * Derive the plugin format from a `dev_identifier` URI.
  *
  * Documented shape (per spike notes): `device:<format>:<category>:...`, e.g.
@@ -259,7 +265,9 @@ function includesIgnoreCase(haystack: string, needle: string): boolean {
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginFormat, or null when undeterminable
  */
-function deriveFormat(devIdentifier: string | null): PluginFormat | null {
+export function deriveFormat(
+  devIdentifier: string | null,
+): PluginFormat | null {
   const scheme = schemeSegment(devIdentifier);
 
   if (scheme === "vst3") {
@@ -289,7 +297,9 @@ function deriveFormat(devIdentifier: string | null): PluginFormat | null {
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginCategory, or null when undeterminable
  */
-function deriveCategory(devIdentifier: string | null): PluginCategory | null {
+export function deriveCategory(
+  devIdentifier: string | null,
+): PluginCategory | null {
   const scheme = schemeSegment(devIdentifier);
 
   // Without a recognizable format scheme we can't trust the rest of the URI.

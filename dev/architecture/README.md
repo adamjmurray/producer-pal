@@ -21,6 +21,8 @@ Detail lives in these parts:
   tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the
   four bundles.
+- [generative-ui.md](generative-ui.md) — the 3.0 conversational app builder:
+  sandboxed AI-written apps, the bridge and SDK, storage, and its build gate.
 
 ## Architecture Diagrams
 
@@ -136,7 +138,7 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 - Graceful degradation when Live isn't running
 - Answers calls itself when the device is offline (`src/portal/offline/`): it
   pings the remote script to say whether Live is up without Producer Pal, and
-  runs `ppal-manage` `install-remote-script` and `add-producer-pal`. See
+  runs `ppal-manage` `install-producer-pal` and `add-producer-pal`. See
   [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
 - Updates the running device in place (`src/portal/update/`): the bridge answers
   `ppal-manage` `update-producer-pal` itself, online or off, since the device it
@@ -155,7 +157,15 @@ imports all tool definitions from `src/tools/**/*.def.ts`.
 
 **Key details:**
 
-- Runs on port 3350 by default
+- Runs on port 3350 by default, on 127.0.0.1 and ::1 only. "Remote Control"
+  (saved per computer in `~/.producer-pal/settings.json`, not in the Set)
+  switches it to all interfaces. The device toggle and `PUT /network-access`
+  (the chat UI) both end in `setAllowNetwork`. The route refuses to turn it on
+  unless the request looks like it is from this computer (loopback socket and
+  Host, no proxy headers, same-origin or no browser headers, JSON body); turning
+  it off works from anywhere. A raw TCP forwarder can't be told apart (see
+  SECURITY.md). The switch keeps the requesting connection until its answer is
+  sent, even with other switches queued
 - Uses StreamableHTTP transport (SSE is deprecated)
 - Bundles all dependencies (@modelcontextprotocol/sdk, express, zod)
 
@@ -191,8 +201,8 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 The `src/` tree is organized into layers with a one-directional dependency
 graph. This is not just a convention: it is an **executable contract** enforced
-in CI by `src/test/meta/import-restrictions.test.ts` (a violation fails
-`npm test`). The layers, from foundational to top-level:
+in CI by `src/test/meta/architecture/import-restrictions.test.ts` (a violation
+fails `npm test`). The layers, from foundational to top-level:
 
 - **`shared/`** — foundational leaf. Pure utilities (path builders, config,
   pitch math, the `assertDefined` assertion helper, the V8 console shim)
@@ -241,8 +251,9 @@ Four bundles: MCP server, V8, Portal, and Chat UI. See
 
 ## Message Protocol
 
-Communication between Node.js and V8. Max caps a single symbol at ~32,767
-characters, so the response JSON is split into chunks and terminated with
+Communication between Node.js and V8. Max caps a message at ~32,767 UTF-8 bytes,
+so the response JSON is split into chunks of 10,000 UTF-16 units (at most 30,000
+bytes whatever the text; a chunk never ends inside an emoji) and terminated with
 `END_OF_CHUNKS` — the receiver joins everything before it, and a missing
 terminator is a loud wire-format error rather than a vague parse failure.
 
@@ -260,14 +271,16 @@ and `warnings` (the warnings that request raised, which `handleLiveApiResult`
 collapses and appends as `WARNING:` content items).
 
 `node_request` / `node_response` is the V8→Node RPC going the other way. Its
-`node_response` uses the same chunking and terminator, but a `node_request` goes
-as one message: V8 refuses one too large to send rather than let Max cut it
-short.
+`node_response` uses the same chunking and terminator, but `mcp_request` and
+`node_request` go as one message: the sender measures UTF-8 bytes and refuses
+one over 32,000 (Node to V8: tool-call args and context, code-exec results) or
+30,000 (V8 to Node: `node_request`, code-exec requests) rather than let Max cut
+it short.
 
 ### Write calls run one at a time
 
-Node sends write calls to V8 one at a time, across all clients; reads skip the
-queue. See [write-queue.md](write-queue.md).
+Node sends write calls to V8 one at a time, across all clients; a read waits for
+the writes that arrived before it. See [write-queue.md](write-queue.md).
 
 ## Live API Interface
 

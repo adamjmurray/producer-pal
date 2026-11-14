@@ -70,8 +70,9 @@ know anything about this user at all:
 - **Global context empty AND no memories** (large-model mode): the line adds
   "New user: nothing is saved about them yet." That is all it says. The
   procedure lives in the `New user` paragraph of the context Skill
-  (`src/skills/fragments/context.ts`), keyed on the same marker: end the connect
-  reply with a short yes/no question about their musical style, preferences, and
+  (`src/skills/fragments/context.ts`, left out when the same `isNewUser` check
+  says the user is not new), keyed on the same marker: end the connect reply
+  with a short yes/no question about their musical style, preferences, and
   goals, write what they share to **global context**, and record a decline as a
   memory.
 - **Otherwise**: the plain "report the overview, then wait for their

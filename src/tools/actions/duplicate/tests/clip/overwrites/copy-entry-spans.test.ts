@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -44,7 +45,7 @@ describe("copy entries keep their span", () => {
  */
 function copiedEntries(file: string): { file: string; reason: string }[] {
   const source = fs.readFileSync(file, "utf8");
-  const relative = path.relative(projectRoot, file);
+  const relative = repoPath(file);
   const names = [...source.matchAll(ASSIGNED)].map((match) => match[1]);
   const spreads = names.map((name) => new RegExp(`\\.\\.\\.\\s*${name}\\b`));
 

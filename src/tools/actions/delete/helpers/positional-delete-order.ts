@@ -40,10 +40,25 @@ export function positionalDeleteOrder(
       type === "track"
         ? /live_set (?:return_)?tracks (\d+)/
         : /live_set scenes (\d+)/;
-    const positionOf = ({ object }: OrderedTarget): number =>
-      Number(object.path.match(pathRegex)?.[1]);
 
-    order.sort((a, b) => positionOf(b) - positionOf(a));
+    // A target with no index (the master track) has nothing to shift and is
+    // refused later; it goes last so the rest stay a consistent order.
+    const positionOf = ({ object }: OrderedTarget): number | null => {
+      const position = object.path.match(pathRegex)?.[1];
+
+      return position == null ? null : Number(position);
+    };
+
+    order.sort((a, b) => {
+      const posA = positionOf(a);
+      const posB = positionOf(b);
+
+      if (posA == null || posB == null) {
+        return Number(posA == null) - Number(posB == null);
+      }
+
+      return posB - posA;
+    });
   } else if (type === "device") {
     order.sort((a, b) => compareDevicesForDeletion(a.object, b.object));
   }

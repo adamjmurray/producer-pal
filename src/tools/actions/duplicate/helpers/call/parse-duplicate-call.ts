@@ -3,15 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  namedIdParam,
-  namedPathParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   pathEntries,
   refuseUnparsableEntries,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { foldTargetParams } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { refuseCountWithPathList } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import {
   refuseDuplicateParamsOutsideType,
@@ -25,6 +22,12 @@ import {
   type DuplicateCall,
 } from "./duplicate-call-types.ts";
 import { settleDestination } from "./settle/settle-destination.ts";
+
+/** An example list for each param a scene's positions can be written in. */
+const COUNT_EXAMPLES: Readonly<Record<string, string>> = {
+  toPath: "[5|1],[9|1]",
+  locator: "Verse,Chorus",
+};
 
 /**
  * Read a duplicate call once: refuse what is malformed, and settle where the
@@ -40,8 +43,8 @@ export function parseDuplicateCall(args: DuplicateArgs): DuplicateCall {
 
   // A value the schema coerced from a JSON null names nothing. Counting it as
   // sent refuses the call over a param the caller deliberately left empty.
-  const id = namedIdParam(args.id, args.ids, "ids");
-  const path = namedPathParam(args.path, args.paths);
+  const { id, path, idParam, pathParam } = foldTargetParams(args);
+  const names = { idParam, pathParam };
 
   validateBasicInputs(type, id, count, path);
   // Every kind of copy reads toPath its own way, so the entries that can't be
@@ -52,7 +55,7 @@ export function parseDuplicateCall(args: DuplicateArgs): DuplicateCall {
   // lands its clips there instead of making a new track, so the params that
   // shape a new track have nothing to act on. It is also the only copy whose
   // source can be a lane.
-  const fromLane = namesLaneSource(type, id, path, args.toPath);
+  const fromLane = namesLaneSource(type, id, path, args.toPath, names);
   const toTakeLane = namesTakeLaneDestination(type, args.toPath, fromLane);
   const laneCopy = fromLane || toTakeLane;
 
@@ -93,6 +96,7 @@ export function parseDuplicateCall(args: DuplicateArgs): DuplicateCall {
     type,
     id,
     path,
+    names,
     count,
     laneCopy,
     toTakeLane,
@@ -137,7 +141,7 @@ function refuseCountWithSceneDestinations(
     count,
     targetEntries(dest.arrangementStart, "arrangementStart").length,
     "scene",
-    dest.startParam === "toPath" ? "[5|1],[9|1]" : "5|1,9|1",
+    COUNT_EXAMPLES[dest.startParam] ?? "5|1,9|1",
     dest.startParam,
   );
 }

@@ -263,6 +263,16 @@ describe("buildConversationSaveRecord fork inheritance", () => {
     expect(rec.forkParentId).toBe("trunk");
   });
 
+  it("reads the trunk without its image bytes", async () => {
+    vi.mocked(loadConversation).mockResolvedValue({ id: "trunk" } as never);
+
+    await buildForkRecord(1);
+
+    expect(loadConversation).toHaveBeenCalledExactlyOnceWith("trunk", {
+      images: false,
+    });
+  });
+
   it("inherits the trunk's notation when forking", async () => {
     // The fork carries the trunk's turns, which were written under the trunk's
     // notation — re-capturing the current global would mis-parse them.
@@ -315,6 +325,29 @@ describe("buildConversationSaveRecord fork inheritance", () => {
 
     expect(rec.forkParentId).toBe("trunk");
     expect(rec.forkedAtIndex).toBe(2);
+  });
+});
+
+describe("buildConversationSaveRecord normal save", () => {
+  afterEach(() => {
+    vi.mocked(loadConversation).mockReset();
+  });
+
+  it("reads the saved record without its image bytes", async () => {
+    vi.mocked(loadConversation).mockResolvedValue({ id: "chat-1" } as never);
+
+    await buildConversationSaveRecord({
+      id: "chat-1",
+      reuseId: "chat-1",
+      fork: null,
+      refs: refs(),
+      chatHistory: HISTORY,
+      updatedAt: undefined,
+    });
+
+    expect(loadConversation).toHaveBeenCalledExactlyOnceWith("chat-1", {
+      images: false,
+    });
   });
 });
 

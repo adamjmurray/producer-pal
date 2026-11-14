@@ -161,7 +161,7 @@ describe("lookUpBrowserDevice", () => {
   it("loads a plug-in's VST3 over its AU and VST", async () => {
     const plugin = [
       "VST/FabFilter/Pro-Q 4",
-      "Audio Units/FabFilter/Pro-Q 4",
+      "AUv2/FabFilter/Pro-Q 4",
       "VST3/FabFilter/Pro-Q 4",
     ];
 
@@ -172,13 +172,13 @@ describe("lookUpBrowserDevice", () => {
   });
 
   it("loads a plug-in's AU over its VST", async () => {
-    const plugin = ["VST/FabFilter/Pro-L 2", "Audio Units/FabFilter/Pro-L 2"];
+    const plugin = ["VST/FabFilter/Pro-L 2", "AUv2/FabFilter/Pro-L 2"];
 
     expect(await lookUpIn({ plugin }, "Pro-L 2")).toStrictEqual({
       available: true,
       item: {
         type: "plugin",
-        path: "Audio Units/FabFilter/Pro-L 2",
+        path: "AUv2/FabFilter/Pro-L 2",
         name: "Pro-L 2",
       },
     });
@@ -191,7 +191,30 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
+      candidates: [
+        { type: "plugin", path: "VST3/Acme/Echo", name: "Echo" },
+        { type: "audio-effect", path: "Echo", name: "Echo" },
+      ],
     });
+  });
+
+  it("refuses a name two makers' plug-ins share across formats", async () => {
+    const plugin = ["VST3/Acme/Limiter", "AUv2/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 2 devices"),
+    );
+
+    await fake?.close();
+
+    // A VST sits in no maker's folder, so it can't tell the makers apart.
+    const withVst = ["VST/Limiter", "VST3/Acme/Limiter"];
+
+    expect(await lookUpIn({ plugin: withVst }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
   });
 
   it("refuses two copies of a plug-in in one format, or in no format", async () => {
@@ -241,7 +264,14 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'invalid device "Nope": no native device, plug-in, or Max for Live device has that name',
+      notFound: true,
     });
+  });
+
+  it("marks only a name nothing has as not found, not an ambiguous one", async () => {
+    expect(
+      await lookUpIn({ "audio-effect": ["Delay A", "Delay B"] }, "delay"),
+    ).not.toHaveProperty("notFound");
   });
 
   it("refuses a blank name without asking", async () => {
@@ -393,6 +423,7 @@ describe("lookUpBrowserDevice", () => {
         expect(await lookUpIn({ plugin }, deviceName)).toStrictEqual({
           available: true,
           error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+          notFound: true,
         });
 
         await fake?.close();

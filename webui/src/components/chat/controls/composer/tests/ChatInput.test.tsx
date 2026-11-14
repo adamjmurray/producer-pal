@@ -88,6 +88,30 @@ describe("ChatInput", () => {
       expect(placeholderText()).toBe("Retry or edit a message to continue...");
     });
 
+    it("shows the setup placeholder and blocks sending when chat needs setup", () => {
+      const handleSend = vi.fn();
+
+      render(
+        <ChatInput
+          {...defaultProps}
+          handleSend={handleSend}
+          setupRequired={true}
+        />,
+      );
+      expect(placeholderText()).toBe(
+        "Set up chat in Settings to send messages...",
+      );
+
+      typeInput("Hello");
+      pressEnter();
+
+      expect(
+        (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+      expect(handleSend).not.toHaveBeenCalled();
+    });
+
     it("shows thinking toggle when not responding", () => {
       render(<ChatInput {...defaultProps} />);
       expect(

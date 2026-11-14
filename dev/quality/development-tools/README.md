@@ -103,9 +103,9 @@ node scripts/build-and-release/test-claude-desktop-extension.ts
 The Live Sets in `e2e/live-sets/` and `evals/live-sets/` are reproducible
 scenarios for debugging tool behavior with `scripts/ppal-client.ts`. Open one
 with `scripts/open-live-set path/to/set.als`. Trace execution with
-`console.warn()` (relayed as `WARNING:` in the CLI output — see Max Console
-below). After any writes modify the set's state, reopen it with
-`scripts/open-live-set` to reset back to the original.
+`emitWarning()` from `src/shared/max/v8-max-console.ts` (relayed as `WARNING:`
+in the CLI output — see Max Console below). After any writes modify the set's
+state, reopen it with `scripts/open-live-set` to reset back to the original.
 
 ## Debugging Tips
 
@@ -135,7 +135,7 @@ Get-Content "$env:LOCALAPPDATA\ProducerPal\Logs\*.log" -Tail 10 -Wait
 
 In Ableton Live, open Max window to see:
 
-- `Max.post()` output
+- `Max.post()` output, and `maxLog()` / `maxError()` from V8 code
 - Error messages
 - MCP request/response logging
 

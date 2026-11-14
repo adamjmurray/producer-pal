@@ -29,7 +29,8 @@ Part of [Skip entries, tool by tool](README.md).
   `{id, deletedPath}`, and the group has no detail when nothing else went with
   it. If the group wasn't deleted (refused or skipped), a track named with it is
   deleted like any other track. A track Live deleted before a throw is
-  `already changed: deleted the track`, and a group's adds what went with it:
+  `already changed: deleted the track`, and a group's adds what went with it,
+  clips included:
   `already changed: deleted the track, also deleted the track inside this group track: t2 (id b)`.
   Live silently ignores a delete of the only track in a group track (a group
   counts), so that target is skipped at its turn, just before the Live call
@@ -39,6 +40,40 @@ Part of [Skip entries, tool by tool](README.md).
   (`the tracks inside it too` when that group holds more). If that group holds
   the Producer Pal device, the detail names that group as one that can't be
   deleted, and suggests none.
+- **delete: a scene's or track's entry names every clip that went with it.** The
+  clips are read before the first delete (a delete shifts later indexes, and a
+  clip's id and path are gone afterwards). A scene's are regular tracks first,
+  then Live 13's return tracks: `detail`:
+  `also deleted the 3 clips in this scene: t0/s2 "Bass", rt0/s2 "No Envs"`, or
+  `the clip in this scene: ...` for one. A regular track's are its session clips
+  by scene, then its arrangement clips by start time, then its take-lane clips
+  by lane and start time:
+  `also deleted the 3 clips on this track: t2/s0 "Bass", t2[9|1] "Fill", t2/l1[1|1]`
+  (`the clip on this track: ...` for one). A return track's are its session
+  clips (`rt1/s0`), on Live 13 only; it has no arrangement. Each is its path
+  from before the call and its name (the path alone when it has none; no id,
+  which is gone). A list stops at the first 10 clips and ends `, and N more`:
+  `also deleted the 24 clips on this track: <10>, and 14 more`. An empty scene's
+  or track's entry is a plain `{id, deletedPath}`. Deleting a group track also
+  names the clips on the tracks inside it, nested groups included, after the
+  track list:
+  `also deleted the 3 tracks inside this group track: t13 (id 124), t14 (id 125), t15 (id 126); and the 12 clips on them: <10>, and 2 more`
+  (`the clip on them: ...` for one; `on it` when one track is listed). They are
+  in track order, each track's in the order a track delete lists them, and stop
+  at the first 10 across the whole group; the count is always the total. Only
+  the tracks the group's detail lists are counted: a track named beside its
+  group lists its own clips on its own entry, so no clip is said twice. A group
+  whose tracks hold no clips adds nothing, and a group's own slots hold none. A
+  target that is refused or skipped lists no clips. Names are read only for the
+  clips listed. If Live deletes it and then throws, the entry keeps the listing
+  in `<error>; already changed: deleted the scene, also deleted ...`
+  (`deleted the track` for a track); if it survives, no clip is claimed. Live 12
+  reads no return-track slot.
+- **delete: a skipped target's path can go stale.** Deleting shifts the siblings
+  after it, so a target that wasn't deleted (Live refused, or it is the only
+  track in a group) adds `that <noun> is now <path> (id N)` when its path now
+  names something else. A path that named nothing can't gain an object by a
+  delete, so it never gets the other clause.
 - **duplicate answers per copy named, in the order named.** Every copy of every
   source is a target: `count` copies of a track or scene, one per destination of
   a clip, device, chain or pad, one per scene position, one per lane a track
@@ -57,6 +92,12 @@ Part of [Skip entries, tool by tool](README.md).
   by their destination), and the other sources still copy. A path that can't be
   parsed refuses the call, and so does a `toPath` entry that can't be, for every
   kind of copy: a destination written wrong is never a per-copy skip.
+- **duplicate: a skip addressed by its source path can go stale.** A copy
+  inserts a track, scene or device, so a source path later in the call can name
+  another object by the end, or name one where nothing was. Such an entry adds
+  `that <noun> is now <path> (id N)` or `nothing was there when the call began`.
+  A copy addressed by its destination path is a place, not an object, so it gets
+  neither.
 - **duplicate: a copy a later copy replaces is left unwritten.** Two copies to
   one clip slot, or one a later copy covers whole on an arrangement lane (a lane
   copy's clips each need covering, a scene copy's clips each on their track),
@@ -83,12 +124,46 @@ Part of [Skip entries, tool by tool](README.md).
   spare can't be made, none of those copies is. A take-lane source has no spare:
   its clips can be neither duplicated nor deleted through the API, so its copies
   on its own lane still copy what an earlier one left of it.
+- **duplicate: a scene copy lists every clip it holds.** Live copies a scene's
+  Live 13 return-track clips too, so the copy's `clips` lists them (`rt0/s3`)
+  after the regular tracks' clips, as a scene read does. `withoutClips` clears
+  them with the rest, one clip at a time: a clip Live won't clear (a throw while
+  it is still there) stays in `clips`, and the entry's `detail` says
+  `the scene was made, but couldn't clear the clip at rt0/s3: <error>`, while
+  the others are still cleared. A scene copied to the arrangement copies only
+  the regular tracks' clips (a return track has no arrangement lane) and its
+  `detail` says so:
+  `the 2 return-track clips (rt0/s3, rt1/s3) were not copied: the arrangement has no return-track clips`.
+  A scene with only return-track clips has nothing to copy: its `detail` is
+  `the scene has no clips on regular tracks, and ...`.
 - **duplicate: Live fails partway.** A copy that landed keeps its normal entry
   (`id`, where it is now) plus a `detail` of what landed and what didn't: a
   track or scene copy whose naming, coloring or clips failed, a copy Live threw
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
+- **delete and duplicate take a Live 13 return-track clip** (an envelope clip),
+  by path or by id. delete removes it from its slot. duplicate copies it, with
+  Live's own copy, to another return slot, and says
+  `overwrote the existing clip at rt1/s0` when it replaced one. Every other
+  destination is that destination's skip,
+  `an envelope clip can only go to a return-track slot`, and a regular clip sent
+  to a return slot says `a return-track slot only takes an envelope clip`
+  (thrown when the call has one copy). `transforms` or `code` on the copies are
+  said on their entries (`the clip is an envelope clip`). A copy whose naming
+  failed keeps its entry with `the copy landed, but ...`.
+- **An envelope clip is never rebuilt**, for the same reason: every path that
+  would re-create a clip skips it with
+  `it's an envelope clip, and Live's API can't create one`.
+- **A step sequencer clip is never rebuilt.** Live's API can't create one, so
+  every copy that would re-create a clip from its notes is skipped before
+  anything is made or deleted, with
+  `it's a step sequencer clip, and Live's API can't create one` (update-clip's
+  `toPath` says `not moved: ` first): a copy to or from a take lane, an
+  arrangement clip into a clip slot, and a lane copy's clips. A track's or
+  lane's copy skips just those clips. Copies Live makes itself (slot to slot,
+  anything to the arrangement's main lane, split, lengthen) keep the clip a step
+  sequencer clip.
 - **duplicate: automation written for another length.** A session clip with
   automation copied to the arrangement at an `arrangementLength` other than its
   own has its track automation lane written for the span first. If that stops
@@ -104,7 +179,7 @@ Part of [Skip entries, tool by tool](README.md).
   session clip with automation (MIDI, or warped audio) to the arrangement, at
   any length, makes Live write that automation to the track's arrangement lane
   over the copy's span, replacing what the lane held there for those parameters.
-  The copy's first entry (a clip copy's, or each track's in a scene copy) says
+  The copy's entry (a clip copy's, or each track's in a scene copy) says
   `wrote its automation to the track's arrangement lane over this span`, once. A
   copy that stopped early says its own note above instead. A clip with no
   automation, an unwarped audio clip and an arrangement source write nothing, so
@@ -112,13 +187,24 @@ Part of [Skip entries, tool by tool](README.md).
   either: the lane can't be read, so it can't tell whether anything was left,
   and checking every parameter on the track costs too much. The tool
   descriptions warn before the call instead.
+- **duplicate: a device copy's destination is checked before the copy.** A
+  `toPath` that can't take the device is the target's skip before either route
+  (the remote script's, a temp track) writes anything. It gives the reason the
+  move would give, after `not copied —` rather than
+  `the copy of … could not be moved`, since no copy exists: no such track, rack
+  or chain, a chain in a Drum Rack, a rack with fixed chains that is full, a pad
+  path on a rack with no pads, too many chains to make, an index past the end, a
+  place that takes only some kinds of device. Nothing is copied, no chain is
+  made, no temp track exists. What only Live's own refusal shows (a second
+  instrument in the chain) and a chain on a drum pad that the write would make
+  are not known beforehand, so those fall to the cleanup below.
 - **duplicate: a device copy that can't be placed.** With the remote script,
   Live copies a device right after the original. Nothing is moved or deleted
   until the device in that slot is checked to have the original's name and
-  class. If the move to `toPath` then fails, the copy is deleted again and the
-  entry is `ok: false`; if it can't be deleted (or no longer looks like the
-  copy), the detail says where it may be left. A request that timed out is
-  checked the same way: a copy that landed keeps its entry plus a `detail`,
+  class. If the move to `toPath` then fails after the copy, the copy is deleted
+  again and the entry is `ok: false`; if it can't be deleted (or no longer looks
+  like the copy), the detail says where it may be left. A request that timed out
+  is checked the same way: a copy that landed keeps its entry plus a `detail`,
   otherwise the entry says Live may have made it anyway.
 - **duplicate: devices on return and main tracks.** With the remote script they
   copy like any other device. Without it they are refused
@@ -134,6 +220,13 @@ Part of [Skip entries, tool by tool](README.md).
   copies every track inside the group, at any depth, and the group's entry says
   so by their paths after the call: `detail`:
   `also copied the 2 tracks inside this group track: t12 (id 47), t13 (id 48)`.
+- **A chain of a rack with fixed chains can be neither copied nor deleted.** A
+  chain copy into a rack that holds its limit (Live 13's Mid-Side and Multiband
+  Racks) is the target's skip, `ok: false` with the rack's refusal as `detail`
+  (see the [path catalog](../object-paths/path-catalog.md)'s fixed-chain note),
+  and the rack is left as it was. delete refuses any chain that isn't a drum
+  chain the same way for these racks as for every other rack: `ok: false`,
+  `Live has no way to delete a rack chain`.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's `detail` says what

@@ -114,7 +114,7 @@ function checkRepeat(
 
   if (!isDurationNode(offset)) {
     throw new Error(
-      "repeat() offset must be a note value like n/8 or a bar duration like 1bar",
+      "repeat() offset must be a note value like n/8 or a bar duration like 1bar; the copy count comes second: repeat(n/16, 3) adds three echoes",
     );
   }
 
@@ -147,6 +147,14 @@ function checkMerge(args: ExpressionNode[]): void {
 
   if (args.length > 1) {
     throw new Error("merge() takes a single gap tolerance");
+  }
+
+  if (
+    typeof tolerance === "object" &&
+    tolerance.type === "nDuration" &&
+    tolerance.wholeNoteFraction < 0
+  ) {
+    throw new Error("merge() gap tolerance can't be negative");
   }
 
   if (

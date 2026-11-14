@@ -222,7 +222,7 @@ describe("ppal-duplicate", () => {
       name: "Arranged Scene",
     },
     // Longer than the source routes the name through ppal-update-clip instead
-    // of a direct write, and can land more than one clip per source clip.
+    // of a direct write.
     { desc: "lengthened", arrangementLength: "2bar", name: "Stretched Scene" },
   ])(
     "reports a scene's arrangement copies $desc by id and path, not by name",

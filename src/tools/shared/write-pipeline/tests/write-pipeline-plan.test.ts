@@ -5,7 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import { runWrite } from "../write-pipeline.ts";
-import { newToyLog, runToy, toySpec, wroteAll } from "./toy-write-spec.ts";
+import {
+  newToyLog,
+  runToy,
+  toySpec,
+  wroteAll,
+} from "./helpers/toy-write-spec.ts";
 
 describe("the order targets are written in", () => {
   it("is the order named when the tool has no plan", () => {

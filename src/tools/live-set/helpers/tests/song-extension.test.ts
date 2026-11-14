@@ -8,14 +8,14 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { cleanupTempClip, extendSongIfNeeded } from "../song-extension.ts";
 
 vi.mock(
-  import("#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts"),
+  import("#src/tools/shared/arrangement/helpers/scratch-clips.ts"),
   async (importOriginal) => ({
     ...(await importOriginal()),
     createAudioClipInSession: vi.fn(),
   }),
 );
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 
 const g = globalThis as Record<string, unknown>;
 

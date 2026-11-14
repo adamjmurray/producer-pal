@@ -5,7 +5,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { findLocator } from "#src/tools/shared/locator/locators.ts";
 import {
@@ -30,7 +30,7 @@ export function stopPlaybackIfNeeded(liveSet: LiveAPI): boolean {
 
   if (isPlaying) {
     liveSet.call("stop_playing");
-    console.warn("Playback stopped to modify locators");
+    emitWarning("Playback stopped to modify locators");
 
     return true;
   }
@@ -142,7 +142,7 @@ export async function createLocator(
       : created;
   } catch (error) {
     for (const message of leftovers) {
-      console.warn(message);
+      emitWarning(message);
     }
 
     throw error;

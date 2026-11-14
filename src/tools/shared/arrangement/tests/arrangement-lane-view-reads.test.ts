@@ -18,9 +18,9 @@ import {
 import {
   clearArrangementRange,
   holdingAreaStartOnTrack,
-} from "../arrangement-tiling-workaround.ts";
+} from "../arrangement-duplicate-workaround.ts";
 import { LaneView } from "../helpers/arrangement-lane-view.ts";
-import { mockContext } from "./helpers/arrangement-tiling-test-helpers.ts";
+import { mockContext } from "./helpers/arrangement-mock-objects.ts";
 
 /** Clips on the track, each 4 beats long, one every 8 beats from beat 0. */
 const LANE = 30;

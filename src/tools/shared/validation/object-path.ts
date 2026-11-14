@@ -79,6 +79,7 @@ export type ObjectPath =
   | NewObjectSegment
   | { kind: "scene"; sceneIndex: number }
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
+  | { kind: "return-slot"; returnIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
   | { kind: "new-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
@@ -86,6 +87,8 @@ export type ObjectPath =
   | { kind: "new-device"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
+/** The `kind` of a return track root, which several checks below test for. */
+const RETURN_TRACK = "return-track";
 const TRACK_ROOT = /^t(\d+)$/;
 const RETURN_TRACK_ROOT = /^rt(\d+)$/;
 const SCENE = /^s(\d+)$/;
@@ -203,6 +206,8 @@ export function formatObjectPath(path: ObjectPath): string {
       return `s${path.sceneIndex}`;
     case "slot":
       return `t${path.trackIndex}/s${path.sceneIndex}`;
+    case "return-slot":
+      return `rt${path.returnIndex}/s${path.sceneIndex}`;
     case "take-lane":
       return `t${path.trackIndex}/l${path.laneIndex}`;
     case "new-take-lane":
@@ -307,7 +312,7 @@ function parseRoot(
   const returnTrack = RETURN_TRACK_ROOT.exec(segment);
 
   if (returnTrack) {
-    return { kind: "return-track", returnIndex: Number(returnTrack[1]) };
+    return { kind: RETURN_TRACK, returnIndex: Number(returnTrack[1]) };
   }
 
   const track = TRACK_ROOT.exec(segment);
@@ -379,12 +384,13 @@ function parseTail(
   const misplaced = tail.findIndex(isTrackChild);
 
   if (misplaced !== -1) {
-    const owner =
-      root.kind === "track"
-        ? misplacedOwner(
-            parseDeviceTail(tail.slice(0, misplaced), label, input),
-          )
-        : undefined;
+    // A return track has clip slots but no take lanes.
+    const hasChild =
+      root.kind === "track" ||
+      (root.kind === RETURN_TRACK && SCENE.test(tail[misplaced] as string));
+    const owner = hasChild
+      ? misplacedOwner(parseDeviceTail(tail.slice(0, misplaced), label, input))
+      : undefined;
 
     throw trackChildError(label, input, tail[misplaced] as string, owner);
   }
@@ -440,7 +446,8 @@ function isTrackChild(segment: string): boolean {
 }
 
 /**
- * Builds the clip slot or take lane a track child names.
+ * Builds the clip slot or take lane a track child names. A return track has
+ * clip slots too (Live 13), but no take lanes.
  * @param root - The parsed root segment
  * @param tail - Segments after the root; the first is the child
  * @param label - Param name for error messages
@@ -454,8 +461,9 @@ function parseTrackChild(
   input: string,
 ): ObjectPath {
   const segment = tail[0] as string;
+  const scene = SCENE.exec(segment);
 
-  if (root.kind !== "track") {
+  if (root.kind === "master-track" || (root.kind !== "track" && !scene)) {
     throw trackChildError(label, input, segment);
   }
 
@@ -463,11 +471,17 @@ function parseTrackChild(
     throw trackChildTailError(label, input, segment, tail[1] as string);
   }
 
+  if (root.kind === RETURN_TRACK) {
+    return {
+      kind: "return-slot",
+      returnIndex: root.returnIndex,
+      sceneIndex: Number((scene as RegExpExecArray)[1]),
+    };
+  }
+
   if (segment === NEW_TAKE_LANE) {
     return { kind: "new-take-lane", trackIndex: root.trackIndex };
   }
-
-  const scene = SCENE.exec(segment);
 
   if (scene) {
     return {
@@ -491,7 +505,7 @@ function parseTrackChild(
  * @param label - Param name for error messages
  * @param input - Full path, for error messages
  * @param segment - The offending segment
- * @param owner - What it came after on a regular track, e.g. "a device"
+ * @param owner - What it came after on a regular or return track, e.g. "a device"
  * @returns The error to throw
  */
 function trackChildError(
@@ -507,7 +521,9 @@ function trackChildError(
   const children = scene ? "clip slots" : "take lanes";
   const why =
     owner == null
-      ? `only regular tracks have ${scene ? "scenes" : "take lanes"}`
+      ? scene
+        ? "the main track has no clip slots"
+        : "only regular tracks have take lanes"
       : `${children} belong to a track, not ${owner}`;
 
   return pathError(label, input, `${shape}; ${why}`);
@@ -566,7 +582,7 @@ function formatTrackSegment(track: TrackSegment): string {
   switch (track.kind) {
     case "track":
       return `t${track.trackIndex}`;
-    case "return-track":
+    case RETURN_TRACK:
       return `rt${track.returnIndex}`;
     default:
       return "mt";

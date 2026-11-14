@@ -16,8 +16,10 @@ import {
 import {
   MIN_VERSION_FILE,
   raiseMinRemoteScriptVersion,
+  scriptChangesSinceLastTag,
 } from "./helpers/version/min-remote-script-version.ts";
 import { replaceVersionLine } from "./helpers/version/replace-version-line.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -51,9 +53,7 @@ try {
     throw new Error(`Unknown bump "${mode}".\n${USAGE}`);
   }
 } catch (error) {
-  console.error(
-    `\n❌ ${error instanceof Error ? error.message : String(error)}`,
-  );
+  console.error(`\n❌ ${errorMessage(error)}`);
   process.exit(1);
 }
 
@@ -66,16 +66,8 @@ let changedScriptFiles: string[];
 let minVersionContent: string | null;
 
 try {
-  lastTag = execSync("git describe --tags --abbrev=0", {
-    cwd: rootDir,
-    encoding: "utf8",
-  }).trim();
-  changedScriptFiles = execSync(
-    `git diff --name-only ${lastTag} -- remote-script/Producer_Pal ":!remote-script/Producer_Pal/version.py"`,
-    { cwd: rootDir, encoding: "utf8" },
-  )
-    .split("\n")
-    .filter(Boolean);
+  ({ lastTag, changedFiles: changedScriptFiles } =
+    scriptChangesSinceLastTag(rootDir));
   minVersionContent = raiseMinRemoteScriptVersion(
     readFileSync(minVersionPath, "utf8"),
     newVersion,
@@ -175,6 +167,20 @@ const npmPkg = JSON.parse(readFileSync(npmPkgPath, "utf8"));
 npmPkg.version = newVersion;
 writeFileSync(npmPkgPath, JSON.stringify(npmPkg, null, 2) + "\n");
 console.log("✓ Updated npm/package.json");
+
+// Update npm/server.json (the MCP Registry entry for the npm package; its
+// version, top-level and per package, must equal the published npm version)
+const serverJsonPath = join(rootDir, "npm/server.json");
+const serverJson = JSON.parse(readFileSync(serverJsonPath, "utf8"));
+
+serverJson.version = newVersion;
+
+for (const pkg of serverJson.packages) {
+  pkg.version = newVersion;
+}
+
+writeFileSync(serverJsonPath, JSON.stringify(serverJson, null, 2) + "\n");
+console.log("✓ Updated npm/server.json");
 
 // Update npm/package-lock.json (npm package has no deps — this just syncs the
 // version and metadata to the package.json we just wrote)

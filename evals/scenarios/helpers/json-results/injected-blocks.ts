@@ -9,7 +9,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type JsonEvalResult } from "./types.ts";
 
@@ -56,6 +56,68 @@ export async function externalizeInjectedBlocks(
   await writeBlocks(dir, texts);
 
   return { ...result, turns };
+}
+
+/**
+ * Swap each stored hash back for the block text in `blocks/`, so judges read
+ * the saved run the way the live judge read it. A hash with no file (the run
+ * predates block storage, or the file was deleted) is dropped rather than
+ * shown as if it were text.
+ *
+ * @param result - Result as read from disk, not modified
+ * @param dir - Run directory the result was read from
+ * @returns The result with block text in place of hashes
+ */
+export async function restoreInjectedBlocks(
+  result: JsonEvalResult,
+  dir: string,
+): Promise<JsonEvalResult> {
+  const turns = await Promise.all(
+    result.turns.map(async (turn) => ({
+      ...turn,
+      toolCalls: await Promise.all(
+        turn.toolCalls.map(async (call) => {
+          if (call.injectedBlocks == null) {
+            return call;
+          }
+
+          const texts = await Promise.all(
+            call.injectedBlocks.map((hash) => readBlock(dir, hash)),
+          );
+
+          return {
+            ...call,
+            injectedBlocks: texts.filter((text) => text != null),
+          };
+        }),
+      ),
+    })),
+  );
+
+  return { ...result, turns };
+}
+
+/**
+ * Read one stored block.
+ *
+ * @param dir - Run directory
+ * @param hash - Block hash
+ * @returns The text, or undefined when there is no such file
+ */
+async function readBlock(
+  dir: string,
+  hash: string,
+): Promise<string | undefined> {
+  // The hash comes from a result file, so keep it from naming a path.
+  if (!/^[0-9a-f]+$/.test(hash)) {
+    return undefined;
+  }
+
+  try {
+    return await readFile(join(dir, "blocks", `${hash}.txt`), "utf8");
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -100,10 +100,9 @@ describe("ppal-duplicate when Live snaps a color to its palette", () => {
 
     expect(copies).toHaveLength(3);
 
-    // A clip shorter than its scene is tiled to fill it, and each tile is a
-    // clip of the answer: s5 and s6 hold one clip a bar short of the scene
-    // (two tiles) beside the long one, and s7's clips already fit.
-    expect(copies.map((copy) => copy.clips.length)).toStrictEqual([3, 3, 2]);
+    // A clip shorter than its scene is lengthened in place to fill it, so each
+    // copy holds one clip per track.
+    expect(copies.map((copy) => copy.clips.length)).toStrictEqual([2, 2, 2]);
 
     for (const copy of copies) {
       for (const clip of copy.clips) {

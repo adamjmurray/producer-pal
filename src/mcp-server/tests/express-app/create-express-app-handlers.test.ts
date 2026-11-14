@@ -82,30 +82,6 @@ describe("Handler Registration", () => {
     handler(0);
   });
 
-  it("should set sampleFolder and coerce bang/null/undefined to empty", async () => {
-    const handler = mockMax.handlers.get("sampleFolder") as (
-      input: unknown,
-    ) => void;
-
-    expect(handler).toBeDefined();
-
-    handler("/path/to/samples");
-    expect(await getConfigField("sampleFolder")).toBe("/path/to/samples");
-
-    handler("");
-    expect(await getConfigField("sampleFolder")).toBe("");
-
-    // Max textedit idiosyncrasy: bang means empty string
-    handler("bang");
-    expect(await getConfigField("sampleFolder")).toBe("");
-
-    handler(null);
-    expect(await getConfigField("sampleFolder")).toBe("");
-
-    handler(undefined);
-    expect(await getConfigField("sampleFolder")).toBe("");
-  });
-
   it("should set notation for valid values and ignore invalid ones", async () => {
     const handler = mockMax.handlers.get("notation") as (
       input: unknown,

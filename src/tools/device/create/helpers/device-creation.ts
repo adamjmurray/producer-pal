@@ -11,6 +11,7 @@ import { refreshParamValues } from "#src/tools/device/update/helpers/params/para
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { type SettledParams } from "#src/tools/device/update/helpers/call/simpler-pitch-bend.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
   errorWithChainsLeft,
@@ -25,17 +26,22 @@ import {
   pastTheEndReason,
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
-import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import {
   type WrittenContainer,
   pathField,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  type DeviceKind,
   misfitReason,
   nativeDeviceKind,
   trackMisfitReason,
 } from "#src/tools/shared/device/helpers/path/device-fit.ts";
+import {
+  checkCreationPath,
+  missingContainerReason,
+  namesNoDeviceReason,
+} from "./check-creation-path.ts";
 
 export interface CreateDeviceResult {
   id: string;
@@ -79,20 +85,17 @@ export function insertNativeDevice(
   deviceName: string,
   path: string,
 ): CreatedDevice {
-  const target = resolveCreationTarget(path);
+  // Before the path makes any chain, and before Live is asked, which would
+  // refuse a misfit with no reason.
+  checkCreationPath(path, deviceName, nativeDeviceKind(deviceName));
+
+  const target = resolveCreationTarget(
+    path,
+    deviceName,
+    nativeDeviceKind(deviceName),
+  );
 
   try {
-    // Before Live is asked, which would refuse a misfit with no reason.
-    const misfit = trackMisfitReason(
-      deviceName,
-      nativeDeviceKind(deviceName),
-      target.container,
-    );
-
-    if (misfit != null) {
-      throw new Error(misfit);
-    }
-
     return insertInto(target, deviceName, path);
   } catch (error) {
     // The chains the path made stay in the Set whether or not the insert does.
@@ -181,10 +184,16 @@ export function appendRenumbers(
 /**
  * Resolve where a path creates a device.
  * @param path - Device insertion path
+ * @param deviceName - The device, as the call named it
+ * @param kind - The device's kind, or null when it isn't known yet
  * @returns The container, the index named in it, and its spelling
- * @throws Error when the path names no place a device can go
+ * @throws Error when the path names no place that takes the device
  */
-export function resolveCreationTarget(path: string): CreationTarget {
+export function resolveCreationTarget(
+  path: string,
+  deviceName: string,
+  kind: DeviceKind | null,
+): CreationTarget {
   const {
     container,
     position,
@@ -195,18 +204,11 @@ export function resolveCreationTarget(path: string): CreationTarget {
   } = resolveInsertionPath(path);
 
   if (namesNothing != null) {
-    throw new Error(
-      `path "${path}" names no device to insert at: ${namesNothing}`,
-    );
+    throw new Error(namesNoDeviceReason(path, namesNothing));
   }
 
   if (!container?.exists()) {
-    throw new Error(
-      withChainsLeft(
-        `container at path "${path}" does not exist${nestedRackHintForPath(path)}`,
-        madeChains,
-      ),
-    );
+    throw new Error(withChainsLeft(missingContainerReason(path), madeChains));
   }
 
   // Live ignores a position past the end without a word, so refuse it before
@@ -217,8 +219,11 @@ export function resolveCreationTarget(path: string): CreationTarget {
     path,
   );
 
-  if (tooFar != null) {
-    throw new Error(withChainsLeft(tooFar, madeChains));
+  // Before Live is asked, which would refuse a misfit with no reason.
+  const misfit = tooFar ?? trackMisfitReason(deviceName, kind, container);
+
+  if (misfit != null) {
+    throw new Error(withChainsLeft(misfit, madeChains));
   }
 
   return { container, position, containerPath, createdChains, madeChains };
@@ -333,6 +338,7 @@ export function createdDeviceEntry(
  * @param displayName - The name for this device, if any
  * @param params - {name, value} entries applied to each created device
  * @param landed - Told what has changed in Live, once it has
+ * @param settled - Params already written by the caller, by entry
  * @returns The entry
  */
 export function labelCreatedDevice(
@@ -341,6 +347,7 @@ export function labelCreatedDevice(
   displayName: string | undefined,
   params: ParamEntry[] | undefined,
   landed: (phrase: string) => void,
+  settled?: SettledParams,
 ): CreateDeviceResult {
   if (displayName != null) {
     device.set("name", displayName);
@@ -349,7 +356,7 @@ export function labelCreatedDevice(
 
   if (params != null) {
     // Every param the call named comes back, written or not.
-    const outcomes = setParamValues(device, params);
+    const outcomes = setParamValues(device, params, false, undefined, settled);
 
     if (outcomes.length > 0) {
       entry.params = refreshParamValues(outcomes);

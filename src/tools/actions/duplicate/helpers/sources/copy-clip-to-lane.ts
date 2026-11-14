@@ -16,11 +16,13 @@ import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
+  STEP_SEQUENCER_NO_REBUILD,
   PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import { type SpanRoomContext } from "#src/tools/clip/arrangement/helpers/recreate-span-room.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   clearedBefore,
@@ -28,7 +30,6 @@ import {
   copyClearing,
   copyReach,
   mainLaneOf,
-  noteCleared,
   takeLaneOf,
   type CopyLane,
 } from "../clip/overwrites/copy-overwrites.ts";
@@ -40,6 +41,7 @@ import {
 import {
   type ClearedCopy,
   clearedCopy,
+  noteCopyEffects,
   skippedCopy,
   withLandedColor,
   type MinimalClipInfo,
@@ -59,6 +61,8 @@ export interface LaneDestination {
   meter: CopyMeter;
   name: string | undefined;
   color: string | undefined;
+  /** The call's silence file and lanes, for clearing a main lane. */
+  context: SpanRoomContext;
 }
 
 /**
@@ -77,12 +81,16 @@ export function copyClipToLane(
   const { label, meter } = destination;
   const startBeats = clip.getProperty("start_time") as number;
 
-  if (!canRecreateClip(clip)) {
+  const blocker = recreateBlocker(clip);
+
+  if (blocker != null) {
     // Addressed where the copy was headed, so an entry pastes back as a path.
     return refusedCopy(
       { beats: startBeats, label },
       meter,
-      "a lane copy is re-created from the sample, and this audio clip has none",
+      blocker === STEP_SEQUENCER_NO_REBUILD
+        ? blocker
+        : "a lane copy is re-created from the sample, and this audio clip has none",
     );
   }
 
@@ -104,7 +112,7 @@ export function copyClipToLane(
     return clearedCopy(made.path, `${made.detail}; ${cleared}`);
   }
 
-  noteCleared(made, cleared);
+  noteCopyEffects(made, cleared);
 
   return made;
 }
@@ -147,6 +155,7 @@ export interface LaneTarget extends LanePlace {
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param meter - The song meter every position is spelled in
  * @param ledger - The call's arrangement lanes
+ * @param context - The call's silence file and lanes, for clearing a main lane
  * @returns The destination's entry in the result
  */
 export function runLaneCopy(
@@ -155,6 +164,7 @@ export function runLaneCopy(
   takeLaneName: string | undefined,
   meter: CopyMeter,
   ledger: LaneLedger,
+  context: SpanRoomContext,
 ): object {
   const { trackIndex, laneIndex, label, sourceClips, name, color } = target;
   const onLane = laneIndex != null;
@@ -199,6 +209,7 @@ export function runLaneCopy(
           meter,
           name,
           color,
+          context,
         },
         losses,
       );
@@ -264,12 +275,20 @@ function recreate(
   startBeats: number,
   losses: Set<string>,
 ): MinimalClipInfo | TargetSkip {
-  const { lane, label, kind, meter, name, color } = destination;
+  const { lane, label, kind, meter, name, color, context } = destination;
   const clipLosses = recreatedClipLosses(clip);
   let copy: LiveAPI;
 
   try {
-    copy = recreateClip(clip, lane, startBeats, name, color, clipLosses);
+    copy = recreateClip(
+      clip,
+      lane,
+      startBeats,
+      name,
+      color,
+      clipLosses,
+      context,
+    );
   } catch (error) {
     if (error instanceof PartialRecreateError) {
       return withLandedColor(error.partialClip, color, (said) =>

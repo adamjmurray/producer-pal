@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   clipIgnoredParams,
   clipLandedNothing,
   clipReporterFor,
   ignoreClipParams,
+  journalEnvelopeLoss,
   moveClipReasons,
   newClipReasons,
   noteClipColor,
@@ -123,14 +124,14 @@ describe("clip-reasons", () => {
     const reasons = newClipReasons();
     const reporter = clipReporterFor(reasons);
 
-    reporter.note("1", "placed 2 of 8 tiles");
+    reporter.note("1", "split into 2 pieces");
     reporter.refuse("2", "arrangementSplit ignored");
 
-    const tiled: ClipResult = { id: "1" };
+    const noted: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", tiled);
+    reportClipReasons(reasons, "1", noted);
 
-    expect(tiled).toStrictEqual({ id: "1", detail: "placed 2 of 8 tiles" });
+    expect(noted).toStrictEqual({ id: "1", detail: "split into 2 pieces" });
     // A note leaves the clip a real entry; a refusal with nothing else landing
     // makes it a skip.
     expect(clipLandedNothing(reasons, "1")).toBe(false);
@@ -147,5 +148,16 @@ describe("clip-reasons", () => {
       "quantize",
       "firstStart",
     ]);
+  });
+
+  it("journals an envelope-loss note it is handed and keeps it for the entry", () => {
+    const reasons = newClipReasons();
+    const journal = vi.fn();
+
+    reasons.journal = journal;
+    journalEnvelopeLoss(reasons, "7", "device envelopes dropped");
+
+    expect(journal).toHaveBeenCalledWith("device envelopes dropped", undefined);
+    expect(reasons.envelopeLosses.get("7")).toBe("device envelopes dropped");
   });
 });

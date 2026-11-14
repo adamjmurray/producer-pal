@@ -6,7 +6,7 @@
 // How V8 calls one remote-script route, folding every way it can fail into one
 // outcome.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   REMOTE_SCRIPT_UNANSWERED,
@@ -43,8 +43,10 @@ export type RouteOutcome<T> =
  * @param args - What to send it
  * @param deadline - The request deadline from ToolContext, if any
  * @param missing - What to say when the remote script isn't running
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
  * @param maxWaitMs - A shorter wait than the usual one, for a caller that can
  *   do without the answer
+ * @param reserveMs - Time to keep before the deadline for work after the answer
  * @returns The route's result, or why there isn't one
  */
 export function remoteScriptRoute<T>(
@@ -52,9 +54,14 @@ export function remoteScriptRoute<T>(
   args: object,
   deadline: number | null | undefined,
   missing: string,
+  manage: boolean,
   maxWaitMs?: number,
+  reserveMs?: number,
 ): Promise<RouteOutcome<T>> {
-  return callRoute<T>(route, args, deadline, missing, { maxWaitMs });
+  return callRoute<T>(route, args, deadline, missing, manage, {
+    maxWaitMs,
+    reserveMs,
+  });
 }
 
 /**
@@ -66,6 +73,7 @@ export function remoteScriptRoute<T>(
  * @param args - What to send it
  * @param deadline - The request deadline from ToolContext, if any
  * @param missing - What to say when the remote script isn't running
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
  * @returns The route's result, or why there isn't one
  */
 export function remoteScriptChange<T>(
@@ -73,8 +81,9 @@ export function remoteScriptChange<T>(
   args: object,
   deadline: number | null | undefined,
   missing: string,
+  manage: boolean,
 ): Promise<RouteOutcome<T>> {
-  return callRoute<T>(route, args, deadline, missing, { change: true });
+  return callRoute<T>(route, args, deadline, missing, manage, { change: true });
 }
 
 // --- Helpers below main exports ---
@@ -85,7 +94,9 @@ export function remoteScriptChange<T>(
  * @param args - What to send it
  * @param deadline - The request deadline from ToolContext, if any
  * @param missing - What to say when the remote script isn't running
- * @param options - `maxWaitMs`: a shorter wait than the usual one; `change`:
+ * @param manage - Whether the caller can use ppal-manage
+ * @param options - `maxWaitMs`: a shorter wait than the usual one; `reserveMs`:
+ *   time to keep before the deadline; `change`:
  *   send the expiry a change needs
  * @returns The route's result, or why there isn't one
  */
@@ -94,9 +105,10 @@ async function callRoute<T>(
   args: object,
   deadline: number | null | undefined,
   missing: string,
-  options: { maxWaitMs?: number; change?: boolean },
+  manage: boolean,
+  options: { maxWaitMs?: number; reserveMs?: number; change?: boolean },
 ): Promise<RouteOutcome<T>> {
-  const usual = remoteScriptWait(deadline);
+  const usual = remoteScriptWait(deadline, options.reserveMs);
   const waitMs =
     usual == null ? null : Math.min(usual, options.maxWaitMs ?? usual);
 
@@ -140,7 +152,7 @@ async function callRoute<T>(
   if (!reply.available) {
     return {
       ok: false,
-      reason: whyUnavailable(reply, missing),
+      reason: whyUnavailable(reply, missing, manage),
       available: false,
       ...(reply.outdated != null && { outdated: true as const }),
     };

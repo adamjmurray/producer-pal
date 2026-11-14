@@ -21,15 +21,27 @@ import {
   type EvalTurnResult,
   type ToolCall,
 } from "../../../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-export const TOOL_READ_CLIP = "ppal-read-clip";
-export const TOOL_UPDATE_CLIP = "ppal-update-clip";
-export const TOOL_DUPLICATE = "ppal-duplicate";
-export const TOOL_CREATE_CLIP = "ppal-create-clip";
+export const TOOL_READ_CLIP = TOOLS.readClip;
+export const TOOL_UPDATE_CLIP = TOOLS.updateClip;
+export const TOOL_DUPLICATE = TOOLS.duplicate;
+export const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** The Lead clip: session slot, and its track's index. */
 export const LEAD_CLIP = "t3/s0";
 export const LEAD_TRACK_INDEX = 3;
+
+/** Judge-criteria note on raw volume values: the judge can't know Live's scale. */
+export const VOLUME_SCALE_NOTE = `Envelope values are raw: mixer volume 0.85 is 0 dB (unity) and 1 is the
+fader's top (+6 dB).`;
+
+/**
+ * For prompts that ask for "full" volume. The volume checks accept either top
+ * value, so a reply calling either one "full" must not fail. Keep it out of
+ * prompts that don't say "full": there it made Jev pass a wrong end level.
+ */
+export const FULL_VOLUME_NOTE = `${VOLUME_SCALE_NOTE} Either counts as "full" volume.`;
 
 /** One automated parameter, as ppal-read-clip's `envelopes` reports it. */
 export interface ClipEnvelopeRead {
@@ -104,6 +116,19 @@ export function envelopeValues(events: string | undefined): number[] {
 }
 
 /**
+ * The time of each point of an envelope's notation, as written ("1|1", "2|2.5").
+ *
+ * @param events - An envelope's `events` notation
+ * @returns One time per point, in order
+ */
+export function envelopeTimes(events: string | undefined): string[] {
+  return withoutDisplays(events)
+    .split(CONNECTOR)
+    .map((point) => point.trim().split(/\s+/)[0] ?? "")
+    .filter((time) => time !== "");
+}
+
+/**
  * The amounts of an envelope's curved ramps (`~N`), in time order. A straight
  * ramp (`/`) and a jump (`_`) have none.
  *
@@ -130,6 +155,9 @@ export function risesOverTime(envelope: ClipEnvelopeRead): boolean {
 
   return values.length >= 2 && first != null && last != null && first < last;
 }
+
+/** How much of a rise ramps must carry for it to count as a fade, not a jump. */
+export const MIN_RAMP_SHARE = 0.5;
 
 /** A connector with its token kept, to tell a ramp (`/`, `~N`) from a jump. */
 const CONNECTOR_TOKEN = /\s+(\/|_|~[-+]?[\d.]+)\s+/;

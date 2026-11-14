@@ -14,7 +14,7 @@ vi.mock(import("#src/tools/clip/update/update-clip.ts"), async () => {
   return { updateClip: s.updateClipMock };
 });
 vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling-holding.ts"),
+  import("#src/tools/shared/arrangement/arrangement-holding-clip.ts"),
   // @ts-expect-error: Mock returns simplified types that don't match full signature
   async () => {
     const s = await import("./setup.ts");
@@ -25,7 +25,7 @@ vi.mock(
   },
 );
 vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling-workaround.ts"),
+  import("#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts"),
   // @ts-expect-error: Mock returns simplified types that don't match full signature
   async (importOriginal) => {
     const s = await import("./setup.ts");

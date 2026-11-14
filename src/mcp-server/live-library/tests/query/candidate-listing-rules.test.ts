@@ -8,8 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
 import { listCategories } from "../../list-categories.ts";
 import { listTags } from "../../list-tags.ts";
-import { findDuplicates } from "../../query/find-duplicates.ts";
-import { findSimilar } from "../../query/find-similar.ts";
+import { findDuplicates } from "../../query/similarity/find-duplicates.ts";
+import { findSimilar } from "../../query/similarity/find-similar.ts";
 import { librarySearch } from "../../query/library-search.ts";
 import {
   featureBlob,
@@ -23,7 +23,7 @@ vi.mock(import("../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 vi.mock(import("../../db-staleness.ts"), () => ({
-  detectStalenessRisk: vi.fn(),
+  stalenessNote: vi.fn(),
 }));
 
 const dbPathMod = await import("../../live-db-path.ts");
@@ -90,7 +90,7 @@ describe("Live's library listing rules", () => {
   setupLibraryFixtureLifecycle(dbPathMod, addLeftOutKicks);
 
   beforeEach(() => {
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(undefined);
+    vi.mocked(stalenessMod.stalenessNote).mockResolvedValue(undefined);
   });
 
   it("search leaves out flagged and Place-less files library-wide", async () => {

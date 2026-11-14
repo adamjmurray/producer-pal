@@ -89,7 +89,7 @@ describe("update-clip over a long lane", () => {
       arrangementLength: "4bar,4bar",
     })) as ClipResult[];
 
-    // Each grew over the clip after it, with its tiles; the first tile says so.
+    // Each grew over the clip after it, and its entry says so.
     expect(
       result.map(({ detail }) => detail).filter((detail) => detail != null),
     ).toStrictEqual([

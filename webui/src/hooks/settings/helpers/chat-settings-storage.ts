@@ -9,6 +9,7 @@ import {
   MIN_TOOL_STEPS,
 } from "#webui/chat/sdk/step-budget";
 import { type Provider } from "#webui/types/settings";
+import { isProviderReady } from "#webui/utils/provider-url";
 import {
   type AllProviderSettings,
   saveAllProviderSettings,
@@ -34,23 +35,37 @@ export function loadEnabledTools(): Record<string, boolean> {
 
 /**
  * Saves the current provider and enabled tools, then the provider settings.
+ * Marks chat as set up when the provider can be used (it has an API key, or is
+ * a local provider that needs none). The mark is only ever added here, so a
+ * Save that can't set chat up (an Installation-only visit) leaves it alone.
+ * The storage key is historical: it predates "set up" and existing users have
+ * it set.
  * @param {Provider} provider - Current provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - All provider settings
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} Whether this save set chat up
  */
 export async function saveCurrentSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
-): Promise<void> {
+): Promise<boolean> {
+  const { apiKey, baseUrl } = allSettings[provider];
+  const setsUpChat = isProviderReady(provider, apiKey, baseUrl);
+
   localStorage.setItem("producer_pal_current_provider", provider);
-  localStorage.setItem("producer_pal_settings_configured", "true");
+
+  if (setsUpChat) {
+    localStorage.setItem("producer_pal_settings_configured", "true");
+  }
+
   localStorage.setItem(
     "producer_pal_enabled_tools",
     JSON.stringify(enabledTools),
   );
   await saveAllProviderSettings(allSettings);
+
+  return setsUpChat;
 }
 
 /**

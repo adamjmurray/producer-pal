@@ -10,6 +10,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { applyClipConvert } from "#src/tools/clip/convert/apply-clip-convert.ts";
 import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
 import {
@@ -40,8 +41,10 @@ import {
 } from "../entries/clip-reasons.ts";
 import { applyCodeToWrittenClips } from "./apply-clip-code.ts";
 import { isSwitchedOff } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
+import { afterUpdateParams } from "./envelope-clip-params.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { cutClip } from "./cut-clip.ts";
+import { readEnvelopeLoss } from "../move/read-envelope-loss.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 import { type ClipPlanned } from "./plan-clip-moves.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
@@ -49,7 +52,11 @@ import { type ClipPayload } from "./resolve-clip-targets.ts";
 /** Where the clip goes and how long it is to be, once the plan has weighed in. */
 type Motion = Pick<
   ClipPayload,
-  "destination" | "ignoredDestination" | "startBeats" | "lengthBeats"
+  | "destination"
+  | "returnSlot"
+  | "ignoredDestination"
+  | "startBeats"
+  | "lengthBeats"
 >;
 
 /** What one target's write answers. */
@@ -66,6 +73,7 @@ const CONTENT_PARAMS = [
   "name",
   "color",
   "timeSignature",
+  "scale",
   "start",
   "length",
   "firstStart",
@@ -92,7 +100,7 @@ const CONTENT_PARAMS = [
  * @param run - The call's shared state
  * @param target - The target, which names a clip
  * @param step - The call's state for this target
- * @returns The target's entry, and the entries of any piece or tile after it
+ * @returns The target's entry, and the entries of any piece after it
  */
 export async function writeClip(
   run: ClipRun,
@@ -125,7 +133,7 @@ export async function writeClip(
     }
 
     // Refused before anything is written to it (its meter can't read the note
-    // edits, or its envelopes would miss the tiles), so the clip is unchanged.
+    // edits), so the clip is unchanged.
     const refused = run.refused.get(clip.id);
 
     if (refused != null) {
@@ -172,7 +180,7 @@ export async function writeClip(
 /**
  * What the call does with this clip's position, after the plan: a move the plan
  * gave up on, or one whose way is blocked by a clip that stayed put, is called
- * off together with its resize — a resize clears the span it tiles across just
+ * off together with its resize — a resize clears the span it grows into just
  * as a move clears its destination.
  * @param run - The call's shared state
  * @param payload - The target's payload
@@ -208,6 +216,7 @@ function motionFor(
 
   return {
     destination: null,
+    returnSlot: null,
     ignoredDestination: null,
     startBeats: null,
     lengthBeats: null,
@@ -268,6 +277,10 @@ async function updatePiece(
   };
 
   try {
+    const later = afterUpdateParams(piece, call, reasons);
+
+    // Before the move deletes the source it reads.
+    await readEnvelopeLoss(piece, motion, reasons, context);
     processSingleClipUpdate({
       ...paramsFor(call),
       clip: piece,
@@ -287,12 +300,14 @@ async function updatePiece(
       arrangementLengthBeats: motion.lengthBeats,
       arrangementStartBeats: motion.startBeats,
       destination: motion.destination,
+      returnDestination: motion.returnSlot,
       ignoredDestination: motion.ignoredDestination,
       destinationParam: call.destinationParam,
       startParam: call.startParam,
       destinationTracks: run.destinationTracks,
       context,
-      scaleMask: run.scaleMask,
+      callScale: run.scale,
+      scaleRequest: call.scales[step.index],
       updatedClips: updated,
       landings: run.landings,
       reasons,
@@ -307,15 +322,16 @@ async function updatePiece(
     );
     // Last, and on the entry the rest of the update settled on: a move
     // re-creates the clip under a new id.
-    await applyClipEnvelopes(updated[0], call.envelopeLines, context);
+    await applyClipEnvelopes(updated[0], later.envelopeLines, context);
     // After the envelopes, so it converts the clip as the call left it.
     await applyClipConvert({
       entry: updated[0],
-      type: call.args.convert,
+      type: later.convert,
       clipId: piece.id,
       reasons,
       progress: run.convert,
       deadline: context.deadline,
+      manage: manageOffered(context),
     });
   } catch (error) {
     // Properties written before the throw can have resized the clip, which

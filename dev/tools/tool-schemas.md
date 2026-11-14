@@ -231,8 +231,9 @@ JavaScript field on the LiveAPI object) are different operations, so the second
 is `get-field`.
 
 ```typescript
-source: aliasedEnum(["sample-folder", "user"], {
-  sampleFolder: "sample-folder",
+sort: aliasedEnum(["use-count", "mod-date"], {
+  use_count: "use-count",
+  mod_date: "mod-date",
 });
 ```
 

@@ -79,7 +79,8 @@ The bump script writes the version to:
 1. `src/shared/config.ts` — the version the runtime reports (Max for Live device
    UI / MCP server), and the one the build itself uses
 2. `remote-script/Producer_Pal/version.py` — the remote script's version
-3. `npm/package.json` — the `producer-pal` npm module's version
+3. `npm/package.json` — the `producer-pal` npm module's version and
+   `npm/server.json` — the MCP Registry entry (top level and per package)
 4. `package.json` and `claude-desktop-extension/package.json`
 5. The `version` **and** `packages[""].version` fields of all three lockfiles
    (npm keeps it twice per lockfile, and a hand-edit reliably misses one)
@@ -97,8 +98,8 @@ because a count in prose goes stale silently.
 
 ## The steps
 
-| Part                                                 | Covers                                                                              |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [build-and-pre-release.md](build-and-pre-release.md) | Step 0 checklist, Step 1 build release files, Step 2 create the GitHub pre-release  |
-| [testing-and-shipping.md](testing-and-shipping.md)   | Steps 3 to 5: test the pre-release, test the npm portal, ship it; publishing to npm |
-| [fixing-releases.md](fixing-releases.md)             | Fixing issues during pre-release; urgent fixes after a release                      |
+| Part                                                 | Covers                                                                                                   |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [build-and-pre-release.md](build-and-pre-release.md) | Step 0 checklist, Step 1 build release files, Step 2 create the GitHub pre-release                       |
+| [testing-and-shipping.md](testing-and-shipping.md)   | Steps 3 to 5: test the pre-release, test the npm portal, ship it; publishing to npm and the MCP Registry |
+| [fixing-releases.md](fixing-releases.md)             | Fixing issues during pre-release; urgent fixes after a release                                           |

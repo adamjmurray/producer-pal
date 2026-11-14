@@ -28,10 +28,9 @@ import {
 import { firstResultPath } from "../helpers/new-track-path.ts";
 import { assertTrackChain } from "./helpers/device-chain-readback.ts";
 import { paramNumber } from "./helpers/device-param-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_DUPLICATE = "ppal-duplicate";
-const TOOL_READ_DEVICE = "ppal-read-device";
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
+const TOOL_DUPLICATE = TOOLS.duplicate;
 
 /** basic-midi-4-track: the Lead track, and its Utility, the last device on it. */
 const LEAD_PATH = "t3";
@@ -55,7 +54,7 @@ const GAIN_TOLERANCE_DB = 0.1;
  */
 async function seedLeadTrim(mcpClient: Client): Promise<void> {
   await mcpClient.callTool({
-    name: TOOL_UPDATE_DEVICE,
+    name: TOOLS.updateDevice,
     arguments: {
       path: UTILITY_PATH,
       name: TRIM_NAME,
@@ -66,7 +65,7 @@ async function seedLeadTrim(mcpClient: Client): Promise<void> {
   const read = parseToolResult(
     extractToolResultText(
       await mcpClient.callTool({
-        name: TOOL_READ_DEVICE,
+        name: TOOLS.readDevice,
         arguments: { path: UTILITY_PATH, include: ["params", "param-values"] },
       }),
     ),
@@ -120,7 +119,7 @@ export const deviceCopyInPlace: EvalScenario = {
     // The copy, wherever the model's own call reports it, carries the Output.
     {
       type: "state",
-      tool: TOOL_READ_DEVICE,
+      tool: TOOLS.readDevice,
       args: (turns) => ({
         path:
           firstResultPath(

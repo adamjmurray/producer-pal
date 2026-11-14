@@ -7,7 +7,7 @@
 // the remote script: onto a temp track, then moved to the path.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
@@ -24,19 +24,25 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { createDevice } from "../../create-device.ts";
-import { registerTempTrack, TEMP_TRACK } from "./temp-track-test-helpers.ts";
+import {
+  registerTargetTrack,
+  registerTempTrack,
+  TEMP_TRACK,
+} from "./temp-track-test-helpers.ts";
 
 /** What the remote script is told to say when it is too old. */
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const ITEM = {
   type: "plugin",
@@ -114,14 +120,7 @@ function expectCleanedUp(times = 1): void {
 describe("createDevice — a plug-in or Max for Live device", () => {
   beforeEach(() => {
     loads = 0;
-    liveSet = mockWorkingDeviceMoves();
-    liveSet.methods.delete_track = vi.fn();
-    track = registerMockObject("track-0", {
-      path: livePath.track(0),
-      type: "Track",
-      properties: { devices: children("existing") },
-    });
-    registerMockObject("existing", { path: livePath.track(0).device(0) });
+    ({ liveSet, track } = registerTargetTrack());
     ({ tempTrack, songView } = registerTempTrack(liveSet));
     answerRemoteScript();
   });
@@ -277,7 +276,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     // And says how to get plug-ins and Max for Live devices.
     await expect(
       createDevice({ device: "Pro-Q 4", path: "t0" }),
-    ).rejects.toThrow(REMOTE_SCRIPT_SETUP);
+    ).rejects.toThrow(remoteScriptSetup(true));
     // Ahead of the path check, as it always was.
     await expect(createDevice({ device: "Pro-Q 4" })).rejects.toThrow(
       /^invalid device "Pro-Q 4"\. Valid devices - /,

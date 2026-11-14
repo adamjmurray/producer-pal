@@ -8,7 +8,10 @@
 // one format as ambiguous, so the search across sections happens here.
 
 import { assertDefined } from "#src/shared/error-message.ts";
-import { type BrowserItemResolution } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import {
+  type BrowserItem,
+  type BrowserItemResolution,
+} from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { pathSegment } from "../../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
@@ -18,6 +21,11 @@ import {
   unavailableReply,
 } from "../remote-script-client.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
+import { pluginFolderFormat } from "./plugin-folder-format.ts";
+import { type PluginFormat } from "../../../live-library/library-types.ts";
+
+/** Which format a name loads when a plug-in has several, best first. */
+const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
 export const SECTIONS = [
@@ -32,6 +40,9 @@ export type Section = (typeof SECTIONS)[number];
 
 /** Browser names that are really filenames. */
 const FILE_SUFFIX = /\.(?:amxd|adg|adv)$/;
+
+/** Rack and preset files, which `preset` can load by absolute path. */
+export const PRESET_FILE = /\.(?:adv|adg)$/i;
 
 /** How many candidates an ambiguity error names. */
 const MAX_LISTED = 10;
@@ -74,7 +85,10 @@ export async function lookUpBrowserDevice(
     : await findAtPath(
         deviceName,
         prefixed,
-        () => nothingNamed(deviceName),
+        {
+          missing: () => nothingNamed(deviceName),
+          shared: (items) => sharedDevicePath(deviceName, items),
+        },
         endsAt,
       );
 }
@@ -123,25 +137,44 @@ export function sectionPrefixed(
 }
 
 /**
+ * The folders and name of a path below its section, as the lookup reads them.
+ * @param rest - Everything after the section
+ * @returns The trimmed, non-empty segments
+ */
+export function pathSegments(rest: string): string[] {
+  return rest
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "");
+}
+
+/**
  * Find the item a section-prefixed name spells out, one level listing its folder.
  * @param name - The name the call used
  * @param prefixed - Its section, and everything after the section
  * @param prefixed.section - The section it starts with
  * @param prefixed.rest - Everything after the section
- * @param missing - The resolution when nothing is there
+ * @param refusals - What to say when the path can't be settled
+ * @param refusals.missing - The resolution when nothing is there
+ * @param refusals.shared - The error when several loadable items are there,
+ *   given them. Live can list two files at one browser path, and the
+ *   remote script loads the first, so one is never picked.
  * @param endsAt - When the lookup must be done, in epoch ms
  * @returns The resolution
  */
 export async function findAtPath(
   name: string,
   { section, rest }: { section: Section; rest: string },
-  missing: () => BrowserItemResolution,
+  {
+    missing,
+    shared,
+  }: {
+    missing: () => BrowserItemResolution;
+    shared: (items: ListedItem[]) => string;
+  },
   endsAt: number,
 ): Promise<BrowserItemResolution> {
-  const segments = rest
-    .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "");
+  const segments = pathSegments(rest);
   const leaf = segments.pop();
 
   if (leaf == null) {
@@ -167,15 +200,40 @@ export async function findAtPath(
   }
 
   const key = normalizedName(leaf);
-  const item =
+  const named =
     reply.status === 200
-      ? listedItems(reply).find(
+      ? listedItems(reply).filter(
           (child) =>
             child.loadable !== false && normalizedName(child.name) === key,
         )
-      : undefined;
+      : [];
+  // `Foo.adv` names one of `Foo.adg` and `Foo.adv`; a bare `Foo` names neither.
+  const spelled = named.filter(
+    (child) => spelledName(child.name) === spelledName(leaf),
+  );
+  const items = spelled.length > 0 ? spelled : named;
 
-  return item == null ? missing() : found({ ...item, section });
+  if (items.length > 1) {
+    return { available: true, error: shared(items) };
+  }
+
+  return items[0] == null ? missing() : found({ ...items[0], section });
+}
+
+/**
+ * The refusal for a device path that two items share. Only a rack or preset
+ * file has a way forward: `preset` takes a file's absolute path.
+ * @param deviceName - The name the call used
+ * @param items - The items at that path
+ * @returns The error
+ */
+function sharedDevicePath(deviceName: string, items: ListedItem[]): string {
+  const files = items.every((item) => PRESET_FILE.test(item.name));
+  const next = files
+    ? "; to load one, pass its absolute path from ppal-library as preset, without deviceName"
+    : "";
+
+  return `deviceName "${deviceName}" matches ${items.length} items at that browser path, so none was loaded${next}`;
 }
 
 /**
@@ -250,9 +308,16 @@ export function pooledCandidates(
  * @returns The comparable name
  */
 export function normalizedName(name: string): string {
-  return pathSegment(name.trim().normalize("NFC"))
-    .toLowerCase()
-    .replace(FILE_SUFFIX, "");
+  return spelledName(name).replace(FILE_SUFFIX, "");
+}
+
+/**
+ * A name as spelled, suffix kept, in the form names are compared in.
+ * @param name - A name
+ * @returns It trimmed, NFC, in path form and lowercase
+ */
+function spelledName(name: string): string {
+  return pathSegment(name.trim().normalize("NFC")).toLowerCase();
 }
 
 /**
@@ -261,10 +326,7 @@ export function normalizedName(name: string): string {
  * @returns The item, as the load route takes it
  */
 export function found(match: Candidate): BrowserItemResolution {
-  return {
-    available: true,
-    item: { type: match.section.type, path: match.path, name: match.name },
-  };
+  return { available: true, item: browserItem(match) };
 }
 
 /**
@@ -375,12 +437,14 @@ async function searchSections(
           deviceName,
           matches,
         ),
+        // So a preset can still settle which device the name means.
+        candidates: matches.map(browserItem),
       };
 }
 
 /**
- * The one match to load when every match is the same plug-in in different
- * formats: VST3, then AU, then VST.
+ * The one match to load when every match is the same plug-in, from the same
+ * maker, in different formats: VST3, then AU, then VST.
  * @param matches - The matches, more than one
  * @returns That match, or null when the matches are different things
  */
@@ -394,9 +458,14 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
     return rank == null ? [] : [{ match, rank }];
   });
   const ranks = new Set(ranked.map(({ rank }) => rank));
+  // Two makers can share a plug-in name. A VST sits in no maker's folder.
+  const makers = new Set(
+    matches.flatMap(({ path }) => path.split("/").slice(1, -1).join("/") || []),
+  );
 
   if (
     names.size !== 1 ||
+    makers.size > 1 ||
     ranked.length !== matches.length ||
     ranks.size !== matches.length
   ) {
@@ -416,19 +485,9 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
  * @returns The rank, or null for a folder that isn't a format
  */
 function formatRank(path: string): number | null {
-  const slash = path.indexOf("/");
-  const folder = (slash === -1 ? path : path.slice(0, slash)).toLowerCase();
+  const format = pluginFolderFormat(path.split("/")[0]);
 
-  if (folder === "vst3") {
-    return 0;
-  }
-
-  // Live's name for this folder isn't confirmed, so match it loosely.
-  if (folder.includes("audio unit")) {
-    return 1;
-  }
-
-  return folder === "vst" ? 2 : null;
+  return format == null ? null : FORMAT_ORDER.indexOf(format);
 }
 
 /**
@@ -440,5 +499,14 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
   return {
     available: true,
     error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+    notFound: true,
   };
+}
+
+/**
+ * @param match - A matched item
+ * @returns It as the load route takes it
+ */
+function browserItem(match: Candidate): BrowserItem {
+  return { type: match.section.type, path: match.path, name: match.name };
 }

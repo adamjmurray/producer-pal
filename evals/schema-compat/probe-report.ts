@@ -13,6 +13,7 @@
  */
 
 import { type Variant } from "./schema-compat-variants.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export type Status = "ok" | "wrong-shape" | "rejected" | "no-call" | "no-key";
 
@@ -132,7 +133,7 @@ export function numArg(flag: string): number | undefined {
  * @returns The failed cell result
  */
 export function errorCell(error: unknown): CellResult {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
   const status: Status = /api key/i.test(message) ? "no-key" : "rejected";
 
   return { status, detail: truncate(message) };

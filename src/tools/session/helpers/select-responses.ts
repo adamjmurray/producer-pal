@@ -5,6 +5,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
+import {
+  type AnySlotPosition,
+  slotLivePath,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import {
   objectPathForApi,
@@ -102,19 +106,12 @@ export function buildClipResponseFromId(
 /**
  * Build response fields for clip found in a clip slot
  * @param slot - Clip slot coordinates
- * @param slot.trackIndex - Track index
- * @param slot.sceneIndex - Scene index
  * @returns Clip info, or undefined
  */
-export function buildClipResponseFromSlot(slot: {
-  trackIndex: number;
-  sceneIndex: number;
-}): SelectResult["selectedClip"] {
-  const clipPath = livePath
-    .track(slot.trackIndex)
-    .clipSlot(slot.sceneIndex)
-    .clip();
-  const clip = LiveAPI.from(clipPath);
+export function buildClipResponseFromSlot(
+  slot: AnySlotPosition,
+): SelectResult["selectedClip"] {
+  const clip = LiveAPI.from(slotLivePath(slot).clip());
 
   return buildClipInfo(clip);
 }
@@ -151,7 +148,7 @@ export interface ResolvedArgs {
   arrangementStartBeats?: number;
   /** Why a take lane the path named isn't there, warned once the rest lands. */
   missingTakeLane?: string;
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  parsedClipSlot?: AnySlotPosition;
   devicePath?: string;
   devicePathParam?: "path" | "devicePath";
   rackTargetId?: string;

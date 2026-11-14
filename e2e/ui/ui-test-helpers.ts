@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Page, type Route, expect } from "@playwright/test";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // Reuse the console-capture helpers from the live suite so the two suites stay
@@ -22,6 +23,34 @@ export {
 export const BUILT_UI_PATH = fileURLToPath(
   new URL("../../max-for-live-device/chat-ui.html", import.meta.url),
 );
+
+/**
+ * The same UI built with ENABLE_GEN_UI (`npm run ui:build:gen`). The release
+ * UI has no generative-UI panel, so the gen specs serve this one.
+ */
+export const BUILT_GEN_UI_PATH = fileURLToPath(
+  new URL("../../test-reports/gen-ui/chat-ui.html", import.meta.url),
+);
+
+/**
+ * Serve the gen-UI build instead of the release UI. Call after `installStubs`
+ * (the later route wins).
+ * @param page - Playwright page
+ */
+export async function serveGenUi(page: Page): Promise<void> {
+  if (!existsSync(BUILT_GEN_UI_PATH)) {
+    throw new Error(
+      `${BUILT_GEN_UI_PATH} is missing: run \`npm run ui:build:gen\` first.`,
+    );
+  }
+
+  await page.route("**/chat-ui.html*", (route) =>
+    route.fulfill({
+      path: BUILT_GEN_UI_PATH,
+      contentType: "text/html; charset=utf-8",
+    }),
+  );
+}
 
 /** A conversation record shaped like the IndexedDB store expects. Mirrors the
  * fields read by listConversations(); newer fields missing here are filled by
@@ -62,8 +91,8 @@ export function makeConversation(
     updatedAt: 1,
     bookmarked: false,
     provider: "gemini",
-    model: "gemini-3.8-flash",
-    modelLabel: "Gemini 3.8 Flash",
+    model: "gemini-4-carbon",
+    modelLabel: "Gemini 4 Carbon",
     sessionType: "text",
     messages: [],
     ...overrides,
@@ -89,11 +118,74 @@ export async function setupUiTest(
 }
 
 /**
+ * The Installation tab's status reads, and the header badge's: nothing
+ * installed, nothing to offer, and "Remote Control" off. A spec
+ * that wants more registers its own route after this.
+ * @param page - Playwright page
+ */
+async function stubInstallationStatus(page: Page): Promise<void> {
+  // Remote script status (the header badge reads it on load) — not installed,
+  // so no badge. A spec that wants one registers its own route after this.
+  await page.route("**/remote-script", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        userLibrary: null,
+        installed: false,
+        installedVersion: null,
+        bundledVersion: "1.2.0",
+        running: false,
+        runningVersion: null,
+        liveVersion: null,
+        otherOnPort: null,
+        updateAvailable: false,
+        installedNewer: false,
+      }),
+    }),
+  );
+
+  // Device install status (the Installation tab reads it) — a device that
+  // hasn't said where it is, so there is nothing to offer. A spec that wants
+  // more registers its own route after this.
+  await page.route("**/device-install", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        source: null,
+        problem: "unknown-source",
+        userLibrary: null,
+        path: null,
+        state: null,
+        version: "1.2.0",
+        installedVersion: null,
+        otherCopies: [],
+      }),
+    }),
+  );
+
+  await page.route("**/network-access", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ allowNetwork: false }),
+    }),
+  );
+}
+
+/**
  * Install all route stubs and the settings-gate bypass. Must run before the
  * first navigation (addInitScript applies to every subsequent document).
  * @param page - Playwright page
+ * @param options - Stub options
+ * @param options.chatSetUp - Seed a set-up chat (default). False leaves the
+ * browser as a first visit: no stored settings, chat not set up.
  */
-export async function installStubs(page: Page): Promise<void> {
+export async function installStubs(
+  page: Page,
+  { chatSetUp = true }: { chatSetUp?: boolean } = {},
+): Promise<void> {
   // Serve the built single-file UI without a static server. The trailing `*`
   // also matches a deep link's query string (`?settings=installation`).
   await page.route("**/chat-ui.html*", (route) =>
@@ -176,50 +268,15 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
-  // Remote script status (the header badge reads it on load) — not installed,
-  // so no badge. A spec that wants one registers its own route after this.
-  await page.route("**/remote-script", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        userLibrary: null,
-        installed: false,
-        installedVersion: null,
-        bundledVersion: "1.2.0",
-        running: false,
-        runningVersion: null,
-        liveVersion: null,
-        otherOnPort: null,
-        updateAvailable: false,
-        installedNewer: false,
-      }),
-    }),
-  );
-
-  // Device install status (the Installation tab reads it) — a device that
-  // hasn't said where it is, so there is nothing to offer. A spec that wants
-  // more registers its own route after this.
-  await page.route("**/device-install", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        source: null,
-        problem: "unknown-source",
-        userLibrary: null,
-        path: null,
-        state: null,
-        version: "1.2.0",
-        installedVersion: null,
-        otherCopies: [],
-      }),
-    }),
-  );
+  await stubInstallationStatus(page);
 
   // Bypass the first-run settings screen: mark settings configured with a dummy
   // Gemini (text) provider so the app routes straight to the chat screen. No
   // real key is needed — the conversation panel renders regardless.
+  if (!chatSetUp) {
+    return;
+  }
+
   await page.addInitScript(() => {
     localStorage.setItem("producer_pal_settings_configured", "true");
     localStorage.setItem("producer_pal_current_provider", "gemini");
@@ -227,7 +284,7 @@ export async function installStubs(page: Page): Promise<void> {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "",
-        model: "gemini-3.8-flash",
+        model: "gemini-4-carbon",
         thinking: "Default",
         temperature: 1.0,
       }),
@@ -264,6 +321,9 @@ export async function openHistoryPanel(page: Page): Promise<void> {
   await expect(page.getByTestId("conversation-item").first()).toBeVisible();
 }
 
+// Keep in step with DB_VERSION in webui/src/lib/conversation-db-open.ts.
+const CONVERSATIONS_DB_VERSION = 1;
+
 /**
  * Seed the conversations IndexedDB with the given records. Creates the object
  * store if the app hasn't already (idempotent with the app's own open).
@@ -274,41 +334,44 @@ export async function seedConversations(
   page: Page,
   conversations: SeedConversation[],
 ): Promise<void> {
-  await page.evaluate(async (records) => {
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open("producer-pal-conversations", 1);
+  await page.evaluate(
+    async ({ records, version }) => {
+      await new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open("producer-pal-conversations", version);
 
-      req.onupgradeneeded = () => {
-        const db = req.result;
+        req.onupgradeneeded = () => {
+          const db = req.result;
 
-        if (!db.objectStoreNames.contains("conversations")) {
-          const store = db.createObjectStore("conversations", {
-            keyPath: "id",
-          });
+          if (!db.objectStoreNames.contains("conversations")) {
+            const store = db.createObjectStore("conversations", {
+              keyPath: "id",
+            });
 
-          store.createIndex("updatedAt", "updatedAt");
-        }
-      };
-
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction("conversations", "readwrite");
-
-        for (const record of records) {
-          tx.objectStore("conversations").put(record);
-        }
-
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
+            store.createIndex("updatedAt", "updatedAt");
+          }
         };
 
-        tx.onerror = () => reject(tx.error);
-      };
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("conversations", "readwrite");
 
-      req.onerror = () => reject(req.error);
-    });
-  }, conversations);
+          for (const record of records) {
+            tx.objectStore("conversations").put(record);
+          }
+
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+
+          tx.onerror = () => reject(tx.error);
+        };
+
+        req.onerror = () => reject(req.error);
+      });
+    },
+    { records: conversations, version: CONVERSATIONS_DB_VERSION },
+  );
 }
 
 /**
@@ -321,7 +384,17 @@ export async function readConversationsFromDb(
 ): Promise<SeedConversation[]> {
   return page.evaluate(async () => {
     return new Promise<SeedConversation[]>((resolve, reject) => {
-      const req = indexedDB.open("producer-pal-conversations", 1);
+      const req = indexedDB.open("producer-pal-conversations");
+      let missing = false;
+
+      // No version asked for, so a missing DB would be created empty (at v1,
+      // which the app's upgrade would then have to repair). Abort instead.
+      req.onupgradeneeded = (event) => {
+        if (event.oldVersion === 0) {
+          missing = true;
+          req.transaction?.abort();
+        }
+      };
 
       req.onsuccess = () => {
         const db = req.result;
@@ -336,7 +409,7 @@ export async function readConversationsFromDb(
         getAll.onerror = () => reject(getAll.error);
       };
 
-      req.onerror = () => reject(req.error);
+      req.onerror = () => (missing ? resolve([]) : reject(req.error));
     });
   });
 }

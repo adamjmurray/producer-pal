@@ -11,11 +11,12 @@ not doing a day of work and doing it twice.
 
 ## Parts
 
-| File                                            | What's in it                                                               |
-| ----------------------------------------------- | -------------------------------------------------------------------------- |
-| [recorded-runs.md](recorded-runs.md)            | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
-| [scenario-results/](scenario-results/README.md) | Every failure of each recorded run, and what moved between runs            |
-| [wording-changes.md](wording-changes.md)        | Skill wording changes that did and did not work, and where a fragment sits |
+| File                                             | What's in it                                                               |
+| ------------------------------------------------ | -------------------------------------------------------------------------- |
+| [recorded-runs.md](recorded-runs.md)             | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
+| [scenario-results/](scenario-results/README.md)  | Every failure of each recorded run, and what moved between runs            |
+| [wording-changes.md](wording-changes.md)         | Skill wording changes that did and did not work, and where a fragment sits |
+| [decider-comparisons.md](decider-comparisons.md) | Decision models compared as the first eval judge (`--decider`)             |
 
 ## Scenarios that are red on purpose
 
@@ -37,7 +38,7 @@ meet `force` through the clobber warning "at the moment it is relevant, so it
 never reaches for it casually". Runs called `ppal-context` with `force: true` on
 a **first** write, with no skipped write to justify it. Harmless in those runs —
 the content preserved the existing text — but the assumption behind the design
-does not hold.
+does not hold. `force` now only works after a guard has fired for that target.
 
 ## Design assumptions the runs confirmed
 
@@ -150,3 +151,49 @@ restores.
 The general rule: a scenario that reads user state must control **all** of it,
 not just what the run itself added. Diff-based teardown can't remove residue
 that predates the run.
+
+## Reasoning effort moves luna more than wording does
+
+Many of luna's failures share one habit: it says it will act ("correcting it
+now") and ends the turn with no tool call. Codex's high reasoning effort fixes a
+lot of that. On the 7 scenarios luna failed most (Oct 2026, ×3 each):
+
+| scenario                              | default | high      |
+| ------------------------------------- | ------- | --------- |
+| `bar-beat-gallop`                     | 1/3     | 3/3       |
+| `context-memory-update-not-duplicate` | 1/3     | 3/3       |
+| `scene-copy-back-to-back`             | 1/3     | 3/3       |
+| `context-write-layer-memory`          | 3/3     | 2/3       |
+| `automation-arrangement-direct`       | 3/3     | 3/3       |
+| `middle-c-scale-barbeat`              | 3/3     | 3/3       |
+| `drum-transforms`                     | 0/3     | 0/3       |
+| **total**                             | 12/21   | **17/21** |
+
+High costs 2-3× the output tokens and about 1.8× the time; input is about the
+same. These scenarios were picked because luna fails them, so the gain shows the
+direction, not a suite-wide number. The full suite agrees: run 29 (high) passed
+379/390 against run 26's 343/390 at default.
+
+**Evals still send no effort by default,** so each model runs at its provider's
+default, the setting most users get. `--thinking` opts in per model. Compare a
+high-effort run only with another at the same effort.
+
+## Flint is not in the rotation
+
+Flint (`recursivesi/flint`, LM Studio) stays out because its thinking can't be
+turned down, and it only scores well at full length. LM Studio offers only `on`:
+`reasoning_effort`, `chat_template_kwargs.enable_thinking=false`, `/no_think`
+and `max_tokens` are all ignored, and the load dialog's "Reasoning Budget
+Message" is only the text shown when a budget runs out. With the 32,768 local
+output cap it passed 13/18 on the scenarios that had hit the old cap, at about
+4× qwen's time per trial and about 12× the thinking tokens. Revisit if LM Studio
+exposes a reasoning budget.
+
+## Qwen's empty turns came and went
+
+In September 2026 qwen3.8-27b (LM Studio) ended about 14% of its turns with no
+text and no tool call after ~500 reasoning tokens. That was about half its
+failures, and neither the output cap nor prompt size explained it. By 2 November
+it was gone, cause unknown (an LM Studio or template update, or our tool
+changes). If it comes back, the `reasoningText` and `finishReason` saved in the
+results are where to look.

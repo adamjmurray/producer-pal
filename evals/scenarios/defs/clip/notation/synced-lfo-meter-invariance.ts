@@ -42,6 +42,7 @@ import {
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
 import { getLastTransforms } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -160,13 +161,13 @@ export const syncedLfoMeterInvariance: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
     {
       type: "custom",
       description: "lead melody created as an arrangement clip (sync needs it)",
       assert: (turns) => {
         const createCall = getToolCalls(turns, 1).find(
-          (c) => c.name === "ppal-create-clip",
+          (c) => c.name === TOOLS.createClip,
         );
 
         if (!createCall) {

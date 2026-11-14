@@ -325,9 +325,13 @@ export class LiveAPI {
   declare takeLaneIndex: number | null;
   declare deviceIndex: number | null;
   declare timeSignature: string | null;
+  declare isStepSequencerClip: boolean;
+  declare midiClipIsStepSequencer: boolean;
+  declare nonMidiClipIsEnvelope: boolean;
+  declare returnClipSlotIndex: number | null;
   declare getColor: () => string | null;
   declare getName: () => string;
-  declare setColor: (cssColor: string) => void;
+  declare setColor: (cssColor: string, raw?: boolean) => void;
   declare setProperty: (property: string, value: unknown) => void;
   declare setAll: (
     properties: Record<string, unknown>,

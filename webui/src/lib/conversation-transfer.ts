@@ -12,9 +12,9 @@ import {
 import {
   type ConversationRecord,
   listAllConversationSummaries,
+  loadAllConversations,
   loadConversation,
   saveConversation,
-  getConversationDb,
 } from "#webui/lib/conversation-db";
 import { isEnabledToolsMap } from "#webui/lib/utils/enabled-tools";
 
@@ -55,8 +55,7 @@ export async function exportConversations(): Promise<{
   json: string;
   count: number;
 }> {
-  const db = await getConversationDb();
-  const all = (await db.getAll("conversations")) as ConversationRecord[];
+  const all = await loadAllConversations();
   const data: ExportData = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -166,7 +165,9 @@ export async function importConversations(json: string): Promise<ImportResult> {
         record,
         cyclicForkIds.has(record.id as string),
       );
-      const existing = await loadConversation(normalized.id);
+      const existing = await loadConversation(normalized.id, {
+        images: false,
+      });
 
       if (existing && existing.updatedAt >= normalized.updatedAt) {
         ignoredCount++;

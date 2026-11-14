@@ -6,13 +6,13 @@
 /**
  * E2E tests for a Simpler's pitch bend ranges, which only the Producer Pal
  * remote script can reach: ppal-read-device lists them and ppal-update-device
- * writes them. Opt-in like the other remote script suites.
+ * writes them.
  *
  * Uses: racks-test — t0/d0/c0/d0/pC1/c0/d0 is the Simpler "synth-kick" on the
  * Kit's C1 pad. Its ranges are read at run time and put back after each test.
  * See: e2e/live-sets/specs/racks-test-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/params/ppal-simpler-pitch-bend-remote-script
+ * Run with: npm run e2e:mcp -- device/params/ppal-simpler-pitch-bend-remote-script
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";

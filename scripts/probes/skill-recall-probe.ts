@@ -47,6 +47,7 @@ import {
   type SkillRecallProbe,
 } from "./skill-recall-probes.ts";
 import { startSkillProbeServer } from "./skill-recall-server.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 interface ProbeOutcome {
   probe: SkillRecallProbe;
@@ -164,7 +165,7 @@ async function runProbe(
       missing: probe.expect.filter((pattern) => !pattern.test(text)),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     return { probe, reply: `ERROR: ${message}`, missing: probe.expect };
   }

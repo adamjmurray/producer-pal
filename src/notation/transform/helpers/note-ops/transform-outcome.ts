@@ -45,6 +45,8 @@ export function sameNoteValues(a: NoteEvent, b: NoteEvent): boolean {
  * @param roots - For each note an op made, the starting notes it came from
  * @param touched - The notes the transform selected or made
  * @param left - The notes left after the transform
+ * @param flags - Whether any statement got as far as selecting notes, and whether
+ *   any selection, expression or note op failed or was skipped
  * @returns What changed and what was deleted
  */
 export function buildOutcome(
@@ -52,6 +54,7 @@ export function buildOutcome(
   roots: ReadonlyMap<NoteEvent, ReadonlySet<NoteEvent>>,
   touched: ReadonlySet<NoteEvent>,
   left: readonly NoteEvent[],
+  flags: { selected: boolean; failed: boolean },
 ): TransformOutcome {
   const rootsOf = (note: NoteEvent): Iterable<NoteEvent> =>
     roots.get(note) ?? (original.has(note) ? [note] : []);
@@ -88,6 +91,8 @@ export function buildOutcome(
     deleted: removedNotes(groups, alive, left, original),
     original,
     roots,
+    matched: touched,
+    ...flags,
   };
 }
 

@@ -45,10 +45,12 @@ import {
   type DialogWatcher,
 } from "./helpers/open-live-set/open-live-set-dialogs.ts";
 import { nextReadyStreak } from "./helpers/open-live-set/open-live-set-ready.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
-const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
+export const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
 const POLL_INTERVAL_MS = 250;
 // Consecutive successful probes required before the server counts as up. See
 // nextReadyStreak() for why one success alone isn't enough.
@@ -94,6 +96,23 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     watcher.assertClean();
   } finally {
     await watcher.stop();
+  }
+}
+
+/**
+ * Checks whether anything is serving on the MCP port. Cheaper than a full MCP
+ * handshake, which is all the teardown poll needs.
+ * @returns True if the port answered
+ */
+export async function serverIsAnswering(): Promise<boolean> {
+  try {
+    const response = await fetch(new URL("/config", MCP_URL), {
+      signal: AbortSignal.timeout(2000),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -238,23 +257,6 @@ async function waitForServerToStart(watcher: DialogWatcher): Promise<void> {
 }
 
 /**
- * Checks whether anything is serving on the MCP port. Cheaper than a full MCP
- * handshake, which is all the teardown poll needs.
- * @returns True if the port answered
- */
-async function serverIsAnswering(): Promise<boolean> {
-  try {
-    const response = await fetch(new URL("/config", MCP_URL), {
-      signal: AbortSignal.timeout(2000),
-    });
-
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Probes the MCP server once.
  * @returns True if it answered with the tools a loaded Set serves
  */
@@ -272,7 +274,7 @@ async function mcpServerIsReady(): Promise<boolean> {
     const { tools } = await client.listTools();
     const toolNames = tools.map((t) => t.name);
 
-    if (!toolNames.includes("ppal-connect")) {
+    if (!toolNames.includes(TOOLS.connect)) {
       throw new Error("ppal-connect tool not found");
     }
 
@@ -413,15 +415,6 @@ async function runAppleScript(script: string): Promise<string | null> {
   const { output } = await runOsascript(script);
 
   return output;
-}
-
-/**
- * Sleeps for the specified duration.
- * @param ms - Duration in milliseconds
- * @returns A promise that resolves after the specified duration
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // CLI entry point

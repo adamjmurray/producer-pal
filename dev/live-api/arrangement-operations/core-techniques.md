@@ -18,25 +18,27 @@ The holding area position is always dynamic — never hardcoded. A fixed large
 position would permanently bloat the arrangement length, causing unwanted
 zoom-out range and scrolling.
 
-Files: `arrangement-tiling.ts` (`createShortenedClipInHolding`,
-`moveClipFromHolding`)
+Files: `arrangement-holding-clip.ts` (`createShortenedClipInHolding`),
+`arrangement-duplicate-workaround.ts` (`moveClipFromHolding`)
 
 ## Temp Clip Truncation (Edge Trimming)
 
-Ableton's overlap behavior is exploited for shortening:
+Ableton's overlap behavior is exploited to trim or clear other clips (a
+holding-area copy, a split piece, the span a lengthening clip grows into):
 
 1. Create a temporary clip overlapping the edge of an existing clip
-2. Ableton automatically truncates the existing clip at the overlap point
+2. Ableton automatically truncates the existing clip at the overlap point, and
+   removes one the temp clip covers whole
 3. Delete the temporary clip immediately
 
 For audio clips, the temp clip is created via session (since arrangement audio
 creation doesn't support length control). For MIDI, `create_midi_clip` is used
 directly.
 
-Files: `arrangement-tiling-clips.ts` (`createAndDeleteTempClip`),
-`arrangement-length-changes.ts` (`truncateWithTempClip`)
+Files: `scratch-clips.ts` (`createAndDeleteTempClip`), `clear-ahead-of-clip.ts`
+(`clearAheadOfClip`)
 
-## Session-Based Tiling
+## Session-Based Audio Clips at a Length
 
 When you need an arrangement audio clip with a specific length:
 
@@ -50,7 +52,7 @@ When you need an arrangement audio clip with a specific length:
    clips. It never throws; what it couldn't remove goes on the clip's entry
    (`reportScratch`), or is a warning for the song extension, which has none.
 
-Files: `arrangement-tiling-clips.ts` (`createAudioClipInSession`),
+Files: `scratch-clips.ts` (`createAudioClipInSession`),
 `unlooped-lengthening.ts` (`lengthenWarpedUnloopedAudio`)
 
 ## Duplicate Crash Workaround
@@ -75,17 +77,17 @@ the range is still cleared however short.
 This reuses the same holding area + edge trim primitives as the splitting
 algorithm. The workaround is guarded by a disable flag for periodic retesting.
 
-Files: `arrangement-tiling.ts` (`clearClipAtDuplicateTarget`,
+Files: `arrangement-duplicate-workaround.ts` (`clearClipAtDuplicateTarget`,
 `clearOverlappingClip`)
 
 ## Stamping a Session Clip's Automation
 
 Copying a session clip to the arrangement writes its automation into the lane
-over the copy's own span, and nothing else does (arrangement copies, tiles and
+over the copy's own span, and nothing else does (arrangement copies, resizes and
 holding-area moves write none). So at any other length than the clip's own, the
 lane would be wrong: a shortened copy goes through the holding area and writes
-past the song end, and a lengthened one tiles arrangement copies that carry
-none. `createClipsForLength` writes the lane first instead:
+past the song end, and a lengthened one grows past the span its copy wrote.
+`createClipForLength` writes the lane first instead:
 
 1. Copy the session clip to a scratch slot on the destination track
    (`openScratchSlot`, the same slot and scene logic `createAudioClipInSession`

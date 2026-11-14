@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   createTestNote,
@@ -184,7 +184,9 @@ describe("applyTransforms - pitch transforms", () => {
     });
 
     it("does NOT warn for pitch = C4 (full form sets pitch)", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const notes = createTestNote();
 
       applyTransforms(notes, "pitch = C4", 4, 4); // C4 = 72
@@ -195,7 +197,9 @@ describe("applyTransforms - pitch transforms", () => {
     });
 
     it("does NOT warn for the C4 remap shorthand", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const notes = createTestNote({ pitch: 60 });
 
       applyTransforms(notes, "C4", 4, 4); // bare-pitch shorthand remaps to C4 = 72
@@ -206,7 +210,9 @@ describe("applyTransforms - pitch transforms", () => {
     });
 
     it("does NOT warn for a C3: pitch-selected velocity transform", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const notes = createTestNotes([
         { pitch: 60, start_time: 0, velocity: 100 },
         { pitch: 72, start_time: 1, velocity: 100 },
@@ -221,7 +227,9 @@ describe("applyTransforms - pitch transforms", () => {
     });
 
     it("evaluates pitch literals as numbers inside function arguments", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const notes = createTestNotes([
         { pitch: 48, start_time: 0 }, // below C3
         { pitch: 90, start_time: 1 }, // above C5
@@ -242,7 +250,9 @@ describe("applyTransforms - pitch transforms", () => {
     });
 
     it("evaluates min(C3, C5) / clamp(...) pitch-literal args correctly", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const minNotes = createTestNote({ pitch: 100 });
 
       applyTransforms(minNotes, "pitch = min(C3, C5)", 4, 4); // min(60, 84) = 60

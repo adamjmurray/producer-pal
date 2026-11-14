@@ -16,6 +16,12 @@ import {
 export const READ_DETAIL_MAX_WAIT_MS = 3000;
 
 /**
+ * Time a read that comes before a write leaves for the write, so a slow read
+ * gives up early instead of starting the write at the deadline.
+ */
+export const WRITE_AFTER_READ_RESERVE_MS = 3000;
+
+/**
  * How long V8 waits on a remote-script route: its usual wait, cut to what is
  * left of the request's time. V8 must answer before Node's tool timeout, or it
  * goes on creating devices the caller was told timed out, and a retry

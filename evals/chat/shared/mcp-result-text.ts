@@ -14,8 +14,7 @@
  * as their own list rather than concatenated onto the end of it.
  */
 
-/** Prefix `max-api-adapter.ts` puts on every relayed `console.warn`. */
-const WARNING_PREFIX = "WARNING:";
+import { getWarningTexts, WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 
 /**
  * Extract the payload (first text block) from an MCP tool result.
@@ -44,12 +43,7 @@ export function mcpResultText(value: unknown): string {
  * @returns Every `WARNING:`-prefixed text block, in order; empty when there are none
  */
 export function mcpResultWarnings(value: unknown): string[] {
-  return contentBlocks(value)
-    .map((block) => block.text)
-    .filter(
-      (text): text is string =>
-        typeof text === "string" && text.startsWith(WARNING_PREFIX),
-    );
+  return getWarningTexts(contentBlocks(value));
 }
 
 /**
@@ -73,6 +67,28 @@ export function mcpResultInjectedBlocks(value: unknown): string[] {
         text.length > 0 &&
         !text.startsWith(WARNING_PREFIX),
     );
+}
+
+/**
+ * What a recorded tool call keeps beside its payload: the relayed warnings and
+ * the injected context blocks, each present only when non-empty. Every path
+ * that records a tool result spreads this, so a real call and a seeded one
+ * record the same thing.
+ *
+ * @param value - Raw MCP result, or its content array
+ * @returns `warnings` and `injectedBlocks`, left out when empty
+ */
+export function mcpResultExtras(value: unknown): {
+  warnings?: string[];
+  injectedBlocks?: string[];
+} {
+  const warnings = mcpResultWarnings(value);
+  const injectedBlocks = mcpResultInjectedBlocks(value);
+
+  return {
+    ...(warnings.length > 0 && { warnings }),
+    ...(injectedBlocks.length > 0 && { injectedBlocks }),
+  };
 }
 
 /**

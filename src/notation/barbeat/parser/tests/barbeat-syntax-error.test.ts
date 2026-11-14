@@ -5,21 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { parseNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
-
-/**
- * @param notes - bar|beat text that must fail to parse
- * @returns The error message a model would read
- */
-function errorFor(notes: string): string {
-  try {
-    parseNotation(notes);
-  } catch (error) {
-    return errorMessage(error);
-  }
-
-  throw new Error(`"${notes}" parsed`);
-}
+import { errorFor } from "./barbeat-parser-test-helpers.ts";
 
 describe("bar|beat syntax errors", () => {
   it("names where the parse stopped and the text there", () => {
@@ -133,10 +119,21 @@ describe("bar|beat syntax errors", () => {
     },
   );
 
-  it("names no fix for a spaced pipe that has no single fix", () => {
-    expect(errorFor("C3 1|1 | 3")).not.toContain("no spaces");
-    expect(errorFor("C3 | 1")).not.toContain("no spaces");
-    expect(errorFor("v80 | 1|1")).not.toContain("no spaces");
+  it.each([
+    "C3 1|1 | 3",
+    "C3 1|1 |3",
+    "C3 1|1| 3",
+    "C3 1|1|3",
+    "C3 | 1",
+    "v80 | 1|1",
+    "C3 1|1 | 3 D3 1|2",
+  ])("%s → names the pipe rule and guesses no fix", (notes) => {
+    const message = errorFor(notes);
+
+    expect(message).toContain(
+      "a position is one bar|beat, with no spaces around the pipe (1|1)",
+    );
+    expect(message).not.toContain("write ");
   });
 
   it("never suggests an invalid position for a spaced beat 0", () => {

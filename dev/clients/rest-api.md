@@ -8,7 +8,9 @@ to build custom clients using plain HTTP requests without the MCP SDK.
 Served on the same Express server as MCP (default port 3350):
 
 - `GET /api/tools` — lists enabled tools with their JSON Schemas.
-- `POST /api/tools/:toolName` — calls a tool with a JSON body of arguments.
+- `POST /api/tools/:toolName` — calls a tool with a JSON body of arguments. A
+  browser request from a foreign origin (including `Origin: null`) gets a 403
+  before the tool runs; same-origin, localhost and Origin-less callers pass.
 
 The request and response contract (result format, errors, `?format`,
 `?timeoutMs`, per-request settings) is documented in
@@ -22,20 +24,35 @@ cross-origin browser writes.
 
 Fields (all optional; unknown keys are ignored):
 
-- `projectContext`, `sampleFolder`: string or `null` (`null` clears it)
+- `projectContext`: string or `null` (`null` clears it). Capped at 10,000
+  characters, like a `ppal-context` write
 - `smallModelMode`, `jsonOutput`, `liveApiEnabled`: boolean
 - `notation`: one of the notations in `src/shared/notation.ts`
 - `tools`: array of tool names; must be valid for the current `liveApiEnabled`
-- `remoteScriptEnabled`, `remoteScriptMinVersion`: **debug builds only** (a
-  release build ignores them). `false` makes the remote script look uninstalled;
-  a version string replaces the minimum version so a running script looks out of
-  date, `null` clears it
+- `remoteScriptEnabled`, `remoteScriptMinVersion`: test switches for evals and
+  e2e, left out of the user docs. `false` makes the remote script look
+  uninstalled; a version string replaces the minimum version so a running script
+  looks out of date, `null` clears it. Only a client on the same machine may
+  send them: a request from a LAN address, or through an HTTP tunnel (proxy
+  headers or a non-loopback `Host`), gets a 403 and nothing in the body is
+  applied. Best-effort: a raw TCP forwarder (`ssh -R`, socat) can't be told
+  apart
 
 A bad body is refused whole: every field is checked first, a `400` returns
 `{error, fields, validToolNames?}` naming each bad field, and nothing is
 applied. Booleans must be real booleans (`"false"` is a `400`, not true). On
-success it returns the new config. Code: `parseConfigBody()` in
-`src/mcp-server/helpers/http/config-body.ts`, `handleConfigUpdate()` in
+success it returns the new config.
+
+If the device doesn't take a setting (a send to Max fails), the other settings
+are still sent and kept, and the call returns `502` with `{error, fields}`
+naming the fields that failed. Those are rolled back in Node, so `GET /config`
+always matches the device; retry them. A field is all-or-nothing:
+`liveApiEnabled` sends the flag and the tool list, and if either send fails both
+are rolled back and the one that got through is sent back with its old value. If
+that put-back fails too, the reply adds `unrestored` (the fields where the
+device may hold the new value). Code: `emitConfigOutlets()` in
+`src/mcp-server/helpers/http/config/config-outlets.ts`, `parseConfigBody()` in
+`src/mcp-server/helpers/http/config/config-body.ts`, `handleConfigUpdate()` in
 `src/mcp-server/create-express-app.ts`.
 
 ## Security

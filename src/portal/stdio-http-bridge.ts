@@ -18,15 +18,29 @@ import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 import { InFlightClients } from "./update/in-flight-clients.ts";
-import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
+import { isFullConnect } from "./update/full-connect-advice.ts";
+import {
+  answerOfflineCall,
+  isHttpUrl,
+  isSetupCall,
+  MANAGE_TOOL,
+  remoteHost,
+} from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
-import { SETUP_URL } from "./offline/offline-setup-hints.ts";
+import { invalidUrlResponse } from "./offline/offline-responses.ts";
+import {
+  setupDeadline,
+  timeLeft,
+  withinTimeout,
+} from "./setup/setup-deadline.ts";
+import { forwardedSetupTimeout } from "./offline/setup-call-timeout.ts";
 import { type RunningDevice } from "./update/running-device.ts";
 import { answerInstallWhenDeviceOlder } from "./update/answer-install-when-device-older.ts";
 import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
-import { withUpdateHint } from "./update/update-connect-hint.ts";
+import { hintDeadline, withUpdateHint } from "./update/update-connect-hint.ts";
 import {
   type BridgeOptions,
+  callerSmallModelMode,
   requestHeaderTransportOptions,
 } from "./portal-settings.ts";
 
@@ -36,6 +50,7 @@ import {
 // local `as number` does not survive --fix (no-unnecessary-type-assertion
 // deletes it), so the widening lives here instead.
 const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
+const REQUEST_TIMEOUT_CODE: number = ErrorCode.RequestTimeout;
 
 interface CallToolRequest {
   params: {
@@ -55,6 +70,9 @@ export class StdioHttpBridge {
   private httpClient: Client | null = null;
   private inFlight = new InFlightClients();
   private isConnected = false;
+  // Whether a plain ppal-connect has worked here; ppal-manage's update words
+  // its next step by it.
+  private fullConnectSeen = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
   // Whether the client may be holding a cached offline fallback list. Set when
@@ -77,15 +95,18 @@ export class StdioHttpBridge {
   /**
    * The answer to a call while the device is unreachable.
    * @param request - The tool call
+   * @param deadline - When a setup call must be done, as a `now()` time
    * @returns The response
    */
-  private _answerOffline(request: CallToolRequest) {
+  private _answerOffline(request: CallToolRequest, deadline?: number) {
     return answerOfflineCall(
       {
         name: request.params.name,
         args: request.params.arguments ?? {},
         manageOffered: this._manageOffered(),
-        connect: () => this._ensureHttpConnection(),
+        connect: (timeoutMs) => this._ensureHttpConnection(timeoutMs),
+        deadline,
+        remoteHost: remoteHost(this.httpUrl),
       },
       this.offlineDeps,
     );
@@ -94,25 +115,28 @@ export class StdioHttpBridge {
   /**
    * The answer to a ppal-manage call the portal gives itself, device up or not.
    * @param request - The tool call
+   * @param deadline - When a setup call must be done, as a `now()` time
    * @returns The response, or null when the device should answer
    */
-  private async _answerInPortal(request: CallToolRequest) {
+  private async _answerInPortal(request: CallToolRequest, deadline?: number) {
     const args = request.params.arguments ?? {};
     const manageOffered = this._manageOffered();
+    const host = remoteHost(this.httpUrl);
 
     // The device being updated can't answer its own replacement.
     if (isUpdateCall(request.params.name, args, manageOffered)) {
       return await answerUpdateCall(
         args,
-        this._runningDevice(),
+        this._runningDevice(deadline),
         this.offlineDeps,
+        host,
       );
     }
 
     // An older device would install its own older script.
     return await answerInstallWhenDeviceOlder(
-      { name: request.params.name, args, manageOffered },
-      this._runningDevice(),
+      { name: request.params.name, args, manageOffered, remoteHost: host },
+      this._runningDevice(deadline),
       this.offlineDeps,
     );
   }
@@ -122,11 +146,15 @@ export class StdioHttpBridge {
     return this.fallbackTools.tools.some((tool) => tool.name === MANAGE_TOOL);
   }
 
-  /** @returns The running device, as ppal-manage's update sees it */
-  private _runningDevice(): RunningDevice {
+  // A connect with no limit of its own gets the setup call's time left.
+  private _runningDevice(deadline?: number): RunningDevice {
     return {
-      connect: () => this._ensureHttpConnection(),
+      connect: (timeoutMs) =>
+        this._ensureHttpConnection(timeoutMs ?? this._timeLeft(deadline)),
       version: () => this.httpClient?.getServerVersion()?.version,
+      fullConnectSeen: () => this.fullConnectSeen,
+      smallModelMode: () =>
+        callerSmallModelMode(this.options.smallModelMode, this.httpUrl),
       // The next connect replaces the client and handshakes again; calls still
       // on the old one finish first.
       reset: () => {
@@ -136,16 +164,57 @@ export class StdioHttpBridge {
     };
   }
 
-  private _createMisconfiguredUrlResponse() {
-    return formatErrorResponse(`❌ Invalid MCP server URL: "${this.httpUrl.replace(/\/mcp$/, "")}"
+  // Install, add and update share one budget from arrival (clients give up at 60 s).
+  private _setupDeadline(request: CallToolRequest): number | undefined {
+    const { name, arguments: args = {} } = request.params;
 
-The URL must include protocol (e.g. http://localhost:3350).
-Tell the user to check ${SETUP_URL} for configuration help.
-
-(Producer Pal ${VERSION})`);
+    return isSetupCall(name, args, this._manageOffered())
+      ? setupDeadline(this.offlineDeps)
+      : undefined;
   }
 
-  private async _ensureHttpConnection(): Promise<void> {
+  private _timeLeft(deadline?: number): number | undefined {
+    return deadline == null ? undefined : timeLeft(this.offlineDeps, deadline);
+  }
+
+  private _setupBudgetRanOut(deadline: number | undefined, code: unknown) {
+    return (
+      deadline != null &&
+      typeof code === "number" &&
+      code === REQUEST_TIMEOUT_CODE
+    );
+  }
+
+  private _budgetSpent(deadline?: number): boolean {
+    return deadline != null && this.offlineDeps.now() >= deadline;
+  }
+
+  // Explicit timeout rather than the SDK's 60s default, which would sit too
+  // close to the device's ceiling. The upstream client's own deadline still
+  // binds first — this only keeps our leg out of the way. A setup call gets
+  // what is left of its budget instead, so handshake and call share one limit.
+  private async _callOnDevice(
+    client: Client,
+    request: CallToolRequest,
+    deadline?: number,
+  ) {
+    const timeout = this._timeLeft(deadline) ?? CLIENT_TOOL_TIMEOUT_MS;
+    const toolRequest = {
+      name: request.params.name,
+      arguments: request.params.arguments ?? {},
+    };
+
+    return await this.inFlight.run(client, () =>
+      client.callTool(toolRequest, undefined, { timeout }),
+    );
+  }
+
+  private _createMisconfiguredUrlResponse() {
+    return invalidUrlResponse(this.httpUrl);
+  }
+
+  // Unset timeoutMs (tool calls) keeps the SDK's default.
+  private async _ensureHttpConnection(timeoutMs?: number): Promise<void> {
     // Reuse a live client as-is. The settings ride on every request as headers,
     // so there is no device-side state to re-assert here — a device that
     // restarts under us (a fresh one dragged in with default settings, a
@@ -158,10 +227,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
     // a second one. Prevents duplicate Client instantiations when concurrent
     // tools/list and tools/call requests arrive before the first connect resolves.
     if (this.connectionPromise) {
-      return await this.connectionPromise;
+      // Only this caller stops waiting; the connect in flight keeps its own limit.
+      return await withinTimeout(this.connectionPromise, timeoutMs);
     }
 
-    this.connectionPromise = this._doConnect();
+    this.connectionPromise = this._doConnect(timeoutMs);
 
     try {
       await this.connectionPromise;
@@ -170,7 +240,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
   }
 
-  private async _doConnect(): Promise<void> {
+  private async _doConnect(timeoutMs?: number): Promise<void> {
     // Calls already on the old client finish before it closes.
     if (this.httpClient) {
       const old = this.httpClient;
@@ -180,7 +250,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
 
     // Create new connection
-    const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
+    const url = new URL(this.httpUrl); // throws for a bad URL; tool calls refuse one earlier
 
     try {
       // Every setting rides on every request as a header, so they narrow (or
@@ -197,7 +267,22 @@ Tell the user to check ${SETUP_URL} for configuration help.
         version: VERSION,
       });
 
-      await this.httpClient.connect(httpTransport);
+      // The timeout bounds initialize; closing aborts the rest of the handshake,
+      // whose initialized notification has no timeout of its own.
+      const client = this.httpClient;
+      const timer =
+        timeoutMs == null
+          ? undefined
+          : setTimeout(() => void client.close().catch(() => {}), timeoutMs);
+
+      try {
+        await (timeoutMs == null
+          ? client.connect(httpTransport)
+          : client.connect(httpTransport, { timeout: timeoutMs }));
+      } finally {
+        clearTimeout(timer);
+      }
+
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
 
@@ -332,44 +417,57 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
-        const own = await this._answerInPortal(request);
+        // Before anything else: the answers below act on this machine, and they
+        // can't tell which computer a URL they can't read points at.
+        if (!isHttpUrl(this.httpUrl)) {
+          logger.debug("[Bridge] Not an http(s) URL, so not asking it");
+
+          return this._createMisconfiguredUrlResponse();
+        }
+
+        const deadline = this._setupDeadline(request);
+        const budgetEnd = deadline ?? setupDeadline(this.offlineDeps);
+        const own = await this._answerInPortal(request, deadline);
 
         if (own != null) {
           return own;
         }
+
+        const args = request.params.arguments ?? {};
 
         // The client this call is on, if it got that far
         let client: Client | null = null;
 
         // Always try to connect to HTTP server first
         try {
-          await this._ensureHttpConnection();
+          await this._ensureHttpConnection(this._timeLeft(deadline));
           client = this.httpClient as Client;
 
-          const toolRequest = {
-            name: request.params.name,
-            arguments: request.params.arguments ?? {},
-          };
+          // A setup call that used its budget getting connected sends nothing.
+          if (this._budgetSpent(deadline)) {
+            return forwardedSetupTimeout(args, false);
+          }
 
           // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-          // Explicit timeout rather than the SDK's 60s default, which would
-          // sit too close to the device's ceiling. The upstream client's own
-          // deadline still binds first — this only keeps our leg out of the way.
-          const active = client;
-          const result = await this.inFlight.run(active, () =>
-            active.callTool(toolRequest, undefined, {
-              timeout: CLIENT_TOOL_TIMEOUT_MS,
-            }),
-          );
+          const result = await this._callOnDevice(client, request, deadline);
 
           logger.debug(
             `[Bridge] Tool call successful for ${request.params.name}`,
           );
 
+          this.fullConnectSeen ||= isFullConnect(
+            { name: request.params.name, args },
+            result,
+          );
+
           return await withUpdateHint(
             result,
-            { name: request.params.name, manageOffered: this._manageOffered() },
-            this._runningDevice(),
+            {
+              name: request.params.name,
+              manageOffered: this._manageOffered(),
+              remoteHost: remoteHost(this.httpUrl),
+            },
+            this._runningDevice(hintDeadline(this.offlineDeps, budgetEnd)),
           );
         } catch (error) {
           logger.error(
@@ -381,6 +479,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
             error && typeof error === "object" && "code" in error
               ? error.code
               : undefined;
+
+          // A setup call's budget ran out while the device had the request
+          // (a connect that ran out is wrapped, with no code). The connection
+          // is still alive, so isConnected stays set.
+          if (this._setupBudgetRanOut(deadline, errorCode)) {
+            return forwardedSetupTimeout(args, true);
+          }
 
           // A numeric code normally means we connected and got a structured
           // JSON-RPC error — return it to the client. The exception is
@@ -413,14 +518,6 @@ Tell the user to check ${SETUP_URL} for configuration help.
           if (client == null || client === this.httpClient) {
             this.isConnected = false;
           }
-
-          if (errorCode === "ERR_INVALID_URL") {
-            logger.debug(
-              `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
-            );
-
-            return this._createMisconfiguredUrlResponse();
-          }
         }
 
         // Producer Pal is not available: do what can be done without it, or say
@@ -429,7 +526,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Connectivity problem detected. Answering offline`,
         );
 
-        return await this._answerOffline(request);
+        return await this._answerOffline(request, deadline);
       },
     );
 

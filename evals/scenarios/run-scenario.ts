@@ -9,7 +9,11 @@
 
 import { styleText } from "node:util";
 import { formatScenarioHeader, orange } from "#evals/chat/shared/formatting.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
+import { fetchLocalModelInfo } from "./run-scenario/local-model/local-model-info.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { type StatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import {
   createEvalSession,
@@ -19,15 +23,18 @@ import {
 import { isQuietMode } from "./helpers/quiet-mode.ts";
 import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
+import { clearProjectContextBackup } from "./run-scenario/clear-project-context-backup.ts";
+import { startToolOverrideProxy } from "./run-scenario/tool-override-proxy.ts";
 import {
   computeTotalUsage,
   runMessageTurns,
+  TurnTransportError,
 } from "./run-scenario/message-turns.ts";
 import {
   mergeConfigs,
   resolveLiveSetPath,
-  validateConfig,
 } from "./run-scenario/scenario-config.ts";
+import { type DeciderSettings } from "./helpers/judge/decider-first-judge.ts";
 import {
   runAllAssertions,
   type JudgeOverride,
@@ -38,6 +45,7 @@ import {
   type EvalTurnResult,
   type EvalProvider,
 } from "./types.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface RunScenarioOptions {
   provider: EvalProvider;
@@ -49,7 +57,13 @@ export interface RunScenarioOptions {
   /** Label for the run environment (see `envLabel`), used in output/results. */
   envLabel: string;
   usage?: boolean;
+  /** Max output tokens per model call; absent uses the provider's default. */
+  outputTokens?: number;
+  /** Thinking level for the model's turns; absent keeps the provider default. */
+  thinking?: ThinkingLevel;
   skipJudge?: boolean;
+  /** Judge with the decider first, escalating to the LLM judge (see `--decider`). */
+  decider?: DeciderSettings;
   /** Skip the post-failure self-reflection turn (default: inject one). */
   skipReflection?: boolean;
   /** Seed the opening connect turn instead of paying the model for it
@@ -72,16 +86,18 @@ export async function runScenario(
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
+  let proxy: StatelessMcpServer | null = null;
   const instructions =
     scenario.instructions === null
       ? undefined
       : (scenario.instructions ?? SYSTEM_INSTRUCTION);
+  const liveSetPath = resolveLiveSetPath(scenario.liveSet);
 
   try {
+    clearProjectContextBackup(liveSetPath);
+
     // 1. Open Live Set and wait for MCP
     if (!skipLiveSetOpen) {
-      const liveSetPath = resolveLiveSetPath(scenario.liveSet);
-
       if (!isQuietMode()) {
         console.log(
           "\n" + styleText("gray", "Opening Live Set: " + liveSetPath),
@@ -94,19 +110,35 @@ export async function runScenario(
     // 2. Apply the run environment (CLI-driven) merged with scenario-bound config
     const mergedConfig = mergeConfigs(scenario.config, options.runEnv);
 
-    validateConfig(mergedConfig);
     await setConfig(mergedConfig);
 
     // 3. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
 
-    logScenarioHeader(scenario, provider, effectiveModel, options.envLabel);
+    logScenarioHeader(
+      scenario,
+      provider,
+      effectiveModel,
+      options.envLabel,
+      options.thinking,
+    );
+
+    if (scenario.toolOverrides != null) {
+      proxy = await startToolOverrideProxy(
+        MCP_URL,
+        scenario.toolOverrides,
+        mergedConfig.smallModelMode === true,
+      );
+    }
 
     session = await createEvalSession({
       provider,
       model,
       instructions,
       usage: options.usage,
+      thinking: options.thinking,
+      outputTokens: options.outputTokens,
+      ...(proxy != null && { mcpUrl: proxy.url }),
     });
 
     // 3b. Scenario-specific setup (e.g. clear stale clip slots, so a run
@@ -130,26 +162,37 @@ export async function runScenario(
       judgeOverride,
       options.skipJudge ?? false,
       options.skipReflection ?? false,
+      options.decider,
     );
+
+    const totalDurationMs = Date.now() - startTime;
+    const localModel =
+      provider === "local"
+        ? await fetchLocalModelInfo(effectiveModel)
+        : undefined;
 
     return {
       scenario,
       configProfileId: options.envLabel,
       instructions,
+      ...thinkingField(options.thinking),
       turns,
       assertions: assertionResults,
-      totalDurationMs: Date.now() - startTime,
+      totalDurationMs,
       totalUsage: computeTotalUsage(turns),
+      ...(localModel && { localModel }),
     };
   } catch (error) {
     return {
       scenario,
       configProfileId: options.envLabel,
       instructions,
+      ...thinkingField(options.thinking),
       turns,
       assertions: [],
       totalDurationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
+      ...(error instanceof TurnTransportError && { infraError: true }),
     };
   } finally {
     if (session) {
@@ -163,9 +206,7 @@ export async function runScenario(
         console.warn(
           styleText(
             "yellow",
-            `teardown failed for "${scenario.id}": ${
-              error instanceof Error ? error.message : String(error)
-            }`,
+            `teardown failed for "${scenario.id}": ${errorMessage(error)}`,
           ),
         );
       }
@@ -173,12 +214,42 @@ export async function runScenario(
       await session.close();
     }
 
-    // Reset config to defaults after scenario completes
-    try {
-      await resetConfig();
-    } catch {
-      // Ignore reset errors - scenario result is already determined
-    }
+    await resetAfterScenario(proxy, liveSetPath);
+  }
+}
+
+/**
+ * Undo what a scenario changed outside its MCP session. Failures are only
+ * logged: the scenario result is already determined.
+ *
+ * @param proxy - The scenario's tool-override proxy, if it had one
+ * @param liveSetPath - Path to the scenario's .als file
+ */
+async function resetAfterScenario(
+  proxy: StatelessMcpServer | null,
+  liveSetPath: string,
+): Promise<void> {
+  try {
+    await proxy?.close();
+  } catch {
+    // Nothing left to serve
+  }
+
+  try {
+    await resetConfig();
+  } catch {
+    // Ignore reset errors
+  }
+
+  try {
+    clearProjectContextBackup(liveSetPath);
+  } catch (error) {
+    console.warn(
+      styleText(
+        "yellow",
+        `could not delete the project context backup: ${errorMessage(error)}`,
+      ),
+    );
   }
 }
 
@@ -189,12 +260,14 @@ export async function runScenario(
  * @param provider - LLM provider being used
  * @param effectiveModel - Resolved model id
  * @param label - Active run-environment label ("default" is hidden)
+ * @param thinking - Thinking level, when one was set
  */
 function logScenarioHeader(
   scenario: EvalScenario,
   provider: EvalProvider,
   effectiveModel: string,
   label: string,
+  thinking: ThinkingLevel | undefined,
 ): void {
   console.log(
     formatScenarioHeader(
@@ -209,6 +282,10 @@ function logScenarioHeader(
     console.log(`${orange("|")} ${styleText("gray", "Environment:")} ${label}`);
   }
 
+  if (thinking != null) {
+    console.log(`${orange("|")} ${styleText("gray", "Thinking:")} ${thinking}`);
+  }
+
   const instructionsLabel =
     scenario.instructions !== undefined
       ? scenario.instructions == null
@@ -219,6 +296,16 @@ function logScenarioHeader(
   console.log(
     `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
   );
+}
+
+/**
+ * @param thinking - Thinking level, when one was set
+ * @returns The result field recording it, or nothing
+ */
+function thinkingField(thinking: ThinkingLevel | undefined): {
+  thinking?: string;
+} {
+  return thinking == null ? {} : { thinking };
 }
 
 export { type JudgeOverride };

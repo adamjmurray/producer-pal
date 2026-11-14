@@ -59,7 +59,7 @@ export function registerLiveSet(): void {
  * @param extraProps - Clip properties merged over the MIDI defaults
  */
 export function registerTakeLaneSource(
-  extraProps: Record<string, number> = {},
+  extraProps: Record<string, unknown> = {},
 ): void {
   registerMockObject("tl_src_clip", {
     path: livePath.track(0).takeLane(0).arrangementClip(0),

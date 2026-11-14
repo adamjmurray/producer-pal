@@ -6,7 +6,7 @@
 /**
  * The eval run environment — the assembled "settings panel" state that mirrors
  * the Max for Live / webui device settings (small-model toggle, JSON-output
- * toggle, tool subset, Live API toggle). The CLI builds one RunEnv from flags
+ * toggle, tool subset, Live API toggle, the Live version). The CLI builds one RunEnv from flags
  * and applies it to every scenario via setConfig; a test declares `requires`
  * and is SKIPPED (not failed) when the active RunEnv can't satisfy it, keeping
  * scores apples-to-apples.
@@ -14,6 +14,8 @@
 
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { liveAppMajorVersion } from "../helpers/open-live-set/live-app-major-version.ts";
+import { ABLETON_APP } from "../open-live-set.ts";
 
 /** Full tool name of the opt-in Direct Live API tool (not in TOOL_NAMES). */
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
@@ -28,6 +30,8 @@ export interface RunEnv {
   tools: string[];
   /** Whether the opt-in Direct Live API tool is enabled. */
   liveApiEnabled: boolean;
+  /** Major version of the Live `ABLETON_APP` names, or null if unreadable. */
+  liveMajorVersion: number | null;
 }
 
 /** CLI flag inputs used to assemble a RunEnv. */
@@ -41,7 +45,7 @@ export interface RunEnvOptions {
 /**
  * Build the run environment from CLI flags. Mirrors the device settings panel:
  * the operator picks small-model mode, output format, a tool subset, and whether
- * the Live API tool is on; then every scenario runs against that environment.
+ * the Live API tool is on (the Live version comes from `ABLETON_APP`, read once); then every scenario runs against that environment.
  *
  * @param options - Parsed CLI flags
  * @returns The assembled run environment
@@ -54,6 +58,7 @@ export function buildRunEnv(options: RunEnvOptions): RunEnv {
     jsonOutput: options.json ?? false,
     tools: resolveTools(options.tools, liveApiEnabled),
     liveApiEnabled,
+    liveMajorVersion: liveAppMajorVersion(ABLETON_APP),
   };
 }
 

@@ -6,15 +6,15 @@
 /**
  * E2E tests for which rack macros are mapped, which only the Producer Pal
  * remote script can say: ppal-read-device names them, and ppal-update-device's
- * `macroCount` names the mapped ones it hides. Opt-in like the other remote
- * script suites.
+ * `macroCount` names the mapped ones it hides.
  *
  * Uses: racks-test — t0/d0/c0/d0 is the "Kit" Drum Rack with macros 1-7
  * mapped. The visible count is read at run time, and put back after each test.
  * See: e2e/live-sets/specs/racks-test-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/params/ppal-rack-macros-remote-script
+ * Run with: npm run e2e:mcp -- device/params/ppal-rack-macros-remote-script
  */
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { afterEach, describe, expect, it } from "vitest";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
@@ -108,6 +108,28 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("rack macros: which are mapped", () => {
     }
   }
 
+  it("answers a drum_pads path on a rack that isn't a Drum Rack in its own entry", async () => {
+    // t0/d0 is the Instrument Rack that holds the Kit.
+    const port = String(await resolveRemoteScriptPort());
+    const response = await fetch(`http://127.0.0.1:${port}/device/macros`, {
+      method: "POST",
+      body: JSON.stringify({
+        device_paths: [
+          "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0",
+          "live_set tracks 0 devices 0 chains 0 devices 0",
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({
+      racks: [
+        { error: "device_path has nothing at 'drum_pads' here" },
+        { mapped: MAPPED },
+      ],
+    });
+  });
+
   it("names the mapped macros, hidden ones apart", async () => {
     const { count, mapped, hiddenMapped, hasMappings } = await readMacros();
 
@@ -143,6 +165,56 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("rack macros: which are mapped", () => {
     expect((await readMacros()).mapped).toStrictEqual(
       MAPPED.filter((n) => n <= before),
     );
+  });
+
+  /**
+   * The macro numbers the Kit's params list.
+   * @returns Each listed param's macro number, in order
+   */
+  async function listedMacros(): Promise<number[]> {
+    await sleep(150);
+
+    const kit = parseToolResult<{ parameters: { name: string }[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: KIT, include: ["params"] },
+      }),
+    );
+
+    return kit.parameters.flatMap(({ name }) => {
+      const match = /(?:^|\()Macro (\d+)\)?$/.exec(name);
+
+      return match == null ? [] : [Number(match[1])];
+    });
+  }
+
+  it("lists the visible macros and the hidden ones that are mapped, and no other", async () => {
+    const { count } = await readMacros();
+    const listed = await listedMacros();
+
+    expect(listed).toStrictEqual(
+      Array.from({ length: 16 }, (_, i) => i + 1).filter(
+        (n) => n <= count || MAPPED.includes(n),
+      ),
+    );
+  });
+
+  it("keeps listing a hidden macro that is mapped when the count is lowered", async () => {
+    const before = (await readMacros()).count;
+
+    try {
+      await setCount(4);
+
+      expect(await listedMacros()).toStrictEqual([1, 2, 3, 4, 5, 6, 7]);
+    } finally {
+      await setCount(before);
+    }
+  });
+
+  it("keeps every hidden macro in the list while the remote script is off", async () => {
+    await setConfig({ remoteScriptEnabled: false });
+
+    expect(await listedMacros()).toHaveLength(16);
   });
 
   it("falls back to saying there are mappings while the remote script is off", async () => {

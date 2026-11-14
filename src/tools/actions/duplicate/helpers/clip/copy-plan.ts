@@ -73,15 +73,16 @@ export function copiesOverSource(
  * is the source's own length. Every length was checked before any copy, so
  * this one parses.
  *
- * A take-lane source ignores it, because every copy of one is re-created and a
- * re-created copy is never resized. The span is then the source's own, which is
- * exact for MIDI; an audio copy takes its sample's length, unknown until it is
- * made. Ordering a lane copy against a span nothing writes is how it lands in
- * the safe bucket while really truncating the source.
+ * A take-lane source's copies are re-created at its own length and resized
+ * after. On a lane growing clears nothing, so such a copy clears exactly the
+ * source's length. Promoted to the main lane, growing clears ahead, so it
+ * reaches the longer of the two. Ordering a copy against a shorter span is how
+ * it lands in the safe bucket while really overwriting a source.
  * @param source - The clip being copied
  * @param arrangementLength - The raw arrangementLength param
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
+ * @param toTakeLane - Whether the copy lands on a take lane
  * @returns Span in beats
  */
 export function copySpanBeats(
@@ -89,16 +90,25 @@ export function copySpanBeats(
   arrangementLength: string | undefined,
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
+  toTakeLane: boolean,
 ): number {
-  if (arrangementLength == null || isTakeLaneClip(source)) {
+  if (arrangementLength == null) {
     return knownCopyLength(source);
   }
 
-  return parseArrangementLength(
+  const asked = parseArrangementLength(
     arrangementLength,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
+
+  if (!isTakeLaneClip(source)) {
+    return asked;
+  }
+
+  const own = knownCopyLength(source);
+
+  return toTakeLane ? own : Math.max(own, asked);
 }
 
 /**
@@ -142,11 +152,13 @@ interface CopyPlan {
  * whole comma-separated string as one color.
  * @param requested - Resolved destinations, null where the copy can't be made
  * @param positionsInBeats - Start positions, in Ableton beats
+ * @param startParam - The param the caller wrote the positions in
  * @returns The copies to make, and how many were asked for
  */
 export function planCopies(
   requested: (ArrangementTrack | null)[],
   positionsInBeats: number[],
+  startParam = "arrangementStart",
 ): CopyPlan {
   // toPath and arrangementStart each set a copy count. One value covers every
   // copy; two real lists have to agree, and a call where they don't is refused
@@ -155,7 +167,7 @@ export function planCopies(
   // see `list-pairing.ts`.
   requireSameLength(
     { param: "toPath", count: requested.length },
-    { param: "arrangementStart", count: positionsInBeats.length },
+    { param: startParam, count: positionsInBeats.length },
   );
 
   const copies = Math.max(requested.length, positionsInBeats.length);
@@ -166,7 +178,7 @@ export function planCopies(
     shortfall: "were not made",
   });
   const positions = pairValues(positionsInBeats, copies, {
-    param: "arrangementStart",
+    param: startParam,
     noun: "position",
     item: "copy",
     shortfall: "were not made",

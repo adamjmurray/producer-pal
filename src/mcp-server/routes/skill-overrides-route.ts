@@ -18,7 +18,7 @@ import {
   type SkillSlotName,
 } from "#src/skills/skill-slots.ts";
 import { requestBody } from "../helpers/http/request-body.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/browser/request-origin.ts";
 import {
   deleteSkillOverride,
   listSkillSlotStates,

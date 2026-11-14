@@ -15,6 +15,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
+  checkInsertionPath,
   resolveDrumPadFromPath,
   resolveInsertionPath,
   resolvePathToLiveApi,
@@ -23,8 +24,10 @@ import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   namedTargets,
+  sentParam,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts";
@@ -49,6 +52,8 @@ import {
 interface WrapDevicesOptions {
   ids?: string;
   path?: string;
+  /** The names `ids` and `path` were sent under, for an error */
+  names?: TargetNames;
   toPath?: string;
   name?: string;
 }
@@ -58,6 +63,7 @@ interface WrapDevicesOptions {
  * @param options - The options
  * @param options.ids - Comma-separated device ID(s)
  * @param options.path - Comma-separated device path(s)
+ * @param options.names - The names the ids and paths were sent under
  * @param options.toPath - Target path for the new rack
  * @param options.name - Name for the new rack
  * @returns Info about the created rack
@@ -66,12 +72,13 @@ interface WrapDevicesOptions {
 export function wrapDevicesInRack({
   ids,
   path,
+  names,
   toPath,
   name,
 }: WrapDevicesOptions): WrapResult {
   const reasons: string[] = [];
   const devices = uniqueDevices(
-    resolveDevices(namedTargets({ id: ids, path }), reasons),
+    resolveDevices(namedTargets({ id: ids, path, ...names }), reasons),
   );
 
   refuseEmptyWrap(devices, reasons);
@@ -184,7 +191,9 @@ function resolveDevices(
 
     try {
       const device =
-        param === "id" ? LiveAPI.from(value) : resolveDeviceFromPath(value);
+        param === "id"
+          ? LiveAPI.from(value)
+          : resolveDeviceFromPath(value, sentParam(item));
 
       if (!device?.exists()) {
         reasons.push(`no device at "${value}"`);
@@ -218,6 +227,9 @@ function resolveDevices(
  * @throws Error when the path names nowhere a rack can go
  */
 function rackDestination(toPath: string): RackDestination {
+  // Refused here, in the same words, before resolving makes any chain.
+  checkInsertionPath(toPath, "toPath");
+
   const { container, position, namesNothing, createdChains, madeChains } =
     resolveInsertionPath(toPath, "toPath");
 
@@ -238,14 +250,15 @@ function rackDestination(toPath: string): RackDestination {
  * Resolve a device from a simplified path, read-only: the insertion resolver
  * would make missing chains before the wrap finds nothing to wrap.
  * @param path - Device path
+ * @param label - The param the path was sent under
  * @returns Whatever LiveAPI object the path names, or null if none
  * @throws Error when the path can't name a device (`t0`, `c+`, `d+`)
  */
-function resolveDeviceFromPath(path: string): LiveAPI | null {
-  const resolved = resolvePathToLiveApi(path);
+function resolveDeviceFromPath(path: string, label: string): LiveAPI | null {
+  const resolved = resolvePathToLiveApi(path, label);
 
   if (resolved.namesNothing != null) {
-    throw new Error(nothingAtPath(path, resolved.namesNothing));
+    throw new Error(nothingAtPath(path, resolved.namesNothing, label));
   }
 
   if (resolved.targetType !== "drum-pad") {

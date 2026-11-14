@@ -7,7 +7,7 @@ import { isValidNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   resolveEnumIndex,
   strForValue,
-} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+} from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import {
   extractMaxPanValue,
   isDivisionParam,
@@ -20,7 +20,7 @@ import {
   isDisplayCollapsed,
   readNumericRange,
   sentinelRawValue,
-} from "#src/tools/shared/device/helpers/param-numeric-range.ts";
+} from "#src/tools/shared/device/helpers/params/param-numeric-range.ts";
 import {
   PARAM_DISABLED_REASON,
   isParamEnabled,

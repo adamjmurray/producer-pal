@@ -153,6 +153,9 @@ After testing succeeds:
    No `--tag next` dance: the version is a GA version, so `latest` is where it
    belongs.
 
+5. Publish to the MCP Registry, now that the npm version is live. See
+   [Publishing to the MCP Registry](#publishing-to-the-mcp-registry).
+
 ## Publishing to npm
 
 The npm package provides the portal script (`producer-pal-portal.js`) so users
@@ -211,3 +214,47 @@ cd ..
   - `producer-pal-logo.svg` (logo for npm page)
 - Build artifacts in `npm/` are gitignored (never committed)
 - Version numbers in root `package.json` and `npm/package.json` should match
+
+## Publishing to the MCP Registry
+
+`npm/server.json` lists Producer Pal in the official
+[MCP Registry](https://registry.modelcontextprotocol.io) as the `producer-pal`
+npm package (stdio). The Registry stores metadata only, so it must come
+**after** `npm publish` of the same version: it checks the published package's
+`mcpName` (in `npm/package.json`) against the `name` in `server.json`.
+
+The bump script keeps `server.json`'s `version` (top level and per package) in
+step with `npm/package.json`, and `src/test/meta/versions/` checks the name,
+version and package agree. Versions are immutable once published, so publish
+only GA versions, never `-rcN`.
+
+**One-time setup:**
+
+```sh
+brew install mcp-publisher   # or download a release binary
+mcp-publisher --help
+```
+
+**Each release, right after `npm publish`:**
+
+```sh
+cd npm
+mcp-publisher validate       # validates against the registry (needs network)
+mcp-publisher login github   # device flow: open the URL, enter the code
+mcp-publisher publish
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.adamjmurray/producer-pal"
+```
+
+GitHub login only allows names starting with `io.github.adamjmurray/`, which is
+why the server is named that way. Troubleshooting: "Registry validation failed
+for package" means the published npm version has no `mcpName`; "Invalid or
+expired Registry JWT token" means run `login github` again.
+
+**Not listed:** the `.mcpb` (needs a per-release download URL and SHA-256 in
+`server.json`, which are only known after the build) and a remote entry (the
+server runs locally inside Live).
+
+**Automating later:** the Registry documents a GitHub Action flow: run
+`npm publish`, then install a pinned `mcp-publisher`, `login github-oidc` (no
+secret, needs `id-token: write`), and `publish`, triggered on version tags. It
+isn't set up here because the npm publish is manual.

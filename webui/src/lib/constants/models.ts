@@ -126,15 +126,15 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
-  { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
+  { value: "claude-fable-5-2", label: "Claude Fable 5.2" },
   { value: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   OTHER_MODEL_OPTION,
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
-  { value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
   { value: "gemini-4-argon", label: "Gemini 4 Argon" },
-  { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
+  { value: "gemini-4-carbon", label: "Gemini 4 Carbon" },
+  { value: "gemini-4-hydrogen", label: "Gemini 4 Hydrogen" },
   {
     value: GEMINI_REALTIME_MODEL,
     label: "Gemini 3.8 Live (Voice)",
@@ -174,8 +174,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
   {
-    value: "anthropic/claude-fable-5.1",
-    label: "[Paid] Anthropic Claude Fable 5.1",
+    value: "anthropic/claude-fable-5.2",
+    label: "[Paid] Anthropic Claude Fable 5.2",
   },
   {
     value: "anthropic/claude-haiku-5.5",
@@ -186,12 +186,16 @@ export const OPENROUTER_MODELS = [
   { value: "openai/gpt-6-astra", label: "[Paid] OpenAI GPT-6 Astra" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
-    value: "google/gemini-3.8-flash",
-    label: "[Paid] Google Gemini 3.8 Flash",
-  },
-  {
     value: "google/gemini-4-argon",
     label: "[Paid] Google Gemini 4 Argon",
+  },
+  {
+    value: "google/gemini-4-carbon",
+    label: "[Paid] Google Gemini 4 Carbon",
+  },
+  {
+    value: "google/gemini-4-hydrogen",
+    label: "[Paid] Google Gemini 4 Hydrogen",
   },
   { value: "qwen/qwen3.8-max-prime", label: "[Paid] Qwen 3.8 Max Prime" },
   {
@@ -228,14 +232,15 @@ export const VERCEL_MODELS = [
     label: "Anthropic Claude Sonnet 5.5",
   },
   { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
-  { value: "anthropic/claude-fable-5.1", label: "Anthropic Claude Fable 5.1" },
+  { value: "anthropic/claude-fable-5.2", label: "Anthropic Claude Fable 5.2" },
   { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
   { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
   { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
   { value: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
-  { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
+  { value: "google/gemini-4-carbon", label: "Google Gemini 4 Carbon" },
+  { value: "google/gemini-4-hydrogen", label: "Google Gemini 4 Hydrogen" },
   { value: "alibaba/qwen3.8-max-prime", label: "Qwen 3.8 Max Prime" },
   {
     value: "deepseek/deepseek-v4.1-flash-1017",

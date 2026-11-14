@@ -8,7 +8,7 @@
 
 import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
-import { type DeviceFileStatus } from "../setup/device-file-status.ts";
+import { type DeviceFileStatus } from "../setup/device-file/device-file-status.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 
 /** What the guidance knows about this machine. */

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -15,16 +15,13 @@ import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import {
   droppedDuplicatesNote,
   transformsIgnoredNoNotesNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   buildTransformClipContext,
   type TransformClipContextInput,
 } from "#src/tools/clip/helpers/transform-clip-context.ts";
-import {
-  readLiveSetScaleMask,
-  type ScaleMaskReader,
-} from "#src/tools/clip/helpers/scale-mask.ts";
+import { type CallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   type ClipPlayRegion,
   clipPlayRegion,
@@ -39,7 +36,11 @@ import {
   noteClipReason,
   noteLanded,
 } from "../entries/clip-reasons.ts";
-import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
+import {
+  reportTransformsChangedNothing,
+  type StagedTransforms,
+} from "./transform-no-change-report.ts";
+import { mutedNotesHit, reportNoteWriteEffects } from "./muted-note-effects.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -56,6 +57,7 @@ import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
+ * @param staged - The hand-over between duplicateLoop's stages, if it is one
  * @returns Note update result with count, transformed and deletedNotes
  */
 export function applyTransformsToExistingNotes(
@@ -66,6 +68,7 @@ export function applyTransformsToExistingNotes(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
+  staged?: StagedTransforms,
 ): NoteUpdateResult {
   // Read the same window as read-clip, so a pickup before the clip start is
   // transformed too — `preTransforms: "v0"` must clear it.
@@ -130,15 +133,20 @@ export function applyTransformsToExistingNotes(
 
   // No visible note shared a slot with a muted one before, so every muted note
   // a transform landed on was replaced by it.
-  reportMutedNoteEffects(clip, reasons, {
+  reportNoteWriteEffects(clip, reasons, {
     written,
     muted: mutedNotes,
     replaced: mutedNotesHit(notes, mutedNotes).size,
   });
 
+  const outcome = combineOutcomes(preOutcome, postOutcome);
+  const counts = countTransforms(outcome, written);
+
+  reportTransformsChangedNothing(reasons, clip.id, outcome, counts, staged);
+
   return {
     noteCount: getClipNoteCount(clip),
-    ...countTransforms(combineOutcomes(preOutcome, postOutcome), written),
+    ...counts,
     putOutside: countPutOutsideRegion(region, written, mutedNotes, visible),
   };
 }
@@ -193,8 +201,8 @@ export function noteDroppedDuplicates(
  * @param clipCount - Total number of clips in the operation
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @param readScaleMask - Reads the scale mask; pass a reader shared across the
- *   call so a batch asks Live once
+ * @param scale - What the call asked Live about scales, shared across the call
+ *   so a batch asks Live once
  * @returns ClipContext with clip-level metadata
  */
 export function buildClipContext(
@@ -203,7 +211,7 @@ export function buildClipContext(
   clipCount: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  readScaleMask: ScaleMaskReader = readLiveSetScaleMask,
+  scale: CallScale,
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
@@ -219,7 +227,7 @@ export function buildClipContext(
     ...noteTimeRegion(clip),
     timeSigNumerator,
     timeSigDenominator,
-    scalePitchClassMask: readScaleMask(),
+    scalePitchClassMask: scale.clipMask(clip),
   });
 }
 
@@ -250,7 +258,7 @@ function noteTimeRegion(
 /**
  * Whether the update edits the clip's notes: any of notes, transforms, or
  * preTransforms. These are also the only reason to build the clip context, and
- * building it reads the Live Set's scale — so a batch that only renames clips
+ * building it reads the clip's scale — so a batch that only renames clips
  * skips that read instead of paying it once per clip.
  * @param notationString - New notes to merge, or undefined
  * @param transformString - Transforms applied after the merge, or undefined

@@ -5,9 +5,10 @@
 
 ## Decision
 
-Node sends tool calls that may change the Set to V8 one at a time; reads run
-alongside them. A write that held a track or slot number across a wait could
-land on another track once a parallel call shifted it. How the queue works is in
+Node sends tool calls that may change the Set to V8 one at a time. A read waits
+for the writes that arrived before it, and runs alongside later calls. A write
+that held a track or slot number across a wait could land on another track once
+a parallel call shifted it. How the queue works is in
 `dev/architecture/write-queue.md`.
 
 ## Rejected
@@ -17,6 +18,11 @@ land on another track once a parallel call shifted it. How the queue works is in
   site to miss. The queue fixes the whole class in one place.
 - **Checking identity in the remote script** (send the clip's identity with each
   envelope request). It closes the gap for envelopes only.
+- **Reads skipping the queue** (the first version). A read sent in parallel with
+  a write saw it half done: two of the three envelopes it was writing.
+- **Holding only the reads that wait on the remote script.** Node can't tell
+  them from the args: a Simpler or hosted plug-in read looks like any other
+  device read.
 - **Starting a queued write's timeout when its turn comes.** A call could then
   wait several timeouts in the queue and outlast the MCP client's own timeout.
 

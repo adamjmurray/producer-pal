@@ -9,11 +9,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
-import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { clearArrangementRange } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { clearArrangementRange } from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/arrangement-move.ts";
 import { newClipReasons } from "../../helpers/entries/clip-reasons.ts";
@@ -114,7 +114,8 @@ describe("a lane view after a write that threw", () => {
       context(),
     ).catch((error: unknown) => error);
 
-    expect(String(result)).toContain("Live refused loop_end");
+    // The clearing landed before the throw, so the clip keeps its entry.
+    expect(JSON.stringify(result)).toContain("Live refused loop_end");
 
     track?.call.mockClear();
     clearArrangementRange(

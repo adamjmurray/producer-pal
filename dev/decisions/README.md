@@ -46,18 +46,22 @@ What would reopen it (optional).
 
 ## Index
 
-| ADR                                                     | Decision                                                            |
-| ------------------------------------------------------- | ------------------------------------------------------------------- |
-| [0003](0003-notation-grammar-duplication.md)            | Deliberately duplicate the note-value grammar                       |
-| [0005](0005-automation-via-live-api.md)                 | Automation goes through the Live API, not offline `.als` rewriting  |
-| [0006](0006-encrypted-keys-no-backend-proxy.md)         | Provider keys encrypted at rest in the browser; no backend proxy    |
-| [0007](0007-no-native-ableton-extension.md)             | Do not build a native Ableton extension                             |
-| [0008](0008-device-disable-not-a-kill-switch.md)        | Disabling the M4L device is not a server kill switch (won't fix)    |
-| [0012](0012-no-chord-symbols-in-bar-beat.md)            | No chord symbols in bar\|beat; they stay Stark-only                 |
-| [0018](0018-tolerated-but-untaught-syntax.md)           | Accept the syntax models already write, without teaching it         |
-| [0021](0021-string-caps-stay-out-of-the-schema.md)      | String caps over 2000 never reach the JSON Schema                   |
-| [0022](0022-audio-work-lives-in-companion-skills.md)    | Audio generation and analysis live in companion skills              |
-| [0023](0023-live-api-objects-are-pooled-per-request.md) | LiveAPI objects are released and pooled, never held across requests |
-| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)  | `setProperty` stays out of ppal-live-api                            |
-| [0030](0030-leaving-a-conversation-stops-the-turn.md)   | Leaving a conversation stops the turn, with a warning               |
-| [0059](0059-write-calls-run-one-at-a-time.md)           | Write calls run one at a time, queued in Node                       |
+| ADR                                                          | Decision                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| [0003](0003-notation-grammar-duplication.md)                 | Deliberately duplicate the note-value grammar                       |
+| [0005](0005-automation-via-live-api.md)                      | Automation goes through the Live API, not offline `.als` rewriting  |
+| [0006](0006-encrypted-keys-no-backend-proxy.md)              | Provider keys encrypted at rest in the browser; no backend proxy    |
+| [0007](0007-no-native-ableton-extension.md)                  | Do not build a native Ableton extension                             |
+| [0008](0008-device-disable-not-a-kill-switch.md)             | Disabling the M4L device is not a server kill switch (won't fix)    |
+| [0012](0012-no-chord-symbols-in-bar-beat.md)                 | No chord symbols in bar\|beat; they stay Stark-only                 |
+| [0018](0018-tolerated-but-untaught-syntax.md)                | Accept the syntax models already write, without teaching it         |
+| [0021](0021-string-caps-stay-out-of-the-schema.md)           | String caps over 2000 never reach the JSON Schema                   |
+| [0022](0022-audio-work-lives-in-companion-skills.md)         | Audio generation and analysis live in companion skills              |
+| [0023](0023-live-api-objects-are-pooled-per-request.md)      | LiveAPI objects are released and pooled, never held across requests |
+| [0027](0027-setproperty-stays-out-of-ppal-live-api.md)       | `setProperty` stays out of ppal-live-api                            |
+| [0030](0030-leaving-a-conversation-stops-the-turn.md)        | Leaving a conversation stops the turn, with a warning               |
+| [0059](0059-write-calls-run-one-at-a-time.md)                | Write calls run one at a time, queued in Node                       |
+| [0060](0060-cli-parsing-stays-on-commander.md)               | CLI parsing stays on commander, not `util.parseArgs()`              |
+| [0061](0061-one-generic-plugin-wrapper.md)                   | One generic wrapper hosts every plug-in                             |
+| [0062](0062-jev-judges-evals-only.md)                        | Jev judges evals only, asked with scores                            |
+| [0063](0063-no-wait-for-a-plugin-label-after-a-raw-write.md) | No wait for a plug-in label after a raw write                       |

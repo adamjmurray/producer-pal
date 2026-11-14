@@ -31,6 +31,7 @@ import { resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
 import { type ChatAdapter } from "./use-chat-types";
+import { errorMessage } from "#src/shared/error-message";
 
 /**
  * Build the model/inference override a spawned worker runs under from the
@@ -78,7 +79,7 @@ function buildSubagentConfig(
   } catch (error) {
     console.warn(
       "Subagent preset could not be built; subagents will inherit " +
-        `the current settings. ${error instanceof Error ? error.message : String(error)}`,
+        `the current settings. ${errorMessage(error)}`,
     );
 
     return undefined;

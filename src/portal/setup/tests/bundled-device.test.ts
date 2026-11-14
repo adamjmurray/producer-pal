@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   BUNDLED_DEVICE_FILENAME,
   findBundledDevice,
-} from "../bundled-device.ts";
+} from "../bundled-device/bundled-device.ts";
 
 let portalDir: string;
 

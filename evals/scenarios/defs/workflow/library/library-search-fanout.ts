@@ -14,15 +14,15 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
   type ToolCall,
 } from "../../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_LIBRARY = "ppal-library";
+const TOOL_LIBRARY = TOOLS.library;
 
 /** The request names three sounds, so a fan-out should carry three queries. */
 const SOUNDS_ASKED_FOR = 3;
@@ -121,10 +121,6 @@ export const librarySearchFanout: EvalScenario = {
   // Reads the library and writes nothing to the Set.
   reuseLiveSet: true,
 
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
-
   messages: [
     "Connect to Ableton Live",
     // Three different sounds, each with its own filter — the case the fan-out
@@ -133,7 +129,7 @@ export const librarySearchFanout: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: SEARCH_TURN },
     assertFannedOut(),
 

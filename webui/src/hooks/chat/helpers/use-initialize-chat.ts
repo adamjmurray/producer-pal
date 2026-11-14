@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type MutableRef, useCallback, useRef } from "preact/hooks";
+import { type RefObject } from "preact";
+import { useCallback, useRef } from "preact/hooks";
 import {
   connectClient,
   resolveInitConnection,
@@ -41,8 +42,8 @@ export interface UseInitializeChatDeps<
   extraParams?: Record<string, unknown>;
   /** The conversation's locked settings (read for resolution, written on lock). */
   active: UseActiveSettingsReturn;
-  clientRef: MutableRef<TClient | null>;
-  pendingInitRef: MutableRef<Promise<void> | null>;
+  clientRef: RefObject<TClient | null>;
+  pendingInitRef: RefObject<Promise<void> | null>;
 }
 
 /** What {@link useInitializeChat} hands back to the parent chat hook. */

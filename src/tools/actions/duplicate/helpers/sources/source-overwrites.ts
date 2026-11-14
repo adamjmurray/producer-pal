@@ -12,6 +12,7 @@
 import { takeLaneLabel } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   pathEntries,
+  returnSlotPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -221,7 +222,17 @@ function clipSourcePlace(
   turn: number,
 ): SourcePlace[] {
   const { id, named } = share;
-  // A clip that was found always sits on a regular track.
+
+  if (clip.returnTrackIndex != null && clip.returnClipSlotIndex != null) {
+    const place = returnSlotPath(
+      clip.returnTrackIndex,
+      clip.returnClipSlotIndex,
+    );
+
+    return [{ id, named, turn, place, spans: () => null }];
+  }
+
+  // Any other clip that was found sits on a regular track.
   const trackIndex = clip.trackIndex as number;
   const sceneIndex = clip.sceneIndex;
 

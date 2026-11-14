@@ -78,7 +78,7 @@ export function categorizeDevices(
 
   return {
     midiEffects,
-    instrument: instruments.length > 0 ? (instruments[0] ?? null) : null,
+    instrument: instruments[0] ?? null,
     audioEffects,
     ...(instruments.length > 1 && {
       detail: `track has ${instruments.length} instruments (${instruments.map(resultLabel).join(", ")}), which is unusual — expected 0 or 1`,

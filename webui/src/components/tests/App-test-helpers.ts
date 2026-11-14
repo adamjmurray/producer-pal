@@ -59,7 +59,7 @@ export const mockSettingsHook = {
 
   saveSettings: vi.fn().mockResolvedValue(true),
   cancelSettings: vi.fn(),
-  settingsConfigured: true,
+  chatSetUp: true,
   saveError: null,
 
   smallModelMode: false,

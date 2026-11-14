@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { copyKickToTrack1 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   LIVE_FAILURE,
   failOnSet,
@@ -20,9 +21,9 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -194,7 +195,7 @@ describe("duplicate - drum pad", () => {
 
     expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
     expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("refuses to call copy_pad on a rack with no pads, which crashes Live", async () => {
@@ -279,7 +280,7 @@ describe("duplicate - drum pad", () => {
       path: "t0/d0/pD1",
       detail: expect.stringContaining("layers on top of them"),
     });
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("names only the chains the copy created", async () => {
@@ -339,9 +340,7 @@ describe("duplicate - drum pad", () => {
       properties: { can_have_drum_pads: [1], has_drum_pads: [1] },
     });
 
-    await expect(
-      duplicate({ type: "drum-pad", id: "pad36", toPath: "t1/d0/pD1" }),
-    ).rejects.toThrow("different racks");
+    await expect(copyKickToTrack1()).rejects.toThrow("different racks");
     expectNoCopy(rack);
   });
 
@@ -362,7 +361,7 @@ describe("duplicate - drum pad", () => {
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("refuses the catch-all pad, which copy_pad cannot address", async () => {
@@ -602,7 +601,7 @@ describe("duplicate - drum pad", () => {
 
       expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
       expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
-      expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect(consoleMock.emitWarning).toHaveBeenCalledWith(
         `${param} "null" names nothing`,
       );
     },

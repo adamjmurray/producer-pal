@@ -16,7 +16,7 @@
  * Both are the MIDI JSON counterparts to barbeat's interpret/format seams.
  */
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import { NOTE_VALUE_DENOMINATORS } from "#src/notation/barbeat/barbeat-config.ts";
 import {
   codeNoteToNoteEvent,
@@ -30,7 +30,7 @@ import {
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 const DEFAULT_DENOMINATOR = 4;
 
@@ -151,7 +151,7 @@ function warnDroppedNotes(reasons: string[]): void {
   const detail =
     hidden > 0 ? `${listed.join(", ")}, and ${hidden} more` : listed.join(", ");
 
-  console.warn(
+  emitWarning(
     `ignoring ${reasons.length} invalid MIDI JSON ${
       reasons.length === 1 ? "note" : "notes"
     }: ${detail}`,

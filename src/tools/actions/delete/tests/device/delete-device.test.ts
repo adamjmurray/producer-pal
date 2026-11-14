@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -178,7 +178,9 @@ describe("deleteObject device deletion", () => {
   });
 
   it("reports a malformed device path while still deleting valid ones", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     const { parents } = setupDeviceMocks(["good_device", "bad_device"], {
       good_device: String(livePath.track(0).device(0)),
@@ -213,7 +215,9 @@ describe("deleteObject device deletion", () => {
   });
 
   it("refuses a lone device whose Live path is malformed", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
     const id = "device_0";
 
     setupDeviceMocks(id, "invalid_path_without_devices");

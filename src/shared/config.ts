@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.5.0";
+export const VERSION = "2.6.0-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -34,6 +34,45 @@ export const DEFAULT_MCP_PORT = 3350;
 export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
 export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
 
+const LOOPBACK_NAME =
+  /^(?:[^.:/@\s]+\.)*localhost(?::\d+)?$|^\[::1\](?::\d+)?$/i;
+const IPV4_HOST = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?::\d+)?$/;
+// One character class, no nested or adjacent repeats: linear on a hostile Host.
+const IPV6_HOST = /^\[([0-9a-f:.]+)\](?::\d+)?$/i;
+
+/**
+ * Whether a `host[:port]` string (a Host header or a URL's `host`) names this
+ * machine: localhost, `*.localhost`, 127.0.0.0/8 or [::1]. Strict on purpose:
+ * not parsed as a URL, so `evil.com@localhost` and `localhost/x` are refused.
+ *
+ * @param host - Host with an optional port
+ * @returns true when the host is a loopback name or address
+ */
+export function isLoopbackHost(host: string): boolean {
+  return (
+    LOOPBACK_NAME.test(host) ||
+    (isIpLiteralHost(host) && host.startsWith("127."))
+  );
+}
+
+/**
+ * Whether a `host[:port]` string is an IP address literal (v4 or bracketed v6)
+ * rather than a DNS name. Unlike a name, a literal can't be rebound to another
+ * address.
+ *
+ * @param host - Host with an optional port
+ * @returns true for a dotted-quad IPv4 or a bracketed IPv6 literal
+ */
+export function isIpLiteralHost(host: string): boolean {
+  const v4 = IPV4_HOST.exec(host);
+
+  if (v4 != null) {
+    return v4.slice(1).every((octet) => Number(octet) <= 255);
+  }
+
+  return IPV6_HOST.exec(host)?.[1]?.includes(":") === true;
+}
+
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
 
@@ -44,7 +83,9 @@ export const MIN_LIVE_VERSION = "12.3.0";
  *
  * This is the project's canonical "same position" epsilon. It is used for
  * note-collision dedupe, v0 deletion matching, serializer time-grouping (the
- * round-trip floor), locator-time matching, and start-marker comparisons.
+ * round-trip floor), locator-time matching, start-marker comparisons, and the
+ * arrangement edge/length comparisons (clip edges and split points, which must
+ * agree on one margin).
  *
  * It is specifically a POSITION-equality tolerance. It is deliberately NOT
  * shared with the other 0.001-magnitude tolerances in the codebase, which are
@@ -58,6 +99,12 @@ export const MIN_LIVE_VERSION = "12.3.0";
  * together.
  */
 export const SAME_TIME_EPSILON = 0.001;
+
+/**
+ * Margin for comparing a beat position to the 32-bit float Live stores for it:
+ * far below one tick, so anything over it is Live moving the position.
+ */
+export const LIVE_FLOAT_EPSILON = 1e-6;
 
 // --- Tool-call timeouts ---
 
@@ -136,6 +183,15 @@ export function resolveSystemInstruction(override?: string | null): string {
  * case-insensitive and Express's `req.get` matches accordingly.
  */
 export const SMALL_MODEL_MODE_HEADER = "x-producer-pal-small-model-mode";
+
+/**
+ * Where the device's initialize result carries its small-model setting, as
+ * `capabilities.experimental[SMALL_MODEL_MODE_CAPABILITY].smallModelMode`. The
+ * portal reads it over /mcp because the DNS-rebinding guard refuses GET /config
+ * on a Host it doesn't trust (a custom tunnel domain), while /mcp gets through.
+ * Clients ignore unknown experimental capabilities, so no model sees it.
+ */
+export const SMALL_MODEL_MODE_CAPABILITY = "producerPal";
 
 /**
  * Resolve the effective small-model mode for one request from its header value,
@@ -361,3 +417,91 @@ export function resolvePortalVersion(
  * Any value passes; presence is the whole signal.
  */
 export const BRIEFING_REQUEST_HEADER = "x-producer-pal-briefing";
+
+// --- /config wire shape ---
+//
+// `notation` is a plain string because this file stays import-free (see top):
+// narrow it with `isNotation`, or intersect `{ notation: Notation }`.
+
+/** What GET /config answers with. */
+export interface ProducerPalConfig {
+  projectContext: string;
+  smallModelMode: boolean;
+  notation: string;
+  jsonOutput: boolean; // true = JSON, false = compact (default)
+  liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
+  // Undocumented test switch (evals and e2e, same-machine requests only): false
+  // makes the remote script look uninstalled. POST /config only; not a device
+  // setting, so it is never sent to Max. A debug build lists it from the start,
+  // a release build once set.
+  remoteScriptEnabled?: boolean;
+  // Test switch, like remoteScriptEnabled: a version string replaces the
+  // minimum remote script version, so a running script can look out of date.
+  // Listed only while set.
+  remoteScriptMinVersion?: string;
+  tools: string[];
+}
+
+/** What POST /config accepts: any of the settings. */
+export type ProducerPalConfigUpdate = Partial<
+  Omit<ProducerPalConfig, "remoteScriptMinVersion" | "liveApiForcedOn">
+> & {
+  /** A version string makes a running script look older than it; null clears it. */
+  remoteScriptMinVersion?: string | null;
+};
+
+// The local model proxy: a browser can't call a model server on this computer
+// that sends no CORS headers (DwarfStar's ds4-server, for one), so the chat UI
+// asks the Node server to make the call.
+
+/** The proxy's route on the Producer Pal server. */
+export const LOCAL_MODEL_PROXY_PATH = "/local-model-proxy";
+
+// The target travels in a header, not the query string or path, so the model
+// server's own path and query pass through untouched. A custom header also
+// can't be sent by a plain cross-site form or image request.
+export const LOCAL_MODEL_URL_HEADER = "x-local-model-url";
+
+/** Set on a response the proxy itself made, to tell it from the model server's. */
+export const LOCAL_MODEL_PROXY_ERROR_HEADER = "x-producer-pal-proxy-error";
+
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * Parse a URL the proxy may forward to: http or https, no credentials, and a
+ * host of exactly `localhost`, `127.0.0.1` or `[::1]` (any port). URL parsing
+ * decides the host, so `http://127.0.0.1@evil.com` and
+ * `http://localhost.evil.com` are other hosts and refused.
+ *
+ * @param url - The URL to check
+ * @returns The parsed URL, or null when the proxy must not forward to it
+ */
+export function parseLocalModelUrl(url: string): URL | null {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return null;
+  }
+
+  const allowed =
+    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+    parsed.username === "" &&
+    parsed.password === "" &&
+    LOOPBACK_HOSTNAMES.has(parsed.hostname);
+
+  return allowed ? parsed : null;
+}
+
+/**
+ * Whether a URL names a server on this computer that the proxy may forward to.
+ * The chat UI uses this to decide when to go through the proxy.
+ *
+ * @param url - The URL to check
+ * @returns true when {@link parseLocalModelUrl} accepts it
+ */
+export function isLocalModelUrl(url: string): boolean {
+  return parseLocalModelUrl(url) != null;
+}

@@ -20,6 +20,7 @@ import {
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import {
+  type FoldedTargets,
   type TargetParams,
   foldTargetParams,
   targetCount,
@@ -44,7 +45,7 @@ export interface UpdateSceneArgs {
 /** An update-scene call, read once and refused if it was written wrong. */
 export interface SceneCall {
   /** The target params, folded onto `id` and `path` */
-  targets: TargetParams;
+  targets: FoldedTargets;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
   /** The targets, ids first, each as the caller wrote it */
@@ -84,7 +85,7 @@ export function parseSceneCall(args: UpdateSceneArgs): SceneCall {
   const targets = foldTargetParams({ id, ids, path, paths });
 
   if (targetCount(targets) === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("scene"));
   }
 
   // Before the no-write refusal: a list with a hole is the first thing wrong.

@@ -13,7 +13,7 @@ import {
   readSkillSlotState,
   writeSkillOverride,
 } from "#src/mcp-server/helpers/skill-overrides-store.ts";
-import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import { nodeWarn } from "#src/mcp-server/node-for-max-logger.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
@@ -28,10 +28,10 @@ import {
 } from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 vi.mock(import("node:fs"), async (importOriginal) => {
@@ -87,7 +87,7 @@ describe("readSkillOverrides", () => {
           fragments: { "barbeat-standard": "good override" },
           disabled: [],
         });
-        expect(warn).toHaveBeenCalledWith(
+        expect(nodeWarn).toHaveBeenCalledWith(
           expect.stringContaining("stark-standard.md"),
         );
       },
@@ -103,7 +103,7 @@ describe("readSkillOverrides", () => {
           fragments: {},
           disabled: [],
         });
-        expect(warn).toHaveBeenCalledWith(
+        expect(nodeWarn).toHaveBeenCalledWith(
           expect.stringContaining("stark-standard.md"),
         );
       },

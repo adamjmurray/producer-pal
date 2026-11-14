@@ -12,6 +12,7 @@ import {
   screen,
   fireEvent,
 } from "@testing-library/preact";
+import { useState } from "preact/hooks";
 import { type Mock, describe, expect, it, vi } from "vitest";
 import {
   type ModelSelectorProps,
@@ -27,7 +28,7 @@ function renderModelSelector(
   const result = render(
     <ModelSelector
       provider={props.provider ?? "gemini"}
-      model={props.model ?? "gemini-3.5-flash-lite"}
+      model={props.model ?? "gemini-4-hydrogen"}
       setModel={setModel}
     />,
   );
@@ -44,7 +45,7 @@ describe("ModelSelector", () => {
   it("renders with correct selected model", () => {
     renderModelSelector();
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
-      "gemini-3.5-flash-lite",
+      "gemini-4-hydrogen",
     );
   });
 
@@ -54,7 +55,7 @@ describe("ModelSelector", () => {
       screen.getByRole("option", { name: /^Gemini 4 Argon$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /^Gemini 3\.8 Flash$/ }),
+      screen.getByRole("option", { name: /^Gemini 4 Carbon$/ }),
     ).toBeDefined();
   });
 
@@ -62,9 +63,9 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-3.8-flash");
-    expect(options[1]!.value).toBe("gemini-4-argon");
-    expect(options[2]!.value).toBe("gemini-3.5-flash-lite");
+    expect(options[0]!.value).toBe("gemini-4-argon");
+    expect(options[1]!.value).toBe("gemini-4-carbon");
+    expect(options[2]!.value).toBe("gemini-4-hydrogen");
   });
 
   it("triggers setModel callback on change", () => {
@@ -74,10 +75,10 @@ describe("ModelSelector", () => {
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-4-argon");
   });
 
-  it("can select gemini-3.8-flash", () => {
+  it("can select gemini-4-carbon", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-3.8-flash", setModel);
+    expectModelSelected("gemini-4-carbon", setModel);
   });
 
   describe("OpenAI provider", () => {
@@ -171,7 +172,7 @@ describe("ModelSelector", () => {
         model: "gpt-4",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., openai\/gpt-oss/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., openai\/gpt-oss/), {
         target: { value: "claude-3-opus" },
       });
       expect(setModel).toHaveBeenCalledWith("claude-3-opus");
@@ -192,7 +193,7 @@ describe("ModelSelector", () => {
         model: "llama-3.1-70b",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
         target: { value: "qwen-2.5-72b" },
       });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
@@ -226,7 +227,7 @@ describe("ModelSelector", () => {
         target: { value: "OTHER" },
       });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-4-carbon/),
       ).toBeDefined();
     });
 
@@ -236,16 +237,80 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., gemini-4-carbon/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
     });
 
+    it("keeps the custom input open when typing passes through a preset name", () => {
+      function Harness() {
+        const [model, setModel] = useState("my-model");
+
+        return (
+          <ModelSelector provider="gemini" model={model} setModel={setModel} />
+        );
+      }
+
+      render(<Harness />);
+
+      const placeholder = /e.g., gemini-4-carbon/;
+
+      fireEvent.input(screen.getByPlaceholderText(placeholder), {
+        target: { value: "gemini-4-hydrogen" },
+      });
+      expect(
+        (screen.getByPlaceholderText(placeholder) as HTMLInputElement).value,
+      ).toBe("gemini-4-hydrogen");
+
+      fireEvent.input(screen.getByPlaceholderText(placeholder), {
+        target: { value: "gemini-4-hydrogen-2" },
+      });
+      expect(
+        (screen.getByPlaceholderText(placeholder) as HTMLInputElement).value,
+      ).toBe("gemini-4-hydrogen-2");
+    });
+
+    it("keeps a typed model in the custom input after switching providers and back", () => {
+      function Harness({ provider }: { provider: "gemini" | "openai" }) {
+        const [models, setModels] = useState({
+          gemini: "my-model",
+          openai: "gpt-6-luna",
+        });
+
+        return (
+          <ModelSelector
+            provider={provider}
+            model={models[provider]}
+            setModel={(m) => setModels((prev) => ({ ...prev, [provider]: m }))}
+          />
+        );
+      }
+
+      const { rerender } = render(<Harness provider="gemini" />);
+
+      fireEvent.input(screen.getByPlaceholderText(/e.g., gemini-4-carbon/), {
+        target: { value: "gemini-4-hydrogen" },
+      });
+      rerender(<Harness provider="openai" />);
+      rerender(<Harness provider="gemini" />);
+
+      expect(
+        (
+          screen.getByPlaceholderText(
+            /e.g., gemini-4-carbon/,
+          ) as HTMLInputElement
+        ).value,
+      ).toBe("gemini-4-hydrogen");
+      expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+        "OTHER",
+      );
+    });
+
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-3.8-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-4-carbon/),
       ).toBeDefined();
       expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
         "OTHER",

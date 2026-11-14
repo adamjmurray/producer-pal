@@ -40,11 +40,12 @@ this.set("color", (r << 16) | (g << 8) | b);
 
 So you can ask for _"make the drums dark purple"_ and it just works.
 
-There's a wrinkle. Live snaps colors to a **fixed palette of about 70
-swatches**, so the color you ask for isn't always the color you get. A thin
-wrapper hands back a different number and leaves the AI confused. Producer Pal
-reads the color back after setting it, and when Live has snapped it, puts the
-color it landed on in that clip's own result
+There's a wrinkle. Live only has a **fixed palette of 70 swatches**, so the
+color you ask for isn't always the color you get. Live's own snapping picks odd
+swatches (a purple can land as pink-red), so Producer Pal picks the swatch that
+looks closest before writing. A thin wrapper hands back a different number and
+leaves the AI confused. Producer Pal puts the color it landed on in that clip's
+own result
 ([`landed-color.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/landed-color.ts)):
 
 ```json
@@ -114,7 +115,7 @@ them and a real setting becomes unreachable.
 
 So Producer Pal finds where the numbers actually stop, reports that as the
 range, and names the odd one out separately
-([`param-numeric-range.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-numeric-range.ts)):
+([`param-numeric-range.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/params/param-numeric-range.ts)):
 
 ```json
 {
@@ -135,8 +136,8 @@ In Live's UI you hit **⌘E** to cut a clip in two. The Live API exposes **no
 split operation at all**. There is no `split_clip`, and the properties you'd
 reach for to fake it are walled off:
 
-- You can't shorten a clip by writing its `end_time`. For warped, looped clips
-  the arrangement length is effectively **immutable** once the clip exists.
+- You can't resize a clip by writing its `end_time`. The workarounds that do
+  resize one keep it a single clip; none of them cuts it in two.
 - You can't create an audio clip _in the arrangement_ with a specific length.
   `Track.create_audio_clip` takes a position but no length; only Session view's
   `ClipSlot.create_audio_clip` can be sized after the fact.
@@ -179,7 +180,7 @@ drop on the boundary, and Live won't create an audio clip without a real audio
 **file** to point at. There's no "empty audio clip."
 
 So Producer Pal generates its own: a tiny
-[silent WAV file](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/silent-wav-generator.ts):
+[silent WAV file](https://github.com/adamjmurray/producer-pal/blob/main/src/mcp-server/rpc/silent-wav-generator.ts):
 0.1 seconds of 44.1 kHz, 16-bit mono silence, about 8.8 KB, written once to a
 temp directory and reused. It's built by hand, byte by byte (RIFF header, `fmt`
 chunk, and a `data` chunk that's simply all zeros):

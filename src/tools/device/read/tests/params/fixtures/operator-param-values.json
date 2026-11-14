@@ -1,0 +1,1732 @@
+{
+  "id": "173",
+  "path": "t3/d1/c0/d1",
+  "type": "instrument: Operator",
+  "abCompare": "a",
+  "parameters": [
+    {
+      "id": "185",
+      "name": "Device On",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "186",
+      "name": "Algorithm",
+      "value": "Alg. 10",
+      "options": [
+        "Alg. 1",
+        "Alg. 2",
+        "Alg. 3",
+        "Alg. 4",
+        "Alg. 5",
+        "Alg. 6",
+        "Alg. 7",
+        "Alg. 8",
+        "Alg. 9",
+        "Alg. 10",
+        "Alg. 11"
+      ]
+    },
+    {
+      "id": "187",
+      "name": "Transpose",
+      "value": 12,
+      "min": -48,
+      "max": 48,
+      "unit": "semitones"
+    },
+    {
+      "id": "188",
+      "name": "PB Range",
+      "value": 2,
+      "min": 0,
+      "max": 24,
+      "unit": "semitones"
+    },
+    {
+      "id": "189",
+      "name": "Volume",
+      "value": -19,
+      "min": -70,
+      "max": 6,
+      "unit": "dB"
+    },
+    {
+      "id": "190",
+      "name": "Panorama",
+      "value": 0,
+      "min": -1,
+      "max": 1,
+      "unit": "pan"
+    },
+    { "id": "191", "name": "Pan < Key", "value": 0, "min": 0, "max": 100 },
+    { "id": "192", "name": "Pan < Rnd", "value": 0, "min": 0, "max": 100 },
+    {
+      "id": "193",
+      "name": "Tone",
+      "value": 56,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "194",
+      "name": "Spread",
+      "value": 23,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "195",
+      "name": "Glide On",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "196",
+      "name": "Glide Time",
+      "value": 60.3,
+      "min": 0.1,
+      "max": 10000,
+      "unit": "ms"
+    },
+    {
+      "id": "197",
+      "name": "Osc-A On",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    { "id": "198", "name": "A Coarse", "value": 0.5, "min": 0.5, "max": 48 },
+    { "id": "199", "name": "A Fine", "value": 0, "min": 0, "max": 1000 },
+    { "id": "200", "name": "A Freq<Vel", "value": 0, "min": -100, "max": 100 },
+    {
+      "id": "201",
+      "name": "A Quantize",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "202",
+      "name": "A Fix On",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "203",
+      "name": "A Fix Freq",
+      "value": 10,
+      "min": 10,
+      "max": 2000,
+      "unit": "Hz",
+      "state": "inactive"
+    },
+    {
+      "id": "204",
+      "name": "A Fix Freq Mul",
+      "value": 1,
+      "min": 0,
+      "max": 10,
+      "state": "inactive"
+    },
+    {
+      "id": "205",
+      "name": "Osc-A Level",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "206",
+      "name": "Osc-A Retrig",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "207",
+      "name": "Osc-A Phase",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "208",
+      "name": "Osc-A Lev < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "209",
+      "name": "Osc-A Lev < Key",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "210",
+      "name": "Osc-A Wave",
+      "value": "User",
+      "options": [
+        "Sine",
+        "Sine 4 Bit",
+        "Sine 8 Bit",
+        "Saw 3",
+        "Saw 4",
+        "Saw 6",
+        "Saw 8",
+        "Saw 16",
+        "Saw 32",
+        "Saw 64",
+        "Saw D",
+        "Square 3",
+        "Square 4",
+        "Square 6",
+        "Square 8",
+        "Square 16",
+        "Square 32",
+        "Square 64",
+        "Square D",
+        "Triangle",
+        "Noise Looped",
+        "Noise White",
+        "User"
+      ]
+    },
+    {
+      "id": "211",
+      "name": "Osc-A Feedb",
+      "value": 51,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "212",
+      "name": "Osc-A < Pe",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "213",
+      "name": "Osc-A < LFO",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "214",
+      "name": "Ae Attack",
+      "value": 1.84,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms",
+      "enabled": false,
+      "state": "disabled"
+    },
+    {
+      "id": "215",
+      "name": "Ae Init",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "216",
+      "name": "Ae Decay",
+      "value": 3830,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "217",
+      "name": "Ae Peak",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "218",
+      "name": "Ae Sustain",
+      "value": -2.5,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "219",
+      "name": "Ae Release",
+      "value": 37,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "220",
+      "name": "Ae Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"]
+    },
+    {
+      "id": "221",
+      "name": "Ae Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "222",
+      "name": "Ae Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "223",
+      "name": "Ae R < Vel",
+      "value": -10,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "224",
+      "name": "Osc-B On",
+      "value": "On",
+      "options": ["Off", "On"],
+      "enabled": false,
+      "state": "disabled"
+    },
+    { "id": "225", "name": "B Coarse", "value": 2, "min": 0.5, "max": 48 },
+    { "id": "226", "name": "B Fine", "value": 3, "min": 0, "max": 1000 },
+    { "id": "227", "name": "B Freq<Vel", "value": 0, "min": -100, "max": 100 },
+    {
+      "id": "228",
+      "name": "B Quantize",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "229",
+      "name": "B Fix On",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "230",
+      "name": "B Fix Freq",
+      "value": 100,
+      "min": 10,
+      "max": 2000,
+      "unit": "Hz",
+      "state": "inactive"
+    },
+    {
+      "id": "231",
+      "name": "B Fix Freq Mul",
+      "value": 1,
+      "min": 0,
+      "max": 10,
+      "state": "inactive"
+    },
+    {
+      "id": "232",
+      "name": "Osc-B Level",
+      "value": -22,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "enabled": false,
+      "state": "disabled"
+    },
+    {
+      "id": "233",
+      "name": "Osc-B Retrig",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "234",
+      "name": "Osc-B Phase",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "235",
+      "name": "Osc-B Lev < Vel",
+      "value": 75,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "236",
+      "name": "Osc-B Lev < Key",
+      "value": -66,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "237",
+      "name": "Osc-B Wave",
+      "value": "User",
+      "options": [
+        "Sine",
+        "Sine 4 Bit",
+        "Sine 8 Bit",
+        "Saw 3",
+        "Saw 4",
+        "Saw 6",
+        "Saw 8",
+        "Saw 16",
+        "Saw 32",
+        "Saw 64",
+        "Saw D",
+        "Square 3",
+        "Square 4",
+        "Square 6",
+        "Square 8",
+        "Square 16",
+        "Square 32",
+        "Square 64",
+        "Square D",
+        "Triangle",
+        "Noise Looped",
+        "Noise White",
+        "User"
+      ]
+    },
+    {
+      "id": "238",
+      "name": "Osc-B Feedb",
+      "value": 28,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "239",
+      "name": "Osc-B < Pe",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "240",
+      "name": "Osc-B < LFO",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "241",
+      "name": "Be Attack",
+      "value": 1.39,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms"
+    },
+    {
+      "id": "242",
+      "name": "Be Init",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "243",
+      "name": "Be Decay",
+      "value": 11800,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "244",
+      "name": "Be Peak",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "245",
+      "name": "Be Sustain",
+      "value": -4.4,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "246",
+      "name": "Be Release",
+      "value": 13.8,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "247",
+      "name": "Be Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"]
+    },
+    {
+      "id": "248",
+      "name": "Be Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "249",
+      "name": "Be Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "250",
+      "name": "Be R < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "251",
+      "name": "Osc-C On",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "252",
+      "name": "C Coarse",
+      "value": 5,
+      "min": 0.5,
+      "max": 48,
+      "state": "inactive"
+    },
+    {
+      "id": "253",
+      "name": "C Fine",
+      "value": 0,
+      "min": 0,
+      "max": 1000,
+      "state": "inactive"
+    },
+    {
+      "id": "254",
+      "name": "C Freq<Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "state": "inactive"
+    },
+    {
+      "id": "255",
+      "name": "C Quantize",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "256",
+      "name": "C Fix On",
+      "value": "Off",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "257",
+      "name": "C Fix Freq",
+      "value": 10,
+      "min": 10,
+      "max": 2000,
+      "unit": "Hz",
+      "state": "inactive"
+    },
+    {
+      "id": "258",
+      "name": "C Fix Freq Mul",
+      "value": 0,
+      "min": 0,
+      "max": 10,
+      "state": "inactive"
+    },
+    {
+      "id": "259",
+      "name": "Osc-C Level",
+      "value": -2.5,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "260",
+      "name": "Osc-C Retrig",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "261",
+      "name": "Osc-C Phase",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "262",
+      "name": "Osc-C Lev < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "263",
+      "name": "Osc-C Lev < Key",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "264",
+      "name": "Osc-C Wave",
+      "value": "User",
+      "options": [
+        "Sine",
+        "Sine 4 Bit",
+        "Sine 8 Bit",
+        "Saw 3",
+        "Saw 4",
+        "Saw 6",
+        "Saw 8",
+        "Saw 16",
+        "Saw 32",
+        "Saw 64",
+        "Saw D",
+        "Square 3",
+        "Square 4",
+        "Square 6",
+        "Square 8",
+        "Square 16",
+        "Square 32",
+        "Square 64",
+        "Square D",
+        "Triangle",
+        "Noise Looped",
+        "Noise White",
+        "User"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "265",
+      "name": "Osc-C Feedb",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "266",
+      "name": "Osc-C < Pe",
+      "value": "Off",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "267",
+      "name": "Osc-C < LFO",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "268",
+      "name": "Ce Attack",
+      "value": 0.46,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "269",
+      "name": "Ce Init",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "270",
+      "name": "Ce Decay",
+      "value": 855,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "271",
+      "name": "Ce Peak",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "272",
+      "name": "Ce Sustain",
+      "value": -10,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "273",
+      "name": "Ce Release",
+      "value": 13.8,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "274",
+      "name": "Ce Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"],
+      "state": "inactive"
+    },
+    {
+      "id": "275",
+      "name": "Ce Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "276",
+      "name": "Ce Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "277",
+      "name": "Ce R < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "278",
+      "name": "Osc-D On",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "279",
+      "name": "D Coarse",
+      "value": 1,
+      "min": 0.5,
+      "max": 48,
+      "state": "inactive"
+    },
+    {
+      "id": "280",
+      "name": "D Fine",
+      "value": 0,
+      "min": 0,
+      "max": 1000,
+      "state": "inactive"
+    },
+    {
+      "id": "281",
+      "name": "D Freq<Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "state": "inactive"
+    },
+    {
+      "id": "282",
+      "name": "D Quantize",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "283",
+      "name": "D Fix On",
+      "value": "Off",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "284",
+      "name": "D Fix Freq",
+      "value": 63.9,
+      "min": 10,
+      "max": 2000,
+      "unit": "Hz",
+      "state": "inactive"
+    },
+    {
+      "id": "285",
+      "name": "D Fix Freq Mul",
+      "value": 10,
+      "min": 0,
+      "max": 10,
+      "state": "inactive"
+    },
+    {
+      "id": "286",
+      "name": "Osc-D Level",
+      "value": -12,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "287",
+      "name": "Osc-D Retrig",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "288",
+      "name": "Osc-D Phase",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "289",
+      "name": "Osc-D Lev < Vel",
+      "value": 13,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "290",
+      "name": "Osc-D Lev < Key",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "291",
+      "name": "Osc-D Wave",
+      "value": "User",
+      "options": [
+        "Sine",
+        "Sine 4 Bit",
+        "Sine 8 Bit",
+        "Saw 3",
+        "Saw 4",
+        "Saw 6",
+        "Saw 8",
+        "Saw 16",
+        "Saw 32",
+        "Saw 64",
+        "Saw D",
+        "Square 3",
+        "Square 4",
+        "Square 6",
+        "Square 8",
+        "Square 16",
+        "Square 32",
+        "Square 64",
+        "Square D",
+        "Triangle",
+        "Noise Looped",
+        "Noise White",
+        "User"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "292",
+      "name": "Osc-D Feedb",
+      "value": 73,
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "293",
+      "name": "Osc-D < Pe",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "294",
+      "name": "Osc-D < LFO",
+      "value": "On",
+      "options": ["Off", "On"],
+      "state": "inactive"
+    },
+    {
+      "id": "295",
+      "name": "De Attack",
+      "value": 0,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "296",
+      "name": "De Init",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "297",
+      "name": "De Decay",
+      "value": 70.2,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "298",
+      "name": "De Peak",
+      "value": -20,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "299",
+      "name": "De Sustain",
+      "value": -0.6,
+      "min": -70,
+      "max": 0,
+      "unit": "dB",
+      "state": "inactive"
+    },
+    {
+      "id": "300",
+      "name": "De Release",
+      "value": 1810,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "301",
+      "name": "De Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"],
+      "state": "inactive"
+    },
+    {
+      "id": "302",
+      "name": "De Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "303",
+      "name": "De Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "304",
+      "name": "De R < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "305",
+      "name": "Time",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "306",
+      "name": "Time < Key",
+      "value": 53,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    { "id": "307", "name": "Pe On", "value": "On", "options": ["Off", "On"] },
+    {
+      "id": "308",
+      "name": "Pe Attack",
+      "value": 29.5,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms"
+    },
+    {
+      "id": "309",
+      "name": "Pe Init",
+      "value": 45,
+      "min": -48,
+      "max": 48,
+      "unit": "semitones"
+    },
+    {
+      "id": "310",
+      "name": "Pe A Slope",
+      "value": 73,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "311",
+      "name": "Pe Decay",
+      "value": 10800,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "312",
+      "name": "Pe Peak",
+      "value": -1,
+      "min": -48,
+      "max": 48,
+      "unit": "semitones"
+    },
+    {
+      "id": "313",
+      "name": "Pe D Slope",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "314",
+      "name": "Pe Sustain",
+      "value": 0,
+      "min": -48,
+      "max": 48,
+      "unit": "semitones"
+    },
+    {
+      "id": "315",
+      "name": "Pe Release",
+      "value": 6.52,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "316",
+      "name": "Pe End",
+      "value": -2,
+      "min": -48,
+      "max": 48,
+      "unit": "semitones"
+    },
+    {
+      "id": "317",
+      "name": "Pe R Slope",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "318",
+      "name": "Pe Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"]
+    },
+    {
+      "id": "319",
+      "name": "Pe Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "320",
+      "name": "Pe Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "321",
+      "name": "Pe R < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "322",
+      "name": "Pe Amount",
+      "value": -1.6,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "323",
+      "name": "Pe Amt A",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "324",
+      "name": "Pe Dst B",
+      "value": "Volume",
+      "options": [
+        "Off",
+        "OSC Volume A",
+        "OSC Volume B",
+        "OSC Volume C",
+        "OSC Volume D",
+        "OSC Crossfade A/C",
+        "OSC Crossfade B/D",
+        "OSC Feedback",
+        "OSC Fixed Frequency",
+        "FM Drive",
+        "Filter Freq",
+        "Filter Q (Legacy)",
+        "Filter Res",
+        "Filter Morph",
+        "Filter Drive",
+        "Filter Envelope Amount",
+        "Shaper Drive",
+        "LFO Rate",
+        "LFO Amount",
+        "Aux Envelope Amount",
+        "Volume",
+        "Panorama",
+        "Tone",
+        "Time"
+      ]
+    },
+    {
+      "id": "325",
+      "name": "Pe Amt B",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    { "id": "326", "name": "LFO On", "value": "On", "options": ["Off", "On"] },
+    {
+      "id": "327",
+      "name": "LFO Type",
+      "value": "Triangle",
+      "options": [
+        "Sine",
+        "Square",
+        "Triangle",
+        "SwUp",
+        "SwDown",
+        "S&H",
+        "Noise"
+      ]
+    },
+    {
+      "id": "328",
+      "name": "LFO Range",
+      "value": "Low",
+      "options": ["Low", "High", "Sync"]
+    },
+    { "id": "329", "name": "LFO Rate", "value": 75.41, "min": 0, "max": 127 },
+    {
+      "id": "330",
+      "name": "LFO Sync",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "331",
+      "name": "LFO R < K",
+      "value": 3.1,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "332",
+      "name": "LFO Retrigger",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "333",
+      "name": "LFO Amt",
+      "value": 18,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "334",
+      "name": "LFO Amt A",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "335",
+      "name": "LFO Dst B",
+      "value": "Off",
+      "options": [
+        "Off",
+        "OSC Volume A",
+        "OSC Volume B",
+        "OSC Volume C",
+        "OSC Volume D",
+        "OSC Crossfade A/C",
+        "OSC Crossfade B/D",
+        "OSC Feedback",
+        "OSC Fixed Frequency",
+        "FM Drive",
+        "Filter Freq",
+        "Filter Q (Legacy)",
+        "Filter Res",
+        "Filter Morph",
+        "Filter Drive",
+        "Filter Envelope Amount",
+        "Shaper Drive",
+        "LFO Rate",
+        "LFO Amount",
+        "Aux Envelope Amount",
+        "Volume",
+        "Panorama",
+        "Tone",
+        "Time"
+      ]
+    },
+    {
+      "id": "336",
+      "name": "LFO Amt B",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "state": "inactive"
+    },
+    {
+      "id": "337",
+      "name": "LFO < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "338",
+      "name": "LFO < Pe",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "339",
+      "name": "Le Attack",
+      "value": 0,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms"
+    },
+    {
+      "id": "340",
+      "name": "Le Init",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "341",
+      "name": "Le Decay",
+      "value": 584,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "342",
+      "name": "Le Peak",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "343",
+      "name": "Le Sustain",
+      "value": 0,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "344",
+      "name": "Le Release",
+      "value": 60000,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "345",
+      "name": "Le End",
+      "value": -70,
+      "min": -70,
+      "max": 0,
+      "unit": "dB"
+    },
+    {
+      "id": "346",
+      "name": "Le Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"]
+    },
+    {
+      "id": "347",
+      "name": "Le Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "348",
+      "name": "Le Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "349",
+      "name": "Le R < Vel",
+      "value": 0,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "350",
+      "name": "Filter On",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "351",
+      "name": "Filter Type",
+      "value": "Lowpass",
+      "options": ["Lowpass", "Highpass", "Bandpass", "Notch", "Morph"]
+    },
+    {
+      "id": "352",
+      "name": "Filter Circuit - LP/HP",
+      "value": "PRD",
+      "options": ["Clean", "OSR", "MS2", "SMP", "PRD"]
+    },
+    {
+      "id": "353",
+      "name": "Filter Circuit - BP/NO/Morph",
+      "value": "Clean",
+      "options": ["Clean", "OSR"]
+    },
+    {
+      "id": "354",
+      "name": "Filter Slope",
+      "value": "24 dB",
+      "options": ["12 dB", "24 dB"]
+    },
+    {
+      "id": "355",
+      "name": "Filter Freq",
+      "value": 219,
+      "min": 30,
+      "max": 18500,
+      "unit": "Hz",
+      "enabled": false,
+      "state": "disabled"
+    },
+    {
+      "id": "356",
+      "name": "Filter Res",
+      "value": 88,
+      "min": 0,
+      "max": 125,
+      "unit": "%",
+      "enabled": false,
+      "state": "disabled"
+    },
+    { "id": "357", "name": "Filter Morph", "value": 0, "min": 0, "max": 100 },
+    {
+      "id": "358",
+      "name": "Filter Drive",
+      "value": 8.81,
+      "min": 0,
+      "max": 24,
+      "unit": "dB"
+    },
+    {
+      "id": "359",
+      "name": "Filt < Vel",
+      "value": -96,
+      "min": -100,
+      "max": 100,
+      "unit": "%",
+      "enabled": false,
+      "state": "disabled"
+    },
+    {
+      "id": "360",
+      "name": "Filt < Key",
+      "value": -94,
+      "min": -200,
+      "max": 200,
+      "unit": "%"
+    },
+    {
+      "id": "361",
+      "name": "Fe Amount",
+      "value": 62,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "362",
+      "name": "Filt < LFO",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "363",
+      "name": "Fe Attack",
+      "value": 44.7,
+      "min": 0,
+      "max": 20000,
+      "unit": "ms"
+    },
+    {
+      "id": "364",
+      "name": "Fe Init",
+      "value": 19,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "365",
+      "name": "Fe A Slope",
+      "value": 48,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "366",
+      "name": "Fe Decay",
+      "value": 4910,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "367",
+      "name": "Fe Peak",
+      "value": 100,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "368",
+      "name": "Fe D Slope",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "369",
+      "name": "Fe Sustain",
+      "value": 58,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "370",
+      "name": "Fe Release",
+      "value": 15500,
+      "min": 1,
+      "max": 60000,
+      "unit": "ms"
+    },
+    {
+      "id": "371",
+      "name": "Fe End",
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "372",
+      "name": "Fe R Slope",
+      "value": 100,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "373",
+      "name": "Fe Mode",
+      "value": "None",
+      "options": ["None", "Loop", "Beat", "Sync", "Trigger"]
+    },
+    {
+      "id": "374",
+      "name": "Fe Loop",
+      "value": 100,
+      "min": 0.2,
+      "max": 20000,
+      "unit": "ms",
+      "state": "inactive"
+    },
+    {
+      "id": "375",
+      "name": "Fe Retrig",
+      "value": "1/16",
+      "options": [
+        "1/48",
+        "1/32",
+        "1/24",
+        "1/16",
+        "1/12",
+        "1/8",
+        "1/6",
+        "1/4",
+        "1/3",
+        "1/2",
+        "1",
+        "1.5",
+        "2",
+        "3",
+        "4"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "376",
+      "name": "Fe R < Vel",
+      "value": 73,
+      "min": -100,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "377",
+      "name": "Shaper Type",
+      "value": "Soft",
+      "options": ["Off", "Soft", "Hard", "Sine", "4Bit"]
+    },
+    {
+      "id": "378",
+      "name": "Shaper Mix",
+      "value": 14,
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "id": "379",
+      "name": "Shaper Drive",
+      "value": -9.75,
+      "min": -12,
+      "max": 12,
+      "unit": "dB"
+    }
+  ]
+}

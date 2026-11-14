@@ -42,6 +42,24 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+The install POSTs (here and under `/device-install`) write into the User
+Library, so a browser request must name the server by `localhost` or an IP
+address (`rejectRebindableOriginWrite`). A DNS name can be rebound to this
+machine by another site, which makes its `Origin` and `Host` match; an IP
+literal can't. A chat UI reached through a tunnel's DNS name can read the
+Installation tab but not install. Content writes (memory, skills) keep the
+looser same-origin rule, so a remote chat UI can still save them.
+
+Every request also passes `rebindingGuard` first. Unless the Host is localhost,
+an IP literal, or a known tunnel domain, only `/mcp` answers, and not to a
+browser (`Origin` or `Sec-Fetch-Site`). Headers alone can't pass a GET: over
+plain http a browser's same-origin GET carries neither. A one-word name or a
+`.local`, `.lan`, `.home.arpa` or `.internal` name also passes, but only while
+"Remote Control" is on: the local network decides how those resolve, so with it
+off someone on the Wi-Fi could point one at 127.0.0.1. The guard reads the live
+listening state (`network-access-state.ts`) per request. It allows tunnel names
+the install gate refuses, so that gate stays.
+
 The script updates separately from the device, so it drifts. Both the chat UI
 header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
 `src/shared/version-check.ts`): **update** when the installed copy differs from
@@ -67,9 +85,11 @@ build, so it is never offered an update.
   `remoteScript:` line after the portal line: not installed, behind this build,
   installed but not running, needing a Live restart, or just the running
   version. It points at `ppal-manage` to install when the caller has it, else at
-  the Chat UI. It shares the skills' `/ping` for the connect
-  (`connect-ping.ts`), reads the installed version off disk, and gives up after
-  1.5 s. A status that fails or times out adds no line.
+  the Chat UI. Small-model mode doesn't manage versions, so a copy that is only
+  behind, or a Live running another copy, reads as the plain running line there.
+  It shares the skills' `/ping` for the connect (`connect-ping.ts`), reads the
+  installed version off disk, and gives up after 1.5 s. A status that fails or
+  times out adds no line.
 
 ## The device install
 
@@ -125,7 +145,10 @@ User Library copy through the remote script's `/replace-producer-pal`, the route
 the portal's update uses (`requestWithBrowserRetry`, `mayHaveSwapped`). The
 server refuses first, with a 409 and a plain reason (`device-swap-check.ts`): no
 copy, an older copy, already running from the copy, or no new-enough remote
-script. `GET /device-install` carries the same check as `swap`.
+script. `GET /device-install` carries the same check as `swap`. It is polled
+every few seconds during a swap, so the device files (~10 MB each) are read once
+and recalled while their size, modified time and identity are unchanged
+(`device-file-facts.ts`); an install here drops what it wrote.
 
 Live unloads the old device inside the swap, so the server that sent the request
 usually dies before the remote script answers. A dropped connection is therefore
@@ -199,6 +222,8 @@ always matches the portal's version:
 - **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
   same plugin the device bundle uses. The portal never reads `remote-script/`
   from disk.
+- **The plug-in host wrappers** (two ~240 KB `.amxd` files) are embedded as
+  base64 by `embedPluginHost()`.
 - **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
   `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
   embedded: base64 in the bundle would be parsed on every start for a feature

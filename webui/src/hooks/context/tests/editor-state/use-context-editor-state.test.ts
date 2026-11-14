@@ -451,6 +451,28 @@ describe("useContextEditorState", () => {
       expect(result.current.dirty).toBe(true);
     });
 
+    it("imports without confirming once an error has cleared the draft, and rolls a failed write back to empty", async () => {
+      // The file picker calls the handleImport it captured when it opened, so
+      // the doc can error (clearing the draft) while the picker is still open.
+      const save = vi.fn().mockResolvedValue(false);
+      const confirm = stubConfirm(true);
+      const { result, setMemory } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "existing" }, save }),
+      );
+      const pickerImport = result.current.handleImport;
+
+      setMemory(makeMemory({ status: { kind: "error", message: "boom" } }));
+
+      await act(async () => {
+        await pickerImport("# imported");
+      });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith("# imported");
+      expect(result.current.getContent()).toBe("");
+      expect(result.current.charCount).toBe(0);
+    });
+
     it("getContent returns the live draft", async () => {
       const { result } = renderEditor(makeReady("seed"));
 

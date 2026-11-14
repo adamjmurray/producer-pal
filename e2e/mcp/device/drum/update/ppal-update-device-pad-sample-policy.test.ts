@@ -10,7 +10,8 @@
  *
  * The policy is uniform: the write targets the pad's *instrument*, wherever it
  * sits in the chain, and `force` replaces it whenever the Live API can't set its
- * sample. Only a single-sample Simpler is written in place.
+ * sample, once a skip has warned about the pad. Only a single-sample Simpler is
+ * written in place.
  *
  * Run with: npm run e2e:mcp -- ppal-update-device-pad-sample-policy
  */
@@ -31,7 +32,8 @@ import {
 } from "../../helpers/racks-test-helpers.ts";
 
 // Not `once: true`: the force cases destroy the pad's instrument, so each test
-// needs the Set reloaded from disk.
+// needs the Set reloaded from disk. The reload also clears the device's record
+// of which pads a skip has warned about.
 const ctx = setupMcpTestContext({ liveSetPath: RACKS_TEST_PATH });
 
 /**
@@ -82,6 +84,28 @@ async function padDevices(padName: string): Promise<DeviceInfo[]> {
 }
 
 /**
+ * Expect a pad's instrument to be of a type.
+ * @param padName - The pad's name
+ * @param type - Substring the instrument's type contains
+ */
+async function expectPadInstrument(
+  padName: string,
+  type: string,
+): Promise<void> {
+  expect((await padDevices(padName))[0]?.type).toContain(type);
+}
+
+/**
+ * Write a sample onto pAb1 with force, once a skip has warned about the pad,
+ * and expect the instrument's settings to be reported gone.
+ */
+async function forceAfterSkip(): Promise<void> {
+  const { detail } = await writeSample("pAb1", true);
+
+  expect(detail).toContain("settings are gone");
+}
+
+/**
  * The two halves of the policy for a pad whose instrument can't take a sample:
  * skipped with a warning by default, replaced with a Simpler under force.
  * @param pad - Pad note segment (e.g. "pAb1")
@@ -110,6 +134,8 @@ function padSwapTests(
   });
 
   it("replaces it with a Simpler under force, and says what was lost", async () => {
+    await writeSample(pad);
+
     const { detail, warnings } = await writeSample(pad, true);
 
     // The swap is destructive, so the target's own entry says what it cost.
@@ -146,6 +172,63 @@ describe("sample writes onto a pad whose instrument can't take one", () => {
   });
 });
 
+describe("force before any skip has warned about the pad", () => {
+  it("is ignored and the instrument survives, then works after the skip it caused", async () => {
+    const ignored = await writeSample("pAb1", true);
+
+    expect(ignored.refusal).toContain(
+      "force:true ignored — nothing had warned about this yet. sample write SKIPPED on pad",
+    );
+    expect(ignored.warnings).toStrictEqual([]);
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
+
+    // That skip warned about the pad, so force now replaces the instrument.
+    await forceAfterSkip();
+    await expectPadInstrument("Drum Sampler", "Simpler");
+  });
+});
+
+describe("a skip that no longer matches the pad", () => {
+  const IGNORED =
+    "force:true ignored — nothing had warned about this yet. sample write SKIPPED on pad";
+
+  it("does not unlock force after the instrument was replaced", async () => {
+    await writeSample("pAb1");
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { type: "device", path: `${KIT}/pAb1/c0/d0` },
+    });
+    await createTestDeviceAt(ctx.client!, "Drum Sampler", `${KIT}/pAb1/c0`);
+
+    const ignored = await writeSample("pAb1", true);
+
+    expect(ignored.refusal).toContain(IGNORED);
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
+
+    // That skip warned about the new instrument, so force now replaces it.
+    await forceAfterSkip();
+    await expectPadInstrument("Drum Sampler", "Simpler");
+  });
+
+  it("does not let two spellings of one pad in a call unlock each other", async () => {
+    const { refusal } = await callOrRefusal(ctx.client!, "ppal-update-device", {
+      path: KIT,
+      params: [
+        { name: "pAb1/sample", value: KICK_FILE },
+        { name: "pAb1/c0/sample", value: KICK_FILE },
+      ],
+      force: true,
+    });
+
+    expect(refusal).toContain(IGNORED);
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
+
+    // The call warned, so force in the next call replaces the instrument.
+    await forceAfterSkip();
+  });
+});
+
 describe("a MIDI effect in front of the pad's instrument", () => {
   // Live keeps a chain sorted by device type, so a pad with any MIDI effect on
   // it has its instrument at d1, not d0. Resolving by index instead of by type
@@ -177,6 +260,7 @@ describe("a MIDI effect in front of the pad's instrument", () => {
   it("replaces the instrument under force, not the MIDI effect", async () => {
     await createTestDeviceAt(ctx.client!, "Arpeggiator", `${KIT}/pAb1/c0`);
 
+    await writeSample("pAb1");
     await writeSample("pAb1", true);
 
     const devices = await padDevices("Drum Sampler");
@@ -191,6 +275,8 @@ describe("a device a later target's forced swap deletes", () => {
   // The deleted device has no address after the call, so its entry keeps the
   // one it had and says it is gone.
   it("keeps its path from before the call and says it no longer exists", async () => {
+    await writeSample("pAb1");
+
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: {

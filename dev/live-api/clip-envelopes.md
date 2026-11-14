@@ -13,7 +13,8 @@ before 12.4.
 
 Only **automation** envelopes on **track and device parameters** (mixer volume,
 pan, sends, and device parameters inside racks too), on **Session** clips that
-are **MIDI or warped audio**.
+are **MIDI or warped audio**. A rack chain's own volume, pan and sends take
+envelopes as well.
 
 | Envelope                                  | Read / write                  | `clear_all_envelopes` |
 | ----------------------------------------- | ----------------------------- | --------------------- |
@@ -50,8 +51,28 @@ are **MIDI or warped audio**.
   `has_envelopes`). `ppal-read-clip` says so when `has_envelopes` is true but
   the list route found none. It can't tell unreadable envelopes from readable
   ones when both exist.
-- Duplicating a Session clip keeps its envelopes, curves included. Duplicating
-  to the Arrangement writes the envelope into the track's automation lane. See
+- A Live 13 return track's envelope clip takes the same calls
+  (`automation_envelope`, `create_automation_envelope`, `clear_envelope`,
+  `value_at_time`), probed on 13.0b25. The routes address it as `rt0` beside
+  `slot`, and the parameters are the return track's own mixer and devices. Other
+  calls on one (13.0b25): `crop` works, `duplicate_loop` refuses, and
+  duplicating it to a MIDI track fails with "Incompatible track types".
+  `has_envelopes` reads 0 on an empty envelope clip, 1 after a write and 0 after
+  `clear_envelope`. Whether envelope clips can exist on regular tracks is not
+  verified.
+- **A return track can hold an arrangement clip the API can't list** (13.0b25).
+  `Track.duplicate_clip_to_arrangement(session_envelope_clip, time)` on a return
+  returns a real arrangement clip, and `Track.delete_clip` removes it. But
+  `Track.arrangement_clips` still throws "Main, Group and Return Tracks have no
+  arrangement clips" there. The copy read `has_envelopes` false though the
+  source had an envelope (not checked in Live's UI). Worth reporting to Ableton
+  as an API gap.
+- Duplicating a Session clip within its track keeps its envelopes, curves
+  included. Onto **another track** (a regular or return track, even onto an
+  identical device or a duplicate of the source track) it keeps the mixer
+  envelopes (volume, pan, sends) and drops every device-parameter one, probed on
+  Live 12.4 and 13 beta. Duplicating to the Arrangement writes the envelope into
+  the track's automation lane. See
   [arrangement-automation.md](arrangement-automation.md).
 
 ## Overridden automation

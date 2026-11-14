@@ -1,0 +1,156 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+/**
+ * Surface near-duplicate samples in Live's library by grouping `fe_values`
+ * rows that share an audio fingerprint hash. Per the spike the hash is
+ * a deterministic function of the feature vector (same hash ⟺ byte-identical
+ * vector ⟺ effectively identical audio), so a `GROUP BY hash` is a free
+ * content-dedup detector ("you have this kick 4×").
+ *
+ * The same search filters scope which files are checked. This is exact-content
+ * dedup; fuzzy "sounds alike" is findSimilar's job.
+ *
+ * Read-only: SELECT statements only.
+ */
+
+import { type DatabaseSync } from "node:sqlite";
+import {
+  clampLibraryLimit,
+  type FindDuplicatesArgs,
+  type LibraryDuplicateGroup,
+  type LibraryFindDuplicatesResult,
+} from "../../library-types.ts";
+import { resolveAbsolutePaths } from "../../reconstruct-path.ts";
+import {
+  buildCandidateWhere,
+  buildLibraryItem,
+  CANDIDATE_COLUMNS,
+  CANDIDATE_FROM,
+  fetchTagsBulk,
+  resolveInFolder,
+  type SearchRow,
+} from "../candidate-query.ts";
+import { decodeFeatureVector } from "./feature-vectors.ts";
+import { withLiveDb } from "../live-db-query.ts";
+import { presetFolderNote } from "../notes/preset-folder-note.ts";
+
+/** Default cap on duplicate groups returned (most-duplicated first). */
+const DEFAULT_FIND_DUPLICATES_LIMIT = 50;
+
+/** Candidate row plus its feature-vector BLOB and stringified fingerprint. */
+type DuplicateRow = SearchRow & { data: Uint8Array | null; hash: string };
+
+/**
+ * Find groups of library files that share an audio fingerprint.
+ *
+ * @param args - Search filters scoping which files are checked
+ * @returns Duplicate groups (most-duplicated first), or why there are none
+ */
+export function findDuplicates(
+  args: FindDuplicatesArgs = {},
+): Promise<LibraryFindDuplicatesResult> {
+  return withLiveDb<LibraryFindDuplicatesResult>({
+    onMissing: () => ({
+      dbAvailable: false,
+      groups: [],
+      detail: "Live database not found",
+    }),
+    onError: (message) => ({
+      dbAvailable: false,
+      groups: [],
+      detail: `Failed to read Live database: ${message}`,
+    }),
+    run: (db, stale) => runFindDuplicates(db, stale, args),
+  });
+}
+
+/**
+ * Group the filtered candidates by fingerprint hash and build items for the
+ * top groups.
+ *
+ * @param db - Open database handle
+ * @param stale - Staleness note, if any
+ * @param args - Candidate filters (plus limit)
+ * @returns The find-duplicates result
+ */
+function runFindDuplicates(
+  db: DatabaseSync,
+  stale: string | undefined,
+  args: FindDuplicatesArgs,
+): LibraryFindDuplicatesResult {
+  const base = {
+    dbAvailable: true as const,
+    ...(stale && { stalenessNote: stale }),
+  };
+
+  const resolved = resolveInFolder(db, args.inFolder);
+
+  if (!resolved.ok) {
+    return { ...base, groups: [], detail: resolved.reason };
+  }
+
+  const { where, params } = buildCandidateWhere(args, resolved.parentId);
+  // Assumes one fe_values row per file; a second row would put the file in its
+  // hash group twice. CAST hash to TEXT so SQLite renders the full 64-bit
+  // integer — read as a JS number it loses precision past 2^53 and could
+  // falsely merge or split groups. It's an opaque equality key, never math.
+  // buildCandidateWhere always emits at least the file_type filter.
+  const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
+                      CAST(fv.hash AS TEXT) AS hash
+               FROM ${CANDIDATE_FROM}
+               JOIN fe_values fv ON fv.file_id = f.file_id
+               WHERE ${where.join(" AND ")}`;
+  const rows = db.prepare(sql).all(...params) as unknown as DuplicateRow[];
+
+  const dupGroups = groupByHash(rows);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_FIND_DUPLICATES_LIMIT);
+  const capped = dupGroups.slice(0, limit);
+  const fileIds = capped.flatMap((g) => g.map((r) => r.file_id));
+  const paths = resolveAbsolutePaths(db, fileIds);
+  const tagsByFile = fetchTagsBulk(db, fileIds);
+
+  const groups: LibraryDuplicateGroup[] = capped.map((rowsInGroup) => ({
+    count: rowsInGroup.length,
+    items: rowsInGroup.map((r) => buildLibraryItem(r, paths, tagsByFile)),
+  }));
+
+  const note = presetFolderNote(db, args, resolved.parentId, {
+    analyzedOnly: true,
+  });
+
+  return { ...base, groups, ...(note != null && { note }) };
+}
+
+/**
+ * Bucket decodable rows by fingerprint hash and keep only the buckets with
+ * more than one member, sorted most-duplicated first. Rows whose BLOB format
+ * we don't recognize are skipped (version insurance, consistent with
+ * findSimilar) so an unknown future format can't form a bogus group.
+ *
+ * @param rows - Candidate rows carrying data + hash
+ * @returns Duplicate groups (each ≥ 2 rows), descending by size
+ */
+function groupByHash(rows: DuplicateRow[]): DuplicateRow[][] {
+  const byHash = new Map<string, DuplicateRow[]>();
+
+  for (const row of rows) {
+    if (decodeFeatureVector(row.data) == null) {
+      continue;
+    }
+
+    const group = byHash.get(row.hash);
+
+    if (group) {
+      group.push(row);
+    } else {
+      byHash.set(row.hash, [row]);
+    }
+  }
+
+  return [...byHash.values()]
+    .filter((group) => group.length > 1)
+    .toSorted((a, b) => b.length - a.length);
+}

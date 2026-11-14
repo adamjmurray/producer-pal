@@ -30,7 +30,9 @@ code; when it disagrees with a tool, the tool wins.
 - **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
   before anything is written; an entry that parses but names no track or scene
   skips only its own target. `rt0/l0` is such an entry: only regular tracks have
-  take lanes.
+  take lanes. `rt0/s0` parses (a Live 13 return track's clip slot), so those two
+  skip that target, or throw when it is alone; the clip tools act on it. Live 12
+  refuses it with `return-track clips need Live 13`.
 - **`updateClip` refuses a `path` entry it can't parse** before anything is
   written, and a `toPath` entry the same (`tX`); an entry that parses but names
   no clip skips only its own target, and a `toPath` entry that parses but names
@@ -56,7 +58,8 @@ code; when it disagrees with a tool, the tool wins.
   made or loaded, as well as a list with a hole, lists of different lengths, a
   device name Live doesn't have, and a path list spelled through its own
   inserts. A path that parses but names no place (`t9/d+`, a scene) skips only
-  its own target.
+  its own target. With `hosted`, it also refuses before Live 12.4, the oldest
+  Live hosting supports, and a plug-in name or wrapper it can't find.
 - **`createTrack` and `createScene` refuse a `path` entry they can't read**
   before anything is made, as well as a list with a hole, lists of different
   lengths, `count` with a path list, and a track or scene past the cap.
@@ -65,6 +68,12 @@ code; when it disagrees with a tool, the tool wins.
   refuse a `timeSignature`** that isn't `N/D` (or `disabled`, on scenes) or
   whose denominator isn't a power of two, since Live would change it. One check
   serves all five (`live-api-values.ts`).
+- **`createClip` and `updateClip` refuse a `scale` they can't read** before
+  anything is made or written: a name or root Live doesn't have (the same check
+  as `updateLiveSet`), a list with a hole, or a list that doesn't name one scale
+  per clip. A blank `scale` is not a bad one: it switches the clip's scale off,
+  for every clip of the call. Older Live is not a refusal (see
+  [clips](skip-entries-by-tool/clips.md)).
 - **A target named twice is refused**
   (`<param> names the <noun> on its own - don't send <params> with it`) by every
   tool that takes both params:
@@ -83,6 +92,8 @@ code; when it disagrees with a tool, the tool wins.
     `delete`, `duplicate`, `playback`): `id` with `ids` or its own id spelling,
     and `path` with `paths`, whatever the values. This is in
     `namedIdParam`/`namedPathParam`, before the targets are counted.
+  - `sends` with `sendGainDb` or `sendReturn` in `updateTrack`/`updateDevice`,
+    by `refuseNamedTwice` in the send checks.
   - A param with its deprecated spelling, by `refuseDoubledSpelling` (`path` and
     `slot` in `readClip`/`createClip`, `toPath` and `toSlot` in `duplicate` and
     `updateClip`, `arrangementSplit` and `split`), and by hand in `select`
@@ -113,13 +124,19 @@ code; when it disagrees with a tool, the tool wins.
   `split`): the split makes several clips and nothing says which to convert. It
   refuses `convert` beside a move (`toPath`, `toSlot`, `arrangementStart`) too:
   the conversion adds a track that shifts the paths the move names.
-- **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
-  any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
-  skips that clip, as does a `start` at or past a looping clip's loop end sent
-  without a `length`: Live would keep the old region. Both are checked before
+- **`createClip` and `updateClip` refuse a `length` that spans nothing**
+  (`0bar`, `n0/4`) before any clip is made or touched. `createClip` leaves out
+  an audio clip, which takes its length from the sample. A length empty only in
+  some meters (`1bar-n/1` in 4/4) skips that clip (`createClip` names the length
+  there even when the clip's transform can't be read either). `updateClip` also
+  skips a clip whose `start` is at or past its looping loop end, sent without a
+  `length`: Live would keep the old region. All of these are checked before
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.
+- **`duplicate` and `updateClip` refuse an `arrangementLength` entry that spans
+  nothing** (zero or less in the song's meter), in the same words as `length`:
+  `arrangementLength "0bar" must be longer than zero`.
 - **`duplicate` and `updateClip` refuse an `arrangementLength` entry longer than
   1,576,800 beats** (`arrangementLength can be at most 394200bar`, written in
   the song's meter) before anything is changed. The limit is Producer Pal's, not
@@ -150,11 +167,12 @@ The tables sit next to each tool's code and feed one helper,
 
 - **`ppal-library`** (`library-action-params.ts`): `similarTo` is for
   `find-similar`; `category` for `list-categories`; `vendor`, `format` and
-  `subcategory` for `list-plugins`; `sort`, `verifyPaths` and `searches` (and
-  its old name `queries`) for `search`. `tags`, `type`, `source`, `inFolder` and
-  a `kind` other than `audio` are for `search`, `find-similar` and
-  `find-duplicates`; `query` and `deviceKind` also for `list-plugins`. `limit`
-  is read by all. `deviceKind: "midifx"` on `list-plugins` is refused too.
+  `subcategory` for `list-plugins`; `sort`, `verifyPaths`, `offset` and
+  `searches` (and its old name `queries`) for `search`. `tags`, `type`,
+  `source`, `inFolder` and a `kind` other than `audio` are for `search`,
+  `find-similar` and `find-duplicates`; `query` and `deviceKind` also for
+  `list-plugins`. `limit` is read by all. `deviceKind: "midifx"` on
+  `list-plugins` is refused too.
 - **`ppal-playback`** (`playback-action-params.ts`): `startTime`, `loop`,
   `loopStart`, `loopEnd` and the retired `*Locator` params are for
   `play-arrangement`, `update-arrangement` and `stop`. `id`, `path`, `slots` and
@@ -163,7 +181,9 @@ The tables sit next to each tool's code and feed one helper,
 - **`ppal-context`** (`context-action-params.ts`): `name` is for scope `memory`,
   `description` for a memory `write`, `content` for `write`, `force` for a
   project or global `write`. `delete` outside `memory` is refused as
-  memory-only. The clobber guard throws.
+  memory-only. A memory `read` or `delete` `name` list with an empty entry is
+  refused, and so is a memory `write` whose `name` is over 200 characters or has
+  a comma. The clobber guard throws.
 - **`ppal-duplicate`** (`duplicate-input-validation.ts`), by `type`: `count` and
   `withoutClips` are for `track` and `scene`, `withoutDevices` and
   `routeToSource` for `track`, `transforms`, `code`, `toSlot` and `takeLane` for
@@ -186,7 +206,9 @@ The tables sit next to each tool's code and feed one helper,
 - **`ppal-live-api`** (`live-api-operation-validation.ts`): per operation,
   `property`, `method`, `args` and `value` are for the types that read them; the
   message names `operations[N]`.
-- **`ppal-library`** also refuses top-level search filters beside `searches`.
+- **`ppal-library`** also refuses top-level search filters beside `searches`,
+  and a search (or any `searches` entry) with no query and no filter. See
+  [ppal-library.md](ppal-library.md#search).
 - **Not covered:** `ppal-create-track` (nothing depends on `type`; `arm` on a
   return track is per target), and `ppal-update-device`'s `wrapInRack`, which
   already refuses what it ignores in its own words.

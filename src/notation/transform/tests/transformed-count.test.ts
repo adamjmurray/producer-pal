@@ -55,6 +55,51 @@ describe("countTransforms", () => {
   it("is empty when no transform ran", () => {
     expect(countTransforms(undefined, cMajorTriad())).toStrictEqual({});
   });
+
+  it("tracks the notes the selectors picked, changed or not", () => {
+    const matchedAfter = (transforms: string) =>
+      applyTransforms(cMajorTriad(), transforms, 4, 4)?.matched.size;
+
+    expect(matchedAfter("velocity += 0")).toBe(3);
+    expect(matchedAfter("E3-G3: velocity += 0")).toBe(2);
+    expect(matchedAfter("C5: velocity += 10")).toBe(0);
+  });
+});
+
+describe("TransformOutcome.failed", () => {
+  const outcomeOf = (transforms: string) =>
+    applyTransforms(cMajorTriad(), transforms, 4, 4);
+
+  it("is false when every statement ran", () => {
+    expect(outcomeOf("velocity += 0")?.failed).toBe(false);
+  });
+
+  it.each([
+    ["an expression that fails", "velocity = audio.gain"],
+    ["a where() that fails", "where(note.probability < .5): velocity = 64"],
+    ["a skipped note op", "C3: ratchet(rand(0, 0))"],
+  ])("is true for %s", (_name, transforms) => {
+    const notes = cMajorTriad();
+
+    if (transforms.startsWith("where")) {
+      notes[0]!.probability = undefined as unknown as number;
+    }
+
+    expect(applyTransforms(notes, transforms, 4, 4)?.failed).toBe(true);
+  });
+
+  it("is kept when another statement runs, and by combineOutcomes", () => {
+    const notes = cMajorTriad();
+    const failed = applyTransforms(notes, "velocity = audio.gain", 4, 4);
+    const fine = applyTransforms(notes, "velocity += 0", 4, 4);
+
+    expect(
+      applyTransforms(notes, "velocity = audio.gain\nvelocity += 0", 4, 4)
+        ?.failed,
+    ).toBe(true);
+    expect(combineOutcomes(fine, failed)?.failed).toBe(true);
+    expect(combineOutcomes(fine, fine)?.failed).toBe(false);
+  });
 });
 
 describe("combineOutcomes", () => {
@@ -80,6 +125,14 @@ describe("combineOutcomes", () => {
 
   it("is undefined when no transform ran", () => {
     expect(combineOutcomes(undefined, undefined)).toBeUndefined();
+  });
+
+  it("matches the notes either outcome matched, once each", () => {
+    const notes = cMajorTriad();
+    const first = applyTransforms(notes, "C3-E3: velocity += 0", 4, 4);
+    const second = applyTransforms(notes, "E3-G3: velocity += 0", 4, 4);
+
+    expect(combineOutcomes(first, second)?.matched.size).toBe(3);
   });
 
   it("doesn't count a note one pass changed and a later pass put back", () => {

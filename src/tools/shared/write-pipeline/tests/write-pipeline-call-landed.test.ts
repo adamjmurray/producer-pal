@@ -12,7 +12,7 @@ import {
 } from "#src/shared/max/v8-warning-capture.ts";
 import { type Call } from "../write-pipeline-types.ts";
 import { runWrite } from "../write-pipeline.ts";
-import { newToyLog, type ToyLog, toySpec } from "./toy-write-spec.ts";
+import { newToyLog, type ToyLog, toySpec } from "./helpers/toy-write-spec.ts";
 
 /**
  * An async settle that notes a change, then throws.

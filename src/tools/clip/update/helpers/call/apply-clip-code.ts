@@ -4,14 +4,16 @@
 // SPDX-License-Identifier: MIT
 
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { droppedDuplicatesNote } from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipReasons,
   ignoreClipParams,
   noteClipReason,
 } from "../entries/clip-reasons.ts";
-import { reportMutedCodeWrite } from "../notes/muted-note-effects.ts";
+import { reportCodeWriteEffects } from "../notes/muted-note-effects.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
+import { noNotesReason } from "#src/tools/shared/clip/slot-contents/clip-kind.ts";
 
 /**
  * Run the call's `code` on the clips an update just wrote, and say how it went
@@ -37,6 +39,16 @@ export async function applyCodeToWrittenClips(
   }
 
   for (const clipResult of updatedClips) {
+    // Code rewrites every note, and a step sequencer or envelope clip has none
+    // it can reach.
+    const why = noNotesReason(LiveAPI.from(["id", clipResult.id]));
+
+    if (why != null) {
+      noteCodeIgnored(reasons, sourceId, why);
+
+      continue;
+    }
+
     const applied = await applyCodeToSingleClip(
       clipResult.id,
       code,
@@ -47,7 +59,7 @@ export async function applyCodeToWrittenClips(
     if (applied != null && "error" in applied) {
       const reason = `code failed: ${applied.error}`;
 
-      // Tiled copies run the same code and fail the same way: say it once.
+      // A split's pieces run the same code and fail the same way: say it once.
       if (!reasons.said.get(sourceId)?.includes(reason)) {
         ignoreClipParams(reasons, sourceId, ["code"], reason);
       }
@@ -56,7 +68,7 @@ export async function applyCodeToWrittenClips(
 
       const dropped = droppedDuplicatesNote(applied.droppedDuplicates);
 
-      // Tiled copies run the same code: say it once, like a failure
+      // A split's pieces run the same code: say it once, like a failure
       if (dropped != null && !reasons.said.get(sourceId)?.includes(dropped)) {
         noteClipReason(reasons, sourceId, dropped);
       }
@@ -64,7 +76,7 @@ export async function applyCodeToWrittenClips(
       // Muted notes are the first clip's to report: its copies carry the same
       // ones, and counting them again would multiply what the code did.
       if (clipResult === updatedClips[0]) {
-        reportMutedCodeWrite(
+        reportCodeWriteEffects(
           LiveAPI.from(["id", clipResult.id]),
           reasons,
           sourceId,
@@ -72,5 +84,23 @@ export async function applyCodeToWrittenClips(
         );
       }
     }
+  }
+}
+
+/**
+ * Say once that `code` did nothing, however many copies of the clip it met.
+ * @param reasons - What each clip has to say beyond its result, added to
+ * @param sourceId - The clip the call named
+ * @param why - Why the clip's notes can't be reached
+ */
+function noteCodeIgnored(
+  reasons: ClipReasons,
+  sourceId: string,
+  why: string,
+): void {
+  const reason = ignoredText("code", why);
+
+  if (!reasons.said.get(sourceId)?.includes(reason)) {
+    ignoreClipParams(reasons, sourceId, ["code"], reason);
   }
 }

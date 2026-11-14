@@ -5,6 +5,10 @@
 
 import { type Tool, jsonSchema } from "ai";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import {
+  streamEndKeepsPartialText,
+  streamEndReason,
+} from "#webui/chat/sdk/streaming/stream-end-notice";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
   isToolEnabled,
@@ -367,6 +371,11 @@ function withInheritedLiveApi(
  * would walk back into the previous run and report its closing message as the
  * answer to the new task — success claimed for work that never happened.
  *
+ * A run the provider cut off ends on a notice entry (content filter, empty
+ * reply). Its reason is the answer: the orchestrator learns why the worker
+ * stopped instead of reading earlier text as a finished result. Only the
+ * output-limit cut keeps its partial text, ahead of the reason.
+ *
  * @param messages - What this run added to the worker's history (oldest first)
  * @param toolLimitReached - Whether the run stopped on its step budget
  * @returns The worker's final assistant text, or a fallback if it produced none
@@ -375,6 +384,27 @@ export function extractWorkerResult(
   messages: ChatMessage[],
   toolLimitReached = false,
 ): string {
+  const last = messages.at(-1);
+
+  if (last?.isError === true) {
+    const reason = streamEndReason(last.content);
+
+    if (reason != null) {
+      // A reply cut off by the output limit keeps its partial text, ahead of
+      // the reason. The other notices have nothing worth keeping.
+      const before = messages.at(-2);
+
+      const partial =
+        streamEndKeepsPartialText(last.content) &&
+        before?.role === "assistant" &&
+        before.isError !== true
+          ? before.content.trim()
+          : "";
+
+      return partial ? `${partial}\n\n[${reason}]` : reason;
+    }
+  }
+
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
 

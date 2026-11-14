@@ -23,21 +23,26 @@ import {
 } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 
 // Mock moveDeviceToPath to track calls
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  // Nothing says the destination is refused before the copy; the move decides.
+  checkMoveDestination: vi.fn(() => null),
   // Reports a completed move; tests that need a failed one override it.
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
 }));
 
 // Mock console.error to capture warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 // Import the mocks after vi.mock
@@ -112,7 +117,7 @@ describe("duplicate - device duplication", () => {
     });
 
     // Default count (1) and no name → neither the count warn nor the name set fire.
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("copies go one per toPath"),
     );
     expect(tempDevice.set).not.toHaveBeenCalledWith("name", expect.anything());
@@ -386,7 +391,7 @@ describe("duplicate - device duplication", () => {
       'the copy of t0/d0 (id device1) could not be moved to "t2/d0": ' +
         "the destination already has an instrument, and only one is allowed",
     );
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("keeps the copies that worked when one destination fails", async () => {
@@ -420,7 +425,7 @@ describe("duplicate - device duplication", () => {
       { id: "live_set/tracks/1/devices/1" },
     ]);
     expect(moveDeviceToPathMock).toHaveBeenCalledTimes(3);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("reads a blank toPath as omitted, the way clips do", async () => {
@@ -645,7 +650,7 @@ describe("duplicate - device duplication", () => {
 
     await duplicate({ type: "device", id: "device1", toPath: "t1/d0" });
 
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("has no arrangement position"),
     );
   });

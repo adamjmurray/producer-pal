@@ -15,6 +15,7 @@ import {
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
+import { streamEndNotice } from "#webui/chat/sdk/streaming/stream-end-notice";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
@@ -265,6 +266,70 @@ describe("extractWorkerResult", () => {
     ];
 
     expect(extractWorkerResult(history)).toBe("the real result");
+  });
+
+  it.each([
+    [
+      "content-filter",
+      "The provider stopped this reply because of its content filter.",
+    ],
+    ["other", "The provider ended this reply without any content."],
+  ] as const)(
+    "returns the %s reason without UI advice when the run ended on a notice, not earlier text",
+    (finishReason, reason) => {
+      const notice = streamEndNotice(finishReason, false) as string;
+      const history: ChatMessage[] = [
+        { role: "assistant", content: "Starting on the bassline." },
+        { role: "assistant", content: notice, isError: true },
+      ];
+
+      expect(extractWorkerResult(history)).toBe(reason);
+    },
+  );
+
+  it("hands over the partial text ahead of the reason when the output limit cut the run off", () => {
+    const notice = streamEndNotice("length", true) as string;
+    const history: ChatMessage[] = [
+      { role: "assistant", content: "Earlier step." },
+      { role: "assistant", content: "  Added drums, then the bas  " },
+      { role: "assistant", content: notice, isError: true },
+    ];
+
+    expect(extractWorkerResult(history)).toBe(
+      "Added drums, then the bas\n\n[The reply hit the output limit and was cut off.]",
+    );
+  });
+
+  it.each([
+    ["no earlier entry", []],
+    ["empty partial text", [{ role: "assistant", content: " " }]],
+    [
+      "an error entry before it",
+      [{ role: "assistant", content: "x", isError: true }],
+    ],
+  ] as Array<[string, ChatMessage[]]>)(
+    "gives only the reason for an output-limit cut with %s",
+    (_name, before) => {
+      const notice = streamEndNotice("length", false) as string;
+      const history: ChatMessage[] = [
+        ...before,
+        { role: "assistant", content: notice, isError: true },
+      ];
+
+      expect(extractWorkerResult(history)).toBe(
+        "The reply hit the output limit and was cut off.",
+      );
+    },
+  );
+
+  it("ignores a notice that is not the run's last entry", () => {
+    const notice = streamEndNotice("content-filter", false) as string;
+    const history: ChatMessage[] = [
+      { role: "assistant", content: notice, isError: true },
+      { role: "assistant", content: "Recovered and finished." },
+    ];
+
+    expect(extractWorkerResult(history)).toBe("Recovered and finished.");
   });
 
   it("falls back when the worker produced no final text", () => {

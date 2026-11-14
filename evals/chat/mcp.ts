@@ -12,6 +12,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { type ToolSet, jsonSchema } from "ai";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config.ts";
 import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
 import { mcpResultText } from "./shared/mcp-result-text.ts";
 
@@ -107,10 +108,11 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
         // The AI SDK's ToolExecutionOptions; only the id is needed here.
         { toolCallId }: { toolCallId: string },
       ) => {
-        const result = await mcpClient.callTool({
-          name: t.name,
-          arguments: args,
-        });
+        const result = await mcpClient.callTool(
+          { name: t.name, arguments: args },
+          undefined,
+          { timeout: CLIENT_TOOL_TIMEOUT_MS },
+        );
 
         if (result.isError === true) {
           erroredToolCallIds.add(toolCallId);

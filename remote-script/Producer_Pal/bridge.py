@@ -55,6 +55,9 @@ class ProducerPalBridge:
     def __init__(self, c_instance):
         self._c_instance = c_instance
         self._jobs = queue.Queue()
+        # Cleanups other modules register by name. They run when Live
+        # disconnects the script and before a hot reload.
+        self.cleanups = {}
         self._server = BridgeHTTPServer(PORTS, self._dispatch, self.log)
         self._server.start()
 
@@ -128,7 +131,24 @@ class ProducerPalBridge:
                 return
             job.run()
 
+    def run_cleanups(self):
+        """Run and forget every registered cleanup. Main thread only.
+
+        So nothing a module holds in Live (listeners, say) outlives the code
+        that handles it. A cleanup that fails is logged, not raised.
+        """
+        # getattr: a test (or a bridge from before this existed) may never
+        # have set it.
+        cleanups = getattr(self, "cleanups", None) or {}
+        self.cleanups = {}
+        for name, cleanup in cleanups.items():
+            try:
+                cleanup()
+            except Exception:
+                self.log("cleanup %s failed:\n%s" % (name, traceback.format_exc()))
+
     def disconnect(self):
+        self.run_cleanups()
         self._server.stop()
 
     # --- the rest of what Live expects a control surface to have ---------

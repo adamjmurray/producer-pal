@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
-import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { validateSendParams } from "#src/tools/shared/helpers/send-validation.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { type ListArg } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
@@ -16,6 +16,7 @@ import {
   foldTargetParams,
   targetCount,
   targetParamLabel,
+  type FoldedTargets,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type PanningMode } from "../track-mixer-updates.ts";
 import { validateMonitoringState } from "../track-monitoring-updates.ts";
@@ -60,7 +61,7 @@ export interface UpdateTrackArgs {
 export interface TrackCall {
   args: UpdateTrackArgs;
   /** The target params, folded onto `id` and `path` */
-  targets: TargetParams;
+  targets: FoldedTargets;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
   /** The targets, ids first, each as the caller wrote it */
@@ -81,12 +82,12 @@ export function parseTrackCall(args: UpdateTrackArgs): TrackCall {
   const targets = foldTargetParams({ id, ids, path, paths });
 
   if (targetCount(targets) === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("track"));
   }
 
   const named = namedTargets(targets);
 
-  validateSendPair(args.sendGainDb, args.sendReturn);
+  validateSendParams(args);
   validateMonitoringState(args.monitoringState);
 
   return { args, targets, sent: { id, ids, path, paths }, named };

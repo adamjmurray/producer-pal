@@ -40,7 +40,6 @@ describe("ToolToggles", () => {
     liveApiForcedOn: false,
     notation: "barbeat" as const,
     setNotation: vi.fn(),
-    settingsConfigured: true,
   };
 
   /**
@@ -545,29 +544,6 @@ describe("ToolToggles", () => {
       fireEvent.click(screen.getByRole("button", { name: "Edit Context" }));
 
       expect(onEditContext).toHaveBeenCalledOnce();
-    });
-
-    it("disables the Edit Context button until settings are configured", () => {
-      const onEditContext = vi.fn();
-
-      render(
-        <ToolToggles
-          {...defaultProps}
-          onEditContext={onEditContext}
-          settingsConfigured={false}
-        />,
-      );
-
-      const button = screen.getByRole("button", {
-        name: "Edit Context",
-      }) as HTMLButtonElement;
-
-      expect(button.disabled).toBe(true);
-      expect(button.title).toBe("Configure settings first");
-
-      fireEvent.click(button);
-
-      expect(onEditContext).not.toHaveBeenCalled();
     });
   });
 

@@ -9,6 +9,8 @@
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { liveAppMajorVersion } from "#evals/scenarios/helpers/open-live-set/live-app-major-version.ts";
+import { ABLETON_APP } from "#evals/scenarios/open-live-set.ts";
 
 /** Opened before each test unless a suite names another Set. */
 export const LIVE_SET_PATH =
@@ -29,6 +31,10 @@ export const TRACKS_TEST_TWIN_PATH =
 /** The Producer Pal device inside a drum pad, and nowhere else. */
 export const PPAL_DRUM_PAD_PATH =
   "e2e/live-sets/ppal-drum-pad Project/ppal-drum-pad.als";
+
+/** Live 13 features: step sequencer and envelope clips, fixed-chain racks. Live 12 can't open it. */
+export const LIVE_13_TEST_PATH =
+  "e2e/live-sets/live-13-test Project/live-13-test.als";
 
 /** t8 "9-MIDI": no clips, no devices, No Output. The scratch track. */
 export const EMPTY_MIDI_TRACK = 8;
@@ -73,3 +79,17 @@ export const DRUM_LOOP_8BAR_FILE = resolve(
   __dirname,
   "../live-sets/samples/drum-loop-8bar.wav",
 );
+
+// A suite for a Live 13 feature skips itself with
+// `describe.skipIf(!LIVE_13_OR_NEWER)`, since Live 12 can't open the Sets it needs.
+
+const LIVE_MAJOR = liveAppMajorVersion(ABLETON_APP);
+
+if (LIVE_MAJOR == null) {
+  process.stderr.write(
+    `Could not read the Live version from ABLETON_APP (${ABLETON_APP}), so Live 13 suites are skipped.\n`,
+  );
+}
+
+/** False when the Live is Live 12 or can't be read, so Live 13 suites skip. */
+export const LIVE_13_OR_NEWER = (LIVE_MAJOR ?? 0) >= 13;

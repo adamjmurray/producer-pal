@@ -20,20 +20,19 @@ import {
   assertLeadEnvelopes,
   type ClipEnvelopeRead,
   envelopeValues,
+  MIN_RAMP_SHARE,
   parameterNames,
   rampShareOfRise,
   risesOverTime,
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
+  FULL_VOLUME_NOTE,
 } from "./helpers/clip-envelope-readback.ts";
 import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
 /** A device on the Lead track; the parameter name picks out the Utility. */
 const LEAD_DEVICE_PATH = /^t3\/d\d+$/;
-
-/** How much of the volume's rise ramps must carry for it to count as a fade. */
-const MIN_RAMP_SHARE = 0.5;
 
 export const automationWriteDeviceParam: EvalScenario = {
   ...ON_BARE_LEAD_CLIP,
@@ -78,8 +77,7 @@ export const automationWriteDeviceParam: EvalScenario = {
       type: "llm_judge",
       prompt: `The user asked for the Utility's Width on the Lead track to sweep from
 narrow to wide over the Lead clip, using clip automation. Evaluate the final
-reply: it says the Width automation was written on the Lead clip, and does not
-claim to have changed anything else.`,
+reply: it says the Width automation was written on the Lead clip.`,
     },
   ],
 };
@@ -154,7 +152,9 @@ export const automationWriteMixer: EvalScenario = {
       prompt: `The user asked for three automation envelopes on the Lead clip: volume
 fading in from silence to full, pan sweeping hard left to hard right, and send A
 rising from nothing to about half. Evaluate the final reply: it says all three
-were written, and does not claim anything it didn't do.`,
+were written.
+
+${FULL_VOLUME_NOTE}`,
     },
   ],
 };

@@ -36,27 +36,26 @@ const fault = vi.hoisted(() => ({
   // Leave a partial temp file, then fail the copy.
   copy: false,
   rename: false,
-  // Reads of the running device that still work before they start failing.
-  readsLeft: undefined as number | undefined,
+  // The running device's file is deleted right after the first read of it.
+  vanish: false,
 }));
 
 vi.mock(
   import("../../remote-script/user-library/user-library-fs.ts"),
   async (importOriginal) => {
     const actual = await importOriginal();
+    const { unlinkSync } = await import("node:fs");
 
     return {
       ...actual,
       readLibraryBytes: (file) => {
-        if (
-          fault.readsLeft != null &&
-          file.includes("Downloads") &&
-          fault.readsLeft-- <= 0
-        ) {
-          throw new Error("EIO: read");
+        const bytes = actual.readLibraryBytes(file);
+
+        if (fault.vanish && file.includes("Downloads")) {
+          unlinkSync(file);
         }
 
-        return actual.readLibraryBytes(file);
+        return bytes;
       },
       copyIntoLibrary: (from, to) => {
         actual.copyIntoLibrary(from, to);
@@ -101,7 +100,7 @@ describe("installRunningDevice", () => {
   beforeEach(() => {
     fault.copy = false;
     fault.rename = false;
-    fault.readsLeft = undefined;
+    fault.vanish = false;
     vi.mocked(findUserLibraryPath).mockReset();
     vi.mocked(Max.outlet).mockClear();
   });
@@ -264,12 +263,12 @@ describe("installRunningDevice", () => {
     const { library, runFromDownloads, installed } = scratch();
 
     runFromDownloads(frozenDevice(VERSION));
-    // The frozen check reads it once; the install's own read then fails.
-    fault.readsLeft = 1;
+    // The frozen check reads it, then it is gone before the install's read.
+    fault.vanish = true;
 
     expect(installRunningDevice(library)).toStrictEqual({
       status: "failed",
-      error: expect.stringContaining("EIO: read"),
+      error: expect.stringContaining("ENOENT"),
     });
     expect(existsSync(installed)).toBe(false);
   });

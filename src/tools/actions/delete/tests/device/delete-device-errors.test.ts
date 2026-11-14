@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -13,7 +13,7 @@ import { deleteObject } from "../../delete.ts";
 
 describe("deleteObject device path error cases", () => {
   it("reports a device path through a drum pad that holds nothing", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
     const drumRackPath = livePath.track(0).device(0);
     const chainId = "chain-1";
 
@@ -49,7 +49,7 @@ describe("deleteObject device path error cases", () => {
   // which is the same nothing an out-of-range "d<n>" lands on — so it reads as
   // a delete already done, not as a target this call refused.
   it("reports a type segment that names nothing as nothing to delete", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("track-0", {
       path: livePath.track(0),
@@ -76,7 +76,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("refuses a device delete whose path resolves to a chain", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("device_0", {
       path: livePath.track(0).device(0),
@@ -97,7 +97,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("refuses a malformed path with the message it raised", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     // Path with invalid format that causes resolvePathToLiveApi to throw
     // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
@@ -108,7 +108,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("refuses a device whose Live path has no parent segment", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     // A device path that begins with "devices N" has nothing before the last
     // "devices" match, so the extracted parent path is empty.
@@ -124,7 +124,7 @@ describe("deleteObject device path error cases", () => {
   });
 
   it("reports a direct device path that holds nothing", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     // Register as non-existent (id "0" makes exists() return false)
     registerMockObject("0", { path: livePath.track(0).device(0) });

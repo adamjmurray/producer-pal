@@ -73,10 +73,14 @@ function writeDb(target: string, places: [number, number][]): string {
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
   `);
 
-  const segments = target.split("/").filter(Boolean);
+  // Live stores a Windows path under a drive root ("C:"), a POSIX one under "/"
+  const segments = target.split(/[/\\]/).filter(Boolean);
+  const root = /^[A-Za-z]:$/.test(segments[0] ?? "")
+    ? (segments.shift() as string)
+    : "/";
   const insert = db.prepare("INSERT INTO files VALUES (?, ?, ?)");
 
-  insert.run(1, 0, "/");
+  insert.run(1, 0, root);
 
   for (const [i, name] of segments.entries()) {
     const isLeaf = i === segments.length - 1;
@@ -91,6 +95,14 @@ function writeDb(target: string, places: [number, number][]): string {
   db.close();
 
   return dbPath;
+}
+
+/**
+ * @param path - An absolute path
+ * @returns The path as read back from the database, which uses `/` on Windows too
+ */
+function dbStyle(path: string): string {
+  return path.replaceAll("\\", "/");
 }
 
 /**
@@ -154,7 +166,7 @@ describe("findUserLibraryPath from the browser database", () => {
       ]),
     );
 
-    expect(await findUserLibraryPath()).toBe(library);
+    expect(await findUserLibraryPath()).toBe(dbStyle(library));
   });
 
   it("wins over the preferences", async () => {
@@ -164,7 +176,7 @@ describe("findUserLibraryPath from the browser database", () => {
     writeCfg(macCfg("12.4"), join(scratchDir, "Other"));
     findLiveFilesDbPath.mockResolvedValue(writeDb(library, [[99, 1]]));
 
-    expect(await findUserLibraryPath()).toBe(library);
+    expect(await findUserLibraryPath()).toBe(dbStyle(library));
   });
 
   it("is skipped when its folder no longer exists", async () => {
@@ -225,6 +237,25 @@ describe("findUserLibraryPath from Live's preferences", () => {
     writeCfg(macCfg("12.3"), join(scratchDir, "Lib"), 1000);
     folder(dirname(macCfg("12.4")));
     writeFileSync(macCfg("12.4"), "<Ableton />");
+
+    expect(await findUserLibraryPath()).toBe(library);
+  });
+
+  it.each([
+    ["has no ProjectPath", ""],
+    ["has an empty ProjectPath", '<ProjectPath Value="" />'],
+  ])("skips a Library.cfg whose entry %s", async (_, pathTag) => {
+    const library = folder(join(scratchDir, "Lib", "User Library"));
+
+    writeCfg(macCfg("12.3"), join(scratchDir, "Lib"), 1000);
+    folder(dirname(macCfg("12.4")));
+    writeFileSync(
+      macCfg("12.4"),
+      `<Ableton><ContentLibrary><UserLibrary><LibraryProject Id="0">
+        <ProjectName Value="User Library" />
+        ${pathTag}
+      </LibraryProject></UserLibrary></ContentLibrary></Ableton>`,
+    );
 
     expect(await findUserLibraryPath()).toBe(library);
   });

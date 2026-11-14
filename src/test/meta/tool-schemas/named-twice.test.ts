@@ -272,7 +272,8 @@ describe("a target named twice", () => {
     },
   );
 
-  // The read tools take `paths` as a spelling of `path`, so it counts too.
+  // The read tools take `paths` as a spelling of `path`, so it counts too, and
+  // the refusal names it as sent.
   it.each([
     ["track", (args: Record<string, unknown>) => readTrack(args), "t0"],
     ["scene", (args: Record<string, unknown>) => readScene(args), "s0"],
@@ -283,7 +284,7 @@ describe("a target named twice", () => {
       const index = noun === "scene" ? "sceneIndex" : "trackIndex";
 
       expect(await refusal(() => call({ paths, [index]: 0 }))).toBe(
-        `path names the ${noun} on its own - don't send ${index} with it`,
+        `paths names the ${noun} on its own - don't send ${index} with it`,
       );
     },
   );

@@ -97,7 +97,11 @@ const CHROMATIC_MELODY: ExpectedNote[] = [
   { pitch: 68, start: 7, duration: 1 }, // Ab3
 ];
 
-/** Exact chromatic pitches — all four notations (stark is literal post-rework). */
+/**
+ * Exact chromatic pitches — all four notations (stark is literal post-rework).
+ * The midi-json variant fails on octave slips. Echoing the written pitches as
+ * names in the create-clip result was tried and caught none of them.
+ */
 export const melodyPitchMatrix = notationNeutralScenarios({
   baseId: "melody-pitch",
   description:

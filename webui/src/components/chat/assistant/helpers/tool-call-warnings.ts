@@ -7,12 +7,12 @@
  * Helpers for extracting warning messages from raw tool call results.
  */
 
-const WARNING_PREFIX = /^warning:\s*/i;
+import { getWarningTexts, WARNING_PREFIX } from "#src/shared/mcp-responses";
 
 /**
  * Extract warning messages from a raw tool result string.
  *
- * Parses the MCP content array and finds text items prefixed with "WARNING:".
+ * Parses the MCP content array and finds text items prefixed with "WARNING: ".
  *
  * @param result - Raw tool result string (JSON-serialized MCP content array)
  * @returns Array of cleaned warning messages (prefix stripped), empty if none
@@ -23,16 +23,9 @@ export function extractWarnings(result: string): string[] {
   }
 
   try {
-    const arr = JSON.parse(result) as Array<{ type: string; text?: string }>;
-
-    return arr
-      .filter(
-        (item): item is { type: string; text: string } =>
-          item.type === "text" &&
-          typeof item.text === "string" &&
-          WARNING_PREFIX.test(item.text),
-      )
-      .map((item) => item.text.replace(WARNING_PREFIX, ""));
+    return getWarningTexts(JSON.parse(result)).map((text) =>
+      text.slice(WARNING_PREFIX.length),
+    );
   } catch {
     return [];
   }

@@ -44,6 +44,9 @@ export interface WiredSessionDeps {
   /** True while the hook is tearing down on purpose, so our own close isn't
    * reported as a dropped connection. */
   intentionalCloseRef: { current: boolean };
+  /** True once a newer teardown superseded this connect; its late transport
+   * events then say nothing about the current session. */
+  isStale: () => boolean;
   cleanup: () => Promise<void>;
   /** Runs after cleanup() when the transport drops unexpectedly. */
   onConnectionLost: () => void;
@@ -77,7 +80,7 @@ export function createWiredSession(
     settings.volume,
     deps.audioElementRef,
     () => {
-      if (deps.intentionalCloseRef.current) {
+      if (deps.intentionalCloseRef.current || deps.isStale()) {
         return;
       }
 

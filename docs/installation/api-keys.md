@@ -27,7 +27,7 @@ reach Gemini through an [AI router](./ai-routers), or use
    Google account, then click "Create API Key")
 2. Settings to use in step 3:
    - Provider: **Google**
-   - Model: `gemini-3.8-flash` (or `gemini-4-argon` for more complex tasks)
+   - Model: `gemini-4-argon`
 
 ### OpenAI
 
@@ -67,6 +67,11 @@ address ("URL") from its documentation. Settings to use in step 3:
 - Provider: **Custom (OpenAI-compatible)**
 - URL: the service's address, e.g. `https://api.groq.com/openai/v1` for Groq
 - Model: the model name, e.g. `llama-3.3-70b-versatile`
+
+A model server on this computer (a URL starting `http://localhost` or
+`http://127.0.0.1`) works too, even if it blocks web pages from connecting.
+Producer Pal passes the requests along, but only for a chat UI opened on this
+computer.
 
 ## 3. Connect
 

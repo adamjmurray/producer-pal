@@ -12,15 +12,14 @@
 //
 // The label is module state rather than a parameter because roughly fifty
 // warning sites across ten files would otherwise each need one threaded down to
-// it. Files here import this module as `console`, so a warning site needs no
-// change at all.
+// it.
 //
 // Safe only because withClipWarningLabel's callback is synchronous: nothing
 // else can run between setting the label and restoring it. Do not wrap
 // anything that awaits — the label would leak onto another request's warnings,
 // the way an unmanaged warning capture does.
 
-import * as maxConsole from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 let clipLabel: string | undefined;
 let clipSink: ((message: string) => void) | undefined;
@@ -60,7 +59,7 @@ export function withClipWarningLabel<T>(
  */
 export function clipDetail(message: string): void {
   if (clipSink == null) {
-    warn(message);
+    emitTransformWarning(message);
   } else {
     clipSink(message);
   }
@@ -70,6 +69,6 @@ export function clipDetail(message: string): void {
  * Warn, naming the clip when a transform is running for one.
  * @param message - The warning text
  */
-export function warn(message: string): void {
-  maxConsole.warn(clipLabel == null ? message : `${clipLabel}: ${message}`);
+export function emitTransformWarning(message: string): void {
+  emitWarning(clipLabel == null ? message : `${clipLabel}: ${message}`);
 }

@@ -5,10 +5,11 @@ Part of the [remote script README](../README.md#routes).
 ## `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
 
 Clip automation envelopes, which Max for Live's LOM can't reach. **Session clips
-only**: Live refuses envelope writes on Arrangement clips and reads them as
-empty, so write in Session and duplicate to the Arrangement. That copies the
-envelope into the track's automation lane, which stays after the clip is deleted
-but can't be read back.
+only** (a regular track's, or a Live 13 return track's envelope clips): Live
+refuses envelope writes on Arrangement clips and reads them as empty, so write
+in Session and duplicate to the Arrangement. That copies the envelope into the
+track's automation lane, which stays after the clip is deleted but can't be read
+back.
 
 The routes themselves only touch Session clips. `ppal-update-clip` writes an
 arrangement clip's lane by parking the clip and stamping a scratch Session clip,
@@ -21,11 +22,16 @@ clip-level (Gain...) and MIDI CC envelopes are invisible to every route and
 API still writes one, but it never plays. See
 [dev/live-api/clip-envelopes.md](../../dev/live-api/clip-envelopes.md).
 
-Common params: `track` (`t0`, `t1`.. a regular track; return and master tracks
-have no clips), `slot` (0-based Session slot) or `arrangement_index`, and a
-parameter: `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device`
-(`d0`, `d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based
-index.
+Common params: `track` (`t0`, `t1`.. a regular track, or `rt0`, `rt1`.. a return
+track, whose Live 13 envelope clips sit in Session slots and whose mixer and
+devices are the parameters; the main track has no clips), `slot` (0-based
+Session slot) or `arrangement_index` (regular tracks only), and a parameter:
+`parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device` (`d0`,
+`d0/c1/d0` into rack chains, `d0/rc0/d0` into a Drum Rack's return chains) plus
+`parameter` as an exact name or 0-based index. A `device` that ends on a chain
+(`d0/c1`, `d0/rc0`) names that chain's own mixer, and takes the mixer names.
+`/list` gives each envelope the address `/read` takes: `parameter_name` for a
+mixer parameter, `device` and `parameter_index` for a device's.
 
 | Route    | Params                                 | Returns                                                                                                                                                                              |
 | -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -36,6 +36,9 @@ const EXEMPT: Record<string, string> = {
     "its callers read the color back, and say what they find",
 };
 
+/** Copies a source clip's own color, which is already a palette entry. */
+const RAW_COLOR_COPY = new Set(["src/tools/shared/clip/recreate-clip.ts"]);
+
 /**
  * How many times a pattern matches a file.
  * @param file - Path from the project root
@@ -64,6 +67,16 @@ describe("a color written for the caller is read back", () => {
       .map(({ file, writes, reads }) => `${file}: ${writes} writes, ${reads}`);
 
     expect(short, "read each color back with landedColor").toStrictEqual([]);
+  });
+
+  // Live snaps a raw color by RGB distance and picks poorly, so every write has
+  // to go through setColor, which writes the nearest palette entry itself.
+  it("writes every color through setColor, which snaps to the palette", () => {
+    const raw = filesContaining("src/tools", /\.set\(\s*["']color["']/)
+      .filter((file) => !RAW_COLOR_COPY.has(file))
+      .filter((file) => countIn(file, /\.set\(\s*["']color["']/g) > 0);
+
+    expect(raw, "write colors with setColor").toStrictEqual([]);
   });
 
   it("still finds the sites it guards", () => {

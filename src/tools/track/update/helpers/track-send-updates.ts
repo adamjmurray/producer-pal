@@ -25,7 +25,10 @@ import {
   AUTOMATION_OVERRIDDEN,
   overridesAutomation,
 } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
-import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
+import {
+  type SendEntry,
+  trimSendReturns,
+} from "#src/tools/shared/sends/sends-schema.ts";
 import {
   findReturnIndex,
   returnTrackPathIndex,
@@ -90,9 +93,8 @@ export function trackSendsAt(
  * only the sendReturn a track was given decides this. What matched nothing is
  * reported on that track's entry, so no track is left without an answer.
  *
- * The scalar pair is resolved first, so a call using both honors both. They
- * only collide when they name the same return, and then the list is the later
- * word.
+ * A call never carries both the deprecated pair and the list (refused up
+ * front); the list is the later word should the two ever name the same return.
  * @param sendGainDb - Send level in dB, if given
  * @param sendReturn - Return track id, name, path (rt0), or letter prefix, if given
  * @param sends - The `sends` list, as the caller sent it
@@ -125,7 +127,7 @@ export function resolveTrackSends(
 
   const list: ResolvedSend[] = [];
 
-  for (const send of sends ?? []) {
+  for (const send of trimSendReturns(sends)) {
     const resolved = matchReturn(returns, send, unresolved);
 
     if (resolved != null) {

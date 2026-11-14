@@ -172,13 +172,42 @@ describe("validateIdType", () => {
 });
 
 describe("idOrPathRequired", () => {
-  it("should say an id or a path is needed", () => {
-    expect(idOrPathRequired()).toBe("id or path is required");
+  it.each([
+    [
+      "track",
+      'id or path is required, e.g. path: "t0"; ppal-read-live-set (include tracks) lists them',
+    ],
+    [
+      "scene",
+      'id or path is required, e.g. path: "s0"; ppal-read-live-set (include scenes) lists them',
+    ],
+    [
+      "clip",
+      'id or path is required, e.g. path: "t0/s0"; ppal-read-track (include session-clips or arrangement-clips) lists them',
+    ],
+    [
+      "device",
+      'id or path is required, e.g. path: "t0/d0"; ppal-read-track (include devices) lists them',
+    ],
+    [
+      "drum-pad",
+      'id or path is required, e.g. path: "t0/d0/pC1"; ppal-read-track (include drum-map) lists them',
+    ],
+    [
+      "chain",
+      'id or path is required, e.g. path: "t0/d0/c0"; ppal-read-device (include chains) lists them',
+    ],
+  ])("should give a %s example and say where to find one", (target, text) => {
+    expect(idOrPathRequired(target)).toBe(text);
+  });
+
+  it("should give no example for a target it does not know", () => {
+    expect(idOrPathRequired("mystery")).toBe("id or path is required");
   });
 
   it("should name the action when given one", () => {
-    expect(idOrPathRequired("play-session-clips")).toBe(
-      'id or path is required for action "play-session-clips"',
+    expect(idOrPathRequired("clip", "play-session-clips")).toBe(
+      'id or path is required for action "play-session-clips", e.g. path: "t0/s0"; ppal-read-track (include session-clips or arrangement-clips) lists them',
     );
   });
 });

@@ -11,11 +11,28 @@ import { prepareClipData } from "../../helpers/clip-data-preparation.ts";
 import { createClip } from "../../create-clip.ts";
 import { setupSessionMocks } from "../create-clip-test-helpers.ts";
 
-// Mock the scale-mask read so we can assert exactly when createClip reads it
-// (the transformString != null ? readLiveSetScaleMask() : undefined ternary).
-vi.mock(import("#src/tools/clip/helpers/scale-mask.ts"), () => ({
-  readLiveSetScaleMask: vi.fn(),
+// Stand in for the call's scale questions so we can assert exactly when
+// createClip asks for the Live Set's scale: only for a clip a transform runs on.
+const { readSongScale } = vi.hoisted(() => ({
+  readSongScale: vi.fn(() => ({
+    enabled: false,
+    rootNote: 0,
+    name: "Major",
+    mask: undefined,
+  })),
 }));
+
+vi.mock(
+  import("#src/tools/shared/schema/scale/call-scale.ts"),
+  async (original) => ({
+    ...(await original()),
+    newCallScale: () => ({
+      supported: () => false,
+      song: readSongScale,
+      clipMask: () => undefined,
+    }),
+  }),
+);
 
 // Mock code application so we can assert whether/how createClipAtIndex invokes it
 // without needing the full code-exec V8 round-trip.
@@ -24,7 +41,6 @@ vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
 }));
 
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const FOUR_FOUR = { signature_numerator: 4, signature_denominator: 4 };
@@ -233,7 +249,7 @@ describe("createClip - scale mask wiring", () => {
       transforms: "velocity = 100",
     });
 
-    expect(readLiveSetScaleMask).toHaveBeenCalled();
+    expect(readSongScale).toHaveBeenCalled();
   });
 
   it("does not read the scale mask when no transform is present", async () => {
@@ -241,6 +257,6 @@ describe("createClip - scale mask wiring", () => {
 
     await createClip({ slot: "0/0", notes: "C3 1|1" });
 
-    expect(readLiveSetScaleMask).not.toHaveBeenCalled();
+    expect(readSongScale).not.toHaveBeenCalled();
   });
 });

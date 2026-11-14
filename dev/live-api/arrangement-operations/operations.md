@@ -2,30 +2,26 @@
 
 Part of [Arrangement Operations](README.md).
 
-## Lengthening — Looped Clips (MIDI & Audio Warped)
+## Lengthening — Looped Clips
 
 Entry: `handleArrangementLengthening()` → looped branch in
 `arrangement-length-changes.ts`
 
-Two sub-cases based on whether the target is shorter or longer than the clip's
-loop region:
+1. **Clear the span** the clip will grow into (`clearAheadOfClip`), only when
+   the lane view finds a clip there: a temp clip laid over
+   `[currentEnd, start + target)` trims or removes what's there, then is
+   deleted. Without this, Live stops the clip at the next one.
+2. **Resize in place** (`resizeArrangementClip`): `looping` 0, `loop_end` =
+   `start_marker` + target, `looping` 1. See
+   [Resizing a Clip in Place](README.md#resizing-a-clip-in-place).
 
-**Target < clip loop length** ("expose hidden content"):
+One clip, same id. A start marker inside the loop or before it (pre-roll) needs
+nothing special: Live plays it the same way across the longer span. Every
+unlooped case below clears the same way before it grows.
 
-- Tiles with progressive `start_marker` offsets to show different portions of
-  the loop
-- Each tile starts where the previous one's content ended within the loop
-
-**Target >= clip loop length** ("standard tiling"):
-
-- `createLoopedClipTiles()` fills remaining space with duplicated loop
-  iterations
-- One pass is the loop length. A `firstStart` inside the loop does not shorten
-  it: Live plays to `loop_end`, wraps to `loop_start` and plays out the rest, so
-  the tiles carry that same offset instead of splitting into sub-loop pieces
-- Full tiles use direct duplication
-- Last tile shortened via holding area if it would overshoot the target
-- Uses `tileClipToRange()` for the actual tiling work
+A take-lane clip skips the clearing (`lengthenTakeLaneClip`): the target is cut
+to where the next clip on the lane starts, and the entry says
+`arrangementLength landed at …: the next clip on the lane starts there`.
 
 ## Lengthening — Unlooped MIDI
 
@@ -38,12 +34,12 @@ boundary detection needed (MIDI has no file boundary — content is just notes).
 
 Algorithm:
 
-1. **Extend `end_marker`**: set to `clipStartMarker + arrangementLengthBeats`
+1. **Clear** the target span
+2. **Extend `end_marker`**: set to `clipStartMarker + arrangementLengthBeats`
    (only if extending, never shrink)
-2. **Set `loop_end`**: `loopStart + arrangementLengthBeats`
+3. **Set `loop_end`**: `loopStart + arrangementLengthBeats`
 
-No tiling, no holding area. Returns a single clip (preserves clip ID, envelopes,
-and automation).
+Returns a single clip (preserves clip ID, envelopes, and automation).
 
 ## Lengthening — Unlooped Warped Audio
 
@@ -64,13 +60,13 @@ Algorithm:
    - **Cap**: file has content but less than target. Cap `effectiveTarget` to
      `totalContentFromStart`, warn.
    - **Proceed**: file has sufficient content for the full target.
-3. **Set `loop_end`**: `loopStart + effectiveTarget` (in content beats, 1:1 with
+3. **Clear** up to `effectiveTarget`, so nothing past the file's reach goes
+4. **Set `loop_end`**: `loopStart + effectiveTarget` (in content beats, 1:1 with
    arrangement beats)
-4. **Extend `end_marker`**: set to `clipStartMarker + effectiveTarget` (only if
+5. **Extend `end_marker`**: set to `clipStartMarker + effectiveTarget` (only if
    extending)
 
-No tiling, no holding area. Returns a single clip (preserves clip ID, envelopes,
-and automation).
+Returns a single clip (preserves clip ID, envelopes, and automation).
 
 ## Lengthening — Unlooped Unwarped Audio
 
@@ -89,25 +85,26 @@ Algorithm:
    (avoids needing project tempo)
 3. Calculate
    `targetLoopEnd = loopStart + (arrangementLengthBeats / beatsPerSecond)`
-4. Set `loop_end` to `targetLoopEnd`
-5. Read back `end_time` to check actual achieved arrangement length
-6. Three-way result:
+4. Clear up to the file's reach (`sample_length` / `sample_rate` past
+   `loop_start`), or the whole target when the sample's length is unknown
+5. Set `loop_end` to `targetLoopEnd`
+6. Read back `end_time` to check actual achieved arrangement length
+7. Three-way result:
    - **No change**: `actualArrangementLength <= currentArrangementLength` — at
      file boundary already, warn
    - **Capped**: `actualArrangementLength < arrangementLengthBeats` — extended
      but capped at file boundary, warn
    - **Full**: target achieved
 
-No tiling, no session clips, no holding area. Returns a single clip.
+No session clips, no holding area. Returns a single clip.
 
 ## Shortening
 
 Entry: `handleArrangementShortening()` in `arrangement-length-changes.ts`
 
-1. Calculate the region to remove: `[currentStartTime + target, currentEndTime]`
-2. Create temp clip covering that region (audio via session, MIDI directly)
-3. Ableton's overlap behavior truncates the existing clip
-4. Delete temp clip
+`resizeArrangementClip` to the target, for every clip kind: the looping toggle
+for a looped clip, `loop_end` and `end_marker` for an unlooped one. No temp
+clip, nothing else on the lane touched.
 
 ## Moving (Arrangement Start)
 
@@ -119,13 +116,14 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
 
 **Order matters** when one call moves and resizes a clip:
 
-- **Shortening, main lane to main lane:** shorten first, where the clip sits,
-  then move. The move copies the clip at its current length and clears that
-  whole span, so moving first would wipe neighbors the shortened clip no longer
-  reaches. Shortening in place only covers the clip's own tail.
-- **Everything else:** move first, so lengthening tiles from the new position
-  instead of over the clip's old neighbors. Take-lane moves re-create the clip
-  and take-lane clips refuse `arrangementLength`, so they keep this order too.
+- **Shortening:** shorten first, where the clip sits, then move. The move copies
+  (or re-creates) the clip at its current length and clears that whole span, so
+  moving first would wipe neighbors the shortened clip no longer reaches.
+  Shortening in place touches nothing else. A move that will be refused because
+  it can't re-create the clip shortens nothing.
+- **Lengthening:** move first, so the clip grows from the new position instead
+  of over its old neighbors. On a take lane it grows without clearing and stops
+  at the next clip, since nothing on a lane can be deleted.
 
 Neither step can be undone, so a move that would be refused (a track that won't
 take the clip) is checked first: nothing is moved or resized, and the refusal is
@@ -134,9 +132,9 @@ the reason on the entry. A lengthen whose move then fails anyway is skipped too
 never named. If Live throws after a step landed, the entry names what exists now
 (the copy, not the source it replaced) and says what landed:
 `<error>; already changed: shortened, copy at t0[5|1]` (a lengthening says
-`lengthened`, once it grew the clip or laid a tile). A resize that throws after
-a move landed says `moved, but arrangementLength didn't finish`, and a move
-refused after the shortening adds `shortened in place` to the refusal.
+`lengthened`, once it grew the clip). A resize that throws after a move landed
+says `moved, but arrangementLength didn't finish`, and a move refused after the
+shortening adds `shortened in place` to the refusal.
 
 **The duplicate clears its destination range first**, so it destroys whatever
 sat there — including another clip the same call names. A take-lane create does
@@ -178,7 +176,7 @@ anything is cut. Live keeps only the first piece on the id that was named, so a
 list reaches that piece and no other; a single value reaches every piece, which
 is worse. One `arrangementStart` stacks them all on one bar and the covers leave
 all but the last unwritten — doing as it is told, not a guard. One
-`arrangementLength` longer than a piece tiles copies in from that piece's end,
-which is where the next piece starts, so each piece buries the one after it.
-Telling a safe length from a destructive one needs each piece's own length, and
-that needs a Live read this has to answer before, so the whole param is refused.
+`arrangementLength` longer than a piece grows it from its end, which is where
+the next piece starts, so each piece buries the one after it. Telling a safe
+length from a destructive one needs each piece's own length, and that needs a
+Live read this has to answer before, so the whole param is refused.

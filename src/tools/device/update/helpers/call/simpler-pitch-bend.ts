@@ -8,7 +8,7 @@
 // param write can't wait on. They are written here, ahead of the rest of the
 // target's update, and each param entry is handed on with what it came to.
 
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type ParamEntry,
   paramEntryKey,
@@ -40,6 +40,8 @@ export interface PitchBendStall {
 /** What the write needs from the call. */
 interface PitchBendCall {
   deadline: number | null | undefined;
+  /** Whether the caller can use ppal-manage (`manageOffered`) */
+  manage: boolean;
   /** Told that a write may have changed Live, for a later throw to say so */
   landed: (phrase: string) => void;
 }
@@ -48,6 +50,8 @@ interface PitchBendCall {
 interface PitchBendEntry {
   entry: ParamEntry;
   setting: keyof SimplerSettings;
+  /** The setting's largest value */
+  max: number;
   /** The name as the call spelled it */
   key: string;
 }
@@ -103,7 +107,7 @@ export function writePitchBendParams(
 function pitchBendEntries(params: ParamEntry[]): PitchBendEntry[] {
   const found: PitchBendEntry[] = [];
 
-  for (const { setting } of SETTINGS) {
+  for (const { setting, max } of SETTINGS) {
     const last = params.findLast((entry) => {
       const { key, byId } = paramEntryKey(entry);
 
@@ -111,7 +115,12 @@ function pitchBendEntries(params: ParamEntry[]): PitchBendEntry[] {
     });
 
     if (last != null) {
-      found.push({ entry: last, setting, key: paramEntryKey(last).key });
+      found.push({
+        entry: last,
+        setting,
+        max,
+        key: paramEntryKey(last).key,
+      });
     }
   }
 
@@ -158,7 +167,12 @@ async function settle(
     return refuseAll(settled, asked, stall.reason);
   }
 
-  const write = await writeSimplerSettings(target, change, call.deadline);
+  const write = await writeSimplerSettings(
+    target,
+    change,
+    call.deadline,
+    call.manage,
+  );
 
   if (write.ok) {
     call.landed("pitch bend range");
@@ -176,7 +190,7 @@ async function settle(
       asked,
       write.outdated === true
         ? write.reason
-        : `needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+        : `needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(call.manage)}`,
     );
   }
 
@@ -208,8 +222,7 @@ async function settle(
  * @returns The reason, or null when it can be written
  */
 function refuseValue(item: PitchBendEntry): string | null {
-  const { entry, setting, key } = item;
-  const max = SETTINGS.find((s) => s.setting === setting)?.max ?? 0;
+  const { entry, max, key } = item;
   const raw = entry.value.trim();
   const int = coerceInt(raw);
 

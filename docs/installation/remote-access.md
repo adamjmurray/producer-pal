@@ -7,27 +7,65 @@ tunnel.
 ## Local Networks
 
 For studios, classrooms, or performances on a local network, you don't need a
-tunnel. Producer Pal has no authentication, so anyone on the same network can
-reach it at the default port. You can customize the port number in the Producer
-Pal device settings (default: 3350), which reduces the chance of accidental
-discovery but is not real access control. Update the `:3350` in your AI
-connection settings if you change it in the Producer Pal Max for Live device.
+tunnel. By default only Live's computer can connect. To let phones and other
+computers in, turn on **Remote Control** in the device's
+[Setup tab](/guide/device#setup-tab). It's saved for this computer, not in your
+Live Sets. It takes effect right away, and open connections drop for a moment.
+You can also turn it on in the Chat UI under Settings → Installation → Remote
+Control. That works from the Chat UI open at `localhost` on Live's computer.
+Other phones and computers on your network, web tunnels, and other websites
+can't turn it on.
+
+::: warning No Password
+
+With the setting on, anyone on the same network can control Ableton Live.
+Producer Pal has no password, so only turn it on for a network you trust, and
+turn it off when you're done. Changing the port (default: 3350) makes accidental
+discovery less likely, but it is not real access control.
+
+:::
+
+**Upgrading to 2.6:** other phones and computers could connect without this
+setting before. They can't now until you turn it on.
+
+Update the `:3350` in your AI connection settings if you change the port in the
+Producer Pal Max for Live device.
 
 ### Chat From a Phone or Another Computer
 
-1. Connect the phone or other computer to the same Wi-Fi network as Live's
+1. Turn on **Remote Control** in the device's Setup tab.
+2. Connect the phone or other computer to the same Wi-Fi network as Live's
    computer.
-2. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
+3. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
    Details → TCP/IP. On Windows: Settings → Network & internet → Wi-Fi → your
    network.
-3. In the phone's browser, open `http://<that address>:3350`, for example
+4. In the phone's browser, open `http://<that address>:3350`, for example
    `http://192.168.1.20:3350`.
-4. Set up the AI in the chat's settings. Each browser keeps its own settings, so
+5. Set up the AI in the chat's settings. Each browser keeps its own settings, so
    paste your API key again.
 
 Some things only work on Live's computer: voice mode, and device settings like
 small model mode. From a phone, use an [AI router](./ai-routers) or an
 [API key](./api-keys). Local AI isn't set up for this.
+
+### API Keys Over Plain HTTP
+
+The chat UI keeps your API key in the browser, encrypted. It goes straight from
+your browser to the AI provider, not through a Producer Pal server. (Voice mode,
+which only works on Live's computer, sends the key to Producer Pal on that
+computer to get a short-lived token from the provider.)
+
+The encryption keeps your key out of plain-text browser storage, so a stray
+program that scans your files for API keys won't find it. That's a step up from
+keeping keys in a plain text file, as many tools do. It doesn't stop something
+that targets the chat UI on purpose: the decryption key lives in the same
+browser, and any script running in the page can use it.
+
+On a phone or another computer, the address starts with `http://`, so the
+connection to the chat UI isn't encrypted. Your key is still stored encrypted,
+but anyone on that network could alter the page. For a trusted home or studio
+network that's usually fine. A [web tunnel](#web-tunnels) gives an encrypted
+connection and is the better way to use the chat UI from another computer.
 
 ## Web Chat
 
@@ -47,7 +85,14 @@ setup, and Live is reachable by anyone with the link.
 
 ## Web Tunnels
 
-A tunnel gives your Producer Pal a public web address.
+A tunnel gives your Producer Pal a public web address. A tunnel running on
+Live's computer and pointed at `localhost` works with **Remote Control** off.
+One running in WSL2, Docker, or a VM, or pointed at the computer's network
+address, needs the setting on.
+
+The chat UI works through the tunnels below. On your own domain (a named
+Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or Le
+Chat works, but the chat UI and REST API don't yet.
 
 ::: danger Security Warning
 

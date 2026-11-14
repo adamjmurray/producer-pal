@@ -127,8 +127,14 @@ function landingOnSource(group: Group, run: DuplicateRun): Landing {
   }));
   const source = liveObject(run, first.sourceId);
   const { numerator, denominator } = meterOf(run);
-  const spans = copies.map(({ label }) =>
-    copySpanBeats(source, label.length, numerator, denominator),
+  const spans = copies.map(({ body, label }) =>
+    copySpanBeats(
+      source,
+      label.length,
+      numerator,
+      denominator,
+      body.target.takeLane != null,
+    ),
   );
   const over = copiesOverSource(
     source,
@@ -164,21 +170,22 @@ function spareNeeds(
     { length: count },
     () => undefined,
   );
-  // The spare has to sit past every copy of the call on its track, not only the
-  // late ones: another source's copy made between them could land on it.
-  const reach = new Map<number, number>();
-
-  for (const { trackIndex, end } of landings.flatMap((each) => each.reaches)) {
-    reach.set(trackIndex, Math.max(end, reach.get(trackIndex) ?? 0));
-  }
+  const reaches = landings.flatMap((each) => each.reaches);
 
   for (const { indexes, sparable, trackIndex } of landings) {
     if (sparable && indexes.length >= 2) {
+      // The spare has to sit past every copy of the call on its track, not only
+      // the late ones: another source's copy made between them could land on
+      // it.
+      const clearBeats = Math.max(
+        0,
+        ...reaches
+          .filter((reach) => reach.trackIndex === trackIndex)
+          .map((reach) => reach.end),
+      );
+
       for (const index of indexes) {
-        needs[index] = {
-          copies: indexes.length,
-          clearBeats: reach.get(trackIndex as number) ?? 0,
-        };
+        needs[index] = { copies: indexes.length, clearBeats };
       }
     }
   }

@@ -21,6 +21,7 @@ import {
   remoteScriptLook,
   summarize,
 } from "./helpers/remote-script-summary";
+import { NewChatHint } from "./NewChatHint";
 import { RemoteScriptSteps } from "./RemoteScriptSteps";
 import { SectionCard } from "./SectionCard";
 
@@ -56,7 +57,7 @@ export function RemoteScriptSection({
         id="remote-script"
         testId="remote-script-section"
         kind="unknown"
-        title="Remote script"
+        title="Control Surface remote script"
       >
         <Description />
         {remote.loading ? (
@@ -83,7 +84,7 @@ export function RemoteScriptSection({
       id="remote-script"
       testId="remote-script-section"
       kind={look.kind}
-      title="Remote script"
+      title="Control Surface remote script"
       aside={
         <InstallButton
           status={status}
@@ -182,9 +183,12 @@ function InstallMessages({ remote }: { remote: Remote }) {
 
   if (remote.installedPath != null) {
     return (
-      <p className={goodTextClass} data-testid="remote-script-installed-path">
-        Installed to {remote.installedPath}
-      </p>
+      <>
+        <p className={goodTextClass} data-testid="remote-script-installed-path">
+          Installed to {remote.installedPath}
+        </p>
+        <NewChatHint testId="remote-script-new-chat-hint" afterRestart />
+      </>
     );
   }
 

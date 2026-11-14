@@ -7,7 +7,7 @@
 // the same call that sat inside it answer for themselves.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
@@ -21,10 +21,13 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { updateDevice } from "../../update-device.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const PRESET: BrowserItem = {
   type: "instrument",
@@ -47,15 +50,25 @@ function hotswapCalls(): unknown[] {
     .mock.calls.filter(([route]) => route === REMOTE_SCRIPT_ROUTES.hotswap);
 }
 
-/** Answer the remote script; every hotswap replaces the rack with a new one. */
-function replaceRackOnHotswap(): void {
+/**
+ * Answer the remote script: every preset resolves, and every hotswap succeeds.
+ * @param swap - What Live does to the mocks on each hotswap
+ */
+function answerHotswaps(swap: (devicePath: string) => void): void {
   vi.mocked(requestNode).mockImplementation(async (route, args) => {
     if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
       return { success: true, result: { available: true, item: PRESET } };
     }
 
-    const { devicePath } = args as { devicePath: string };
+    swap((args as { devicePath: string }).devicePath);
 
+    return { success: true, result: { available: true, replaced: true } };
+  });
+}
+
+/** Answer the remote script; every hotswap replaces the rack with a new one. */
+function replaceRackOnHotswap(): void {
+  answerHotswaps((devicePath) => {
     // Live removes the old rack, and with it everything inside it.
     deleteMockObject(devicePath);
     deleteMockObject(NESTED_PATH);
@@ -65,8 +78,6 @@ function replaceRackOnHotswap(): void {
       type: "Device",
       properties: { class_display_name: "Instrument Rack", type: 1 },
     });
-
-    return { success: true, result: { available: true, replaced: true } };
   });
 }
 
@@ -200,14 +211,8 @@ describe("updateDevice - targets a later target's preset replaces", () => {
 
     // A nested hotswap replaces only that device; a rack hotswap kills the
     // rack and everything inside it.
-    vi.mocked(requestNode).mockImplementation(async (route, args) => {
-      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
-        return { success: true, result: { available: true, item: PRESET } };
-      }
-
-      const { devicePath } = args as { devicePath: string };
+    answerHotswaps((devicePath) => {
       const isRack = devicePath === RACK_PATH;
-
       const inside = [CHAIN_PATH, NESTED_PATH, PAD_PATH];
 
       for (const path of isRack ? [RACK_PATH, ...inside] : []) {
@@ -219,8 +224,6 @@ describe("updateDevice - targets a later target's preset replaces", () => {
         type: "Device",
         properties: { class_display_name: "Instrument Rack", type: 1 },
       });
-
-      return { success: true, result: { available: true, replaced: true } };
     });
   });
 

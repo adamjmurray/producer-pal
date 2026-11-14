@@ -152,8 +152,11 @@ declare global {
     /** Get the color as a CSS hex string (e.g., "#FF0000") */
     getColor(): string | null;
 
-    /** Set the color from a CSS hex string (e.g., "#FF0000") */
-    setColor(cssColor: string): void;
+    /**
+     * Set the color from a CSS hex string (e.g., "#FF0000"). Writes the nearest
+     * palette entry, or the exact color when `raw` is true.
+     */
+    setColor(cssColor: string, raw?: boolean): void;
 
     /** Get the object's name, always as a string. See the implementation. */
     getName(): string;
@@ -192,5 +195,32 @@ declare global {
 
     /** Get time signature as "N/D" string (e.g., "4/4") */
     readonly timeSignature: string | null;
+
+    /**
+     * Whether this is a Live 13 step sequencer clip: a MIDI clip whose notes
+     * Live hides from the API. False for every other clip, and on Live 12.
+     */
+    readonly isStepSequencerClip: boolean;
+
+    /**
+     * Like `isStepSequencerClip`, for a caller that has already read
+     * `is_midi_clip` as 1 and so skips that read. Never true on an audio clip's
+     * behalf: call it only for a MIDI clip.
+     */
+    readonly midiClipIsStepSequencer: boolean;
+
+    /**
+     * Whether this is a Live 13 envelope clip: neither a MIDI nor an audio clip
+     * (it holds automation only). False on Live 12. Call it only for a clip
+     * whose `is_midi_clip` already read 0.
+     */
+    readonly nonMidiClipIsEnvelope: boolean;
+
+    /**
+     * The scene index of a clip slot on a return track, or null for anything
+     * else. Kept apart from `sceneIndex` and `clipSlotIndex`, which stay null
+     * for return-track slots.
+     */
+    readonly returnClipSlotIndex: number | null;
   }
 }

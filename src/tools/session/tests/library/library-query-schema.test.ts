@@ -1,0 +1,120 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import {
+  batchQuerySchema,
+  searchesInputSchema,
+} from "../../library-query-schema.ts";
+
+describe("searchesInputSchema (searches fan-out input)", () => {
+  it("parses an array of query objects", () => {
+    expect(
+      searchesInputSchema.parse([
+        { label: "Kick", tags: "Kick", limit: 3 },
+        { query: "808" },
+      ]),
+    ).toStrictEqual([
+      { label: "Kick", tags: "Kick", limit: 3, kind: "audio" },
+      { query: "808", kind: "audio" },
+    ]);
+  });
+
+  it("defaults kind to audio (matching single search) and preserves an explicit kind", () => {
+    expect(
+      searchesInputSchema.parse([
+        { tags: "Kick" },
+        { tags: "Pad", kind: "midi" },
+      ]),
+    ).toStrictEqual([
+      { tags: "Kick", kind: "audio" },
+      { tags: "Pad", kind: "midi" },
+    ]);
+  });
+
+  it("coerces scalar fields (numeric query/limit) to their target types", () => {
+    expect(
+      searchesInputSchema.parse([{ query: 808, limit: "3" }]),
+    ).toStrictEqual([{ query: "808", limit: 3, kind: "audio" }]);
+  });
+
+  it("accepts a numeric offset per query so each entry pages on its own", () => {
+    expect(
+      searchesInputSchema.parse([{ query: "kick", limit: 2, offset: "4" }]),
+    ).toStrictEqual([{ query: "kick", limit: 2, offset: 4, kind: "audio" }]);
+  });
+
+  it("accepts verifyPaths per query so a batch can verify each query's results independently", () => {
+    expect(
+      searchesInputSchema.parse([
+        { label: "Kicks", tags: "Kick", verifyPaths: true },
+        { label: "Snares", tags: "Snare" },
+      ]),
+    ).toStrictEqual([
+      { label: "Kicks", tags: "Kick", verifyPaths: true, kind: "audio" },
+      { label: "Snares", tags: "Snare", kind: "audio" },
+    ]);
+  });
+
+  it("preserves inFolder so a batch query restricts to a folder like a single search", () => {
+    expect(
+      searchesInputSchema.parse([
+        { label: "Inside Kicks", inFolder: "/Library/Drums/Kicks" },
+      ]),
+    ).toStrictEqual([
+      {
+        label: "Inside Kicks",
+        inFolder: "/Library/Drums/Kicks",
+        kind: "audio",
+      },
+    ]);
+  });
+
+  it("parses a JSON-stringified array (small-model fallback)", () => {
+    expect(
+      searchesInputSchema.parse('[{"label":"Snare","tags":"Snare"}]'),
+    ).toStrictEqual([{ label: "Snare", tags: "Snare", kind: "audio" }]);
+  });
+
+  it("returns undefined when omitted", () => {
+    expect(searchesInputSchema.parse(undefined)).toBeUndefined();
+  });
+
+  it("rejects a non-array, non-JSON string", () => {
+    expect(() => searchesInputSchema.parse("not valid")).toThrow(
+      "Invalid input: expected array, received string",
+    );
+  });
+
+  it("rejects a JSON string that does not parse to an array", () => {
+    expect(() => searchesInputSchema.parse('{"tags":"Kick"}')).toThrow(
+      "Invalid input: expected array, received object",
+    );
+  });
+
+  it("rejects an unknown enum value", () => {
+    // Zod's message lands inside a JSON dump, so the quotes around each value
+    // arrive escaped.
+    expect(() => searchesInputSchema.parse([{ kind: "bogus" }])).toThrow(
+      /Invalid option: expected one of .*audio.*folder/,
+    );
+  });
+});
+
+describe("batchQuerySchema (published JSON schema)", () => {
+  it("states the audio default on kind, the only per-field text the model sees in searches", () => {
+    const json = z.toJSONSchema(batchQuerySchema, { io: "input" }) as {
+      properties: Record<string, { description?: string }>;
+    };
+
+    expect(json.properties.kind?.description).toContain("audio");
+    expect(
+      Object.entries(json.properties)
+        .filter(([, prop]) => prop.description != null)
+        .map(([name]) => name),
+    ).toStrictEqual(["kind"]);
+  });
+});

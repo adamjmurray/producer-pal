@@ -7,13 +7,24 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    listAllConversationSummaries: vi.fn(actual.listAllConversationSummaries),
+  };
+});
+
 import { useBranchNav } from "#webui/hooks/chat/use-chat-mode-state";
 import {
   type ConversationRecord,
   getConversationDb,
+  listAllConversationSummaries,
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
@@ -68,6 +79,38 @@ describe("useBranchNav", () => {
         { anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 },
       ]);
     });
+  });
+
+  // Holds the read open so the switch always lands first. Left to chance, this
+  // guard was covered only on fast machines, which flipped CI coverage.
+  it("ignores a read that finishes after the active conversation changed", async () => {
+    await saveRecord("A");
+    await saveRecord("B", {
+      forkParentId: "A",
+      forkedAtIndex: 0,
+      createdAt: 2000,
+    });
+    const summaries = await listAllConversationSummaries();
+    let finishRead!: (value: typeof summaries) => void;
+    const staleRead = new Promise<typeof summaries>((resolve) => {
+      finishRead = resolve;
+    });
+
+    vi.mocked(listAllConversationSummaries).mockReturnValueOnce(staleRead);
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string | null }) => useBranchNav(id, 0),
+      { initialProps: { id: "B" as string | null } },
+    );
+
+    rerender({ id: null });
+
+    await act(async () => {
+      finishRead(summaries);
+      await staleRead;
+    });
+
+    expect(result.current).toStrictEqual([]);
   });
 
   it("clears points when no siblings remain", async () => {

@@ -4,11 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-
-const MAX_CONTENT_LENGTH = 10_000;
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
@@ -87,17 +86,18 @@ export const toolDefContext = defineTool("ppal-context", {
       },
     ),
 
-    content: param(boundedString(MAX_CONTENT_LENGTH).optional(), {
+    content: param(boundedString(MAX_CONTEXT_CONTENT_LENGTH).optional(), {
       default:
         "Text to write — project/global: the whole document; memory: the " +
-        `entry body (one fact). Max ${MAX_CONTENT_LENGTH} chars.`,
-      smallModel: `The full document text to write. Max ${MAX_CONTENT_LENGTH} chars.`,
+        `entry body (one fact). Max ${MAX_CONTEXT_CONTENT_LENGTH} chars.`,
+      smallModel: `The full document text to write. Max ${MAX_CONTEXT_CONTENT_LENGTH} chars.`,
     }),
 
-    name: param(z.string().max(200).optional(), {
+    name: param(z.string().max(1000).optional(), {
       default:
-        "Memory entry name (read/write/delete on scope:memory only), one entry per " +
-        "call. Reuse a name to update, not duplicate.",
+        "Memory entry name (scope:memory only). read/delete take a " +
+        "comma-separated list; write takes one, no commas. Reuse a name to update, " +
+        "not duplicate.",
       smallModel: null,
     }),
 
@@ -111,18 +111,15 @@ export const toolDefContext = defineTool("ppal-context", {
     // The escape hatch for the clobber guard (project-context-operations.ts's
     // clobberRefusal), and deliberately NOT taught in the skills: the model
     // learns of it from the refused write's message, at the moment it is
-    // relevant, so it never reaches for it casually. Declared in EVERY mode — including small-model,
-    // where it costs a few tokens — because a guard whose only way out is hidden
-    // from the tier that hits it would deadlock the write, which is worse than
-    // the clobber it prevents.
+    // relevant. It works only after an earlier request's refusal of that scope,
+    // while the document is unchanged; otherwise it is ignored and the write is
+    // refused, so the model always sees what would be lost. Declared in EVERY
+    // mode, small-model included: a guard whose only way out is hidden from the
+    // tier that hits it would deadlock the write.
     //
-    // Refused outside a project or global write, which are the only calls with
-    // a guard to get past. But don't refuse a `force` that had nothing to get
-    // past on one of those. It also means "I mean to replace this wholesale" — which is how the eval harness seeds and
-    // restores the global document — and a caller can't predict whether the
-    // guard would have fired, since that turns on whether its new content
-    // happens to share a line. Refusing would break deliberate replacement at
-    // random, an empty document always included.
+    // Refused outside a project or global write, which have no guard to get
+    // past. Not refused on one of those where the guard wouldn't fire: a
+    // caller can't predict that, so it just does nothing there.
     force: z
       .boolean()
       .optional()

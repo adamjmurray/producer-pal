@@ -22,17 +22,17 @@ test that edits preserve them — keep it when re-authoring the Set.
 
 ### Looped Clips (t0-t8)
 
-| Track | Name             | Clip Length | Arr Length | firstStart | Edge Case                                                   |
-| ----- | ---------------- | ----------- | ---------- | ---------- | ----------------------------------------------------------- |
-| t0    | 1. MIDI - Looped | 1:0         | 1:0        | 1\|1       | clip length == arr length, start == firstStart              |
-| t1    | 2. MIDI - Looped | 0:3         | 1:0        | 1\|1       | clip length < arr length (tiles), start == firstStart       |
-| t2    | 3. MIDI - Looped | 1:0         | 0:3        | 1\|1       | clip length > arr length (partial), start == firstStart     |
-| t3    | 4. MIDI - Looped | 1:0         | 1:0        | 1\|2       | clip length == arr length, start < firstStart (loop offset) |
-| t4    | 5. MIDI - Looped | 0:3         | 1:0        | 1\|2       | clip length < arr length, start < firstStart                |
-| t5    | 6. MIDI - Looped | 1:0         | 0:3        | 1\|2       | clip length > arr length, start < firstStart                |
-| t6    | 7. MIDI - Looped | 0:3         | 1:0        | 1\|1       | clip length == arr length, start > firstStart               |
-| t7    | 8. MIDI - Looped | 0:2         | 1:0        | 1\|1       | clip length < arr length, start > firstStart                |
-| t8    | 9. MIDI - Looped | 0:3         | 0:3        | 1\|1       | clip length > arr length, start > firstStart                |
+| Track | Name             | Clip Length | Arr Length | firstStart | Edge Case                                                    |
+| ----- | ---------------- | ----------- | ---------- | ---------- | ------------------------------------------------------------ |
+| t0    | 1. MIDI - Looped | 1:0         | 1:0        | 1\|1       | clip length == arr length, start == firstStart               |
+| t1    | 2. MIDI - Looped | 0:3         | 1:0        | 1\|1       | clip length < arr length (loop repeats), start == firstStart |
+| t2    | 3. MIDI - Looped | 1:0         | 0:3        | 1\|1       | clip length > arr length (partial), start == firstStart      |
+| t3    | 4. MIDI - Looped | 1:0         | 1:0        | 1\|2       | clip length == arr length, start < firstStart (loop offset)  |
+| t4    | 5. MIDI - Looped | 0:3         | 1:0        | 1\|2       | clip length < arr length, start < firstStart                 |
+| t5    | 6. MIDI - Looped | 1:0         | 0:3        | 1\|2       | clip length > arr length, start < firstStart                 |
+| t6    | 7. MIDI - Looped | 0:3         | 1:0        | 1\|1       | clip length == arr length, start > firstStart                |
+| t7    | 8. MIDI - Looped | 0:2         | 1:0        | 1\|1       | clip length < arr length, start > firstStart                 |
+| t8    | 9. MIDI - Looped | 0:3         | 0:3        | 1\|1       | clip length > arr length, start > firstStart                 |
 
 ### Unlooped Clips (t9-t14)
 
@@ -56,7 +56,7 @@ _All audio tracks use: Perc Semba 100 bpm.wav (Core Library)_
 | Track | Name              | Clip Length | Arr Length | firstStart | Edge Case                                      |
 | ----- | ----------------- | ----------- | ---------- | ---------- | ---------------------------------------------- |
 | t15   | 1. Audio - Looped | 2:0         | 2:0        | 1\|1       | clip length == arr length, start == firstStart |
-| t16   | 2. Audio - Looped | 2:0         | 2:1        | 1\|1       | clip length < arr length (tiles)               |
+| t16   | 2. Audio - Looped | 2:0         | 2:1        | 1\|1       | clip length < arr length (loop repeats)        |
 | t17   | 3. Audio - Looped | 2:0         | 1:1        | 1\|1       | clip length > arr length (partial)             |
 | t18   | 4. Audio - Looped | 2:0         | 2:0        | 1\|2       | Loop start offset (firstStart = 1\|2)          |
 | t19   | 5. Audio - Looped | 2:0         | 2:1        | 1\|2       | Short loop with offset start                   |
@@ -103,6 +103,6 @@ relationships × start/firstStart timing
 - firstStart offsets (loop start points)
 - Hidden content (clip content beyond arrangement boundaries)
 - Arrangement positioned into loop content
-- Tiled/repeated loop content
+- Repeated loop content
 - Unwarped audio with natural sample timing
 - Clip envelopes surviving an edit (MIDI clips only)

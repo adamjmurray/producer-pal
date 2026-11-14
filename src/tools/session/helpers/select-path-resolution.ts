@@ -23,6 +23,14 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import {
+  RETURN_CLIPS_NEED_LIVE_13,
+  returnClipsExist,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import {
+  type AnySlotPosition,
+  slotLivePath,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import { type CompleteArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
@@ -35,7 +43,7 @@ import {
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
 export interface PathTarget {
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  parsedClipSlot?: AnySlotPosition;
   devicePath?: string;
   /** A drum pad or rack chain path, which selects on its rack rather than the song view. */
   rackTargetPath?: string;
@@ -113,7 +121,8 @@ export function resolvePath(
   return {
     ...fromPath,
     trackIndex: args.trackIndex ?? fromPath.trackIndex,
-    category: merge("trackType", args.trackType, fromPath.category),
+    // assertPathAgrees already refused a trackType that disagrees.
+    category: args.trackType ?? fromPath.category,
     sceneIndex: args.sceneIndex ?? fromPath.sceneIndex,
   };
 }
@@ -175,30 +184,6 @@ function deprecatedHint(params: Record<string, unknown>): string {
   );
 
   return `${sent.join(" and ")} ${sent.length > 1 ? "are" : "is"} deprecated`;
-}
-
-/**
- * Combine a param with what `path` said, refusing to pick when they disagree —
- * honoring one and dropping the other is the silent wrong-target bug.
- * @param name - Param name, for the error
- * @param explicit - What the caller passed as its own param
- * @param fromPath - What the path named
- * @returns The agreed value, or whichever one was given
- */
-function merge<T>(
-  name: string,
-  explicit: T | undefined,
-  fromPath: T | undefined,
-): T | undefined {
-  if (explicit == null) {
-    return fromPath;
-  }
-
-  if (fromPath == null || explicit === fromPath) {
-    return explicit;
-  }
-
-  throw pathConflict(name);
 }
 
 /**
@@ -268,10 +253,7 @@ function assertIdAgrees(
   const slot = target.parsedClipSlot;
 
   if (clipId != null && slot != null) {
-    assertSameObject(
-      clipId,
-      livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
-    );
+    assertSameObject(clipId, slotLivePath(slot).clip());
   }
 }
 
@@ -428,6 +410,24 @@ function targetFromPath(path: ObjectPath): PathTarget {
         arrangementPosition: position,
       };
     }
+
+    case "return-slot":
+      if (!returnClipsExist()) {
+        throw pathError(
+          "path",
+          formatObjectPath(path),
+          RETURN_CLIPS_NEED_LIVE_13,
+        );
+      }
+
+      return {
+        parsedClipSlot: {
+          returnIndex: path.returnIndex,
+          sceneIndex: path.sceneIndex,
+        },
+        impliedTrack: { trackIndex: path.returnIndex, category: "return" },
+        impliedScene: path.sceneIndex,
+      };
 
     default:
       throw pathError(

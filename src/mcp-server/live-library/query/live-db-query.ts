@@ -15,8 +15,7 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "../db-staleness.ts";
-import { type StalenessRisk } from "../library-types.ts";
+import { stalenessNote } from "../db-staleness.ts";
 import { findLiveFilesDbPath } from "../live-db-path.ts";
 import { openLiveDb } from "../live-db.ts";
 
@@ -25,8 +24,8 @@ export interface LiveDbHandlers<T> {
   onMissing: () => T;
   /** Called when opening or querying the DB throws (schema drift, torn read). */
   onError: (message: string) => T;
-  /** The read-only work, given an open handle and the staleness advisory. */
-  run: (db: DatabaseSync, stalenessRisk: StalenessRisk | undefined) => T;
+  /** The read-only work, given an open handle and the staleness note. */
+  run: (db: DatabaseSync, stale: string | undefined) => T;
 }
 
 /**
@@ -42,15 +41,14 @@ export async function withLiveDb<T>(handlers: LiveDbHandlers<T>): Promise<T> {
     return handlers.onMissing();
   }
 
-  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
-  // immutable read can't see. Passed to run; omitted from results when absent.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   try {
     const db = await openLiveDb(dbPath);
 
     try {
-      return handlers.run(db, stalenessRisk);
+      return handlers.run(db, stale);
     } finally {
       db.close();
     }

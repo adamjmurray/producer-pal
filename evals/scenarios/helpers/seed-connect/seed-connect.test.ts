@@ -5,7 +5,11 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
+import { recordToolResult } from "#evals/chat/agent-cli/agent-cli-stream.ts";
+import { processCliStream } from "#evals/chat/stream.ts";
+import { type ToolCall } from "#evals/chat/shared/types.ts";
 import { type EvalSession } from "../../eval-session.ts";
+import { setQuietMode } from "../quiet-mode.ts";
 import { runMessageTurns } from "../../run-scenario/message-turns.ts";
 import {
   CONNECT_MESSAGE,
@@ -16,6 +20,35 @@ import {
 } from "./seed-connect.ts";
 import { buildSeededMessages, type SeededTurn } from "./seeded-turn.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+
+/**
+ * Record a tool output through the AI SDK stream, as a real call would.
+ *
+ * @param output - The tool's content blocks
+ * @returns The call the stream recorded
+ */
+async function streamedToolCall(output: unknown): Promise<ToolCall> {
+  const parts = [
+    { type: "start-step" },
+    { type: "tool-call", toolCallId: "c1", toolName: CONNECT_TOOL, input: {} },
+    { type: "tool-result", toolCallId: "c1", toolName: CONNECT_TOOL, output },
+  ];
+  const fake = {
+    stream: (async function* () {
+      yield* parts;
+    })(),
+  } as unknown as Parameters<typeof processCliStream>[0];
+
+  setQuietMode(true);
+
+  try {
+    const result = await processCliStream(fake);
+
+    return result.toolCalls[0] as ToolCall;
+  } finally {
+    setQuietMode(false);
+  }
+}
 
 const CONNECT_RESULT = "connected: tempo 120, tracks 4";
 /** ppal-connect answers in several blocks; the skills are not the first one. */
@@ -200,7 +233,12 @@ describe("seedConnectTurn", () => {
     expect(turn.seeded).toBe(true);
     expect(turn.assistantResponse).toBe(SEEDED_CONNECT_REPLY);
     expect(turn.toolCalls).toStrictEqual([
-      { name: CONNECT_TOOL, args: {}, result: CONNECT_RESULT },
+      {
+        name: CONNECT_TOOL,
+        args: {},
+        result: CONNECT_RESULT,
+        injectedBlocks: [CONNECT_SKILLS],
+      },
     ]);
   });
 
@@ -234,6 +272,38 @@ describe("seedConnectTurn", () => {
     expect(turn.toolCalls[0]?.warnings).toStrictEqual([
       "WARNING: could not read track 3",
     ]);
+  });
+
+  it("records the same thing as the streaming paths for the same tool output", async () => {
+    const content = [
+      ...CONNECT_CONTENT,
+      { type: "text", text: "WARNING: could not read track 3" },
+    ];
+    const { turn } = await seedWithStub({ connectContent: content });
+    const streamed = await streamedToolCall(content);
+    const agentCall: ToolCall = { name: CONNECT_TOOL, args: {} };
+
+    recordToolResult(agentCall, content);
+
+    const seeded = turn.toolCalls[0];
+
+    expect(seeded).toStrictEqual({
+      name: CONNECT_TOOL,
+      args: {},
+      result: CONNECT_RESULT,
+      warnings: ["WARNING: could not read track 3"],
+      injectedBlocks: [CONNECT_SKILLS],
+    });
+    expect(streamed).toStrictEqual(expect.objectContaining(seeded));
+    expect(agentCall).toStrictEqual(expect.objectContaining(seeded));
+  });
+
+  it("omits injected blocks when the connect result has only its payload", async () => {
+    const { turn } = await seedWithStub({
+      connectContent: [{ type: "text", text: CONNECT_RESULT }],
+    });
+
+    expect(turn.toolCalls[0]).not.toHaveProperty("injectedBlocks");
   });
 
   it("omits warnings entirely when the connect call warned about nothing", async () => {

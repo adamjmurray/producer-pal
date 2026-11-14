@@ -19,14 +19,14 @@ and file extensions:
 
 **Allowed:**
 
-- `arrangement-tiling.ts` - descriptive kebab-case name
+- `arrangement-splitting.ts` - descriptive kebab-case name
 - `create-clip.test.ts` - unit test (`.test` suffix)
 - `create-clip.def.ts` - tool definition (`.def` suffix, tools only)
 - `index.d.ts` - TypeScript declaration (`.d` suffix)
 
 **Avoid:**
 
-- `arrangement.tiling.ts` - uses dot instead of hyphen
+- `arrangement.splitting.ts` - uses dot instead of hyphen
 - `clip.helper.ts` - uses dot instead of hyphen
 - `utils.config.ts` - uses dot instead of hyphen
 
@@ -83,7 +83,7 @@ named for nothing, and the cap only goes down.
 In `src/`, always include `.ts` extensions. In `webui/`, never. To cross between
 top-level modules use the `#src/`, `#webui/`, `#evals/` aliases; a relative
 import must stay inside its own module (`webui/` bans `..` entirely). Enforced
-by `src/test/meta/import-restrictions.test.ts`.
+by `src/test/meta/architecture/import-restrictions.test.ts`.
 
 ```typescript
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";

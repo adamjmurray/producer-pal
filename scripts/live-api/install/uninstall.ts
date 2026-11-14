@@ -11,6 +11,7 @@
  *   --device           the installed device; other copies are listed, kept
  *   --other-copies     with --device, delete the other copies too
  *   --remote-script    the remote script and its temp/backup folders
+ *   --plugin-host      the plug-in host wrapper devices
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";

@@ -17,11 +17,7 @@ import {
   type TokenUsage,
   tokensPerSecond,
 } from "#webui/chat/sdk/types.ts";
-import {
-  mcpResultInjectedBlocks,
-  mcpResultText,
-  mcpResultWarnings,
-} from "../shared/mcp-result-text.ts";
+import { mcpResultExtras, mcpResultText } from "../shared/mcp-result-text.ts";
 import { type ToolCall } from "../shared/types.ts";
 import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 
@@ -29,11 +25,15 @@ import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 export interface AgentStreamState {
   /** Assistant messages in order, joined by the transport's separator. */
   textParts: string[];
+  /** Reasoning blocks in order; a transport that can't see them leaves it empty. */
+  reasoningParts: string[];
   toolCalls: ToolCall[];
   /** Calls awaiting a result, keyed however the transport pairs its events. */
   openCalls: Map<string, ToolCall>;
   sessionId?: string;
   usage?: TokenUsage;
+  /** Why the turn stopped, when the CLI reports it. */
+  finishReason?: string;
   /** The turn's generation speed, when the CLI reported the time it took. */
   timing?: StepTiming;
   /** Set to fail the whole turn; the CLI's own message. */
@@ -66,6 +66,7 @@ export function parseAgentCliStream(
 ): ParsedAgentTurn {
   const state: AgentStreamState = {
     textParts: [],
+    reasoningParts: [],
     toolCalls: [],
     openCalls: new Map(),
   };
@@ -86,6 +87,10 @@ export function parseAgentCliStream(
     text: state.textParts.join(options.textSeparator),
     toolCalls: state.toolCalls,
     ...(state.sessionId != null ? { sessionId: state.sessionId } : {}),
+    ...(state.reasoningParts.length > 0
+      ? { reasoningText: state.reasoningParts.join("\n\n") }
+      : {}),
+    ...(state.finishReason != null ? { finishReason: state.finishReason } : {}),
     ...(state.usage != null ? { usage: state.usage } : {}),
     ...(state.timing != null ? { timing: state.timing } : {}),
   };
@@ -184,17 +189,7 @@ export function recordToolResult(call: ToolCall, value: unknown): void {
     call.isError = isError;
   }
 
-  const warnings = mcpResultWarnings(value);
-
-  if (warnings.length > 0) {
-    call.warnings = warnings;
-  }
-
-  const injected = mcpResultInjectedBlocks(value);
-
-  if (injected.length > 0) {
-    call.injectedBlocks = injected;
-  }
+  Object.assign(call, mcpResultExtras(value));
 }
 
 /**

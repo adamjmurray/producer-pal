@@ -6,7 +6,7 @@
 // Copying a session clip to the arrangement writes its automation into the
 // track's lane over the copy's own span. Copy it at another length and that
 // lands in the wrong place (a shortened copy goes through the holding area) or
-// stops short (a lengthened one is tiled from copies that carry none).
+// stops short (a lengthened one grows past the span its copy wrote).
 //
 // So the lane is written first, by stamps: for each stretch of content the
 // final copy will play, a scratch session copy is set to show just that and
@@ -22,8 +22,8 @@ import {
   openScratchSlot,
   removeSessionClip,
   type ScratchSessionSlot,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+  type ScratchClipContext,
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { clipRegionWrites } from "#src/tools/shared/clip/clip-region-writes.ts";
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
@@ -36,7 +36,7 @@ import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { contentSegments, type ContentSegment } from "./content-segments.ts";
 import { ChangedThenFailedError } from "./overwrites/copy-overwrites.ts";
 
-type StampContext = Partial<ToolContext & TilingContext>;
+type StampContext = Partial<ToolContext & ScratchClipContext>;
 
 /** What to stamp, and where. */
 export interface StampRequest {
@@ -79,19 +79,17 @@ export function writesLane(source: LiveAPI): boolean {
 }
 
 /**
- * Say on a copy's first entry that Live wrote the clip's automation to the lane.
+ * Say on a copy's entry that Live wrote the clip's automation to the lane.
  * @param source - The clip that was copied
- * @param placed - The copy's entries
- * @returns The same entries
+ * @param placed - The copy's entry, if a copy landed
+ * @returns The same entry
  */
 export function withLaneWriteNote(
   source: LiveAPI,
-  placed: MinimalClipInfo[],
-): MinimalClipInfo[] {
-  const [first] = placed;
-
-  if (first != null && writesLane(source)) {
-    appendDetail(first, LANE_WRITE_NOTE);
+  placed: MinimalClipInfo | undefined,
+): MinimalClipInfo | undefined {
+  if (placed != null && writesLane(source)) {
+    appendDetail(placed, LANE_WRITE_NOTE);
   }
 
   return placed;
@@ -122,21 +120,21 @@ export function carriesAutomation(
 /**
  * Write a session clip's automation to the lane over `lengthBeats`, then place
  * the clip from an envelope-free copy. The scratch copy is always removed.
- * What the stamping couldn't do goes on the first clip's entry; a failure after
- * the lane changed says so.
+ * What the stamping couldn't do goes on the clip's entry; a failure after the
+ * lane changed says so.
  * @param request - What to stamp, and where
  * @param place - Places the clip from the envelope-free copy it is handed
- * @returns The placed clips
+ * @returns The placed clip, if one landed
  */
 export async function stampAutomation(
   request: StampRequest,
-  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo[]>,
-): Promise<MinimalClipInfo[]> {
+  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo | undefined>,
+): Promise<MinimalClipInfo | undefined> {
   const { lengthBeats, context } = request;
   const stamped: Stamped = { beats: 0 };
   const notes: string[] = [];
   const report = context.reportScratch ?? ((message) => notes.push(message));
-  let placed: MinimalClipInfo[];
+  let placed: MinimalClipInfo | undefined;
 
   try {
     const scratch = openScratchSlot(request.track, report);
@@ -150,14 +148,11 @@ export async function stampAutomation(
     throw failureWithChanges(error, stamped, lengthBeats, notes);
   }
 
-  const [first] = placed;
-
-  if (first != null) {
-    const said = joinDetails([stampedNote(stamped, lengthBeats), ...notes]);
-
-    if (said != null) {
-      appendDetail(first, said);
-    }
+  if (placed != null) {
+    appendDetail(
+      placed,
+      [stampedNote(stamped, lengthBeats), ...notes].join("; "),
+    );
 
     return placed;
   }
@@ -180,14 +175,14 @@ export async function stampAutomation(
  * @param scratch - The slot for the scratch copies
  * @param stamped - Filled in as the lane is written
  * @param place - Places the clip from the envelope-free copy
- * @returns The placed clips
+ * @returns The placed clip, if one landed
  */
 async function stampThenPlace(
   request: StampRequest,
   scratch: ScratchSessionSlot,
   stamped: Stamped,
-  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo[]>,
-): Promise<MinimalClipInfo[]> {
+  place: (envelopeFree: LiveAPI) => Promise<MinimalClipInfo | undefined>,
+): Promise<MinimalClipInfo | undefined> {
   const { source, track, startBeats, lengthBeats, context } = request;
   const sourceSlot = LiveAPI.from(
     livePath
@@ -399,15 +394,30 @@ function deleteStamp(track: LiveAPI, copy: LiveAPI, at: number): void {
  * @returns The account, or undefined when nothing was stamped and nothing went wrong
  */
 function laneNote(stamped: Stamped, lengthBeats: number): string | undefined {
-  if (stamped.beats <= 0) {
-    return stamped.problem == null
-      ? undefined
-      : `automation not written (${stamped.problem})`;
+  if (stamped.problem != null) {
+    return problemNote(stamped, stamped.problem, lengthBeats);
   }
 
-  return stamped.problem == null
-    ? `automation written for all ${beatsText(lengthBeats)} beats`
-    : `automation written for the first ${beatsText(stamped.beats)} of ${beatsText(lengthBeats)} beats only (${stamped.problem})`;
+  return stamped.beats <= 0
+    ? undefined
+    : `automation written for all ${beatsText(lengthBeats)} beats`;
+}
+
+/**
+ * What the lane got when the stamping hit a problem.
+ * @param stamped - How far the stamping got
+ * @param problem - What stopped it
+ * @param lengthBeats - The length it was after
+ * @returns The account
+ */
+function problemNote(
+  stamped: Stamped,
+  problem: string,
+  lengthBeats: number,
+): string {
+  return stamped.beats <= 0
+    ? `automation not written (${problem})`
+    : `automation written for the first ${beatsText(stamped.beats)} of ${beatsText(lengthBeats)} beats only (${problem})`;
 }
 
 /**
@@ -416,13 +426,10 @@ function laneNote(stamped: Stamped, lengthBeats: number): string | undefined {
  * @param lengthBeats - The length it was after
  * @returns The note for the clip's entry
  */
-function stampedNote(
-  stamped: Stamped,
-  lengthBeats: number,
-): string | undefined {
+function stampedNote(stamped: Stamped, lengthBeats: number): string {
   return stamped.problem == null
     ? LANE_WRITE_NOTE
-    : laneNote(stamped, lengthBeats);
+    : problemNote(stamped, stamped.problem, lengthBeats);
 }
 
 /**

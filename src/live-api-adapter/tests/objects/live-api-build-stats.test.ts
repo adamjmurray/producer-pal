@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as disabled from "#src/live-api-adapter/live-api-build-stats-disabled.ts";
 import * as stats from "#src/live-api-adapter/live-api-build-stats.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 describe("live-api build stats", () => {
   it("counts every resolution, and every distinct target once", () => {
@@ -66,7 +66,7 @@ describe("live-api build stats", () => {
 
   describe("report", () => {
     it("warns the totals and the shapes", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       LiveAPI.from(livePath.track(0));
       LiveAPI.from(livePath.track(1));
@@ -80,7 +80,7 @@ describe("live-api build stats", () => {
 
     // Max carries the warning across as one symbol, so the report is one line.
     it("emits a single line", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       LiveAPI.from(livePath.track(0));
       stats.reportLiveApiBuildStats();
@@ -89,7 +89,7 @@ describe("live-api build stats", () => {
     });
 
     it("summarizes the shapes past the cap instead of listing them", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       // One shape per depth, so the count of shapes is the count of calls.
       let path = livePath.track(0).device(0);
@@ -105,7 +105,7 @@ describe("live-api build stats", () => {
     });
 
     it("says nothing when the call resolved nothing", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       stats.reportLiveApiBuildStats();
 
@@ -124,7 +124,7 @@ describe("live-api build stats", () => {
     });
 
     it("counts nothing and reports nothing", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       disabled.beginLiveApiBuildStats();
       disabled.recordLiveApiResolve(livePath.liveSet);

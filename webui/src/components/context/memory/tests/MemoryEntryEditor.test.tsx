@@ -24,7 +24,10 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
-import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
+import {
+  reloadAsEntryIsDeleted,
+  reloadStaleEntry,
+} from "#webui/components/context/tests/helpers/stale-entry-banner";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -649,6 +652,26 @@ describe("MemoryEntryEditor — external update banner", () => {
     expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
       "value",
       "Composes in D minor now.",
+    );
+  });
+
+  it("keeps the draft when Reload is clicked in the frame the memory disappears", () => {
+    const collection = fakeCollection();
+    const { container, rerender } = renderEditor({
+      collection,
+      entry: EXISTING,
+    });
+
+    reloadAsEntryIsDeleted(
+      rerender,
+      container,
+      editorElement({ collection, entry: { ...EXISTING, body: "Changed." } }),
+      editorElement({ collection, entry: null }),
+    );
+
+    expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
+      "value",
+      EXISTING.body,
     );
   });
 

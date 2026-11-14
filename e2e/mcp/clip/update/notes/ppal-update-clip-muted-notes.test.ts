@@ -236,4 +236,13 @@ describe("writes that land on a muted note", () => {
     expect(result.detail).toBe("duplicateLoop copied 1 muted note");
     expect((await readNotes(clipId)).mutedNotes).toBe(2);
   });
+
+  it("say nothing about muted notes when duplicateLoop copied none", async () => {
+    // Past the 1-bar loop: Live shifts it a loop later, still past the new loop.
+    const clipId = await createClipWithMutedNote(ctx.client!, 12, 5);
+    const result = await updateClip(clipId, { duplicateLoop: true });
+
+    expect(result.detail ?? "").not.toContain("muted");
+    expect((await readNotes(clipId)).mutedNotes ?? 0).toBe(0);
+  });
 });

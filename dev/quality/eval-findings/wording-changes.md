@@ -1,7 +1,7 @@
 # Skill wording changes
 
-Text changes to the skills and tool descriptions that were measured, what moved
-and what did not. The index is [README.md](README.md).
+Text changes to the skills, tool descriptions and results that were measured,
+what moved and what did not. The index is [README.md](README.md).
 
 ## Wording changes that were measured and did not work
 
@@ -49,14 +49,16 @@ message alone.
 
 Both guards were removed on 2026-09-13: any signed period is legitimate (a
 negative one runs the cycle backwards, a zero one is phase 0), and so is a
-waveform that gives every note the same value. So the lever that moved the
-number is gone on purpose. The finding stands — refusal is what causes
-self-correction — but the turn-4 check is now a capability target with no
-product lever behind it.
+waveform that gives every note the same value. What is refused instead, up
+front, is a period that references a note property (`note.*`, `next.*`): it can
+only be the radians habit. Clip values and random functions stay allowed. The
+error names the property and shows `sin(n/4)`, so the model can fix it off the
+message alone.
 
 The first call is still the radian form, and nothing we send can reach it — the
-model writes it before it has seen anything from us. The turn-4 check wants one
-call, so it stays red whatever ships. Don't retry this as prose.
+model writes it before it has seen anything from us. The scenario's turn-4 check
+wants one call, so a refusal still costs a second call and it stays red. Don't
+retry this as prose.
 
 **A locator param loses to a value the model already has.** `ppal-duplicate`'s
 locator was missed in 3 of 3 trials while `ppal-playback`'s `startLocator`
@@ -79,6 +81,25 @@ prompt's "unless the user gives specific notes" became "unless the user names a
 key, scale or specific notes": `middle-c-scale-stark` 2/4. The Stark run example
 `G A B C'`, which ends like the wrong answer, became `G B D'`: 4/8. Baseline was
 3/5; neither kept. Raising Codex's reasoning effort fixed it (6/6).
+
+**Echoing the written pitches as names doesn't catch a midi-json octave slip.**
+midi-json is the one notation where the model turns note names into numbers, and
+models slip an octave there: luna writes the whole melody with C3 = 48, and
+haiku writes one note (B3 as 59) while its reply still says B3. A prototype
+added the written pitches as names to the create-clip result
+(`pitches:"C2 E2 G2 C3 …"`). `melody-pitch-midi-json`, luna 1/3 (baseline 2/3):
+one miss ignored the echo, the other said it would fix the octave and ended the
+turn without a call. Haiku went 3/3, but every trial was right on its first
+write, so it never met a slip. Not kept: the result costs bytes on every write
+and corrected nothing. The Skill already names the convention.
+
+**Tool-side meter hints were dropped as no longer needed.** Two were weighed for
+non-4/4 bar|beat writes: a per-meter reminder of the beat unit on each write,
+and a detail naming an under- or over-filled bar (or that `n/1` isn't a bar).
+Once the basic notation tier taught other meters, qwen3.8-27b in small-model
+mode passed 11/12 on the four meter scenarios, so the hints would answer a
+mistake that no longer happens and add noise to correct writes. Only the "N
+notes shortened by the next note at the same pitch" detail shipped.
 
 ## Wording changes that did work
 
@@ -175,6 +196,32 @@ nothing anchoring `s0`. Worth trying if this regresses.
 **Measuring this needs repeats.** Two single-trial rounds came back 1-of-2 and
 then 1-of-2 the other way, which reads as partial progress and is a coin flip.
 At gemma's flip rate, n=1 on a two-scenario pair says nothing.
+
+**Three basic-tier gaps, filled for muse-glimmer.** In run 36,
+muse-glimmer:30b-mlx (`--small-model`) missed things the small Skills never
+said. Each fix names the case the model was in. Muse, ×5 per arm
+(`2026-11-13T15-00-51Z` baseline, `15-16-06Z` and `15-33-40Z` after):
+
+- **Range ends.** `transforms-basic` showed only `3|2-<3|4`. Asked to clear the
+  first half of bar 1, muse wrote `1|1-1|3` every trial and deleted the beat-3
+  note. One line saying a plain `-` end is inclusive took
+  `range-clear-boundaries` from 0/3 to 5/5.
+- **Copy means duplicate.** Nothing in the small Skills named `ppal-duplicate`.
+  A Rules line ("to copy a clip, scene, track or device, use `ppal-duplicate`")
+  took `path-topath-devices` from 2/5 to 5/5. `path-topath-clips` stayed 4/5,
+  and one `duplicate` guard trial still re-created a clip by hand: for clips the
+  habit holds.
+- **Context consent as cases.** The one-sentence consent rule became three
+  bullets (empty, mentioned, asked), then "never" joined "always" and "for
+  everything" as words that pick a scope but aren't a yes: muse wrote global
+  context right after reading "Never suggest a third-party plugin".
+  `context-write-layer-project` + `-global` went 3/10, then 6/10 with the
+  bullets, then 8/10 with "never".
+
+Guards, ×3 on the final build (`15-37-57Z`): the context, duplicate and
+pretransforms scenarios held at 43/45. The two misses were a clip re-created by
+hand and a scene copy that assumed every scene was 4 bars, neither caused by the
+new lines.
 
 ## Where a fragment sits can cost more than what it says
 

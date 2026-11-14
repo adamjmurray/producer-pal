@@ -12,7 +12,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { requestBody } from "../helpers/http/request-body.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/browser/request-origin.ts";
 
 /** buildInput's result: the store input, or a 400 error message. */
 export type BuildInputResult<TInput> = TInput | { error: string };

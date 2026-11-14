@@ -91,6 +91,10 @@ export interface StubDevice {
  * @param options.connectTool - Also offer ppal-connect
  * @param options.manageTool - Also offer ppal-manage, which answers
  *   MANAGE_TOOL_REPLY
+ * @param options.smallModelMode - What GET /config reports; the real device
+ *   serves its config there. Without it, GET /config isn't there.
+ * @param options.initializeSmallModelMode - What its initialize result reports,
+ *   as the real device does. Without it, the result carries no setting.
  * @returns The device
  */
 export async function createStubDevice(
@@ -100,6 +104,8 @@ export async function createStubDevice(
     slowTool?: boolean;
     connectTool?: boolean;
     manageTool?: boolean;
+    smallModelMode?: boolean;
+    initializeSmallModelMode?: boolean;
   } = {},
 ): Promise<StubDevice> {
   const port = await reservePort();
@@ -133,6 +139,8 @@ export async function createStubDevice(
  * @param options.slowTool - Also offer ppal-connect and SLOW_TOOL
  * @param options.connectTool - Also offer ppal-connect
  * @param options.manageTool - Also offer ppal-manage
+ * @param options.smallModelMode - What GET /config reports, if it serves one
+ * @param options.initializeSmallModelMode - What the initialize result reports
  */
 async function handleRequest(
   req: IncomingMessage,
@@ -143,10 +151,20 @@ async function handleRequest(
     slowTool?: boolean;
     connectTool?: boolean;
     manageTool?: boolean;
+    smallModelMode?: boolean;
+    initializeSmallModelMode?: boolean;
   },
 ): Promise<void> {
   const { slowTool = false, connectTool = false, manageTool = false } = options;
   const isMcp = req.url?.startsWith("/mcp") ?? false;
+
+  if (req.url === "/config" && options.smallModelMode != null) {
+    res
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({ smallModelMode: options.smallModelMode }));
+
+    return;
+  }
 
   if (!isMcp || req.method !== "POST") {
     // The real server answers GET/DELETE /mcp with 405 so the SDK client stops
@@ -165,7 +183,22 @@ async function handleRequest(
     settings: settingsOf(req),
   });
 
-  const server = new McpServer({ name: "stub-device", version });
+  // Spelled out like the header names: SMALL_MODEL_MODE_CAPABILITY in
+  // src/shared/config.ts. The wire format is what the portal depends on.
+  const server = new McpServer(
+    { name: "stub-device", version },
+    options.initializeSmallModelMode == null
+      ? undefined
+      : {
+          capabilities: {
+            experimental: {
+              producerPal: {
+                smallModelMode: options.initializeSmallModelMode,
+              },
+            },
+          },
+        },
+  );
 
   server.registerTool(
     DEVICE_TOOL,

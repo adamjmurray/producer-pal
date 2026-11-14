@@ -227,7 +227,7 @@ describe("duplicate - scene to the arrangement", () => {
 
     expectSceneDupAtBeat(track0, 16);
     // Color, like name, lands on the clip the copy places.
-    expect(clip.set).toHaveBeenCalledWith("color", 0x00ff00);
+    expect(clip.set).toHaveBeenCalledWith("color", 0x1aff2f);
   });
 
   it("refuses a scene toPath that names no arrangement position", async () => {

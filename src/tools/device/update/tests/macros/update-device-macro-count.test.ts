@@ -8,7 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -18,10 +18,13 @@ import {
 import { updateDevice } from "../../update-device.ts";
 import { registerMacroRack } from "../update-device-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const FIRST = String(livePath.track(0).device(0));
 const SECOND = String(livePath.track(0).device(1));
@@ -133,6 +136,24 @@ describe("updateDevice macroCount that hides mapped macros", () => {
     await updateDevice({ id: "rack", macroCount: 0 });
 
     expect(requestNode).not.toHaveBeenCalled();
+  });
+
+  it("names the mapped macro hidden by going from 2 to 1", async () => {
+    const rack = registerMacroRack("rack", {
+      count: 2,
+      mapped: true,
+      floor: 1,
+    });
+
+    remoteScriptSays({ mapped: [2] });
+
+    expect(await updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macro 2 hidden; its mapping is kept",
+    });
+    expect(rack.call).toHaveBeenCalledWith("remove_macro");
+    expect(pathsAsked()).toStrictEqual([[FIRST]]);
   });
 
   it("doesn't ask when the count goes up", async () => {

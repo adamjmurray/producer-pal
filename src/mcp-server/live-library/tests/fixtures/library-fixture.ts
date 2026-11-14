@@ -18,7 +18,6 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
-import { type StalenessRisk } from "../../library-types.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -157,17 +156,8 @@ export function createPartialSchemaDb(
   };
 }
 
-/**
- * A representative staleness advisory the DB layer can surface, for asserting
- * that a query forwards `stalenessRisk` from `detectStalenessRisk`.
- */
-export const STALENESS_RISK: StalenessRisk = {
-  kind: "wal-pending",
-  dbMtime: 1,
-  walMtime: 2,
-  walSizeMb: 1,
-  ageSeconds: 1,
-};
+/** A staleness note the DB layer can surface, for asserting a query forwards it. */
+export const STALENESS_NOTE = "snapshot may be out of date";
 
 /**
  * Force a DB read failure and assert the query degrades to
@@ -193,26 +183,6 @@ export async function expectQueryDegradesOnBrokenDb(
   } finally {
     broken.cleanup();
   }
-}
-
-/**
- * Assert a `source: "sample-folder"` query explains itself instead of returning
- * a silently empty set. sampleFolder files aren't in Live's fe_values index, so
- * the query can only ever match nothing.
- *
- * @param runQuery - Runs the library query under test and returns its result
- * @param matches - Pulls the result's match list (groups, items, ...)
- * @returns The query result, for any further assertions
- */
-export async function expectSampleFolderExplained<
-  T extends { detail?: string },
->(runQuery: () => Promise<T>, matches: (result: T) => unknown[]): Promise<T> {
-  const result = await runQuery();
-
-  expect(matches(result)).toStrictEqual([]);
-  expect(result.detail).toContain("sample-folder");
-
-  return result;
 }
 
 /**
@@ -271,6 +241,44 @@ export function setupLibraryFixtureLifecycle(
   afterAll(() => {
     fixture.cleanup();
   });
+}
+
+/**
+ * Add 1,100 tags, each on one pack file, so a tag list outgrows the 1000 cap.
+ *
+ * @param db - Writable fixture DB
+ * @param category - When set, also files every tag under this category
+ */
+export function addManyTags(db: DatabaseSync, category?: string): void {
+  const file = db.prepare(
+    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
+  );
+  const tag = db.prepare(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
+  );
+  const value = db.prepare(
+    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
+  );
+  const meta = db.prepare(
+    "INSERT INTO metadata (file_id, key, value_id) VALUES (2001, ?, ?)",
+  );
+
+  // One transaction: thousands of autocommitted inserts are slow on CI runners.
+  db.exec("BEGIN");
+
+  for (let i = 0; i < 1_100; i++) {
+    const name = `Tag ${String(i).padStart(4, "0")}`;
+
+    file.run(20_000 + i, fourCC("keyw"), name);
+    tag.run(20_000 + i);
+
+    if (category != null) {
+      value.run(1_000 + i, `${category}|${name}`);
+      meta.run(fourCC("CKey"), 1_000 + i);
+    }
+  }
+
+  db.exec("COMMIT");
 }
 
 const FLDR = fourCC("fldr");

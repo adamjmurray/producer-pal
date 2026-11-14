@@ -339,6 +339,33 @@ describe("Behavioral splitting tests", () => {
     expect(splitClips.length).toBe(4);
   });
 
+  it("says a note that crosses a cut now ends at it", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${dynamicTrackIndex}[240|1]`,
+        notes: "n4bar C2 1|1",
+        length: "4bar",
+        looping: false,
+      },
+    });
+    const clipId = parseToolResult<{ id: string }>(createResult).id;
+
+    await sleep(200);
+    const result = await splitClip(ctx.client!, clipId, "242|1, 243|1");
+    const entries = parseSplitResult(result) as Array<{
+      id: string;
+      detail?: string;
+    }>;
+
+    expect(entries).toHaveLength(3);
+    expect(entries[0]?.detail).toBe("1 note crossed a cut and now ends at it");
+    expect(entries.slice(1).map((e) => e.detail)).toStrictEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
   /**
    * Create a 4-bar looped MIDI clip at `startBar`.
    * @param startBar - Arrangement bar to place the clip at
@@ -487,9 +514,9 @@ describe("Behavioral splitting tests", () => {
       },
     );
 
-    // Lengthening tiles copies in from the clip's own end, which after a cut
-    // is where the next piece starts — one length would bury the piece after
-    // each piece it lengthens. Refused with the rest.
+    // Lengthening grows a clip over whatever follows it, which after a cut is
+    // the next piece — one length would bury the piece after each piece it
+    // lengthens. Refused with the rest.
     it("refuses one arrangementLength, leaving both the clip and the bars after it", async () => {
       const clipId = await createFourBarClip(460);
 

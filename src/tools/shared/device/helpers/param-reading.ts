@@ -15,13 +15,17 @@ import {
   roundParamRaw,
 } from "#src/tools/shared/helpers/rounding.ts";
 import {
+  isOnOffToggle,
   looseLabelKey,
   parseLabel,
   strForValue,
   unitForLabels,
-} from "./param-label-parsing.ts";
+} from "./params/param-label-parsing.ts";
 import { recordedUnitFor } from "../known-param-units.ts";
-import { isDisplayCollapsed, readNumericRange } from "./param-numeric-range.ts";
+import {
+  isDisplayCollapsed,
+  readNumericRange,
+} from "./params/param-numeric-range.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
@@ -273,6 +277,35 @@ export function readParameterBasic(paramApi: LiveAPI): {
 }
 
 /**
+ * Read a quantized (choice) parameter: its current option, and the options
+ * unless it is an Off/On toggle, whose value says both.
+ * @param paramApi - LiveAPI parameter object
+ * @param name - Formatted parameter name
+ * @returns Parameter result with value and, for a longer list, options
+ */
+function readQuantizedParameter(
+  paramApi: LiveAPI,
+  name: string,
+): Record<string, unknown> {
+  const valueItems = paramApi.getPropertyList("value_items") as (
+    | string
+    | number
+  )[];
+  const valueIdx = paramApi.getProperty("value") as number;
+  const result: Record<string, unknown> = {
+    id: paramApi.id,
+    name,
+    value: valueItems[valueIdx],
+  };
+
+  if (!isOnOffToggle(valueItems)) {
+    result.options = valueItems;
+  }
+
+  return result;
+}
+
+/**
  * Read a single device parameter with full details.
  * @param paramApi - LiveAPI parameter object
  * @param deviceName - The device's class_display_name, for the recorded-unit
@@ -294,17 +327,7 @@ export function readParameter(
   const automationState = automationOf(paramApi, showAutomation);
 
   if ((paramApi.getProperty("is_quantized") as number) > 0) {
-    const valueItems = paramApi.getPropertyList("value_items") as (
-      | string
-      | number
-    )[];
-    const valueIdx = paramApi.getProperty("value") as number;
-    const result: Record<string, unknown> = {
-      id: paramApi.id,
-      name,
-      value: valueItems[valueIdx],
-      options: valueItems,
-    };
+    const result = readQuantizedParameter(paramApi, name);
 
     addStateFlags(result, paramApi, state, automationState);
 
@@ -318,7 +341,8 @@ export function readParameter(
   const minLabel = strForValue(paramApi, rawMin);
   const maxLabel = strForValue(paramApi, rawMax);
 
-  // No display range to read, so report raw units — update-device takes them
+  // No display range to read, so report raw units — update-device takes them.
+  // `display` is what the raw value means; it can't be written back.
   if (isDisplayCollapsed(rawMin, rawMax, minLabel, maxLabel)) {
     const result: Record<string, unknown> = {
       id: paramApi.id,
@@ -326,6 +350,7 @@ export function readParameter(
       value: roundDisplayValue(rawValue, roundParamRaw),
       min: rawMin,
       max: rawMax,
+      display: valueLabel,
     };
 
     addStateFlags(result, paramApi, state, automationState);
@@ -415,6 +440,11 @@ export interface WrittenParam {
   requested?: number;
   /** Set when the write overrode the param's arrangement lane */
   overrode?: true;
+  /**
+   * The entry as the call reports it, for a param Live's API can't read (a
+   * hosted plug-in's). It skips the read-back by id.
+   */
+  reported?: LandedParam | ParamValueResult;
 }
 
 /**
@@ -533,6 +563,8 @@ export interface ParamValueResult {
   id: string;
   name: string;
   value: unknown;
+  /** What a raw-unit param shows now (read-only) */
+  display?: string;
   detail?: string;
 }
 
@@ -541,6 +573,8 @@ export interface ParamValueResult {
 export interface LandedParam {
   id: string;
   name: string;
+  /** What a raw-unit param shows now (read-only) */
+  display?: string;
 }
 
 /** What they report for a written pseudo-param, which has no id. */

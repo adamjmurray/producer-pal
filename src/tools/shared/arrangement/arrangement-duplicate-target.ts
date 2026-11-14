@@ -11,11 +11,11 @@
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { clipFromDuplicateResult } from "./helpers/arrangement-duplicate-result.ts";
-import { type TilingContext } from "./helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "./helpers/scratch-clips.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
-} from "./arrangement-tiling-workaround.ts";
+} from "./arrangement-duplicate-workaround.ts";
 
 /**
  * Duplicate a clip to a target arrangement position. Clears any other clips
@@ -26,7 +26,7 @@ import {
  * @param sourceClipId - ID of the clip to duplicate
  * @param targetBeats - Target position in Ableton beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param context - Tiling context with silenceWavPath for audio operations
+ * @param context - Context with silenceWavPath for audio operations
  * @param source - The source clip, when the caller already resolved it
  * @param movesSource - The caller deletes the source after: a self-overlapping
  *   one is deleted here instead, so none of it survives past the copy
@@ -38,7 +38,7 @@ export function duplicateToArrangementTarget(
   sourceClipId: string,
   targetBeats: number,
   isMidiClip: boolean,
-  context: TilingContext,
+  context: ScratchClipContext,
   source: LiveAPI | null = null,
   movesSource = false,
 ): LiveAPI {

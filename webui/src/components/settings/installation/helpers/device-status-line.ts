@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
-import { versionText } from "./version-text";
+import { versionText } from "#src/shared/version-check";
 
 /** How the line is coloured: green is done, amber needs action. */
 export type StatusTone = "good" | "warn" | "plain";

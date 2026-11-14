@@ -15,10 +15,15 @@ import {
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
-// clampLibraryLimit lives in the sibling library-types.ts (the same pure
+// clampLibraryLimit and clampLibraryOffset live in the sibling library-types.ts (the same pure
 // library-DB coercion layer); its tests live here rather than in a separate file
 // to stay under the tests/ folder-item cap.
-import { clampLibraryLimit, MAX_LIBRARY_LIMIT } from "../library-types.ts";
+import {
+  clampLibraryLimit,
+  clampLibraryOffset,
+  MAX_LIBRARY_LIMIT,
+  MAX_SEARCH_LIMIT,
+} from "../library-types.ts";
 
 describe("fourCC", () => {
   it("encodes 'fldr' as 1718379634 (matches Live's spike-confirmed value)", () => {
@@ -194,10 +199,6 @@ describe("folderKindsForSource", () => {
     expect(folderKindsForSource("plugin")).toStrictEqual([10]);
     expect(folderKindsForSource("preset-folder")).toStrictEqual([5]);
   });
-
-  it("returns [] for the synthetic 'sample-folder' source (no DB encoding)", () => {
-    expect(folderKindsForSource("sample-folder")).toStrictEqual([]);
-  });
 });
 
 describe("resolveSource", () => {
@@ -294,6 +295,19 @@ describe("clampLibraryLimit", () => {
     );
   });
 
+  it("caps at 1000 by default, as the list actions need", () => {
+    expect(clampLibraryLimit(500, DEFAULT)).toBe(500);
+    expect(clampLibraryLimit(1_001, DEFAULT)).toBe(1_000);
+  });
+
+  it("caps at the given max, as search does", () => {
+    expect(clampLibraryLimit(201, DEFAULT, MAX_SEARCH_LIMIT)).toBe(200);
+    expect(clampLibraryLimit(200, DEFAULT, MAX_SEARCH_LIMIT)).toBe(200);
+    expect(
+      clampLibraryLimit(1_001_001_001_001_001, DEFAULT, MAX_SEARCH_LIMIT),
+    ).toBe(200);
+  });
+
   it("falls back to the default when the request is missing", () => {
     // Guards the `requested == null` branch of the coercion.
     expect(clampLibraryLimit(undefined, DEFAULT)).toBe(DEFAULT);
@@ -310,5 +324,15 @@ describe("clampLibraryLimit", () => {
     // limits, so they coerce to the default rather than to 0 rows.
     expect(clampLibraryLimit(0, DEFAULT)).toBe(DEFAULT);
     expect(clampLibraryLimit(-5, DEFAULT)).toBe(DEFAULT);
+  });
+
+  it("falls back to the default for a fraction below 1, not a page of 0", () => {
+    expect(clampLibraryLimit(0.5, DEFAULT)).toBe(DEFAULT);
+  });
+});
+
+describe("clampLibraryOffset", () => {
+  it("caps a huge offset at the largest safe integer", () => {
+    expect(clampLibraryOffset(1e19)).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

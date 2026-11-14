@@ -194,6 +194,7 @@ function describePathKind(path: Exclude<ObjectPath, NewObjectSegment>): string {
     case "scene":
       return "a scene";
     case "slot":
+    case "return-slot":
       return "a clip slot";
     case "take-lane":
       return "a take lane";

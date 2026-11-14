@@ -156,22 +156,55 @@ describe("handleArrangementOperations - move and resize order", () => {
     expect(steps.resize.mock.calls[0]?.[0].clip.id).toBe(MOVED);
   });
 
-  it("moves first when the destination is a take lane", () => {
+  it("shortens before a move onto a take lane", () => {
     registerClip(SOURCE);
     const steps = spyOnSteps();
 
     moveAndResize(8, { trackIndex: 0, takeLane: 0 });
 
-    expect(resizedFirst(steps)).toBe(false);
+    expect(resizedFirst(steps)).toBe(true);
   });
 
-  it("moves first when the source is on a take lane", () => {
+  it("shortens a take-lane clip before moving it", () => {
     const clip = registerClip(SOURCE, 0);
     const steps = spyOnSteps();
 
     moveAndResize(8, null, clip);
 
+    expect(resizedFirst(steps)).toBe(true);
+  });
+
+  it("doesn't shorten a clip bound for a lane past the cap", () => {
+    registerClip(SOURCE);
+    const steps = spyOnSteps();
+
+    moveAndResize(8, { trackIndex: 0, takeLane: 12 });
+
     expect(resizedFirst(steps)).toBe(false);
+  });
+
+  // The move will be refused, so shortening first would change a clip the call
+  // reports as left alone.
+  it("doesn't shorten a clip the move can't re-create", () => {
+    const steps = spyOnSteps();
+
+    // An audio take with no sample file.
+    registerMockObject(SOURCE, {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+      properties: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        file_path: "",
+        start_time: 0,
+        end_time: 16,
+      },
+    });
+    moveAndResize(8, null, LiveAPI.from(SOURCE), true);
+
+    expect(
+      steps.resize.mock.invocationCallOrder[0] ?? Infinity,
+    ).toBeGreaterThan(steps.place.mock.invocationCallOrder[0] as number);
   });
 
   // The entry is the pipeline's to build: what landed before the throw is in
@@ -189,47 +222,32 @@ describe("handleArrangementOperations - move and resize order", () => {
     expect(reasons.landed.has(SOURCE)).toBe(true);
   });
 
-  it("checks the move before it shortens, and leaves the clip as it was when the move would be refused", () => {
-    registerClip(SOURCE);
-    registerMockObject("audio-track", {
-      path: livePath.track(5),
-      type: "Track",
-      properties: { has_midi_input: 0 },
-    });
+  it.each([
+    ["shortens", 8],
+    ["lengthens", 32],
+  ])(
+    "checks the move before it %s, and leaves the clip as it was when the move would be refused",
+    (_, length) => {
+      registerClip(SOURCE);
+      registerMockObject("audio-track", {
+        path: livePath.track(5),
+        type: "Track",
+        properties: { has_midi_input: 0 },
+      });
 
-    const steps = spyOnSteps();
+      const steps = spyOnSteps();
 
-    moveAndResize(8, { trackIndex: 5, takeLane: null });
+      moveAndResize(length, { trackIndex: 5, takeLane: null });
 
-    expect(steps.resize).not.toHaveBeenCalled();
-    expect(steps.place).not.toHaveBeenCalled();
-    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
-    expect(reasons.refused.has(SOURCE)).toBe(true);
-    expect(joinedClipReason(reasons, SOURCE)).toContain(
-      "not moved or resized: track",
-    );
-  });
-
-  it("checks the move before it lengthens, and leaves the clip as it was when the move would be refused", () => {
-    registerClip(SOURCE);
-    registerMockObject("audio-track", {
-      path: livePath.track(5),
-      type: "Track",
-      properties: { has_midi_input: 0 },
-    });
-
-    const steps = spyOnSteps();
-
-    moveAndResize(32, { trackIndex: 5, takeLane: null });
-
-    expect(steps.resize).not.toHaveBeenCalled();
-    expect(steps.place).not.toHaveBeenCalled();
-    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
-    expect(reasons.refused.has(SOURCE)).toBe(true);
-    expect(joinedClipReason(reasons, SOURCE)).toContain(
-      "not moved or resized: track",
-    );
-  });
+      expect(steps.resize).not.toHaveBeenCalled();
+      expect(steps.place).not.toHaveBeenCalled();
+      expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+      expect(reasons.refused.has(SOURCE)).toBe(true);
+      expect(joinedClipReason(reasons, SOURCE)).toContain(
+        "not moved or resized: track",
+      );
+    },
+  );
 
   it("keeps a shortened clip's entry when the move is refused", () => {
     registerClip(SOURCE);

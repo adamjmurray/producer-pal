@@ -5,8 +5,7 @@
 
 /**
  * E2E tests for ppal-update-clip's `envelopes` param, which only the Producer
- * Pal remote script can write. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
- * and failed, not skipped, when that's set but the script isn't answering.
+ * Pal remote script can write.
  *
  * Every assertion goes through ppal-read-clip, so the round trip is checked in
  * the notation a caller actually writes.
@@ -14,7 +13,7 @@
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/update/ppal-update-clip-envelopes
+ * Run with: npm run e2e:mcp -- clip/update/ppal-update-clip-envelopes
  */
 import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";

@@ -1,0 +1,509 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type EvalScenario } from "#evals/scenarios/types.ts";
+import { parseArgs, runDeciderCompare } from "../decider-compare.ts";
+import { type DeciderJudgeResult } from "../decider-judge.ts";
+import {
+  criteriaHash,
+  writeSidecar,
+} from "../sidecar-judges/decider-sidecar.ts";
+import { makeRunDir } from "./decider-test-helpers.ts";
+
+describe("parseArgs --decider and --concurrency", () => {
+  it("leaves both unset by default", () => {
+    expect(parseArgs([]).decider).toBeUndefined();
+    expect(parseArgs([]).concurrency).toBeUndefined();
+  });
+
+  it("parses the decider like the eval flag does", () => {
+    expect(parseArgs(["--decider=jev"]).decider).toStrictEqual({});
+    expect(parseArgs(["--decider=vercel"]).decider).toStrictEqual({
+      provider: "vercel",
+    });
+    expect(
+      parseArgs(["--decider=ollama/pplx-decider-flash:latest"]).decider,
+    ).toStrictEqual({ provider: "ollama", model: "pplx-decider-flash:latest" });
+  });
+
+  it("rejects an unknown provider and ollama with no model", () => {
+    expect(() => parseArgs(["--decider=nowhere"])).toThrow(
+      "Unknown --decider=nowhere",
+    );
+    expect(() => parseArgs(["--decider=ollama"])).toThrow(
+      "--decider=ollama needs a model",
+    );
+  });
+
+  it("refuses --decider with --recorded", () => {
+    expect(() => parseArgs(["--decider=jev", "--recorded"])).toThrow(
+      "--decider can't be used with --recorded",
+    );
+  });
+
+  it("does not treat the flag as a run id", () => {
+    expect(parseArgs(["run-1", "--decider=vercel"]).runIds).toStrictEqual([
+      "run-1",
+    ]);
+  });
+
+  it("keeps a --concurrency the user gave", () => {
+    expect(parseArgs(["--concurrency=3"]).concurrency).toBe(3);
+  });
+});
+
+describe("parseArgs --baseline", () => {
+  it("is unset by default", () => {
+    expect(parseArgs([]).baseline).toBeUndefined();
+  });
+
+  it("reads recorded", () => {
+    expect(parseArgs(["--baseline=recorded"]).baseline).toBe("recorded");
+  });
+
+  it("reads a decider like --decider does", () => {
+    expect(parseArgs(["--baseline=jev"]).baseline).toStrictEqual({});
+    expect(
+      parseArgs(["--baseline=ollama/autotrust-jev"]).baseline,
+    ).toStrictEqual({ provider: "ollama", model: "autotrust-jev" });
+  });
+
+  it("rejects a bad decider, naming the flag", () => {
+    expect(() => parseArgs(["--baseline=nowhere"])).toThrow(
+      "Unknown --baseline=nowhere",
+    );
+  });
+
+  it("refuses --reference and --recorded", () => {
+    expect(() => parseArgs(["--baseline=jev", "--reference=h"])).toThrow(
+      "--baseline can't be used with --reference or --recorded",
+    );
+    expect(() => parseArgs(["--baseline=jev", "--recorded"])).toThrow(
+      "--baseline can't be used with --reference or --recorded",
+    );
+  });
+});
+
+describe("parseArgs --recorded", () => {
+  it("is off by default and on with the flag", () => {
+    expect(parseArgs([]).recorded).toBe(false);
+    expect(parseArgs(["--recorded"]).recorded).toBe(true);
+  });
+});
+
+describe("parseArgs --reference and --results-dir", () => {
+  it("defaults to the stored verdict and evals/results", () => {
+    const args = parseArgs([]);
+
+    expect(args.references).toStrictEqual([]);
+    expect(args.resultsDir).toBe("evals/results");
+  });
+
+  it("reads repeatable references as slugs, from a slug or provider/model", () => {
+    expect(
+      parseArgs([
+        "--reference=codex-code_luna",
+        "--reference=anthropic/claude-haiku-5-5",
+      ]).references,
+    ).toStrictEqual(["codex-code_luna", "anthropic_claude-haiku-5-5"]);
+  });
+
+  it("reads a reference with a thinking level", () => {
+    expect(
+      parseArgs(["--reference=codex-code_luna~high"]).references,
+    ).toStrictEqual(["codex-code_luna~high"]);
+  });
+
+  it("reads the results directory", () => {
+    expect(parseArgs(["--results-dir=/tmp/r"]).resultsDir).toBe("/tmp/r");
+  });
+});
+
+describe("runDeciderCompare", () => {
+  let dir: string;
+  const log = vi.fn();
+  const deciderAnswer = (
+    verdict: DeciderJudgeResult["verdict"],
+  ): DeciderJudgeResult => ({
+    provider: "typesafe",
+    verdict,
+    minProbability: 0.5,
+    questions: [],
+    outcome: {
+      maxScore: 5,
+      score: 2,
+      confidence: 0.5,
+      label: "partial success",
+    },
+    model: "decider-1",
+    inputTokens: 10,
+    outputTokens: 1,
+    truncated: false,
+  });
+  const scenarios = [
+    { id: "a", assertions: [{ type: "llm_judge", prompt: "Prompt A" }] },
+  ] as unknown as EvalScenario[];
+  const run = (
+    argv: string[],
+    decider = vi.fn(async () => deciderAnswer("pass")),
+    resolved?: { provider: "ollama"; model: string },
+  ) =>
+    runDeciderCompare([...argv, `--results-dir=${dir}`], {
+      decider,
+      resolved: resolved ?? { provider: "typesafe", model: "jev-latest" },
+      log,
+      load: { scenarios, criteriaDate: () => undefined },
+    });
+  const resultJson = (judge?: {
+    pass: boolean;
+    issues: string[];
+    decidedBy?: string;
+    decider?: unknown;
+    llm?: unknown;
+  }): string =>
+    JSON.stringify({
+      scenarioId: "a",
+      timestamp: "2026-10-29T00:00:00Z",
+      result: "pass",
+      ...(judge && { judge }),
+      turns: [
+        {
+          turnIndex: 0,
+          userMessage: "u",
+          assistantResponse: "r",
+          toolCalls: [],
+        },
+      ],
+      checks: { pass: true, results: [] },
+    });
+  const vote = (
+    file: string,
+    slug: string,
+    pass: boolean,
+    criteria = "Prompt A",
+  ) =>
+    writeSidecar(dir, {
+      version: 1,
+      file,
+      scenarioId: "a",
+      slug,
+      judge: { provider: "p" },
+      criteriaHash: criteriaHash(criteria),
+      judgedAt: "2026-10-29T00:00:00Z",
+      durationMs: 1,
+      checksPass: true,
+      pass,
+      issues: pass ? [] : [`${slug} issue`],
+    });
+  const output = (): string => log.mock.calls.flat().join("\n");
+
+  beforeEach(async () => {
+    log.mockClear();
+    dir = await makeRunDir("decider-compare-");
+    await writeFile(
+      join(dir, "run1", "a.json"),
+      resultJson({ pass: true, issues: [] }),
+    );
+    await writeFile(join(dir, "run1", "b.json"), resultJson());
+    await writeFile(join(dir, "run1", "c.json"), resultJson());
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true });
+  });
+
+  it("compares with the stored verdict and skips results without one", async () => {
+    const decider = vi.fn(async () => deciderAnswer("fail"));
+
+    await run(["run1"], decider);
+
+    expect(decider).toHaveBeenCalledTimes(1);
+    expect(output()).toContain("Decider vs stored judge");
+    expect(output()).toContain("Wrong pass 0, wrong fail 1");
+  });
+
+  it("calls the decider it was asked for, by provider and model", async () => {
+    await vote("run1/b.json", "h", true);
+
+    const decider = vi.fn(async (..._args: unknown[]) => deciderAnswer("pass"));
+
+    await run(["run1", "--reference=h"], decider, {
+      provider: "ollama",
+      model: "autotrust-jev",
+    });
+
+    expect(decider.mock.calls[0]?.[2]).toStrictEqual({
+      provider: "ollama",
+      model: "autotrust-jev",
+    });
+    expect(output()).toContain("with the decider ollama/autotrust-jev");
+  });
+
+  describe("concurrency", () => {
+    /**
+     * Run three results through a decider that records how many calls overlap.
+     *
+     * @param argv - Extra arguments
+     * @param resolved - The decider asked for
+     * @returns The most calls in flight at once
+     */
+    async function peak(
+      argv: string[],
+      resolved?: { provider: "ollama"; model: string },
+    ): Promise<number> {
+      let active = 0;
+      let most = 0;
+      const decider = vi.fn(async () => {
+        active++;
+        most = Math.max(most, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active--;
+
+        return deciderAnswer("pass");
+      });
+
+      await vote("run1/b.json", "h", true);
+      await vote("run1/c.json", "h", true);
+      await run(["run1", "--reference=h", ...argv], decider, resolved);
+
+      return most;
+    }
+
+    const ollama = { provider: "ollama", model: "m" } as const;
+
+    it("runs hosted calls in parallel by default", async () => {
+      expect(await peak([])).toBe(2);
+    });
+
+    it("runs ollama one call at a time by default", async () => {
+      expect(await peak([], ollama)).toBe(1);
+    });
+
+    it("lets --concurrency override the ollama default", async () => {
+      expect(await peak(["--concurrency=2"], ollama)).toBe(2);
+    });
+  });
+
+  it("gives the decider the gating checks, then the signals", async () => {
+    const stored = JSON.parse(resultJson({ pass: true, issues: [] })) as {
+      checks: unknown;
+      signals?: unknown;
+    };
+
+    stored.checks = {
+      pass: true,
+      results: [{ type: "t", label: "G", pass: true, message: "gm" }],
+    };
+    stored.signals = [{ type: "s", label: "S", pass: false, message: "sm" }];
+    await rm(join(dir, "run1", "b.json"));
+    await rm(join(dir, "run1", "c.json"));
+    await writeFile(join(dir, "run1", "a.json"), JSON.stringify(stored));
+
+    const decider = vi.fn(async (..._args: unknown[]) => deciderAnswer("pass"));
+
+    await run(["run1"], decider);
+
+    expect(decider.mock.calls[0]?.[0]).toStrictEqual(
+      expect.objectContaining({
+        checks: [
+          { pass: true, label: "G", message: "gm" },
+          { pass: false, label: "S", message: "sm" },
+        ],
+      }),
+    );
+  });
+
+  it("leaves out results the decider decided in the run, and says so", async () => {
+    await writeFile(
+      join(dir, "run1", "d.json"),
+      resultJson({ pass: false, issues: [], decidedBy: "decider" }),
+    );
+    await writeFile(
+      join(dir, "run1", "e.json"),
+      resultJson({ pass: true, issues: [], decidedBy: "llm" }),
+    );
+
+    const decider = vi.fn(async () => deciderAnswer("pass"));
+
+    await run(["run1"], decider);
+
+    expect(decider).toHaveBeenCalledTimes(2); // a.json and e.json, not d.json
+    expect(output()).toContain("Compared 2 result(s)");
+    expect(output()).toContain(
+      "1 decided by the decider in the run (no LLM verdict",
+    );
+  });
+
+  it("uses a decider-decided result when sidecar judges are the reference", async () => {
+    await writeFile(
+      join(dir, "run1", "d.json"),
+      resultJson({ pass: false, issues: [], decidedBy: "decider" }),
+    );
+    await vote("run1/d.json", "h", true);
+
+    const decider = vi.fn(async () => deciderAnswer("pass"));
+
+    await run(["run1", "--reference=h"], decider);
+
+    expect(decider).toHaveBeenCalledTimes(1);
+    expect(output()).not.toContain("decided by the decider in the run");
+  });
+
+  it("writes the report into the results directory", async () => {
+    await run(["run1"]);
+
+    const files = await readdir(dir);
+    const report = files.find((f) => f.startsWith("decider-compare-"));
+
+    expect(report).toBeDefined();
+    expect(
+      JSON.parse(await readFile(join(dir, report ?? ""), "utf8")).entries,
+    ).toHaveLength(1);
+  });
+
+  it("uses sidecar judges as the reference, even for results with no stored verdict", async () => {
+    await vote("run1/b.json", "h", false);
+    await vote("run1/b.json", "l", false);
+    await vote("run1/c.json", "h", true);
+    await vote("run1/c.json", "l", false); // tie
+
+    const decider = vi.fn(async () => deciderAnswer("pass"));
+
+    await run(["run1", "--reference=h", "--reference=l"], decider);
+
+    expect(decider).toHaveBeenCalledTimes(2); // a.json has no sidecar
+    expect(output()).toContain("Decider vs LLM judges");
+    expect(output()).toContain("Wrong pass 1, wrong fail 0");
+    expect(output()).toContain("1 tied (no majority, not counted)");
+    expect(output()).toContain("h vs l: 50.0% (1/2)");
+    expect(output()).toContain("- c.json".replace("c.json", "run1/c.json"));
+    expect(output()).toContain(
+      "Judge (majority of 2): fail - h issue | l issue",
+    );
+  });
+
+  it("names a single reference judge and ignores its verdicts on other criteria", async () => {
+    await vote("run1/b.json", "h", true);
+    await vote("run1/c.json", "h", true, "older criteria");
+
+    await run(["run1", "--reference=h"]);
+
+    expect(output()).toContain("Compared 1 result(s)");
+    expect(output()).toContain("Reference: h (1)");
+  });
+
+  it("records a decider failure instead of throwing", async () => {
+    await vote("run1/b.json", "h", true);
+
+    await run(
+      ["run1", "--reference=h"],
+      vi.fn(async () => {
+        throw new Error("decider down");
+      }),
+    );
+
+    expect(output()).toContain("run1/b.json: decider down");
+  });
+
+  it("limits how many results go to the decider", async () => {
+    await vote("run1/b.json", "h", true);
+    await vote("run1/c.json", "h", true);
+
+    const decider = vi.fn(async () => deciderAnswer("pass"));
+
+    await run(["run1", "--reference=h", "--limit=1"], decider);
+
+    expect(decider).toHaveBeenCalledTimes(1);
+  });
+
+  describe("--recorded", () => {
+    const savedDecider = (verdict: string, claims: number) => ({
+      provider: "typesafe",
+      verdict,
+      model: "decider-1",
+      minProbability: 0.95,
+      questions: [
+        { id: "req1", kind: "requirement", probability: 0.95 },
+        { id: "whole", kind: "whole", probability: 0.95 },
+        { id: "claims", kind: "claims", probability: claims },
+      ],
+      outcome: {
+        score: 5,
+        maxScore: 5,
+        level: "complete success",
+        confidence: 1,
+      },
+      inputTokens: 5,
+      outputTokens: 1,
+      truncated: false,
+    });
+
+    it("reads the answers saved in the run and never calls the decider", async () => {
+      await writeFile(
+        join(dir, "run1", "d.json"),
+        resultJson({
+          pass: false,
+          issues: [],
+          decidedBy: "llm",
+          llm: { pass: false, issues: [] },
+          decider: savedDecider("escalate", 0.4),
+        }),
+      );
+      await writeFile(
+        join(dir, "run1", "e.json"),
+        resultJson({
+          pass: true,
+          issues: [],
+          decidedBy: "decider",
+          decider: savedDecider("pass", 0.9),
+        }),
+      );
+      await vote("run1/d.json", "h", false);
+      await vote("run1/e.json", "h", true);
+      await vote("run1/b.json", "h", true); // no saved decider answer
+
+      const decider = vi.fn(async () => deciderAnswer("pass"));
+
+      await run(["run1", "--reference=h", "--recorded"], decider);
+
+      expect(decider).not.toHaveBeenCalled();
+      expect(output()).toContain(
+        "Reading the recorded decider answer of 3 of 3",
+      );
+      expect(output()).toContain("1 result(s) have no saved decider answer");
+      expect(output()).toContain("Compared 2 result(s)");
+      expect(output()).toContain("Decider: typesafe/decider-1 (2)");
+      expect(output()).toContain("decider pass 1, fail 0, escalate 1");
+      expect(output()).toContain("Claims question");
+      expect(output()).toContain(
+        "run1/d.json: claims 0.40; reference fail; LLM judge in the run fail",
+      );
+    });
+
+    it("records a decider call that failed in the run as an error", async () => {
+      await writeFile(
+        join(dir, "run1", "d.json"),
+        resultJson({
+          pass: true,
+          issues: [],
+          decidedBy: "llm",
+          decider: {
+            provider: "typesafe",
+            verdict: "error",
+            escalationReason: "down",
+          },
+        }),
+      );
+      await vote("run1/d.json", "h", true);
+
+      await run(["run1", "--reference=h", "--recorded"]);
+
+      expect(output()).toContain("run1/d.json: down");
+    });
+  });
+});

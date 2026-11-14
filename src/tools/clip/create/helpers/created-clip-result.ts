@@ -151,6 +151,8 @@ export interface ClipResultObject {
   warping?: boolean;
   /** The time signature Live kept, when it isn't the one asked for */
   timeSignature?: string;
+  /** The scale Live stores, when it isn't the one asked for */
+  scale?: string;
   /** Audio clips only: the values Live kept in place of the ones asked for */
   gainDb?: number;
   pitchShift?: number;

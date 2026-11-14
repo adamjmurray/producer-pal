@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E tests for naming a return track by path ("rt0") in ppal-update-track's
- * sendReturn and sends[].return.
+ * E2E tests for naming a return track in ppal-update-track's sends[].return:
+ * by path ("rt0"), and with spaces around the name.
  * Uses: e2e-test-set (two or more return tracks)
  *
  * Run with: npm run e2e:mcp -- ppal-update-track-send-paths
@@ -63,10 +63,13 @@ async function readSends(trackId: string): Promise<ReadTrackResult["sends"]> {
 }
 
 describe("ppal-update-track return tracks by path", () => {
-  it("takes rt<n> as sendReturn", async () => {
+  it("takes rt<n> as a single sends[].return", async () => {
     const { trackId, returnNames } = await readSetup();
 
-    await updateTrack({ id: trackId, sendGainDb: -17, sendReturn: "rt1" });
+    await updateTrack({
+      id: trackId,
+      sends: [{ return: "rt1", gainDb: -17 }],
+    });
 
     const sends = await readSends(trackId);
 
@@ -90,5 +93,20 @@ describe("ppal-update-track return tracks by path", () => {
 
     expect(sends![0]!.gainDb).toBeCloseTo(-9, 1);
     expect(sends![1]!.gainDb).toBeCloseTo(-21, 1);
+  });
+});
+
+describe("ppal-update-track sends[].return with spaces", () => {
+  it("trims the return name", async () => {
+    const { trackId, returnNames } = await readSetup();
+
+    await updateTrack({
+      id: trackId,
+      sends: [{ return: `  ${returnNames[1]} `, gainDb: -13 }],
+    });
+
+    const sends = await readSends(trackId);
+
+    expect(sends![1]!.gainDb).toBeCloseTo(-13, 1);
   });
 });

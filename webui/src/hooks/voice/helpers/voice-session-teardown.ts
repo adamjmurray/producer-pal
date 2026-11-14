@@ -64,6 +64,35 @@ export async function releaseVoiceSessionResources(
   }
 }
 
+/** What one connect() attempt has created so far. */
+export interface OwnedVoiceResources {
+  mcpClient?: Client;
+  session?: RealtimeSession;
+}
+
+/**
+ * Release only what a stale connect() created itself. Never touches the shared
+ * refs: they now belong to a newer connect, or were already cleared by the
+ * teardown that made this one stale. Closing something that teardown already
+ * closed is harmless.
+ * @param owned - The resources this connect() created
+ */
+export async function releaseOwnedVoiceResources(
+  owned: OwnedVoiceResources,
+): Promise<void> {
+  try {
+    owned.session?.close();
+  } catch {
+    // swallow — best-effort teardown
+  }
+
+  try {
+    await owned.mcpClient?.close();
+  } catch {
+    // swallow
+  }
+}
+
 /**
  * Tear a realtime session down: cancel a still-running response first (so the
  * server isn't left billing an orphan and a stop→restart can't race a lingering

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -16,6 +17,7 @@ import {
   type EvalTurnResult,
 } from "../types.ts";
 import { partialMatch } from "./helpers/argument-matching.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /**
  * Assert Live Set state by calling an MCP tool and checking the result
@@ -112,7 +114,7 @@ export async function assertState(
       assertion,
       earned: 0,
       maxScore: 1,
-      message: `State assertion error: ${error instanceof Error ? error.message : String(error)}`,
+      message: `State assertion error: ${errorMessage(error)}`,
       details: { error: String(error) },
     };
   } finally {

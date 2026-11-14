@@ -27,7 +27,7 @@ it with Max's `info`. Spot checks agree with the list (`Clip.is_session_clip`,
 | SpectralResonatorDevice | `frequency_dial_mode_list`, `midi_gate_list`, `mod_mode_list`, `mono_poly_list`, `pitch_mode_list`                                                       | same                                                                                                            |
 | TuningSystem            | `number_of_notes_in_pseudo_octave`                                                                                                                       | just `len(note_tunings)`                                                                                        |
 | Application             | `browser`, `get_build_id`, `get_variant`, `has_option`, `show_message`, `show_on_the_fly_message`, `number_of_push_apps_running`, `unavailable_features` |                                                                                                                 |
-| CcControlDevice         | everything, even `name`                                                                                                                                  | Max's `info` lists no members for CC Control                                                                    |
+| CcControlDevice         | everything, even `name`                                                                                                                                  | none in Max before 12.4.15; `name` and `is_active` are used by `/device/basics`                                 |
 
 Not in Max's allowlist at all: every module-level function (below), the browser,
 envelopes, `MidiNote` and `WarpMarker` structs, routing structs, and licensing.
@@ -88,3 +88,29 @@ Limits in both APIs:
 `Envelope.create_event`, `PluginDevice.is_editor_open` (whether the plug-in's
 window is open), `SimplerDevice.replace_sample`, `Song.sync_parameter_changes`,
 and `WavetableDevice.VoiceCount.sixteen`.
+
+## Live 13.0b25 (beta) compared with 12.4.16
+
+Numbers come from the 13.0b25 beta and can change. Re-run
+`compare-python-max.ts` and `scan-live-api.ts` on each new Live 13 beta. The
+surfaces differ only here:
+
+- **`Clip.midi_clip_type`** (with a listener) and the enum `Clip.MidiClipType`
+  (`midi_notes`, `step_sequencer`). Max's allowlist (`_MxDCore/LomTypes`) adds
+  this and `RackDevice.max_num_chains`, and nothing else.
+- **`RackDevice.max_num_chains`.** `insert_chain` now throws at the max. From
+  Max it returns 1 and adds nothing.
+- **`Track.clip_slots` on return tracks** is no longer empty. The slots hold
+  envelope clips, where `is_midi_clip` and `is_audio_clip` are both false.
+- **`Application.ControlSurfaceProxy`:** `view_state`, `view_device`,
+  `request_view_state_change` (with listeners). They set what a control surface
+  such as Push shows for a device. Python only.
+- **Racks have 32 macro params.** The visible count steps 8, 10, 12, 14, 32 on
+  add, and 32, 14, 12, and so on down to 2, 1 on remove. See
+  [rack-macro-mappings.md](../rack-macro-mappings.md) for the 12.4 behavior.
+- **New devices:** see
+  [Live 13 devices](../specialized-devices/README.md#live-13-devices).
+
+On Live 12, Max answers a bare `1` for these properties (see
+[README.md](README.md)), so trust one only from a real list read or after a
+version check.

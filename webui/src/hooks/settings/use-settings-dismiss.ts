@@ -11,7 +11,6 @@ import {
 
 interface UseSettingsDismissOptions {
   showSettings: boolean;
-  settingsConfigured: boolean;
   settingsClosing: boolean;
   hasUnsavedChanges: boolean;
   handleCancelSettings: () => void;
@@ -45,7 +44,6 @@ interface UseSettingsDismissReturn {
  */
 export function useSettingsDismiss({
   showSettings,
-  settingsConfigured,
   settingsClosing,
   hasUnsavedChanges,
   handleCancelSettings,
@@ -56,7 +54,7 @@ export function useSettingsDismiss({
   const clearShake = useCallback(() => setShake(false), []);
 
   const handleSettingsDismiss = useCallback(() => {
-    if (!settingsConfigured || settingsClosing) {
+    if (settingsClosing) {
       return;
     }
 
@@ -65,20 +63,13 @@ export function useSettingsDismiss({
     } else {
       handleCancelSettings();
     }
-  }, [
-    settingsConfigured,
-    settingsClosing,
-    hasUnsavedChanges,
-    blockDismiss,
-    handleCancelSettings,
-  ]);
+  }, [settingsClosing, hasUnsavedChanges, blockDismiss, handleCancelSettings]);
 
   const overlayHandlers = useBackdropClick(handleSettingsDismiss);
 
   // Escape key handler. When `blockEscape` is set, Esc is ceded to whichever
   // overlay has priority (e.g. Context, which renders on top in the DOM) so
-  // both overlays don't dismiss simultaneously when the user reloads with
-  // contextOpen=true and !settingsConfigured.
+  // both overlays don't dismiss simultaneously.
   useEffect(() => {
     if (!showSettings) {
       return undefined;

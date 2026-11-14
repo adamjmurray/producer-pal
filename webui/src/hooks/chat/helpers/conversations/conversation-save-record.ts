@@ -183,7 +183,7 @@ export async function buildConversationSaveRecord(args: {
   const { id, reuseId, fork, refs, chatHistory, updatedAt } = args;
 
   if (fork != null && reuseId != null) {
-    const source = await loadConversation(reuseId);
+    const source = await loadConversation(reuseId, { images: false });
     const parentId = source
       ? deriveForkParentId(source, fork.anchorIndex)
       : reuseId;
@@ -207,7 +207,8 @@ export async function buildConversationSaveRecord(args: {
     };
   }
 
-  const existing = reuseId == null ? undefined : await loadConversation(id);
+  const existing =
+    reuseId == null ? undefined : await loadConversation(id, { images: false });
 
   return buildSaveRecord(refs, existing, chatHistory, updatedAt);
 }
@@ -258,7 +259,7 @@ const CONNECT_PATTERN =
  * @returns First non-empty line, or the whole string if single-line
  */
 function firstLine(content: string): string {
-  return content.split("\n")[0]?.trim() ?? "";
+  return content.replace(/\n[\s\S]*/, "").trim();
 }
 
 /**

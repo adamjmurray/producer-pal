@@ -8,6 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -76,9 +77,7 @@ describe("no typographic dashes in the docs site", () => {
   });
 
   it("should cover the pages a reader actually sees", () => {
-    const covered = findCoveredPages().map((file) =>
-      path.relative(DOCS_DIR, file),
-    );
+    const covered = findCoveredPages().map((file) => repoPath(file, DOCS_DIR));
 
     expect(covered).toContain("index.md");
     expect(covered).toContain("guide/chat-ui.md");
@@ -92,7 +91,7 @@ describe("no typographic dashes in the docs site", () => {
  */
 function findCoveredPages(): string[] {
   return findMarkdownFiles(DOCS_DIR).filter((file) => {
-    const relativePath = path.relative(DOCS_DIR, file);
+    const relativePath = repoPath(file, DOCS_DIR);
 
     return (
       !relativePath.startsWith(INSTALLATION_PAGES) &&
@@ -134,7 +133,7 @@ function findBannedCharacters(
       .split("\n")
       .flatMap((line, lineIndex) =>
         [...line.matchAll(BANNED_PATTERN)].map((match) => ({
-          file: `${path.relative(projectRoot, file)}:${lineIndex + 1}:${match.index + 1}`,
+          file: `${repoPath(file)}:${lineIndex + 1}:${match.index + 1}`,
           reason: `${BANNED_CHARACTERS.get(match[0])} in "${line.trim()}"`,
         })),
       ),

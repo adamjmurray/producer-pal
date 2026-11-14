@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LIVE_FLOAT_EPSILON } from "#src/shared/config.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
-
-const SPAN_EPSILON = 1e-6;
 
 /**
  * How long an arrangement clip sits on the timeline. For a looping clip this is
@@ -51,7 +50,7 @@ export function noteSpanLoss(
 
   const landed = landedSpan(newClip);
 
-  if (landed == null || Math.abs(landed - sourceSpan) < SPAN_EPSILON) {
+  if (landed == null || Math.abs(landed - sourceSpan) < LIVE_FLOAT_EPSILON) {
     return;
   }
 
@@ -74,7 +73,7 @@ export function keptSpan(newClip: LiveAPI, sourceSpan: number | null): boolean {
   return (
     sourceSpan != null &&
     landed != null &&
-    Math.abs(landed - sourceSpan) < SPAN_EPSILON
+    Math.abs(landed - sourceSpan) < LIVE_FLOAT_EPSILON
   );
 }
 

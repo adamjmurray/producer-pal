@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { fetchJson } from "#webui/utils/fetch-json";
+import { fetchJson, responseError } from "#webui/utils/fetch-json";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 import { type DocRead, type UseDocReturn, useDoc } from "./use-doc";
 
@@ -75,9 +75,10 @@ async function postConfig(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Config update failed (${response.status} ${response.statusText})`,
-    );
+    const reason = await responseError(response);
+    const failed = `Config update failed (${response.status} ${response.statusText})`;
+
+    throw new Error(reason == null ? failed : `${failed}: ${reason}`);
   }
 
   return (await response.json()) as ConfigResponse;

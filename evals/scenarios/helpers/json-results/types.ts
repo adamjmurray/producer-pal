@@ -7,12 +7,16 @@
  * JSON-serializable types for persisted eval results
  */
 
+import { type LocalModelInfo } from "../../run-scenario/local-model/local-model-info.ts";
+
 export const RESULTS_DIR = "evals/results";
 
 /** JSON-serializable result of a single eval scenario run */
 export interface JsonEvalResult {
-  /** Schema version for forward compatibility */
-  version: 1;
+  /** Schema version for forward compatibility. 2 adds the decider-first judge
+   *  fields (`JsonJudge.decidedBy`, `decider`, `llm`); runs without `--decider` still
+   *  write 1. */
+  version: 1 | 2;
   /** Unique run identifier (ISO timestamp with dashes, e.g. "2026-03-22T10-30-00Z") */
   runId: string;
   /** When this run was executed (ISO 8601) */
@@ -27,6 +31,10 @@ export interface JsonEvalResult {
   model: string;
   /** Run-environment label (e.g. "default", "small-model"). See `envLabel`. */
   configProfileId: string;
+  /** Thinking level the model ran at (`--thinking`). Absent when none was set:
+   *  the provider's own default. Runs at different levels share a
+   *  `configProfileId`, so this is what tells them apart. */
+  thinking?: string;
   /** System instructions used (undefined = none) */
   instructions?: string;
   /** Trial number (1-indexed, present when using -r flag) */
@@ -63,6 +71,9 @@ export interface JsonEvalResult {
   totalUsage?: JsonTokenUsage;
   /** Generation speed across every model call in the run */
   totalTiming?: JsonStepTiming;
+  /** Which build of a local model ran: quantization, format, loaded context
+   *  length. LM Studio or Ollama. */
+  localModel?: LocalModelInfo;
   /** Error message if scenario failed */
   error?: string;
 }
@@ -75,12 +86,11 @@ export interface JsonChecks {
   results: JsonCheckResult[];
 }
 
-/** Failed tool calls in a run, and how many calls there were in total. */
+/** Failed tool calls in a run. For how many calls it made, see
+ *  `countToolCalls`. */
 export interface JsonToolErrors {
   /** How many tool calls came back as an error */
   count: number;
-  /** How many tool calls were made */
-  total: number;
   /** One entry per failed call, with the error text truncated */
   errors: Array<{ turnIndex: number; name: string; message: string }>;
 }
@@ -105,6 +115,86 @@ export interface JsonJudge {
    * the overall result to fail (the scenario's deterministic checks are
    * authoritative). Set per-scenario via `judgeAdvisory`. */
   advisory?: boolean;
+  /** Provider that produced the verdict (absent in older results). For a
+   *  decider, the decider's provider (typesafe, openrouter, vercel, ollama). */
+  provider?: string;
+  /** Model that produced the verdict, as resolved (absent in older results) */
+  model?: string;
+  /** Who gave the verdict above. Absent in results from runs without
+   *  `--decider`, where it was always the LLM judge. When "decider",
+   *  `provider` and `model` name the decider and `issues` only name unmet
+   *  requirements (the decider gives no explanation). */
+  decidedBy?: JudgeDecidedBy;
+  /** What the decider said, in a `--decider` run (also when it escalated or failed) */
+  decider?: JsonDeciderJudgment;
+  /** The LLM judge's own verdict, when it ran (after a decider escalation) */
+  llm?: JsonLlmVerdict;
+}
+
+/** Who decided a judge verdict. */
+export type JudgeDecidedBy = "decider" | "llm";
+
+/** An LLM judge's verdict. */
+export interface JsonLlmVerdict {
+  pass: boolean;
+  issues: string[];
+  provider?: string;
+  model?: string;
+}
+
+/** What the decider answered for one judge call. */
+export interface JsonDeciderAnswer {
+  /** Where the decider ran: typesafe, openrouter, vercel or ollama */
+  provider: string;
+  /** pass and fail decide the verdict; escalate hands it to the LLM judge */
+  verdict: "pass" | "fail" | "escalate";
+  /** Why the decider did not decide (present when `verdict` is escalate) */
+  escalationReason?: string;
+  /** "claims" when every requirement passed and only the claims check kept the
+   *  pass from standing (present only on such escalations) */
+  escalatedBy?: "claims";
+  /** The model the decider reports */
+  model: string;
+  /** The lowest requirement or whole-criteria answer; it decides pass or fail
+   *  (the claims answer can only turn a pass into an escalation) */
+  minProbability: number;
+  questions: JsonDeciderQuestion[];
+  /** A graded read on the whole run; it does not affect `verdict`. `maxScore`
+   *  is the top of the scale (0-5 now; results saved before it was recorded
+   *  were 0-3, which the reader fills in). */
+  outcome: {
+    score: number;
+    maxScore: number;
+    level: string;
+    confidence: number;
+  };
+  inputTokens: number;
+  outputTokens: number;
+  /** USD, when the provider reports it (OpenRouter only) */
+  cost?: number;
+  /** The transcript was cut to fit the decider's input limit */
+  truncated: boolean;
+}
+
+/** The decider call failed, so the LLM judge decided. */
+export interface JsonDeciderFailure {
+  provider: string;
+  /** The model that was asked */
+  model?: string;
+  verdict: "error";
+  escalationReason: string;
+}
+
+export type JsonDeciderJudgment = JsonDeciderAnswer | JsonDeciderFailure;
+
+/** One yes/no question the decider answered. */
+export interface JsonDeciderQuestion {
+  /** req1, req2, ... for the numbered requirements; "whole" for the criteria;
+   *  "claims" for the check of the replies' claims against the tool calls */
+  id: string;
+  kind: "requirement" | "whole" | "claims";
+  /** P(yes) */
+  probability: number;
 }
 
 export interface JsonTurnRecord {
@@ -116,6 +206,13 @@ export interface JsonTurnRecord {
   usage?: JsonTokenUsage;
   /** Generation speed across this turn's model calls */
   timing?: JsonStepTiming;
+  /** The reasoning text the transport exposed for the turn, untruncated (a
+   *  summary on Codex). Absent when the turn had none or the transport doesn't
+   *  expose it. */
+  reasoningText?: string;
+  /** Why the turn's last model call stopped, as the transport words it.
+   *  Absent when the transport doesn't expose it. */
+  finishReason?: string;
   /** True when the turn was written into history rather than generated by the
    *  model (the seeded connect turn — see `seed-connect.ts`). Present so a
    *  saved transcript never reads as if the model produced it. */
@@ -131,7 +228,8 @@ export interface JsonToolCall {
   warnings?: string[];
   /** Content hashes of the context blocks the tool appended after its payload -
    *  what `ppal-connect` injects. The text for each is in the run's
-   *  `blocks/<hash>.txt`, stored once per run rather than once per scenario. */
+   *  `blocks/<hash>.txt`, stored once per run rather than once per scenario.
+   *  Loaders that feed a judge swap them back to text (`restoreInjectedBlocks`). */
   injectedBlocks?: string[];
   /** Present only when the transport reported MCP `isError: true` */
   isError?: boolean;

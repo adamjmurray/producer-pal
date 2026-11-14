@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   livePath,
+  registerMacroRack,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
@@ -20,6 +21,7 @@ import {
 } from "../params/pad-sample/pad-sample-fixtures.ts";
 
 const REFUSED = "Live said no";
+const MAX_REACHED = "The maximum number of macro controls is already reached!";
 
 /**
  * Register a rack on t0/d0 that refuses to add macros.
@@ -58,21 +60,13 @@ describe("updateDevice - a throw after a change landed", () => {
     );
   });
 
-  it("names the macros added before the one that failed", () => {
-    let added = 0;
-
-    registerRack(() => {
-      if (added++ > 0) {
-        throw new Error(REFUSED);
-      }
-
-      return null;
-    });
+  it("says where the count landed when a macro add fails after others landed", () => {
+    registerMacroRack("r1", { count: 4, steps: [4, 6] });
 
     expect(updateDevice({ id: "r1", macroCount: 8 })).toStrictEqual({
       id: "r1",
       path: "t0/d0",
-      detail: `${REFUSED}; already changed: macroCount`,
+      detail: `macroCount landed at 6, not 8; Live said: ${MAX_REACHED}`,
     });
   });
 

@@ -3,14 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   createAudioClipInSession,
   removeSessionClip,
   removeTempArrangementClip,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+} from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -146,7 +146,7 @@ export function cleanupTempClip(
   }
 
   const { track, clipId, isMidiTrack, slot, sceneId } = tempClipInfo;
-  const say = report ?? ((message: string) => console.warn(message));
+  const say = report ?? ((message: string) => emitWarning(message));
 
   removeTempArrangementClip(track, clipId, say);
 

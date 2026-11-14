@@ -21,6 +21,7 @@ import {
   LEAD_CLIP,
   TOOL_READ_CLIP,
 } from "./clip-envelope-readback.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 /** One envelope to seed: a mixer parameter and its points. */
 export interface SeedEnvelope {
@@ -89,7 +90,7 @@ export async function seedLeadEnvelopes(
     await post("/envelope/write", seed);
   }
 
-  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+  await sleep(SETTLE_MS);
 
   const seeded = await readLeadEnvelopes(mcpClient);
 

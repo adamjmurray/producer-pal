@@ -48,13 +48,15 @@ the loop.
   [Scene tools →](/features/tools#scene-tools)
 - **Devices and instruments**: add and control native Live instruments and
   effects, build Drum Racks and Simpler instruments from samples, move devices
-  into racks, and drive macro variations. Third-party VST/AU plug-ins need a
-  mapping step first; see [Limitations](/features/limitations).
+  into racks, and drive macro variations. Third-party VST/AU plug-ins can be
+  [hosted](/guide/plugins) so every parameter is controllable (remote script and
+  Live 12.4+); one Live already loaded needs a mapping step, see
+  [Limitations](/features/limitations).
   [Device tools →](/features/tools#device-tools)
 - **Library**: search Live's browser by name or tag, browse its category
   taxonomy, rank samples by similarity to a seed sample, and list installed
-  plug-ins (Live 12.4+). Your own sample folder is searched by name.
-  [Library →](/features/tools#ppal-library)
+  plug-ins (Live 12.4+). Folders you add to Places in Live's browser are
+  searched too. [Library →](/features/tools#ppal-library)
 - **Playback**: start and stop Session or Arrangement playback, launch clips and
   scenes, set loop points, and jump to locators.
   [Playback →](/features/tools#ppal-playback)
@@ -156,9 +158,9 @@ Full details are in the [tool reference](/features/tools#take-lanes).
 
 ## Network Control
 
-Control Ableton Live from another computer on your local network, no extra setup
-required. For fully remote control, use
-[web tunnels](/installation/remote-access#web-tunnels).
+Control Ableton Live from another computer on your local network by turning on
+[one device setting](/installation/remote-access#local-networks). For fully
+remote control, use [web tunnels](/installation/remote-access#web-tunnels).
 
 ## Small Model Mode {#small-model-mode}
 

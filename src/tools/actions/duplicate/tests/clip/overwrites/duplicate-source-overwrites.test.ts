@@ -369,6 +369,41 @@ describe("duplicate - a copy onto another source", () => {
 
       expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     });
+
+    // Promoted to the main lane, a take's copy is re-created at its own
+    // length and then grown, and growing there clears ahead.
+    it("measures a promoted take-lane copy by the length it grows to", async () => {
+      registerLiveSet();
+      registerArrangementClip(
+        "clipA",
+        livePath.track(0).takeLane(0).arrangementClip(0),
+        0,
+        4,
+      );
+      registerArrangementClip(
+        "clipB",
+        livePath.track(0).arrangementClip(0),
+        8,
+        12,
+      );
+
+      const track = registerTakeLaneTrack({ trackIndex: 0 });
+      const copy = {
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t0[1|1],t0[20|1]",
+      };
+
+      await expect(
+        duplicate({ ...copy, arrangementLength: "4bar,1bar" }),
+      ).rejects.toThrow(overwrite("t0[1|1]", 'id "clipB"'));
+
+      expect(track.call).not.toHaveBeenCalledWith(
+        "create_midi_clip",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
   });
 
   describe("lane copies", () => {

@@ -5,6 +5,7 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { noNotesReason } from "./slot-contents/clip-kind.ts";
 
 /** A note copied as-is: everything add_new_notes takes, minus note_id. */
 export interface CopiedNote extends NoteEvent {
@@ -55,9 +56,8 @@ export function readVisibleClipNotesInSpan(
 }
 
 /**
- * Read every note in a clip's scan window, muted ones included, for copying a
- * clip; what the model sees or edits wants {@link readClipNotes}. Strip
- * note_id ({@link rawNotesToCopiedNotes}) before re-adding.
+ * Read every note in a clip's scan window, muted ones included. Strip note_id
+ * ({@link rawNotesToCopiedNotes}) before re-adding.
  * @param clip - LiveAPI clip object
  * @returns Raw note objects, or [] when the window holds no notes
  */
@@ -68,7 +68,23 @@ export function readAllClipNotes(clip: LiveAPI): Record<string, unknown>[] {
 }
 
 /**
- * Read every note starting in a span, as raw Live API note objects.
+ * Read every note a clip holds near its region, past a looping clip's loop_end
+ * too. For copying a clip: a copy that stopped at loop_end would silently drop
+ * notes the original keeps. What the model sees or edits wants
+ * {@link readClipNotes}.
+ * @param clip - LiveAPI clip object
+ * @returns Raw note objects, or [] when the window holds no notes
+ */
+export function readEveryClipNote(clip: LiveAPI): Record<string, unknown>[] {
+  const [fromTime, timeSpan] = clipFullNoteWindow(clip);
+
+  return readClipNotesInSpan(clip, fromTime, timeSpan);
+}
+
+/**
+ * Read every note starting in a span, as raw Live API note objects. A step
+ * sequencer clip answers none without asking Live: its notes API reads a hidden
+ * list, never the steps. An envelope clip has no notes to ask for.
  * @param clip - LiveAPI clip object
  * @param fromTime - Span start in beats
  * @param timeSpan - Span length in beats
@@ -79,6 +95,10 @@ export function readClipNotesInSpan(
   fromTime: number,
   timeSpan: number,
 ): Record<string, unknown>[] {
+  if (noNotesReason(clip) != null) {
+    return [];
+  }
+
   const result = JSON.parse(
     clip.call("get_notes_extended", 0, 128, fromTime, timeSpan) as string,
   );
@@ -88,11 +108,32 @@ export function readClipNotesInSpan(
 
 /**
  * Remove every note in a clip's scan window — the same window
- * {@link readAllClipNotes} reads, and it must stay that way.
+ * {@link readAllClipNotes} reads, and it must stay that way. Does nothing on a
+ * step sequencer clip, whose notes API only reaches a hidden list, or on an
+ * envelope clip, which has none.
  * @param clip - LiveAPI clip object
  */
 export function removeAllClipNotes(clip: LiveAPI): void {
+  if (noNotesReason(clip) != null) {
+    return;
+  }
+
   const [fromTime, timeSpan] = clipNoteScanWindow(clip);
+
+  clip.call("remove_notes_extended", 0, 128, fromTime, timeSpan);
+}
+
+/**
+ * Remove every note {@link readEveryClipNote} reads, for a clip whose content
+ * has been copied elsewhere.
+ * @param clip - LiveAPI clip object
+ */
+export function removeEveryClipNote(clip: LiveAPI): void {
+  if (noNotesReason(clip) != null) {
+    return;
+  }
+
+  const [fromTime, timeSpan] = clipFullNoteWindow(clip);
 
   clip.call("remove_notes_extended", 0, 128, fromTime, timeSpan);
 }
@@ -164,28 +205,61 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
 }
 
 /**
- * The (from_time, time_span) pair for the note-scan window: the clip's region
- * (markers and loop, whichever reach further) plus one clip-length on each
- * side, so a pickup before the start and overhang past the end come along.
- * Note times are absolute, not relative to the region, so a clip created at
- * 5|1 keeps its notes at beat 16. Read AND remove share it so the windows
- * can't drift — a wider remove would destroy notes that were never read back.
+ * The (from_time, time_span) pair for the note-scan window: what a note read or
+ * edit covers. It starts a clip-length before the region, so a pickup comes
+ * along. A looping clip ends at loop_end, since a note past it never plays;
+ * any other clip also takes a clip-length of overhang past its end. Note times
+ * are absolute, not relative to the region, so a clip created at 5|1 keeps its
+ * notes at beat 16.
+ *
+ * Read, remove and every edit share this window. A note outside it is never
+ * read, and so never rewritten or removed: a wider remove would destroy notes
+ * that were never read back.
  * @param clip - LiveAPI clip object
  * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
  */
 export function clipNoteScanWindow(clip: LiveAPI): [number, number] {
+  const looping = (clip.getProperty("looping") as number) > 0;
+
+  if (!looping) {
+    return clipFullNoteWindow(clip);
+  }
+
+  const fromTime = windowStart(clip);
+
+  return [fromTime, (clip.getProperty("loop_end") as number) - fromTime];
+}
+
+/**
+ * The scan window reaching a clip-length past the end of both pairs, looping or
+ * not. Only for moving a clip's whole content, not for what the model reads or
+ * edits ({@link clipNoteScanWindow}).
+ * @param clip - LiveAPI clip object
+ * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
+ */
+export function clipFullNoteWindow(clip: LiveAPI): [number, number] {
   const lengthBeats = clip.getProperty("length") as number;
-  const regionStart = Math.min(
-    clip.getProperty("start_marker") as number,
-    clip.getProperty("loop_start") as number,
-  );
   const regionEnd = Math.max(
     clip.getProperty("end_marker") as number,
     clip.getProperty("loop_end") as number,
   );
-  const fromTime = regionStart - lengthBeats;
+  const fromTime = windowStart(clip);
 
   return [fromTime, regionEnd + lengthBeats - fromTime];
+}
+
+/**
+ * Where the scan window starts: a clip-length before the region.
+ * @param clip - LiveAPI clip object
+ * @returns The start in beats
+ */
+function windowStart(clip: LiveAPI): number {
+  const regionStart = Math.min(
+    clip.getProperty("start_marker") as number,
+    clip.getProperty("loop_start") as number,
+  );
+
+  return regionStart - (clip.getProperty("length") as number);
 }
 
 /** The notes a clip plays start in [from, to), in note time. */

@@ -15,8 +15,10 @@ import {
   type ClipReasons,
   newClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { handleArrangementLengthOperation } from "./arrangement-operations.ts";
 import * as helpers from "./helpers/arrangement-length-changes.ts";
+import * as takeLane from "./helpers/take-lane-lengthening.ts";
 
 interface MockClipOptions {
   id?: string;
@@ -74,12 +76,26 @@ describe("handleArrangementLengthOperation", () => {
     expectSkippedWithReason(clip, "ignored: this is a session clip");
   });
 
-  it("reports a take-lane clip on its own entry", () => {
+  it("lengthens a take-lane clip without clearing the lane", () => {
+    const takeLaneSpy = vi
+      .spyOn(takeLane, "lengthenTakeLaneClip")
+      .mockReturnValue([{ id: "789" }]);
+    const mainLaneSpy = vi.spyOn(helpers, "handleArrangementLengthening");
     const clip = createMockClip({
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithReason(clip, "ignored: this is a take-lane clip");
+    const result = handleArrangementLengthOperation({
+      clip,
+      isAudioClip: false,
+      arrangementLengthBeats: 16,
+      context: {},
+      reasons: newClipReasons(),
+    });
+
+    expect(takeLaneSpy).toHaveBeenCalledTimes(1);
+    expect(mainLaneSpy).not.toHaveBeenCalled();
+    expect(result).toStrictEqual([{ id: "789" }]);
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {
@@ -121,32 +137,8 @@ describe("handleArrangementLengthOperation", () => {
   // Growing a clip runs over whatever sits after it, and Live says nothing
   // about the clip it destroys.
   it("says on the clip's entry what the lengthening overwrote", () => {
-    clearMockRegistry();
-    mockNonExistentObjects();
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
+    const trackProps = registerClipAndNeighbour();
 
-    const trackProps: Record<string, unknown> = {
-      arrangement_clips: children("789", "neighbour"),
-    };
-
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      type: "Track",
-      properties: trackProps,
-    });
-    registerMockObject("789", {
-      path: livePath.track(0).arrangementClip(0),
-      type: "Clip",
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 8 },
-    });
-    registerMockObject("neighbour", {
-      path: livePath.track(0).arrangementClip(1),
-      type: "Clip",
-      properties: { start_time: 8, end_time: 16 },
-    });
     vi.spyOn(helpers, "handleArrangementLengthening").mockImplementation(() => {
       trackProps.arrangement_clips = children("789");
 
@@ -155,17 +147,40 @@ describe("handleArrangementLengthOperation", () => {
 
     const reasons = newClipReasons();
 
-    handleArrangementLengthOperation({
-      clip: LiveAPI.from("789"),
-      isAudioClip: false,
-      arrangementLengthBeats: 16,
-      context: {},
-      reasons,
-    });
+    lengthen789(reasons);
 
     expect(reasons.said.get("789")).toStrictEqual([
       "overwrote the clip at t0[3|1]",
     ]);
+  });
+
+  it("adds nothing to the entry when a lengthening throws before clearing", () => {
+    registerClipAndNeighbour();
+    vi.spyOn(helpers, "handleArrangementLengthening").mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    const reasons = newClipReasons();
+
+    expect(() => lengthen789(reasons)).toThrow("boom");
+    expect(reasons.said.has("789")).toBe(false);
+  });
+
+  it("lets the error through when the lane can't be read back either", () => {
+    const trackProps = registerClipAndNeighbour();
+
+    vi.spyOn(helpers, "handleArrangementLengthening").mockImplementation(() => {
+      trackProps.arrangement_clips = children("789");
+      throw new Error("boom");
+    });
+    vi.spyOn(LaneLedger.prototype, "afterWrite").mockImplementation(() => {
+      throw new Error("read failed");
+    });
+
+    const reasons = newClipReasons();
+
+    expect(() => lengthen789(reasons)).toThrow("boom");
+    expect(reasons.said.has("789")).toBe(false);
   });
 
   // read-clip rounds the length it reports, so a caller echoing it back is a
@@ -195,3 +210,52 @@ describe("handleArrangementLengthOperation", () => {
     },
   );
 });
+
+/**
+ * Clip 789 (beats 0-8) on track 0 with a neighbour right after it (8-16).
+ * @returns Track 0's properties, whose clip list a test can change
+ */
+function registerClipAndNeighbour(): Record<string, unknown> {
+  clearMockRegistry();
+  mockNonExistentObjects();
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+
+  const trackProps: Record<string, unknown> = {
+    arrangement_clips: children("789", "neighbour"),
+  };
+
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    type: "Track",
+    properties: trackProps,
+  });
+  registerMockObject("789", {
+    path: livePath.track(0).arrangementClip(0),
+    type: "Clip",
+    properties: { is_arrangement_clip: 1, start_time: 0, end_time: 8 },
+  });
+  registerMockObject("neighbour", {
+    path: livePath.track(0).arrangementClip(1),
+    type: "Clip",
+    properties: { start_time: 8, end_time: 16 },
+  });
+
+  return trackProps;
+}
+
+/**
+ * Lengthen clip 789 to 4 bars.
+ * @param reasons - What each clip has to say, added to
+ */
+function lengthen789(reasons: ClipReasons): void {
+  handleArrangementLengthOperation({
+    clip: LiveAPI.from("789"),
+    isAudioClip: false,
+    arrangementLengthBeats: 16,
+    context: {},
+    reasons,
+  });
+}

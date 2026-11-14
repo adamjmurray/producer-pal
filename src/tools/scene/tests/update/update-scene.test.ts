@@ -33,7 +33,7 @@ describe("updateScene", () => {
     const result = updateScene({
       id: "123",
       name: "Updated Scene",
-      color: "#FF0000",
+      color: "#FF3636",
       tempo: 140,
       timeSignature: "3/4",
     });
@@ -42,19 +42,25 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
+  it("writes the nearest palette entry for a color off the palette", () => {
+    updateScene({ id: "123", color: "#800080" });
+
+    expect(scene1.set).toHaveBeenCalledWith("color", 0x624bad);
+  });
+
   it("should update multiple scenes by comma-separated IDs", () => {
     const result = updateScene({
       id: "123, 456",
-      color: "#00FF00",
+      color: "#1AFF2F",
       tempo: 120,
     });
 
     expect(scene1.set).toHaveBeenCalledTimes(3);
     expect(scene2.set).toHaveBeenCalledTimes(3);
-    expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+    expect(scene1.set).toHaveBeenCalledWith("color", 1769263);
     expect(scene1.set).toHaveBeenCalledWith("tempo", 120);
     expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(scene2.set).toHaveBeenCalledWith("color", 65280);
+    expect(scene2.set).toHaveBeenCalledWith("color", 1769263);
     expect(scene2.set).toHaveBeenCalledWith("tempo", 120);
     expect(scene2.set).toHaveBeenCalledWith("tempo_enabled", true);
 
@@ -191,7 +197,7 @@ describe("updateScene", () => {
     const result = updateScene({
       id: "nonexistent,123,456",
       name: "A,B,C",
-      color: "#FF0000,#00FF00,#0000FF",
+      color: "#FF3636,#1AFF2F,#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -204,9 +210,9 @@ describe("updateScene", () => {
       { id: "456", path: "s1" },
     ]);
     expect(scene1.set).toHaveBeenCalledWith("name", "B");
-    expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(scene1.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
-    expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
+    expect(scene2.set).toHaveBeenCalledWith("color", 1716118); // #1A2F96
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -243,7 +249,7 @@ describe("updateScene", () => {
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateScene({
       id: " 123 , 456 , 789 ",
-      color: "#0000FF",
+      color: "#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -318,10 +324,10 @@ describe("updateScene", () => {
         return [0];
       });
 
-      expect(updateScene({ id: "123", color: "#FF0000" })).toStrictEqual({
+      expect(updateScene({ id: "123", color: "#FF3636" })).toStrictEqual({
         id: "123",
         path: "s0",
-        detail: "color #FF0000 was set but could not be read back: gone",
+        detail: "color #FF3636 was set but could not be read back: gone",
       });
     });
   });

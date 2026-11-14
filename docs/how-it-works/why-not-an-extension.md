@@ -87,9 +87,9 @@ anywhere else (and Ableton has said today's permission model will harden into a
 stricter sandbox). There isn't even a native file picker, so selecting a file
 would mean building one yourself in a webview. So the AI couldn't browse your
 library and pick the right loop; at best you'd point it at specific files by
-hand. Producer Pal instead scans and reads the sample folders you point it at,
-plus your Live library, and references files in place rather than copying them
-in.
+hand. Producer Pal instead searches your Live library, including any folders you
+add to Places in Live's browser, and references files in place rather than
+copying them in.
 
 ## What the SDK _can_ do that Max for Live can't, and how I weigh it
 

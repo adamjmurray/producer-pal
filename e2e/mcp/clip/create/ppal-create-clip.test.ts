@@ -37,6 +37,17 @@ import { readArrangementClips } from "../helpers/arrangement-clip-query-test-hel
 
 const ctx = setupMcpTestContext();
 
+/**
+ * How many scenes the Set has. A clip made past the last scene adds scenes, so
+ * a refused create shows as an unchanged count.
+ * @returns The scene count
+ */
+async function sceneCount(): Promise<number> {
+  return parseToolResult<{ sceneCount: number }>(
+    await ctx.client!.callTool({ name: "ppal-read-live-set", arguments: {} }),
+  ).sceneCount;
+}
+
 describe("ppal-create-clip", () => {
   it("creates session MIDI clips with various properties", async () => {
     // Test 1: Create session MIDI clip (minimal params)
@@ -205,13 +216,6 @@ describe("ppal-create-clip", () => {
   it("refuses a path sent with trackIndex or sceneIndex, creating nothing", async () => {
     // A clip past the last scene makes scenes up to its index, so a created
     // clip would show as a longer scene list.
-    const sceneCount = async (): Promise<number> =>
-      parseToolResult<{ sceneCount: number }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-live-set",
-          arguments: {},
-        }),
-      ).sceneCount;
     const before = await sceneCount();
     const path = `t${EMPTY_MIDI_TRACK}/s${before + 1}`;
     const refused = await ctx.client!.callTool({
@@ -301,8 +305,7 @@ describe("ppal-create-clip", () => {
   });
 
   it("refuses a multi-destination call whose last position is past the last Live allows, leaving no clips or take lanes", async () => {
-    const pastTheEnd =
-      "arrangementStart is past the last position Live allows (";
+    const pastTheEnd = "path is past the last position Live allows (";
 
     // Main lane: the clip at 1|1 must not exist once the second is refused.
     const mainLanes = await ctx.client!.callTool({
@@ -342,6 +345,34 @@ describe("ppal-create-clip", () => {
     );
 
     expect(track.takeLaneCount ?? 0).toBe(0);
+  });
+
+  it("refuses a length of zero in the arrangement and the session, creating no clip", async () => {
+    const clipsBefore = await readArrangementClips(
+      ctx.client!,
+      EMPTY_MIDI_TRACK,
+    );
+    const scenesBefore = await sceneCount();
+    // Past the last scene, so a clip made here would show as a longer scene list.
+    const slot = `t${EMPTY_MIDI_TRACK}/s${scenesBefore + 1}`;
+
+    for (const path of [`t${EMPTY_MIDI_TRACK}[301|1]`, slot]) {
+      const refused = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: { path, length: "0bar", notes: "C3 1|1" },
+      });
+
+      expect(isToolError(refused)).toBe(true);
+      expect(getToolErrorMessage(refused)).toContain(
+        'length "0bar" must be longer than zero',
+      );
+    }
+
+    await sleep(100);
+    expect(
+      await readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK),
+    ).toStrictEqual(clipsBefore);
+    expect(await sceneCount()).toBe(scenesBefore);
   });
 
   it("accepts n<count>bar as an alias for <count>bar in the length field", async () => {
@@ -399,6 +430,24 @@ describe("ppal-create-clip", () => {
     const clip = parseToolResult<CreateClipResult>(result);
 
     expect(clip.transformed).toBe(70);
+  });
+
+  it("warns once for a bar range copied onto itself", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s12`,
+        length: "8bar",
+        notes: "C3 1|1 D3 2|1 @1-8=1-2",
+      },
+    });
+
+    const skips = getToolWarnings(result).filter((w) =>
+      w.includes("Skipping copy"),
+    );
+
+    expect(skips).toHaveLength(1);
+    expect(skips[0]).toContain("Skipping copy of bars 1-2 to themselves");
   });
 
   it("counts a deleted note once when a bar copy duplicates it", async () => {

@@ -28,14 +28,29 @@ export const ARRANGEMENT_CLIP_NOTE =
  * @param route - The Node route that forwards to the remote script
  * @param args - Which clip, and which parameter of it
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
+ * @param maxWaitMs - A shorter wait than the usual one, for a caller that can
+ *   do without the answer
+ * @param reserveMs - Time to keep before the deadline for work after the answer
  * @returns The route's result, or why there isn't one
  */
 export function envelopeRoute<T>(
   route: string,
   args: object,
-  deadline?: number | null,
+  deadline: number | null | undefined,
+  manage: boolean,
+  maxWaitMs?: number,
+  reserveMs?: number,
 ): Promise<RouteOutcome<T>> {
-  return remoteScriptRoute<T>(route, args, deadline, REMOTE_SCRIPT_MISSING);
+  return remoteScriptRoute<T>(
+    route,
+    args,
+    deadline,
+    REMOTE_SCRIPT_MISSING,
+    manage,
+    maxWaitMs,
+    reserveMs,
+  );
 }
 
 /**
@@ -44,12 +59,20 @@ export function envelopeRoute<T>(
  * @param route - The Node route that forwards to the remote script
  * @param args - Which clip, which parameter of it, and what to write
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
  * @returns The route's result, or why there isn't one
  */
 export function envelopeChange<T>(
   route: string,
   args: object,
-  deadline?: number | null,
+  deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<RouteOutcome<T>> {
-  return remoteScriptChange<T>(route, args, deadline, REMOTE_SCRIPT_MISSING);
+  return remoteScriptChange<T>(
+    route,
+    args,
+    deadline,
+    REMOTE_SCRIPT_MISSING,
+    manage,
+  );
 }

@@ -10,6 +10,8 @@
 
 import { checkEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { CHAIN_MIXER_TARGET } from "./envelope-targets.ts";
+import { parseHostedTarget } from "./hosted/hosted-envelope-target.ts";
 
 /** A mixer parameter, as the remote script names it. */
 const MIXER_TARGET = /^(?:volume|pan|send\d+)$/;
@@ -19,7 +21,7 @@ const ID_TARGET = /^\d+$/;
 
 /** One line of the `envelopes` param. */
 export interface EnvelopeLine {
-  /** The parameter, as the call named it: an id, or volume/pan/send0.. */
+  /** The parameter, as the call named it: an id, volume/pan/send0.., a chain's t0/d0/c1/volume, or a hosted param like t0/d0/h56 */
   target: string;
   /** The points to write, or "" to clear the envelope */
   notation: string;
@@ -80,9 +82,14 @@ function readLine(line: string): EnvelopeLine {
   const target = line.slice(0, colon).trim();
   const notation = line.slice(colon + 1).trim();
 
-  if (!ID_TARGET.test(target) && !MIXER_TARGET.test(target)) {
+  if (
+    !ID_TARGET.test(target) &&
+    !MIXER_TARGET.test(target) &&
+    !CHAIN_MIXER_TARGET.test(target) &&
+    parseHostedTarget(target) == null
+  ) {
     throw new Error(
-      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0..`,
+      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param like t0/d0/h56`,
     );
   }
 

@@ -4,19 +4,32 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { isReturnTrackClip } from "./slot-contents/return-track-clips.ts";
 import {
   requireCreatedArrangementClip,
   requireCreatedClip,
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-results.ts";
+import {
+  copyClipScale,
+  readClipScaleToCopy,
+} from "#src/tools/shared/schema/scale/copy-clip-scale.ts";
+import { type ScaleState } from "#src/tools/shared/schema/scale/scale-reading.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type CopiedNote,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readEveryClipNote,
 } from "./clip-notes.ts";
-import { arrangementSpan, noteSpanLoss } from "./arrangement-span.ts";
+import { arrangementSpan, keptSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
+import { resizeArrangementClip } from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
+import {
+  LIVE_SHORTENED_IT,
+  recreateSpanRoom,
+  type SpanRoom,
+  type SpanRoomContext,
+} from "#src/tools/clip/arrangement/helpers/recreate-span-room.ts";
 
 /**
  * Thrown when the clip was created but a later step — notes, properties, color
@@ -40,6 +53,10 @@ export class PartialRecreateError extends Error {
   }
 }
 
+/** Why an audio clip with no sample can't be re-created. */
+const NO_SAMPLE_FILE =
+  "it's an audio clip with no sample file; drag it in Live's UI";
+
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
   /** What the copy is created at: the source's span, or its loop length. */
@@ -48,6 +65,8 @@ interface ClipSnapshot {
   /** The source's own color, read only when there is no override to use. */
   color: unknown;
   properties: Record<string, unknown>;
+  /** The source's own scale, or null where Live gives clips none */
+  scale: ScaleState | null;
 }
 
 /** Everything read off an audio source before the new clip exists. */
@@ -64,6 +83,8 @@ interface RecreateTarget {
    * span, so there the copy is as long as the source's loop.
    */
   keepsSpan: boolean;
+  /** The room an audio copy grows into; a session slot needs none. */
+  room?: SpanRoom;
   createMidi: (length: number) => LiveAPI;
   createAudio: (filePath: string) => LiveAPI;
 }
@@ -73,8 +94,10 @@ interface RecreateTarget {
  * reach: a MIDI clip from its notes, an audio clip from its sample.
  *
  * An arrangement source keeps its span on the timeline, not its loop length. A
- * MIDI copy is created at that span; an audio copy can't be (Live sets no end
- * on `create_audio_clip`), so a different length is reported in `losses`.
+ * MIDI copy is created at that span; an audio copy is resized to it, since
+ * `create_audio_clip` takes no length. On a main lane the span is cleared
+ * first, so the copy overwrites what is there like a plain duplicate. A
+ * different length is reported in `losses`.
  *
  * Used for both take-lane directions, because `duplicate_clip_to_arrangement`
  * handles neither: a TakeLane has no duplicate API, and the Track-scoped one
@@ -87,6 +110,7 @@ interface RecreateTarget {
  * @param color - Color for the new clip
  * @param losses - Collects what the copy turned out to lose, on top of what
  *   {@link recreatedClipLosses} knew up front
+ * @param context - The call's silence file and lanes, for clearing a main lane
  * @returns The created clip
  */
 export function recreateClip(
@@ -96,9 +120,11 @@ export function recreateClip(
   name: string | undefined,
   color: string | undefined,
   losses: string[],
+  context: SpanRoomContext,
 ): LiveAPI {
   return recreateInto(sourceClip, name, color, losses, {
     keepsSpan: true,
+    room: recreateSpanRoom(destination, context, losses),
     createMidi: (length) =>
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
@@ -153,20 +179,48 @@ export function recreateClipInSlot(
   });
 }
 
+/** Why a lane or slot copy can't rebuild a step sequencer clip. */
+export const STEP_SEQUENCER_NO_REBUILD =
+  "it's a step sequencer clip, and Live's API can't create one";
+
+/** Why an envelope clip can't be re-created. */
+export const ENVELOPE_CLIP_NO_REBUILD =
+  "it's an envelope clip, and Live's API can't create one";
+
 /**
- * Whether a clip can be re-created at all. A MIDI clip always can; an audio clip
- * is rebuilt from its sample, so it needs a `file_path`. A non-empty
- * `file_path` only means Live once saw a sample there — not that the file is
- * still on disk, so the create itself can still fail (there's no filesystem
- * access here to check first).
+ * Why a clip can't be re-created, or null when it can. A step sequencer clip
+ * can't: its steps can't be read, and Live's API can only make notes clips.
+ * Neither can an envelope clip, which Live's API can't create at all. A
+ * MIDI clip otherwise always can; an audio clip is rebuilt from its sample, so
+ * it needs a `file_path`. A non-empty `file_path` only means Live once saw a
+ * sample there — not that the file is still on disk, so the create itself can
+ * still fail (there's no filesystem access here to check first).
+ * @param clip - The clip being copied
+ * @returns The reason, worded for a skip entry, or null
+ */
+export function recreateBlocker(clip: LiveAPI): string | null {
+  if (isReturnTrackClip(clip)) {
+    return ENVELOPE_CLIP_NO_REBUILD;
+  }
+
+  const isMidi = clip.getProperty("is_midi_clip") === 1;
+
+  if (isMidi && clip.midiClipIsStepSequencer) {
+    return STEP_SEQUENCER_NO_REBUILD;
+  }
+
+  return isMidi || Boolean(clip.getProperty("file_path"))
+    ? null
+    : NO_SAMPLE_FILE;
+}
+
+/**
+ * Whether a clip can be re-created at all.
  * @param clip - The clip being copied
  * @returns True when {@link recreateClip} can rebuild it
  */
 export function canRecreateClip(clip: LiveAPI): boolean {
-  return (
-    clip.getProperty("is_midi_clip") === 1 ||
-    Boolean(clip.getProperty("file_path"))
-  );
+  return recreateBlocker(clip) == null;
 }
 
 /**
@@ -180,9 +234,6 @@ export function canRecreateClip(clip: LiveAPI): boolean {
  * default markers. Live reports success for `add_warp_marker` and
  * `move_warp_marker` and then does nothing, so hand-edited markers can't be put
  * back. Defaults do come across unchanged, hence "reset", not "lost".
- *
- * Clip scale is missing on purpose: Live 12.4 puts no scale property on a Clip
- * at all, so there is nothing to copy or report.
  * @param sourceClip - The clip being copied
  * @returns The losses, empty when there are none
  */
@@ -239,6 +290,12 @@ function recreateInto(
   losses: string[],
   target: RecreateTarget,
 ): LiveAPI {
+  // The callers check first. This is the backstop that keeps the source's
+  // hidden note list from being copied into a clip that looks like the real one.
+  if (sourceClip.isStepSequencerClip) {
+    throw new Error(STEP_SEQUENCER_NO_REBUILD);
+  }
+
   const span = target.keepsSpan ? arrangementSpan(sourceClip) : null;
 
   if (sourceClip.getProperty("is_midi_clip") === 1) {
@@ -257,12 +314,14 @@ function recreateInto(
         newClip,
         span,
         meterOf(snapshot.properties),
-        "Live shortened the new clip",
+        LIVE_SHORTENED_IT,
         losses,
       );
     } catch (error) {
       throw new PartialRecreateError(errorMessage(error), newClip);
     }
+
+    copyClipScale(newClip, snapshot.scale, losses);
 
     return newClip;
   }
@@ -274,11 +333,22 @@ function recreateInto(
     newClip.setAll(snapshot.properties);
     applyColor(newClip, color, snapshot.color);
     noteGrooveLoss(newClip, snapshot.properties.groove, losses);
+
+    // Live sizes a new audio clip to its sample, so it is resized to the span.
+    if (span != null && !keptSpan(newClip, span)) {
+      target.room?.clearAhead(newClip, span);
+      resizeArrangementClip({
+        clip: newClip,
+        spanBeats: span,
+        isAudioClip: true,
+      });
+    }
+
     noteSpanLoss(
       newClip,
       span,
       meterOf(snapshot.properties),
-      "Live rebuilds an audio clip from its sample",
+      target.room?.shortCause(newClip) ?? LIVE_SHORTENED_IT,
       losses,
     );
   } catch (error) {
@@ -369,10 +439,10 @@ function snapshotClip(
   color: string | undefined,
   span: number | null,
 ): ClipSnapshot {
-  // readAllClipNotes brings pickups and overhang along. Only note_id is
-  // stripped, so a stale id isn't re-fed when copying one source to several
-  // positions.
-  const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
+  // readEveryClipNote brings pickups and overhang along, past loop_end too.
+  // Only note_id is stripped, so a stale id isn't re-fed when copying one
+  // source to several positions.
+  const notes = rawNotesToCopiedNotes(readEveryClipNote(sourceClip));
   const length = span ?? (sourceClip.getProperty("length") as number);
 
   return {
@@ -401,6 +471,7 @@ function snapshotClip(
       name: name ?? sourceClip.getProperty("name"),
       groove: sourceGroove(sourceClip),
     },
+    scale: readClipScaleToCopy(sourceClip),
   };
 }
 

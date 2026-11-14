@@ -20,7 +20,8 @@ dependencies:
 - **`chat-ui.html`** — the in-device chat UI (single-file Vite build). Bundles
   [`preact`](preact-license), [`marked`](marked-license),
   [`dompurify`](dompurify-license), [`idb`](idb-license),
-  [Tailwind CSS](tailwindcss-license) (including `@tailwindcss/typography`), the
+  [`@noble/ciphers`](noble-ciphers-license), [Tailwind CSS](tailwindcss-license)
+  (including `@tailwindcss/typography`), the
   [Vercel AI SDK](vercel-ai-sdk-license) (`ai`, `@ai-sdk/anthropic`,
   `@ai-sdk/google`, `@ai-sdk/mistral`, `@ai-sdk/openai`,
   `@ai-sdk/provider-utils`),

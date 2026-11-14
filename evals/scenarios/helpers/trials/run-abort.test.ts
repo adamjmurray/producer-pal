@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import {
   describeRunAbort,
-  MAX_CONSECUTIVE_SCENARIO_ERRORS,
+  MAX_CONSECUTIVE_ERRORED_TRIALS,
   stalledModels,
 } from "./run-abort.ts";
 
@@ -27,11 +27,11 @@ function scenario(byModel: Record<string, JsonEvalResult[]>) {
 describe("stalledModels", () => {
   const errored = [run("error", "x"), run("error", "y")];
 
-  it("drops only the model that errored on every trial, scenario after scenario", () => {
+  it("drops only the model whose trials keep erroring", () => {
     const streaks = new Map<string, number>();
     const both = scenario({ terra: errored, sonnet: [run("pass")] });
 
-    for (let i = 1; i < MAX_CONSECUTIVE_SCENARIO_ERRORS; i++) {
+    for (let i = 1; i < MAX_CONSECUTIVE_ERRORED_TRIALS; i++) {
       expect(stalledModels(streaks, both).size).toBe(0);
     }
 
@@ -41,7 +41,7 @@ describe("stalledModels", () => {
   });
 
   it("resets a model's streak when any trial reaches the model", () => {
-    const streaks = new Map([["terra", MAX_CONSECUTIVE_SCENARIO_ERRORS - 1]]);
+    const streaks = new Map([["terra", MAX_CONSECUTIVE_ERRORED_TRIALS - 1]]);
 
     stalledModels(streaks, scenario({ terra: [run("error"), run("fail")] }));
 
@@ -67,7 +67,7 @@ describe("describeRunAbort", () => {
       run("error", capacity),
     ]);
 
-    expect(message).toContain("3 scenarios in a row errored");
+    expect(message).toContain("3 trials in a row errored");
     expect(message).toContain("Results so far are saved");
     expect(message).toContain("the model provider is refusing requests");
     expect(message).not.toContain("Live is not recovering");
@@ -130,7 +130,7 @@ describe("describeRunAbort", () => {
       "codex-code/gpt-6.1-terra",
     );
 
-    expect(message).toMatch(/^codex-code\/gpt-6.1-terra: 3 scenarios/);
+    expect(message).toMatch(/^codex-code\/gpt-6.1-terra: 3 trials/);
     expect(message).toContain("Dropping codex-code/gpt-6.1-terra");
     expect(message).not.toContain("Results so far are saved");
   });

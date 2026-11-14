@@ -8,15 +8,18 @@
  */
 
 import { isSignalAssertion } from "../../assertions/index.ts";
+import { isJudgeError } from "../../assertions/llm-judge.ts";
 import {
   type EvalAssertionResult,
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
+import { isStepBudgetStop } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
+import { buildJudge } from "./judge-record.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { collectToolErrors } from "./tool-errors.ts";
 import {
   type JsonCheckResult,
@@ -53,14 +56,19 @@ export function toJsonResult(
 ): JsonEvalResult {
   const checks = buildChecks(result.assertions);
   const signals = buildSignals(result.assertions);
-  const toolErrors = collectToolErrors(result.turns);
+  const toolErrors = collectToolErrors(
+    result.turns,
+    result.scenario.expectedRefusals,
+  );
   const efficiency = buildEfficiency(result.assertions);
   const advisory = result.scenario.judgeAdvisory ?? false;
   const judge = buildJudge(result.assertions, advisory);
   const totalTiming = aggregateStepTimings(result.turns);
+  const judgeFailure = gatingJudgeFailure(result, checks, advisory);
+  const error = result.error ?? judgeFailure;
 
   return {
-    version: 1,
+    version: judge?.decidedBy == null ? 1 : 2,
     runId,
     timestamp: new Date().toISOString(),
     scenarioId: result.scenario.id,
@@ -72,8 +80,9 @@ export function toJsonResult(
     }),
     model,
     configProfileId,
+    ...(result.thinking != null && { thinking: result.thinking }),
     ...(result.instructions && { instructions: result.instructions }),
-    result: deriveOutcome(result, checks, judge),
+    result: deriveOutcome(result, checks, judge, judgeFailure != null),
     turns: result.turns.map(convertTurn),
     checks,
     ...(signals.length > 0 && { signals }),
@@ -83,8 +92,33 @@ export function toJsonResult(
     totalDurationMs: result.totalDurationMs,
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
     ...(totalTiming && { totalTiming }),
-    ...(result.error && { error: result.error }),
+    ...(result.localModel && { localModel: result.localModel }),
+    ...(error && { error }),
   };
+}
+
+/**
+ * The message of a judge call that gave no verdict, when that decides the run.
+ * A failed check stands whatever the judge says, and an advisory judge never
+ * gates, so neither counts.
+ *
+ * @param result - Internal scenario result
+ * @param checks - Checks result
+ * @param advisory - Whether the judge is non-gating
+ * @returns The judge's failure message, or undefined
+ */
+function gatingJudgeFailure(
+  result: EvalScenarioResult,
+  checks: JsonChecks,
+  advisory: boolean,
+): string | undefined {
+  if (advisory || (checks.results.length > 0 && !checks.pass)) {
+    return undefined;
+  }
+
+  return result.assertions.find(
+    (a) => a.assertion.type === "llm_judge" && isJudgeError(a),
+  )?.message;
 }
 
 /**
@@ -180,56 +214,52 @@ function buildEfficiency(
 }
 
 /**
- * Build judge object from llm_judge assertion
- *
- * @param assertions - All assertion results
- * @param advisory - When true, mark the judge non-gating (see derivePassFail)
- * @returns Judge object, or undefined if no judge assertion
- */
-function buildJudge(
-  assertions: EvalAssertionResult[],
-  advisory: boolean,
-): JsonJudge | undefined {
-  const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
-
-  if (!judgeResult) {
-    return undefined;
-  }
-
-  const advisoryFlag = advisory ? { advisory: true } : {};
-  const details = judgeResult.details as SimpleJudgeResult | undefined;
-
-  if (!details) {
-    return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
-  }
-
-  return { pass: details.pass, issues: details.issues, ...advisoryFlag };
-}
-
-/**
  * Classify a run's outcome. A run that errored before the model's first turn
- * (the Set would not open, the config would not apply), or that the provider
- * cut off (usage limit, credits, capacity), tested nothing about the model.
- * Calling it a fail turns an outage into a wall of convincing-looking zeros.
+ * (the Set would not open, the config would not apply), that the provider cut
+ * off (usage limit, credits, capacity), or that threw before its scripted turns
+ * all ran (Live died, a call timed out, the CLI crashed), or whose turn ended
+ * in a transport error (bad key, rejected request, server failure), did not
+ * finish the test. So does a gating judge that gave no verdict (unless a check
+ * already failed the run). Calling
+ * any of them a fail turns an outage into a wall of convincing-looking zeros,
+ * and `--resume` would keep it. A turn the step budget stopped is the model
+ * looping, so it stays a fail.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
  * @param judge - Judge result (if any)
+ * @param judgeFailed - Whether a gating judge gave no verdict
  * @returns The run's outcome
  */
 function deriveOutcome(
   result: EvalScenarioResult,
   checks: JsonChecks,
   judge: JsonJudge | undefined,
+  judgeFailed: boolean,
 ): "pass" | "fail" | "error" {
-  if (
-    result.error != null &&
-    (result.turns.length === 0 || isProviderRefusal(result.error))
-  ) {
+  if (judgeFailed || (result.error != null && isInfrastructureError(result))) {
     return "error";
   }
 
   return derivePassFail(checks, judge);
+}
+
+/**
+ * Whether a run's error kept it from finishing, rather than the model failing.
+ *
+ * @param result - Internal scenario result with `error` set
+ * @returns True when the error is not the model's doing
+ */
+function isInfrastructureError(result: EvalScenarioResult): boolean {
+  const error = result.error ?? "";
+  const cutShort = result.turns.length < result.scenario.messages.length;
+
+  return (
+    result.turns.length === 0 ||
+    result.infraError === true ||
+    isProviderRefusal(error) ||
+    (cutShort && !isStepBudgetStop(error))
+  );
 }
 
 /**
@@ -300,6 +330,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
     ...(timing && { timing }),
+    ...reasoningFields(turn),
     ...(turn.seeded === true && { seeded: true }),
   };
 }

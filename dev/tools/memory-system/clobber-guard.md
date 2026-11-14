@@ -8,10 +8,13 @@ Instructions are not a mechanism, so the destructive case is also blocked in
 code: a `project`/`global` write whose content keeps NONE of the existing
 document is refused with an error, so the model can re-send a merged write. It
 throws rather than returning the document beside a warning, because that reply
-has the same shape as a successful write. `force: true` overrides it — declared
-in `context.def.ts` in every mode (a guard whose escape hatch is invisible to
-the tier that hits it would deadlock the write) but deliberately absent from the
-skills, so the model meets it in the warning rather than reaching for it.
+has the same shape as a successful write. `force: true` overrides it, but only
+after an earlier request's refusal of that scope, for the document as it still
+is (a first `force`, one in the refusing request, or one after the document
+changed is refused like an unforced write) — declared in `context.def.ts` in
+every mode (a guard whose escape hatch is invisible to the tier that hits it
+would deadlock the write) but deliberately absent from the skills, so the model
+meets it in the warning rather than reaching for it.
 
 Detection is line containment, both sides normalized (list marker stripped,
 whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_
@@ -39,4 +42,17 @@ It applies to the TOOL path only. The webui/REST editors write through their own
 routes, so the user may select-all-and-replace their own document freely; this
 guards an LLM discarding content it never meant to touch, not the user's
 editing. Automation that legitimately replaces a whole document through the tool
-(the e2e round-trip, the eval seed/restore) passes `force`.
+(the e2e round-trip, the eval seed/restore) writes `""` first, which is never
+refused, then the new content.
+
+## What the guard does not do: check consent
+
+Whether the user agreed to a write stays with the skills. A tool can't see the
+conversation, so it can't tell. Two tool-side gates were rejected:
+
+- **A "user confirmed" param.** The model can simply assert it.
+- **Refusing every first write to a non-empty user-owned document.** `force`
+  would then ride on every write, which disarms the clobber guard.
+
+So a merged write that keeps every line, and a first write to an empty document,
+go through without a refusal by design.

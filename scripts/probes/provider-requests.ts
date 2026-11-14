@@ -27,21 +27,16 @@
  * Keys come from the environment (.env) and are never printed.
  */
 
-import { fileURLToPath } from "node:url";
 import { stepCountIs, streamText, tool, type LanguageModel } from "ai";
-import { createServer } from "vite";
 import { z } from "zod";
+import {
+  KEY_VARS,
+  LOCAL_ROUTES,
+  loadChatBuilders,
+  startModuleLoader,
+  type ModuleLoader,
+} from "./chat-ui-loader.ts";
 
-const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const KEY_VARS = new Map([
-  ["anthropic", "ANTHROPIC_KEY"],
-  ["openai", "OPENAI_KEY"],
-  ["gemini", "GEMINI_KEY"],
-  ["mistral", "MISTRAL_KEY"],
-  ["openrouter", "OPENROUTER_KEY"],
-  ["vercel", "VERCEL_AI_GATEWAY_KEY"],
-]);
-const LOCAL_ROUTES = ["ollama", "lmstudio"];
 const LOCAL_MODELS: Record<string, string[]> = { lmstudio: ["local-model"] };
 const LEVELS = ["Default", "Max", "Off"];
 const EVAL_LEVELS = ["off", "low", "medium", "high", "ultra"];
@@ -271,7 +266,7 @@ function listTargets(
  * @returns One option builder and one model factory
  */
 async function loadBuilders(
-  load: (path: string) => Promise<unknown>,
+  load: ModuleLoader,
   evals: boolean,
 ): Promise<{
   buildOptions: (route: string, level: string, model: string) => unknown;
@@ -298,12 +293,8 @@ async function loadBuilders(
     };
   }
 
-  const { buildProviderOptions } = (await load(
-    "/webui/src/chat/sdk/provider/provider-options.ts",
-  )) as { buildProviderOptions: (...a: string[]) => unknown };
-  const { createProviderModel } = (await load(
-    "/webui/src/chat/sdk/provider/provider-factories.ts",
-  )) as { createProviderModel: (...a: string[]) => LanguageModel };
+  const { buildProviderOptions, createProviderModel } =
+    await loadChatBuilders(load);
 
   return {
     buildOptions: buildProviderOptions,
@@ -422,22 +413,7 @@ async function probeCell(
  */
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const server = await createServer({
-    root: ROOT,
-    configFile: false,
-    logLevel: "error",
-    appType: "custom",
-    server: { middlewareMode: true, hmr: false, ws: false },
-    optimizeDeps: { noDiscovery: true },
-    resolve: {
-      alias: {
-        "#webui": `${ROOT}webui/src`,
-        "#src": `${ROOT}src`,
-        "#evals": `${ROOT}evals`,
-      },
-    },
-  });
-  const load = (path: string): Promise<unknown> => server.ssrLoadModule(path);
+  const { server, load } = await startModuleLoader();
   const { PROVIDER_MODELS } = (await load(
     "/webui/src/lib/constants/models.ts",
   )) as { PROVIDER_MODELS: Record<string, Array<{ value: string }>> };

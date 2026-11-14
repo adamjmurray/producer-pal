@@ -57,3 +57,20 @@ export async function fetchJsonOrNull<T>(
     return null;
   }
 }
+
+/**
+ * The server's own reason for refusing a request, from its JSON body.
+ * @param response - The failed response
+ * @returns The body's `error` text, or null when the body has none
+ */
+export async function responseError(
+  response: Response,
+): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { error?: unknown };
+
+    return typeof body.error === "string" ? body.error : null;
+  } catch {
+    return null;
+  }
+}

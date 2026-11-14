@@ -16,13 +16,13 @@ Part of [Skip entries, tool by tool](README.md).
 - **update-track answers per target named.** Its targets, tracks and take lanes,
   resolve up front. A path that can't be parsed refuses the call (a lane on a
   return or main track included); one that parses but names no track holds its
-  slot as a skip. The `name`, `color`, routing and `sendReturn` lists pair by
-  the target's place, so a skip doesn't slide them. A track named twice (id and
-  path, or an id repeated) and a take lane named twice (by id and by path) are
-  written as their last mention asks: the earlier keeps `{ id | path, detail }`
-  with no `ok`, and becomes `ok: false` when the last one lands nothing. Two
-  `l+` entries are two new lanes, not one. A throw after part of a target landed
-  keeps its normal entry plus
+  slot as a skip. The `name`, `color`, routing and (deprecated) `sendReturn`
+  lists pair by the target's place, so a skip doesn't slide them. A track named
+  twice (id and path, or an id repeated) and a take lane named twice (by id and
+  by path) are written as their last mention asks: the earlier keeps
+  `{ id | path, detail }` with no `ok`, and becomes `ok: false` when the last
+  one lands nothing. Two `l+` entries are two new lanes, not one. A throw after
+  part of a target landed keeps its normal entry plus
   `<error>; already changed: name, color, gainDb, send A-Reverb, take lane l0 made`;
   later targets still run, and the deadline skips the ones it never reached. A
   `sends` entry a later one replaced is `{ return, returnId, detail }` with no
@@ -48,8 +48,10 @@ Part of [Skip entries, tool by tool](README.md).
   them. A create Live ignored is a skip too, though a scene already stands at
   that index; the count of scenes tells. A capture is one target, so a lone
   failure throws; a capture that succeeded and then failed on its name or color
-  keeps its entry with `already changed: scene captured`. A time signature Live
-  changed (a numerator it clamps) is reported as the value read back plus
-  `timeSignature read back as shown, not as sent`; one that can't be kept (a
-  denominator that isn't a power of two) is refused up front. update-scene
-  answers the same way, through the same code.
+  keeps its entry with `already changed: scene captured`. A capture lists the
+  clips the new scene holds, read from its slots rather than assumed: Live 13
+  return-track clips (`rt0/s3`) follow the regular tracks' clips. A time
+  signature Live changed (a numerator it clamps) is reported as the value read
+  back plus `timeSignature read back as shown, not as sent`; one that can't be
+  kept (a denominator that isn't a power of two) is refused up front.
+  update-scene answers the same way, through the same code.

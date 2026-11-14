@@ -13,6 +13,7 @@ import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-to
 import { type ToolExample } from "./calls.ts";
 import { appendedConnectBlocks } from "./connect-blocks.ts";
 import { takeWarnings } from "./live-api.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface ExampleRun {
   example: ToolExample;
@@ -99,7 +100,7 @@ export async function createExampleRunner(): Promise<ExampleRunner> {
       return {
         example,
         warnings: takeWarnings(),
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       };
     } finally {
       endLiveApiScope();
@@ -115,6 +116,5 @@ function exampleContext(): ToolContext {
       content: "Downtempo sketch in F minor. Keep the drums sparse.",
     },
     smallModelMode: false,
-    sampleFolder: null,
   };
 }

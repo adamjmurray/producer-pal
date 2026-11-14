@@ -15,12 +15,14 @@ import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
 import { TOOL_READ_CLIP } from "./clip-tool-constants.ts";
 import { slotToPath } from "./clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * Create a custom assertion that verifies clips were found and notes were read.
- * Checks that only ppal-read-* tools were called and at least one read pulled in
- * notes — either explicitly ("notes" in the include array) or via the "*"
- * wildcard, which returns every field (notes included). A capable model often
+ * Checks that no write tool was called (ppal-read-* and a read-only
+ * ppal-context are fine) and at least one read pulled in notes — either
+ * explicitly ("notes" in the include array) or via the "*" wildcard, which
+ * returns every field (notes included). A capable model often
  * reaches for `include: ["*"]` to read a clip comprehensively, and that must
  * count as reading the notes.
  *
@@ -36,12 +38,12 @@ export function assertNotesRead(turn: number): EvalAssertion {
       let notesRead = false;
 
       for (const { name, args } of calls) {
-        if (!name.startsWith("ppal-read-")) {
+        if (!isReadOnlyCall(name, args)) {
           throw new Error(`unexpected non-read tool call: ${name}`);
         }
 
         if (
-          name !== "ppal-read-live-set" &&
+          name !== TOOLS.readLiveSet &&
           Array.isArray(args.include) &&
           (args.include.includes("notes") || args.include.includes("*"))
         ) {
@@ -56,6 +58,21 @@ export function assertNotesRead(turn: number): EvalAssertion {
       return true;
     },
   };
+}
+
+/**
+ * Whether a call only looks things up. Reading the project context is harmless
+ * and often happens on its own.
+ *
+ * @param name - Tool name
+ * @param args - Tool call arguments
+ * @returns True for ppal-read-* and ppal-context with action "read"
+ */
+function isReadOnlyCall(name: string, args: Record<string, unknown>): boolean {
+  return (
+    name.startsWith("ppal-read-") ||
+    (name === TOOLS.context && args.action === "read")
+  );
 }
 
 /**

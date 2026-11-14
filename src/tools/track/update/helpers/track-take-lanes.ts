@@ -27,6 +27,8 @@ import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 export interface TakeLaneTargetSpec {
   /** The entry the caller wrote, path or id, for messages */
   entry: string;
+  /** The param a path entry was sent under, when not `path` */
+  param?: string;
   trackIndex: number;
   /** The lane to name, or null to append one (`l+`) */
   laneIndex: number | null;
@@ -65,7 +67,7 @@ export function planTakeLaneTargets(
   for (const [index, target] of targets.entries()) {
     const spec =
       target.param === "path"
-        ? lanePathSpec(target.value)
+        ? lanePathSpec(target.value, target.sent)
         : laneIdSpec(target.value);
 
     if (spec != null) {
@@ -183,9 +185,13 @@ function ignoredParamsDetail(ignored: string[]): string {
 /**
  * The lane a path entry names.
  * @param entry - One path, as the caller wrote it
+ * @param param - The param it was sent under, when not `path`
  * @returns The lane target, or null when the path names no lane
  */
-function lanePathSpec(entry: string): TakeLaneTargetSpec | null {
+function lanePathSpec(
+  entry: string,
+  param?: string,
+): TakeLaneTargetSpec | null {
   const path = takeLanePathEntry(entry);
 
   if (path == null) {
@@ -194,6 +200,7 @@ function lanePathSpec(entry: string): TakeLaneTargetSpec | null {
 
   return {
     entry,
+    param,
     trackIndex: path.trackIndex,
     laneIndex: path.kind === "take-lane" ? path.laneIndex : null,
     work: false,
@@ -292,7 +299,9 @@ function laneTrack(spec: TakeLaneTargetSpec): LiveAPI {
   const track = LiveAPI.from(livePath.track(spec.trackIndex));
 
   if (!track.exists()) {
-    throw new Error(`no track at path "${spec.entry}"; ${CREATE_TRACK_ADVICE}`);
+    throw new Error(
+      `no track at ${spec.param ?? "path"} "${spec.entry}"; ${CREATE_TRACK_ADVICE}`,
+    );
   }
 
   assertTrackTakesLanes(track, spec.trackIndex);

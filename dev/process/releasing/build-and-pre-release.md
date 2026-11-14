@@ -19,10 +19,10 @@ In the `dev` branch:
 
 ### MCP E2E Tests
 
-Run `npm run build && npm run e2e:mcp:remote-script` with Ableton Live open and
-the remote script selected as a control surface. It runs every suite, including
-the remote-script ones `e2e:mcp` skips. It takes a few minutes. Don't use Live
-while this runs because the tests manipulate it directly. Requires macOS.
+Run `npm run build && npm run e2e:mcp` with Ableton Live open and the remote
+script selected as a control surface. It runs every suite, including the
+remote-script ones. It takes a few minutes. Don't use Live while this runs
+because the tests manipulate it directly. Requires macOS.
 
 Note: All the tests for code execution functionality are expected to fail unless
 you build with `build:debug`, which is not recommended here because it's not a
@@ -43,8 +43,12 @@ separately to redo just one.
    `licenses/`. The checked-in `max-for-live-device/Producer_Pal.amxd` is not
    changed. It refuses to build from a dirty working tree, since the recorded
    commit would not describe the artifacts. It also refuses if your shell has a
-   debug flag set — they are substituted into the bundles, so a leftover
-   `ENABLE_CODE_EXEC=true` would ship code execution to everyone.
+   debug flag set (any in `GUARDED_BUILD_FLAGS` in
+   `scripts/build-and-release/helpers/build-flag-guard.ts`) — they are
+   substituted into the bundles, so a leftover one would ship a dev-only feature
+   to everyone. And it refuses when a shipped remote script file changed since
+   the last tag but `MIN_REMOTE_SCRIPT_VERSION` isn't this version: the bump
+   only checks when it runs, so set it by hand after a later script change.
 
    The release tag has to land on the commit it records — see
    [How update detection works](#how-update-detection-works).

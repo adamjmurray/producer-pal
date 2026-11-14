@@ -9,6 +9,7 @@ import {
   takeLanesMadeBy,
   type ArrangementTrack,
   type ResolvedTakeLane,
+  isTakeLaneClip,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateOneCopy } from "../clip/duplicate-one-copy.ts";
@@ -19,7 +20,12 @@ import {
   type DuplicateRun,
   type DuplicateStep,
 } from "./duplicate-call-types.ts";
-import { liveObject, meterOf, trackFor } from "./duplicate-run.ts";
+import {
+  envelopeLossFor,
+  liveObject,
+  meterOf,
+  trackFor,
+} from "./duplicate-run.ts";
 import { madeFromSpare, sourceSpare } from "./spare/source-spare.ts";
 
 /**
@@ -82,9 +88,7 @@ export async function writeArrangementCopy(
   const left = madeFromSpare(run, body.sourceId);
 
   if (left != null) {
-    const { clips } = entry as { clips?: object[] };
-
-    appendDetail(clips?.[0] ?? entry, left);
+    appendDetail(entry, left);
   }
 
   return entry;
@@ -120,6 +124,17 @@ async function copyFrom(
   // One track serves every copy to it; the copy takes it from the call's.
   trackFor(run, target.trackIndex);
 
+  // Live's own copy drops device envelopes onto another track. A take lane or a
+  // take-lane source is re-created instead, which says what it drops itself.
+  // Read before the copy, which can clear the source.
+  const loss =
+    target.takeLane != null || isTakeLaneClip(from.object)
+      ? null
+      : await envelopeLossFor(run, from.object, {
+          kind: "regular",
+          index: target.trackIndex,
+        });
+
   // The lanes this copy made, if it is the first to reach them.
   const lanes: { made: string | null } = { made: null };
   const attempt = await duplicateOneCopy({
@@ -146,6 +161,10 @@ async function copyFrom(
 
   if (attempt.copy != null) {
     step.coverLanded();
+
+    if (loss != null) {
+      appendDetail(attempt.copy, loss);
+    }
 
     // On the entry itself: a copy would lose the span recorded for it.
     return lanes.made == null

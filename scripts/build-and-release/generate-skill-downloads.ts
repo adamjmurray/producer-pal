@@ -15,10 +15,10 @@
  * of the zips.
  */
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { zipFolders } from "./helpers/zip-archive.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "../..");
@@ -46,37 +46,6 @@ async function findSkills(): Promise<string[]> {
 }
 
 /**
- * Zip skill folders into docs/public/downloads/.
- *
- * @param filename - Output zip filename
- * @param skills - Skill folder names to include
- */
-function createZip(filename: string, skills: string[]): void {
-  try {
-    // stdio: "inherit" so zip's own diagnostics reach the build log instead of
-    // being buried as a Buffer on the thrown error.
-    execFileSync(
-      "zip",
-      ["-rXq", path.join(OUTPUT_DIR, filename), ...skills, "-x", "*.DS_Store"],
-      { cwd: SKILLS_DIR, stdio: "inherit" },
-    );
-  } catch (error) {
-    const missingCli =
-      error != null &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "ENOENT";
-
-    throw new Error(
-      missingCli
-        ? `Could not create ${filename}: the zip CLI is not installed`
-        : `Could not create ${filename} (see zip's output above)`,
-      { cause: error },
-    );
-  }
-}
-
-/**
  * Generate the downloadable skill zips.
  */
 async function main(): Promise<void> {
@@ -85,8 +54,18 @@ async function main(): Promise<void> {
   await fs.rm(OUTPUT_DIR, { recursive: true, force: true });
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-  createZip("producer-pal-skill.zip", [MAIN_SKILL]);
-  createZip("producer-pal-all-skills.zip", skills);
+  zipFolders(
+    path.join(OUTPUT_DIR, "producer-pal-skill.zip"),
+    SKILLS_DIR,
+    [MAIN_SKILL],
+    [".DS_Store"],
+  );
+  zipFolders(
+    path.join(OUTPUT_DIR, "producer-pal-all-skills.zip"),
+    SKILLS_DIR,
+    skills,
+    [".DS_Store"],
+  );
 
   console.log(
     `Generated skill zips in docs/public/downloads/ (${skills.length} skills)`,

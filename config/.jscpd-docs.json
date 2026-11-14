@@ -1,5 +1,5 @@
 {
-  "threshold": 1.1,
+  "threshold": 1,
   "reporters": ["console"],
   "ignorePattern": ["```[\\s\\S]*?```"],
   "ignore": [

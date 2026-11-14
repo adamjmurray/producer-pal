@@ -158,7 +158,7 @@ Using the built-in Chat UI? Skip this section: the
 
    <img src="/img/producer-pal-chat-settings-installation.png" alt="The Installation tab with the device in the User Library and the remote script not installed yet" width="500"/>
 
-5. Click **Install** next to Remote script.
+5. Click **Install** next to Control Surface remote script.
 6. <!--@include: ./_partials/control-surface.md-->
 7. Follow your app's guide from Step 1 to connect it, then say **"connect to
    ableton"**.

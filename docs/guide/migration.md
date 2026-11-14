@@ -1,8 +1,8 @@
 ---
 title: Migration Guide
 description:
-  Upgrading a script that drives Producer Pal. What changed in 2.3, 2.4 and 2.5,
-  what is deprecated, and an adapter script that rewrites the old arguments.
+  Upgrading a script that drives Producer Pal. What changed in 2.3 to 2.6, what
+  is deprecated, and an adapter script that rewrites the old arguments.
 head:
   - - meta
     - name: keywords
@@ -15,8 +15,8 @@ head:
   - - meta
     - property: og:description
       content:
-        What changed for scripts in Producer Pal 2.3, 2.4 and 2.5, what is
-        deprecated, and how to rewrite the old arguments.
+        What changed for scripts in Producer Pal 2.3 to 2.6, what is deprecated,
+        and how to rewrite the old arguments.
 ---
 
 <!-- Over the ~20 KB doc limit on purpose: splitting it would break the
@@ -30,13 +30,13 @@ This page is for **scripts**: anything calling Producer Pal through
 nothing here for you: the assistant reads the current tool descriptions on every
 conversation and writes calls in the current spelling.
 
-There are three migrations here and they are not equally urgent:
+There are three kinds of migration here and they are not equally urgent:
 
-| What                        | When                                   | Urgency                                                                       |
-| --------------------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
-| **Response fields** moved   | 2.3, and reshaped again in 2.4 and 2.5 | **Do this now.** No field kept a back-compat key.                             |
-| **Behavior** changed        | 2.4 and 2.5                            | **Do this now.** A few calls act on more targets, or refuse what 2.3 guessed. |
-| **Input params** deprecated | removed in a later release             | Forward notice. Everything still works, and warns, until then.                |
+| What                        | When                                  | Urgency                                                                       |
+| --------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| **Response fields** moved   | 2.3, and reshaped again in 2.4 to 2.6 | **Do this now.** No field kept a back-compat key.                             |
+| **Behavior** changed        | 2.4, 2.5 and 2.6                      | **Do this now.** A few calls act on more targets, or refuse what 2.3 guessed. |
+| **Input params** deprecated | removed in a later release            | Forward notice. Everything still works, and warns, until then.                |
 
 Most upgrade guides lead with the deprecations. This one leads with the
 responses and behavior, because that is the half that breaks the moment you
@@ -821,6 +821,96 @@ warning, but results echo the new ones, so a script comparing a result's
 now `get-property` and `get_property` is `get-field`. Values Live owns (scales,
 views, quantize grids, device names) keep Live's spelling.
 
+## Library and device reads changed in 2.6
+
+- **`ppal-library` search items leave out what the item's `path` or your filters
+  already say.** `name` and `folder` go when they are the last two segments of
+  `path`, `useCount` when 0, and `kind` and `source` when they match the
+  search's own filter. A script reading `item.name` should fall back to the last
+  segment of `path`, and treat a missing `useCount` as 0. Only `search` trims;
+  `find-similar` and `find-duplicates` return full items.
+- **`stalenessRisk` is now `stalenessNote`.** It was an object of timestamps and
+  sizes. It is a plain sentence saying recent plug-ins and samples may be
+  missing until Live restarts, and it is still left out when there's no risk.
+  With the remote script running, `list-plugins` reads Live's browser and never
+  carries it.
+- **A search that hit its `limit` returns `more` and `nextOffset`.** Pass
+  `nextOffset` back as `offset` for the next page. Both are left out when
+  nothing lies beyond. `list-plugins`, `list-tags` and the `list-categories`
+  drill-down carry `more` too, but can't be paged: raise `limit` or add a
+  filter.
+- **`ppal-read-device` says a repeated option list once.** In `param-values`, a
+  list of 3 or more `options` shared by two or more params moves into the
+  device's `optionLists`, and each of those params carries `optionList` (a key
+  such as `L1`) in place of `options`. An On/Off param lists no `options`: its
+  `value` is `On` or `Off`.
+- **A rack's unused hidden macros are not listed in `parameters`.** A macro past
+  the visible `count` that nothing maps to is left out. A write can still name
+  any macro.
+- **Colors land on the closest palette swatch by perceived color**, where Live
+  snapped by raw RGB. A request off the palette still comes back with the
+  swatch's `color` and a `detail`; the swatch may differ from 2.5's.
+
+## Calls that act differently in 2.6
+
+**`ppal-library` `search` needs a query or a filter.** `query`, `tags`, `type`,
+`deviceKind`, `source`, `inFolder`, or a `kind` other than `audio` count. A bare
+search, or a bare entry in `searches`, refuses the whole call before any search
+runs; 2.5 listed the library's first files. `find-similar` and `find-duplicates`
+are not searches in this sense. `limit` on `search` is capped at 200
+(default 50) and a larger value is clamped without a note; the other actions
+keep the 1000 cap.
+
+**A notation string that makes over 10,000 notes is refused**, and so is a
+single repeat (`*20000`) or bar range over 10,000. Split it across clips.
+
+**`force: true` works only after a guard has warned about that target.** It
+applies to the pad sample swap in `ppal-update-device` and the overwrite guard
+in `ppal-context`. A `force` sent before any guard fired is ignored: the call is
+skipped or refused as without it, with a note starting `force:true ignored` in
+front. Send the call as it was, read what would be lost, then repeat it with
+`force`.
+
+**String values are trimmed**, whole or as a list entry: `name: " A "` stores
+`A`. A value of only spaces reads as `""`.
+
+**A write to an inactive device param still lands, and says so.** A param with
+no effect in the device's current mode (a synced LFO's Hz rate, say) takes the
+write; its entry gets the `detail`
+`inactive in the device's current mode, so it has no effect until that changes`.
+
+**`sends` is refused beside `sendGainDb` or `sendReturn`** (`ppal-update-track`,
+`ppal-update-device`), whatever the values. Use one or the other.
+
+**The Setup tab's Sample Folder setting and `ppal-library`'s `sample-folder`
+source are gone** (2.6.0). Add the folder to Places in Live's browser instead:
+`ppal-library` finds its files under `source: "user"`, once Live has been
+restarted (it reads the library index Live saves on quit). A search sending
+`source: "sample-folder"` (or `sampleFolder`) is refused, and `POST /config`
+ignores a `sampleFolder` field.
+
+**`arrangementLength` resizes the one clip in place** (`ppal-update-clip`,
+`ppal-duplicate`). Lengthening a looping arrangement clip used to tile copies: a
+row of clips, each with an entry after the target's. Now the clip itself grows
+and keeps looping, and the target gets one entry. `envelopes` beside it is no
+longer refused. An unlooped clip lengthened into the next clip now overwrites it
+and says so, as a looping one always did; it used to stop short there without a
+word. A take-lane clip, which used to refuse `arrangementLength`, now resizes
+too; a lengthen stops at the next clip on the lane and the entry says so. A copy
+`ppal-duplicate` re-creates on or off a lane takes `arrangementLength` instead
+of ignoring it, and a re-created audio copy keeps the source's length.
+
+## Memory answers changed in 2.6.0
+
+**`ppal-context` reads and deletes memories by list, and one name answers like
+any lone target.** On `read` and `delete`, `name` takes a comma-separated list
+and returns one entry per name. With one name, a read returns `{name, content}`
+(was `{content}`), and a missing memory is an error (was a "No memory found"
+note). A delete returns `{name}`, or `{name, detail: "nothing to delete"}` when
+there's no such memory, and no longer appends the memory index; call `read` with
+no `name` for it. A `write` name is capped at 200 characters and can't contain a
+comma.
+
 ## Deprecated params
 
 Every param below still works and emits a deprecation warning saying what to use
@@ -850,9 +940,15 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `devicePath` on select                               | `path`                                              |
 | `inputRoutingTypeId` and the other three `*Id`       | drop the `Id` suffix                                |
 | `split` on update-clip                               | `arrangementSplit`, but see below                   |
+| `sendGainDb` + `sendReturn`                          | `sends: [{return, gainDb}]`                         |
 
 `ppal-create-device` keeps `deviceName`. `device` still works as an alias, but
 isn't the main name: Claude Desktop drops an argument named `device`.
+
+`sendGainDb` + `sendReturn` (on `ppal-update-track` and `ppal-update-device`)
+still work and warn. `sendReturn` took a comma list, one return per target, but
+`sends` gives every target the same returns, so split such a list into one call
+per return.
 
 The `*Id` row is a plain rename: the `*Id` survivors already accept a name or an
 id. Most of the rest are mechanical. **Four are not**, and a find-and-replace on

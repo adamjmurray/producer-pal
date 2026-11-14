@@ -19,7 +19,7 @@ describe("Node for Max Logger", () => {
 
   describe("log", () => {
     it("should always post with timestamp", () => {
-      logger.log("test message");
+      logger.nodeLog("test message");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -31,7 +31,7 @@ describe("Node for Max Logger", () => {
 
   describe("warn", () => {
     it("should post with warn level", () => {
-      logger.warn("test warning");
+      logger.nodeWarn("test warning");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -44,7 +44,7 @@ describe("Node for Max Logger", () => {
 
   describe("error", () => {
     it("should post with error level", () => {
-      logger.error("test error");
+      logger.nodeError("test error");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -57,7 +57,7 @@ describe("Node for Max Logger", () => {
 
   describe("info", () => {
     it("should not post when verbose is false (default)", () => {
-      logger.info("test info");
+      logger.nodeInfo("test info");
 
       expect(Max.post).not.toHaveBeenCalled();
     });
@@ -70,7 +70,7 @@ describe("Node for Max Logger", () => {
 
       // Enable verbose mode with 1
       verboseHandler!(1);
-      logger.info("verbose info message");
+      logger.nodeInfo("verbose info message");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -83,7 +83,7 @@ describe("Node for Max Logger", () => {
       const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!("true");
-      logger.info("verbose string true message");
+      logger.nodeInfo("verbose string true message");
 
       expect(Max.post).toHaveBeenCalledWith(
         expect.stringMatching(
@@ -96,7 +96,7 @@ describe("Node for Max Logger", () => {
       const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!(0);
-      logger.info("should not post");
+      logger.nodeInfo("should not post");
 
       expect(Max.post).not.toHaveBeenCalled();
     });
@@ -105,7 +105,7 @@ describe("Node for Max Logger", () => {
       const verboseHandler = mockMax.handlers.get("verbose");
 
       verboseHandler!(false);
-      logger.info("should not post");
+      logger.nodeInfo("should not post");
 
       expect(Max.post).not.toHaveBeenCalled();
     });

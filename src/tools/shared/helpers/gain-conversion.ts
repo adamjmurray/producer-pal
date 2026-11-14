@@ -119,7 +119,7 @@ export function dbToLiveGain(dB: number): number {
 
     if (entry.dB <= dB) {
       lowerIndex = i;
-    } else if (upperIndex === -1) {
+    } else {
       upperIndex = i;
       break;
     }
@@ -129,14 +129,6 @@ export function dbToLiveGain(dB: number): number {
   if (lowerIndex === -1) {
     return 0;
   }
-
-  // Defensive guard: unreachable with current lookup table because the last entry
-  // has dB=24 (the max), and dB >= 24 is caught by the early return above.
-  /* v8 ignore start -- unreachable: max dB entry caught by early return */
-  if (upperIndex === -1) {
-    return (LOOKUP_TABLE[lowerIndex] as LookupEntry).gain;
-  }
-  /* v8 ignore stop */
 
   const lower = LOOKUP_TABLE[lowerIndex] as LookupEntry;
   const upper = LOOKUP_TABLE[upperIndex] as LookupEntry;

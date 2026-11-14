@@ -15,11 +15,13 @@ import {
 import { BUILD_SHA } from "./build-sha.mjs";
 import { bundleDevice } from "./rolldown-plugin-bundle-device.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
+import { embedPluginHost } from "./rolldown-plugin-embed-plugin-host.mjs";
 import { embedRemoteScript } from "./rolldown-plugin-embed-remote-script.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
 import {
   stubBuildStats,
   stubCodeExec,
+  stubPluginHostTool,
 } from "./rolldown-plugin-stub-modules.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +40,7 @@ const envVarReplacements = {
   "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
   "process.env.ENABLE_LIVE_API": JSON.stringify(process.env.ENABLE_LIVE_API),
   "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
+  "process.env.ENABLE_GEN_UI": JSON.stringify(process.env.ENABLE_GEN_UI),
   "process.env.ENABLE_WARP_MARKERS": JSON.stringify(
     process.env.ENABLE_WARP_MARKERS,
   ),
@@ -56,6 +59,8 @@ const envVarReplacements = {
 const stubPlugins = [
   ...(process.env.ENABLE_CODE_EXEC !== "true" ? [stubCodeExec()] : []),
   ...(process.env.ENABLE_BUILD_STATS !== "true" ? [stubBuildStats()] : []),
+  // The debug tool rides on the dev build's ENABLE_LIVE_API.
+  ...(process.env.ENABLE_LIVE_API !== "true" ? [stubPluginHostTool()] : []),
 ];
 
 const resolveOptions = {
@@ -147,6 +152,7 @@ export default defineConfig([
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       embedRemoteScript(), // Inline the Python remote script, same reason
+      embedPluginHost(), // And the plug-in host wrappers
       addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },
@@ -185,6 +191,7 @@ export default defineConfig([
       // Same reason as the device bundle: the portal installs the remote script
       // and must not read remote-script/ off disk when it runs.
       embedRemoteScript(),
+      embedPluginHost(),
       // The frozen device ships as a file beside the portal, not inside it.
       // Only `npm run release:mcpb` sets this; plain builds bundle none.
       bundleDevice({

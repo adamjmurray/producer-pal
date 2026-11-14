@@ -10,9 +10,9 @@ import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   mockContext,
   setupArrangementClipPath,
-  setupArrangementMidiClipMock,
   setupMockProperties,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { makeResizable } from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 // A call that writes notes AND sets arrangementLength must still report
@@ -34,7 +34,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
   let clip: RegisteredMockObject;
 
   beforeEach(() => {
-    const clips = setupArrangementClipPath(0, ["789", "1000", "1001"]);
+    const clips = setupArrangementClipPath(0, ["789"]);
     const sourceClip = clips.get("789");
 
     if (sourceClip == null) {
@@ -52,7 +52,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
   });
 
   it("reports noteCount when lengthening an unlooped clip in the same call", async () => {
-    setupArrangementMidiClipMock(clip, { ...MIDI_CLIP_PROPS, looping: 0 });
+    makeResizable(clip, { ...MIDI_CLIP_PROPS, looping: 0 });
 
     const result = await updateClip(
       { id: "789", notes: "C3 1|1 E3 2|1", arrangementLength: "2bar" },
@@ -67,7 +67,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
   });
 
   it("counts the notes past the old end, not just the ones that already fit", async () => {
-    setupArrangementMidiClipMock(clip, { ...MIDI_CLIP_PROPS, looping: 0 });
+    makeResizable(clip, { ...MIDI_CLIP_PROPS, looping: 0 });
     trackNotesInScanWindow(clip);
 
     const result = await updateClip(
@@ -85,22 +85,17 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     });
   });
 
-  it("puts noteCount on the source clip and leaves the tiles bare", async () => {
-    setupArrangementMidiClipMock(clip, { ...MIDI_CLIP_PROPS, looping: 1 });
+  it("reports noteCount when lengthening a looped clip in the same call", async () => {
+    makeResizable(clip);
 
     const result = await updateClip(
       { id: "789", notes: "C3 1|1", arrangementLength: "3bar" },
       mockContext,
     );
 
-    // Notes were written to 789, so only it carries the count; the tiles are
-    // copies of it. A 1-bar clip at beat 0 tiled to 3 bars puts them at beats
-    // 4 and 8, which 4/4 spells as bars 2 and 3.
-    expect(result).toStrictEqual([
-      { id: "789", path: "t0[1|1]", noteCount: 1 },
-      { id: "1000", path: "t0[2|1]" },
-      { id: "1001", path: "t0[3|1]" },
-    ]);
+    // The clip grew in place, so its one entry carries the count.
+    expect(result).toStrictEqual({ id: "789", path: "t0[1|1]", noteCount: 1 });
+    expect(clip.properties.end_time).toBe(12);
   });
 });
 
@@ -119,11 +114,15 @@ function trackNotesInScanWindow(clip: RegisteredMockObject): void {
   const written: TrackedNote[] = [];
   let lengthBeats = MIDI_CLIP_PROPS.length;
   const staticGet = clip.get.getMockImplementation();
+  // Keep the resize the clip already does, so the span still follows loop_end.
+  const resize = clip.set.getMockImplementation();
 
   clip.get.mockImplementation((prop: string) =>
     prop === "length" ? [lengthBeats] : staticGet?.(prop),
   );
   clip.set.mockImplementation((prop: string, value: number) => {
+    resize?.(prop, value);
+
     if (prop === "loop_end") {
       lengthBeats = value - MIDI_CLIP_PROPS.loop_start;
     }

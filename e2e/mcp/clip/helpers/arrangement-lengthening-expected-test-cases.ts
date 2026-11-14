@@ -28,24 +28,22 @@ function c(tuples: [string, string, string, string][]): ExpectedClip[] {
   }));
 }
 
-// Looped clips (MIDI t0-t8, audio t15-t23) tile whole loops. A firstStart
-// inside the loop (t3, t4, t18, t19) doesn't shorten the tiles: the pass runs to
-// loop_end, wraps to the loop start and plays out the rest.
+// Looped clips (MIDI t0-t8, audio t15-t23) stay one looping clip, resized to
+// the full 4 bars. start/end are the loop region, which doesn't move.
 // prettier-ignore
 const midiLooped: Record<number, ExpectedClip[]> = {
-  0: c([["1|1","1bar","1|1","2|1"],["2|1","1bar","1|1","2|1"],["3|1","1bar","1|1","2|1"],["4|1","1bar","1|1","2|1"]]),
-  1: c([["1|1","n/2d","1|1","1|4"],["1|4","n/2d","1|1","1|4"],["2|3","n/2d","1|1","1|4"],["3|2","n/2d","1|1","1|4"],["4|1","n/2d","1|1","1|4"],["4|4","n/4","1|1","1|4"]]),
-  2: c([["1|1","n/2d","1|1","2|1"],["1|4","n/2d","1|1","2|1"],["2|3","n/2d","1|1","2|1"],["3|2","n/2d","1|1","2|1"],["4|1","n/2d","1|1","2|1"],["4|4","n/4","1|1","2|1"]]),
-  3: c([["1|1","1bar","1|1","2|1"],["2|1","1bar","1|1","2|1"],["3|1","1bar","1|1","2|1"],["4|1","1bar","1|1","2|1"]]),
-  4: c([["1|1","n/2d","1|1","1|4"],["1|4","n/2d","1|1","1|4"],["2|3","n/2d","1|1","1|4"],["3|2","n/2d","1|1","1|4"],["4|1","n/2d","1|1","1|4"],["4|4","n/4","1|1","1|4"]]),
-  5: c([["1|1","n/2d","1|1","2|1"],["1|4","n/2d","1|1","2|1"],["2|3","n/2d","1|1","2|1"],["3|2","n/2d","1|1","2|1"],["4|1","n/2d","1|1","2|1"],["4|4","n/4","1|1","2|1"]]),
-  6: c([["1|1","1bar","1|2","2|1"],["2|1","1bar","1|2","2|1"],["3|1","1bar","1|2","2|1"],["4|1","1bar","1|2","2|1"]]),
-  7: c([["1|1","n/2d","1|2","1|4"],["1|4","n/2d","1|2","1|4"],["2|3","n/2d","1|2","1|4"],["3|2","n/2d","1|2","1|4"],["4|1","n/2d","1|2","1|4"],["4|4","n/4","1|2","1|4"]]),
-  8: c([["1|1","n/2d","1|2","2|1"],["1|4","n/2d","1|2","2|1"],["2|3","n/2d","1|2","2|1"],["3|2","n/2d","1|2","2|1"],["4|1","n/2d","1|2","2|1"],["4|4","n/4","1|2","2|1"]]),
+  0: c([["1|1","4bar","1|1","2|1"]]),
+  1: c([["1|1","4bar","1|1","1|4"]]),
+  2: c([["1|1","4bar","1|1","2|1"]]),
+  3: c([["1|1","4bar","1|1","2|1"]]),
+  4: c([["1|1","4bar","1|1","1|4"]]),
+  5: c([["1|1","4bar","1|1","2|1"]]),
+  6: c([["1|1","4bar","1|2","2|1"]]),
+  7: c([["1|1","4bar","1|2","1|4"]]),
+  8: c([["1|1","4bar","1|2","2|1"]]),
 };
 
-// Tracks 9-14 (unlooped MIDI) use loop_end to extend in place. Single clip, no
-// tiles. end_marker is extended so notes are visible in the full 4-bar region.
+// Tracks 9-14 (unlooped MIDI) use loop_end to extend in place. end_marker is extended so notes are visible in the full 4-bar region.
 // prettier-ignore
 const midiUnlooped: Record<number, ExpectedClip[]> = {
   9:  c([["1|1","4bar","1|1","5|1"]]),
@@ -58,20 +56,20 @@ const midiUnlooped: Record<number, ExpectedClip[]> = {
 
 // prettier-ignore
 const audioLoopedWarped: Record<number, ExpectedClip[]> = {
-  15: c([["1|1","2bar","1|1","3|1"],["3|1","2bar","1|1","3|1"]]),
-  16: c([["1|1","2bar","1|1","3|1"],["3|1","2bar","1|1","3|1"]]),
-  17: c([["1|1","1bar+n/4","1|1","3|1"],["2|2","1bar+n/4","1|1","3|1"],["3|3","1bar+n/4","1|1","3|1"],["4|4","n/4","1|1","3|1"]]),
-  18: c([["1|1","2bar","1|1","3|1"],["3|1","2bar","1|1","3|1"]]),
-  19: c([["1|1","2bar","1|1","3|1"],["3|1","2bar","1|1","3|1"]]),
-  20: c([["1|1","1bar+n/4","1|1","3|1"],["2|2","1bar+n/4","1|1","3|1"],["3|3","1bar+n/4","1|1","3|1"],["4|4","n/4","1|1","3|1"]]),
-  21: c([["1|1","2bar","1|2","3|1"],["3|1","2bar","1|2","3|1"]]),
-  22: c([["1|1","2bar","1|2","3|1"],["3|1","2bar","1|2","3|1"]]),
-  23: c([["1|1","1bar+n/4","1|2","3|1"],["2|2","1bar+n/4","1|2","3|1"],["3|3","1bar+n/4","1|2","3|1"],["4|4","n/4","1|2","3|1"]]),
+  15: c([["1|1","4bar","1|1","3|1"]]),
+  16: c([["1|1","4bar","1|1","3|1"]]),
+  17: c([["1|1","4bar","1|1","3|1"]]),
+  18: c([["1|1","4bar","1|1","3|1"]]),
+  19: c([["1|1","4bar","1|1","3|1"]]),
+  20: c([["1|1","4bar","1|1","3|1"]]),
+  21: c([["1|1","4bar","1|2","3|1"]]),
+  22: c([["1|1","4bar","1|2","3|1"]]),
+  23: c([["1|1","4bar","1|2","3|1"]]),
 };
 
 // Tracks 24-29 (unlooped warped audio) have insufficient file content for the
 // 4-bar target. No-hidden tracks (24,26,28) skip entirely; hidden-content
-// tracks (25,27,29) cap to file boundary via loop_end (single clip, no tiles).
+// tracks (25,27,29) cap to file boundary via loop_end.
 // prettier-ignore
 const audioUnloopedWarped: Record<number, ExpectedClip[]> = {
   24: c([["1|1","2bar","1|1","3|1"]]),
@@ -84,7 +82,7 @@ const audioUnloopedWarped: Record<number, ExpectedClip[]> = {
 
 // Tracks 30-35 (unwarped audio) use loop_end to extend. Ableton auto-clamps at
 // file boundary. No-hidden tracks stay unchanged; hidden-content tracks extend
-// to the file's natural sample length. All produce a single clip (no tiles).
+// to the file's natural sample length.
 // Live 12.4 changed end_marker to clamp at file content boundary (the 4.8s
 // sample); previous Live versions allowed end_marker beyond content.
 // start/end are the clip region, which Live reports in SECONDS while a clip is

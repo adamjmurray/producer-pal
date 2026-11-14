@@ -59,6 +59,7 @@ describe("transform syntax errors for stand-in parameter names", () => {
     "sin 2",
     "1|1: ratchet 2",
     "starts 2",
+    "start: 2|1",
   ])("leaves %s to the generic error", (source) => {
     expect(errorFor(source)).not.toContain("isn't a parameter — use");
   });

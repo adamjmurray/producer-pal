@@ -31,7 +31,7 @@ describe("duplicate - input validation", () => {
   it("should throw an error when id is missing", async () => {
     await expect(
       duplicate({ type: "track" } as { type: string; id: string }),
-    ).rejects.toThrow("id or path is required");
+    ).rejects.toThrow('id or path is required, e.g. path: "t0"');
   });
 
   it("should throw an error when type is invalid", async () => {

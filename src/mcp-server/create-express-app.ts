@@ -3,47 +3,67 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import { withLiveApiTool } from "#src/shared/tool-groups.ts";
+import { type ProducerPalConfig } from "#src/shared/config.ts";
+import { manageToolOffered, withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
-import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
+import {
+  internalError,
+  rejectStatelessMcpMethods,
+  serveStatelessMcp,
+} from "./helpers/http/stateless-mcp.ts";
+import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
+import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
+import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
+import { corsMiddleware } from "./helpers/http/browser/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
-import { parseConfigBody } from "./helpers/http/config-body.ts";
+import {
+  parseConfigBody,
+  type ConfigBody,
+} from "./helpers/http/config/config-body.ts";
+import {
+  emitConfigOutlets,
+  type ConfigOutlet,
+} from "./helpers/http/config/config-outlets.ts";
+import { rebindingGuard } from "./helpers/http/browser/rebinding-guard.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
-import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import { rejectCrossOriginWrite } from "./helpers/http/browser/request-origin.ts";
 import {
   resolveRequestProfile,
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
+import { rejectNonLocalTestSwitches } from "./helpers/http/test-switch-guard.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
+import { registerNetworkAccessRoutes } from "./routes/config/network-access-route.ts";
+import { registerLocalModelProxyRoute } from "./helpers/http/browser/local-model-proxy-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
 import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
+import { registerGenUiRoutes } from "./rpc/gen-ui/gen-ui-routes.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -52,25 +72,6 @@ import { registerSubagentBriefingRoute } from "./routes/subagent-briefing-route.
 import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
-
-interface ProducerPalConfig {
-  projectContext: string;
-  smallModelMode: boolean;
-  notation: Notation;
-  jsonOutput: boolean; // true = JSON, false = compact (default)
-  sampleFolder: string;
-  liveApiEnabled: boolean;
-  liveApiForcedOn: boolean;
-  // Debug builds only: false makes the remote script look uninstalled. POST
-  // /config only (evals and e2e); not a device setting, so it is never sent to
-  // Max. A release build neither lists nor accepts it.
-  remoteScriptEnabled?: boolean;
-  // Debug builds only, like remoteScriptEnabled: a version string replaces the
-  // minimum remote script version, so a running script can look out of date.
-  // Listed only while set.
-  remoteScriptMinVersion?: string;
-  tools: string[];
-}
 
 // ENABLE_LIVE_API=true forces the Live API tool on for dev builds
 // (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
@@ -83,18 +84,20 @@ interface ProducerPalConfig {
 // don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
-const config: ProducerPalConfig = {
+const config: ProducerPalConfig & { notation: Notation } = {
   projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
   jsonOutput: false,
-  sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
   ...(liveApiForcedOn && { remoteScriptEnabled: true }),
-  tools: liveApiForcedOn
-    ? [...TOOL_NAMES, toolDefLiveApi.toolName]
-    : [...TOOL_NAMES],
+  tools: [
+    ...TOOL_NAMES,
+    ...(liveApiForcedOn ? [toolDefLiveApi.toolName] : []),
+    // Experimental, build-flagged (ENABLE_GEN_UI). Absent from release builds.
+    ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
+  ],
 };
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
@@ -134,12 +137,6 @@ Max.addHandler("dismissUpdate", () => {
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
   config.jsonOutput = !enabled;
-});
-
-Max.addHandler("sampleFolder", (path: unknown) => {
-  const value = textEditParamToString(path);
-
-  config.sampleFolder = value;
 });
 
 Max.addHandler("liveApiEnabled", (enabled: unknown) => {
@@ -199,9 +196,12 @@ function buildEnrichedCall(
   getCompactOutput: () => boolean | undefined = () => undefined,
   getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
-  return enrichConnect(
+  const enriched = enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
-      const overrides: RequestOverrides = { notation: getNotation() };
+      const overrides: RequestOverrides = {
+        notation: getNotation(),
+        manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),
+      };
       const compactOutput = getCompactOutput();
 
       // Only when a header asked: an absent one must leave V8 on its own
@@ -220,6 +220,9 @@ function buildEnrichedCall(
       portalVersion: getPortalVersion(),
     }),
   );
+
+  // Outermost: serves ppal-ui itself and announces finished writes to the UI.
+  return isGenUiEnabled() ? withGenUi(enriched) : enriched;
 }
 
 /**
@@ -239,33 +242,6 @@ function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
   );
 }
 
-interface JsonRpcError {
-  jsonrpc: string;
-  error: {
-    code: number;
-    message: string;
-  };
-  id: null;
-}
-
-const methodNotAllowed: JsonRpcError = {
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.ConnectionClosed,
-    message: "Method not allowed.",
-  },
-  id: null,
-};
-
-const internalError = (message: string): JsonRpcError => ({
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.InternalError,
-    message: `Internal server error: ${message}`,
-  },
-  id: null,
-});
-
 /**
  * Mark a response as never-cache. Used for the UI bundle and config so the
  * browser can't serve a stale build/config across device rebuilds or updates.
@@ -283,30 +259,34 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
+  // First, so every route, CORS preflight and 404 is covered: on a Host a
+  // website could rebind to this computer, only non-browser /mcp gets through.
+  app.use(rebindingGuard);
+
   // Localhost-only CORS by default; ENABLE_REMOTE_CORS widens it (see the
   // middleware for the reasoning).
   app.use(corsMiddleware);
+
+  // Before the JSON parser below: it streams the request body through itself,
+  // and a long chat history can pass the parser's 2 MB limit.
+  registerLocalModelProxyRoute(app);
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.
   app.use(express.json({ limit: "2mb" }));
 
-  // No cross-origin (Origin) gate here, intentionally — unlike POST /config.
-  // The chat UI's getMcpUrl() targets the page's own origin, so over a LAN or
-  // tunnel it POSTs /mcp with a NON-localhost Origin (e.g. http://192.168.x:PORT
-  // or https://*.trycloudflare.com). Gating by isLocalOrigin — or any
-  // Origin/Host comparison, which reverse-proxy tunnels defeat by forwarding
-  // Host=localhost while Origin stays the public domain — would 403 the
-  // LAN/tunnel chat's own tool calls and break the documented remote access
-  // feature, which is unauthenticated by design (docs/installation/
-  // remote-access.md). The localhost-CSRF surface (a web page POSTing to
-  // http://localhost:PORT/mcp) is accepted as part of that "no auth" model.
+  // No Origin gate here, unlike POST /config: the chat UI posts /mcp from its
+  // own origin, which over a LAN or tunnel isn't localhost (192.168.x:PORT,
+  // *.trycloudflare.com). Tunnels pass the public hostname as Host. Remote
+  // access is unauthenticated by design (docs/installation/remote-access.md),
+  // so a web page POSTing to http://localhost:PORT/mcp is accepted too.
+  // On a rebindable Host, rebindingGuard refuses browsers here.
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
       const method =
         (req.body as { method?: string } | undefined)?.method ?? "unknown";
 
-      console.info(`MCP request: ${method}`);
+      nodeInfo(`MCP request: ${method}`);
 
       // The caller's own profile, off the per-request headers: the
       // built-in chat and each subagent worker send their own values, so one
@@ -335,19 +315,10 @@ export function createExpressApp(): Express {
           tools: profile.tools,
         },
       );
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // Stateless mode
-      });
 
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
-      });
-
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      await serveStatelessMcp(server, req, res, req.body);
     } catch (error) {
-      console.error(`Error handling MCP request: ${String(error)}`);
+      nodeError(`Error handling MCP request: ${String(error)}`);
       // Echoed to the caller below: it's the only signal an MCP client gets
       // when this route breaks. That's only safe because nothing on this path
       // touches the filesystem or user data today (mirrors the `expose` note
@@ -357,16 +328,9 @@ export function createExpressApp(): Express {
     }
   });
 
-  // Stateless server doesn't support SSE streams, so GET is not allowed.
-  // Returning 405 tells the MCP SDK not to attempt SSE reconnection.
-  app.get("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
-
-  // Because we're using a stateless server, DELETE is not needed:
-  app.delete("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
+  // Stateless server doesn't support SSE streams or sessions: GET and DELETE
+  // get a 405.
+  rejectStatelessMcpMethods(app);
 
   // Serve the chat UI (inlined for frozen .amxd builds).
   // The same bundle handles both /chat and /context — main.tsx reads
@@ -417,8 +381,15 @@ export function createExpressApp(): Express {
 
   registerRestApiRoutes(app, () => config, buildRestCall);
 
+  if (isGenUiEnabled()) {
+    registerGenUiRoutes(app);
+    connectWidgetsToSet();
+    startLiveWatcher();
+  }
+
   registerGlobalContextRoutes(app);
   registerGlobalSettingsRoutes(app);
+  registerNetworkAccessRoutes(app);
   registerMemoryCollectionRoutes(app);
   registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);
@@ -466,13 +437,19 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
   // /config is a benign no-op update instead of a TypeError → 500.
-  // Check every field first: a bad one refuses the whole request, so a 400
-  // never leaves config half-applied (or Node and the device out of step).
-  const parsed = parseConfigBody(
-    requestBody(req),
-    config.liveApiEnabled,
-    liveApiForcedOn,
-  );
+  const body = requestBody(req);
+
+  // The remote script test switches are loopback-only (the Origin check above
+  // lets Origin-less LAN and tunnel clients through). Refused before anything
+  // is applied.
+  if (rejectNonLocalTestSwitches(req, res, body)) {
+    return;
+  }
+
+  // Check every field first: a bad one refuses the whole request (400), so
+  // nothing is applied. A failure sending to the device comes after this and
+  // is handled at the end.
+  const parsed = parseConfigBody(body, config.liveApiEnabled);
 
   if (!parsed.ok) {
     res.status(400).json(parsed.error);
@@ -480,40 +457,85 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const incoming = parsed.value;
-  const outlets: Array<() => Promise<void>> = [];
+  const before = { ...config };
+  const outlets = applyConfigUpdate(parsed.value);
 
+  // Send everything to V8, even if one send fails. A field that didn't get
+  // through is rolled back in Node (and on the device), so GET /config still
+  // matches the device.
+  const { fields, unrestored } = await emitConfigOutlets(
+    config,
+    before,
+    outlets,
+  );
+
+  if (fields.length > 0) {
+    res.status(502).json({
+      error:
+        unrestored.length > 0
+          ? "Some settings did not reach the device and were left unchanged in Node, but the device may hold a new value for the fields in `unrestored`. Retry them."
+          : "Some settings did not reach the device and were left unchanged. Retry them.",
+      fields,
+      ...(unrestored.length > 0 && { unrestored }),
+    });
+
+    return;
+  }
+
+  res.json(config);
+}
+
+/**
+ * Apply a validated POST /config body to Node's config and the test switches.
+ *
+ * @param incoming - The validated update
+ * @returns The sends to the device, one per setting that changed
+ */
+function applyConfigUpdate(
+  incoming: ConfigBody,
+): Array<ConfigOutlet<typeof config>> {
+  const outlets: Array<ConfigOutlet<typeof config>> = [];
+
+  // Each device key is spelled out in its Max.outlet call (a test scans for
+  // that) and again as deviceKey, which names it in errors.
   if (incoming.projectContext !== undefined) {
     config.projectContext = incoming.projectContext ?? "";
-    outlets.push(() =>
-      Max.outlet("config", "projectContext", config.projectContext),
-    );
+    outlets.push({
+      field: "projectContext",
+      configKey: "projectContext",
+      deviceKey: "projectContext",
+      send: () => Max.outlet("config", "projectContext", config.projectContext),
+    });
   }
 
   if (incoming.smallModelMode !== undefined) {
     config.smallModelMode = incoming.smallModelMode;
-    outlets.push(() =>
-      Max.outlet("config", "smallModelMode", config.smallModelMode),
-    );
+    outlets.push({
+      field: "smallModelMode",
+      configKey: "smallModelMode",
+      deviceKey: "smallModelMode",
+      send: () => Max.outlet("config", "smallModelMode", config.smallModelMode),
+    });
   }
 
   if (incoming.notation !== undefined) {
     config.notation = incoming.notation;
-    outlets.push(() => Max.outlet("config", "notation", config.notation));
+    outlets.push({
+      field: "notation",
+      configKey: "notation",
+      deviceKey: "notation",
+      send: () => Max.outlet("config", "notation", config.notation),
+    });
   }
 
   if (incoming.jsonOutput !== undefined) {
     config.jsonOutput = incoming.jsonOutput;
-    outlets.push(() =>
-      Max.outlet("config", "compactOutput", !config.jsonOutput),
-    );
-  }
-
-  if (incoming.sampleFolder !== undefined) {
-    config.sampleFolder = incoming.sampleFolder ?? "";
-    outlets.push(() =>
-      Max.outlet("config", "sampleFolder", config.sampleFolder),
-    );
+    outlets.push({
+      field: "jsonOutput",
+      configKey: "jsonOutput",
+      deviceKey: "compactOutput",
+      send: () => Max.outlet("config", "compactOutput", !config.jsonOutput),
+    });
   }
 
   if (incoming.liveApiEnabled !== undefined) {
@@ -521,8 +543,19 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
     // The whitelist is rebuilt either way, so it goes out with the flag.
     outlets.push(
-      () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
-      () => Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+      {
+        field: "liveApiEnabled",
+        configKey: "tools",
+        deviceKey: "tools",
+        send: () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      },
+      {
+        field: "liveApiEnabled",
+        configKey: "liveApiEnabled",
+        deviceKey: "liveApiEnabled",
+        send: () =>
+          Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+      },
     );
   }
 
@@ -543,15 +576,13 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   if (incoming.tools !== undefined) {
     config.tools = incoming.tools;
-    outlets.push(() =>
-      Max.outlet("config", "tools", JSON.stringify(config.tools)),
-    );
+    outlets.push({
+      field: "tools",
+      configKey: "tools",
+      deviceKey: "tools",
+      send: () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+    });
   }
 
-  // Emit all config updates to V8 (after synchronously updating config)
-  for (const emit of outlets) {
-    await emit();
-  }
-
-  res.json(config);
+  return outlets;
 }

@@ -10,6 +10,7 @@ import { deleteObject } from "../../delete.ts";
 import {
   type GroupTrack,
   PAIR,
+  putClipInSlot,
   setUpGroupSet,
 } from "./delete-group-test-helpers.ts";
 
@@ -147,5 +148,126 @@ describe("deleteObject of a group track", () => {
 
     // Four inside, and the track after them that ends the walk.
     expect(resolves("live_set tracks *")).toBe(5);
+  });
+
+  // A group's own slots only fire the tracks inside it, so they hold no clips.
+  // The clips on the tracks that went with it are named after the tracks.
+  describe("with clips on the tracks", () => {
+    const withClips: GroupTrack[] = [
+      { id: "g", foldable: true, clipSlots: ["g-slot"] },
+      { id: "a", group: "g", clipSlots: ["a-slot"] },
+      { id: "b", group: "g" },
+    ];
+
+    function putClips(): void {
+      putClipInSlot("g-slot", 0);
+      putClipInSlot("a-slot", 1);
+    }
+
+    it("names the clips on the tracks inside, after the tracks", () => {
+      setUpGroupSet(withClips);
+      putClips();
+
+      expect(deleteObject({ id: "g", type: "track" })).toStrictEqual({
+        id: "g",
+        deletedPath: "t0",
+        detail:
+          "also deleted the 2 tracks inside this group track: t1 (id a), t2 (id b); " +
+          'and the clip on them: t1/s0 "Loop"',
+      });
+    });
+
+    it("leaves a named track's clips to its own entry, not the group's", () => {
+      setUpGroupSet(withClips);
+      putClips();
+
+      expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
+        {
+          id: "g",
+          deletedPath: "t0",
+          detail: "also deleted the track inside this group track: t2 (id b)",
+        },
+        {
+          id: "a",
+          deletedPath: "t1",
+          detail: 'also deleted the clip on this track: t1/s0 "Loop"',
+        },
+      ]);
+    });
+
+    it("says `on it` for the clips of the one track listed", () => {
+      setUpGroupSet(withClips);
+      putClips();
+
+      expect(deleteObject({ id: "g, b", type: "track" })).toStrictEqual([
+        {
+          id: "g",
+          deletedPath: "t0",
+          detail:
+            "also deleted the track inside this group track: t1 (id a); " +
+            'and the clip on it: t1/s0 "Loop"',
+        },
+        { id: "b", deletedPath: "t2" },
+      ]);
+    });
+
+    it("counts the clips of tracks inside a nested group", () => {
+      setUpGroupSet([
+        { id: "g", foldable: true },
+        { id: "a", group: "g", clipSlots: ["a-slot"] },
+        { id: "h", group: "g", foldable: true, clipSlots: ["h-slot"] },
+        { id: "b", group: "h", clipSlots: ["b-slot"] },
+      ]);
+      putClipInSlot("a-slot", 1);
+      putClipInSlot("h-slot", 2);
+      putClipInSlot("b-slot", 3);
+
+      expect(deleteObject({ id: "g", type: "track" })).toStrictEqual({
+        id: "g",
+        deletedPath: "t0",
+        detail:
+          "also deleted the 3 tracks inside this group track: t1 (id a), t2 (id h), t3 (id b); " +
+          'and the 2 clips on them: t1/s0 "Loop", t3/s0 "Loop"',
+      });
+    });
+
+    it("stops at 10 clips across the whole group, and gives the total", () => {
+      const members = Array.from({ length: 12 }, (_, i) => `m${i}`);
+
+      setUpGroupSet([
+        { id: "g", foldable: true },
+        ...members.map((id) => ({ id, group: "g", clipSlots: [`${id}-slot`] })),
+      ]);
+
+      for (const [i, id] of members.entries()) {
+        putClipInSlot(`${id}-slot`, i + 1);
+      }
+
+      const { detail } = deleteObject({ id: "g", type: "track" }) as {
+        detail: string;
+      };
+
+      expect(detail).toMatch(
+        /; and the 12 clips on them: t1\/s0 "Loop", .*t10\/s0 "Loop", and 2 more$/,
+      );
+    });
+
+    it("keeps the clips in what a throw after the delete says landed", () => {
+      setUpGroupSet(withClips, {
+        afterDelete: () => {
+          throw new Error("Live lost its place");
+        },
+      });
+      putClips();
+
+      expect(deleteObject({ id: "g", type: "track" })).toStrictEqual({
+        id: "g",
+        deletedPath: "t0",
+        detail:
+          "Live lost its place; already changed: deleted the track, " +
+          "also deleted the 2 tracks inside this group track: t1 (id a), t2 (id b); " +
+          'and the clip on them: t1/s0 "Loop"',
+      });
+    });
   });
 });

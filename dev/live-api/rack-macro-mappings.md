@@ -16,12 +16,17 @@ native class, and none of them, nor Live's own remote scripts, has a way to.
 `Song.View.mod_mapping_device` looks close, but it's the modulator devices' Map
 button: it waits for a user click and takes no macro index.
 
+Live 13 raises an "AlreadyRemoted" error when `live.remote~` or `live.modulate~`
+targets a parameter a macro already controls. Producer Pal uses neither object
+and can't create macro mappings, so it doesn't apply (checked by code search,
+not run on Live 13).
+
 ## `macros_mapped` (Python only)
 
-`RackDevice.macros_mapped` is a tuple of 16 bools, one per macro, true when that
-macro is mapped to anything. It has a listener. Max's `info` on a rack doesn't
-list it. The remote script's `/device/macros` route serves it, and
-`ppal-read-device` and `ppal-update-device` use that.
+`RackDevice.macros_mapped` is a tuple of bools, one per macro (16 in Live 12, 32
+in Live 13), true when that macro is mapped to anything. It has a listener.
+Max's `info` on a rack doesn't list it. The remote script's `/device/macros`
+route serves it, and `ppal-read-device` and `ppal-update-device` use that.
 
 ## Lowering the macro count
 
@@ -29,9 +34,12 @@ Live doesn't refuse, and doesn't keep a mapped macro visible: lowering the count
 (`remove_macro`) hides macros and **keeps their mappings**. On a rack with macro
 7 mapped, the count went 8, 6, 4, 2, 1 and `macros_mapped` still showed macro 7
 at every step, and raising the count back showed it still mapped. So a hidden
-macro can be mapped: `macros_mapped` covers all 16, not just the visible ones.
-The count steps by 2 and stops at 1, never 0. `visible_macro_count` has no
-setter; `add_macro` and `remove_macro` change it.
+macro can be mapped: `macros_mapped` covers every macro, not just the visible
+ones. The count steps by 2 in Live 12 and stops at 1, never 0. Live 13 steps
+unevenly (up: 8, 10, 12, 14, 32; down: 32, 14, 12, ... 2, 1) and `add_macro`
+throws at 32. `visible_macro_count` has no setter; `add_macro` and
+`remove_macro` change it, so `macroCount` calls them one at a time and reads the
+count after each.
 
 ## The saved Set
 

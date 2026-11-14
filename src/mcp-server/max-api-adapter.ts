@@ -10,17 +10,19 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatErrorResponse,
+  MAX_NODE_TO_V8_BYTES,
+  oversizedSingleMessageError,
   reassembleChunks,
   WARNING_PREFIX,
   type McpErrorCode,
 } from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { ensureSilenceWav } from "./rpc/silent-wav-generator.ts";
 import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothing.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withWriteQueue } from "./rpc/write-queue/write-queue.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo, nodeWarn } from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
@@ -75,7 +77,7 @@ Max.addHandler("timeoutMs", (input: unknown) => {
   const n = Number(input);
 
   if (!(n > 0)) {
-    console.error(`Invalid Live API timeoutMs: ${String(input)}`);
+    nodeError(`Invalid Live API timeoutMs: ${String(input)}`);
 
     return;
   }
@@ -83,7 +85,7 @@ Max.addHandler("timeoutMs", (input: unknown) => {
   // Clamp rather than discard: dropping the value left the old timeout in
   // place with nothing the user could see to explain it.
   if (n > MAX_TIMEOUT_MS) {
-    console.warn(`Live API timeoutMs ${n} capped at ${MAX_TIMEOUT_MS}`);
+    nodeWarn(`Live API timeoutMs ${n} capped at ${MAX_TIMEOUT_MS}`);
   }
 
   timeoutMs = Math.min(n, MAX_TIMEOUT_MS);
@@ -120,9 +122,32 @@ function sendToolCall(
     queuedMs > 0 ? ` (${queuedMs}ms of it waiting for other writes)` : "";
   const requestId = crypto.randomUUID();
 
-  console.info(
-    `Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]`,
-  );
+  // mcp_request isn't chunked, and Max would cut a long atom short.
+  const advice = "Not run. Send less in one call. Nothing changed.";
+  const parts: Array<[string, string]> = [
+    ["args", argsJSON],
+    ["context", contextJSON],
+  ];
+  const tooLarge = parts
+    .map(([part, json]) =>
+      oversizedSingleMessageError(
+        json,
+        `Tool call '${tool}' ${part}`,
+        advice,
+        MAX_NODE_TO_V8_BYTES,
+      ),
+    )
+    .find((error) => error != null);
+
+  if (tooLarge != null) {
+    const response = formatErrorResponse(tooLarge);
+
+    markChangedNothing(response);
+
+    return Promise.resolve(response);
+  }
+
+  nodeInfo(`Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]`);
 
   // Return a promise that will be resolved when Max responds or timeout
   return new Promise((resolve) => {
@@ -184,7 +209,7 @@ const callLiveApi = withWriteQueue(sendToolCall, () => timeoutMs);
 function handleLiveApiResult(...args: unknown[]): void {
   const [requestId, ...params] = args as [string, ...unknown[]];
 
-  console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
+  nodeInfo(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
   const pendingRequest = pendingRequests.get(requestId);
   const resolve = pendingRequest?.resolve;
@@ -213,7 +238,7 @@ function handleLiveApiResult(...args: unknown[]): void {
       );
       const warningTextLength = appendWarnings(result, warnings);
 
-      console.info(
+      nodeInfo(
         `Tool call result metrics: ${JSON.stringify({
           resultLength,
           warningCount: warnings.length,
@@ -230,7 +255,7 @@ function handleLiveApiResult(...args: unknown[]): void {
       );
     }
   } else {
-    console.info(`Received response for unknown request ID: ${requestId}`);
+    nodeInfo(`Received response for unknown request ID: ${requestId}`);
   }
 }
 
@@ -273,7 +298,7 @@ Max.addHandler("code_exec_request", (...args: unknown[]) => {
   const [requestId, requestJson] = args as [string, string];
 
   handleCodeExecRequest(requestId, requestJson).catch((error) => {
-    console.error(`Error handling code_exec_request: ${String(error)}`);
+    nodeError(`Error handling code_exec_request: ${String(error)}`);
   });
 });
 
@@ -282,7 +307,7 @@ Max.addHandler("node_request", (...args: unknown[]) => {
   const [requestId, requestJson] = args as [string, string];
 
   handleNodeRequest(requestId, requestJson).catch((error) => {
-    console.error(`Error handling node_request: ${String(error)}`);
+    nodeError(`Error handling node_request: ${String(error)}`);
   });
 });
 

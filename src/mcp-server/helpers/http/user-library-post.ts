@@ -5,28 +5,25 @@
 
 import { type Request, type Response } from "express";
 import { UserLibraryFolderError } from "../../rpc/remote-script/user-library/user-library-folder.ts";
-import { rejectForeignOriginWrite } from "./request-origin.ts";
+import { rejectRebindableOriginWrite } from "./browser/request-origin.ts";
+
+const INSTALL_REFUSED =
+  "Can't install from this address. Open the chat UI at localhost or this computer's IP address to install.";
 
 /**
- * Check a same-origin POST that names a User Library.
+ * Check a same-origin POST that names a User Library. A browser must reach the
+ * server by localhost or an IP address, never a DNS name (which can be rebound
+ * to this machine by another site).
  *
  * @param req - The request
  * @param res - The response, answered here when the request is refused
- * @param route - The route family, named in the cross-site refusal
  * @returns The trimmed User Library and the body, or null once answered
  */
 export function readUserLibraryPost(
   req: Request,
   res: Response,
-  route: string,
 ): { userLibrary: string; body: Record<string, unknown> | undefined } | null {
-  if (
-    rejectForeignOriginWrite(
-      req,
-      res,
-      `cross-site ${route} writes are not allowed`,
-    )
-  ) {
+  if (rejectRebindableOriginWrite(req, res, INSTALL_REFUSED)) {
     return null;
   }
 

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -22,10 +23,10 @@ describe("the id-or-path-required refusal has one home", () => {
       path.join(projectRoot, "src/tools"),
       true,
     )
-      .filter((file) => path.relative(projectRoot, file) !== HOME)
+      .filter((file) => repoPath(file) !== HOME)
       .filter((file) => fs.readFileSync(file, "utf8").includes("id or path is"))
       .map((file) => ({
-        file: path.relative(projectRoot, file),
+        file: repoPath(file),
         reason: 'contains "id or path is"',
       }));
 

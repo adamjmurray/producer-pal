@@ -25,6 +25,14 @@ describe("requireClipSourcePath", () => {
     });
   });
 
+  it("takes a return track's clip slot, which only destinations refuse", () => {
+    expect(sourceFor("rt1/s3")).toStrictEqual({
+      kind: "return-slot",
+      returnIndex: 1,
+      sceneIndex: 3,
+    });
+  });
+
   it.each([
     ["t0[5|1]", { kind: "track", trackIndex: 0 }, "5|1"],
     [

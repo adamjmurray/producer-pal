@@ -10,7 +10,8 @@
 // arrangement lane. A bare track or lane holds many clips and is refused.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { emptySlotGroupReason } from "#src/tools/shared/clip/group-track-clips.ts";
+import { emptySlotGroupReason } from "#src/tools/shared/clip/slot-contents/group-track-clips.ts";
+import { requireReturnClips } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { requireClipSourcePath } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
@@ -54,6 +55,7 @@ export function clipIdAtPath(
  * @param label - Param name the path came from
  * @param lanes - The call's lanes, for a caller resolving several paths
  * @returns The clip, or null when nothing is there; for a slot, its track
+ * @throws Error when the path is a return-track slot and Live has none
  */
 function clipAtPath(
   entry: string,
@@ -61,6 +63,19 @@ function clipAtPath(
   lanes: LaneView | undefined,
 ): { clip: LiveAPI | null; slotTrackIndex?: number } {
   const source = requireClipSourcePath(parseObjectPath(entry, label), label);
+
+  if (source.kind === "return-slot") {
+    requireReturnClips();
+
+    return {
+      clip: LiveAPI.from(
+        livePath
+          .returnTrack(source.returnIndex)
+          .clipSlot(source.sceneIndex)
+          .clip(),
+      ),
+    };
+  }
 
   if (source.kind === "slot") {
     return {

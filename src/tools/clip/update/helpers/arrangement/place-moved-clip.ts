@@ -6,7 +6,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import {
   type ArrangementTrack,
   isTakeLaneClip,
@@ -17,13 +17,14 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
   PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { arrangementEnvelopeLoss } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import {
   noteClipReason,
   noteTakeLanesMade,
@@ -39,7 +40,7 @@ interface PlaceMovedClipArgs {
   destTrackIndex: number;
   targetBeats: number;
   isMidiClip: boolean;
-  context: TilingContext;
+  context: ScratchClipContext;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
 }
@@ -87,25 +88,38 @@ export function placeMovedClip({
 
   if (destination?.takeLane != null || sourceIsOnTakeLane) {
     // Audio is rebuilt from its sample, so a clip that has none can't be
-    // re-created. Checked before resolveTakeLane, which creates permanent lanes.
-    if (!canRecreateClip(clip)) {
-      refuseClipWork(
-        reasons,
-        clip.id,
-        "not moved: it's an audio clip with no sample file; drag it in Live's UI",
-      );
+    // re-created, and neither can a step sequencer clip. Checked before
+    // resolveTakeLane, which creates permanent lanes.
+    const blocker = recreateBlocker(clip);
+
+    if (blocker != null) {
+      refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
 
       return null;
     }
 
     if (destination?.takeLane != null) {
-      return recreateOnTakeLane(clip, destination, targetBeats, reasons);
+      return recreateOnTakeLane(
+        clip,
+        destination,
+        targetBeats,
+        context,
+        reasons,
+      );
     }
 
-    return promoteToMainLane(clip, destTrackIndex, targetBeats, reasons);
+    return promoteToMainLane(
+      clip,
+      destTrackIndex,
+      targetBeats,
+      context,
+      reasons,
+    );
   }
 
-  return duplicateToArrangementTarget(
+  // Read before the copy: a self-overlapping move deletes the source in it.
+  const loss = arrangementEnvelopeLoss(clip, destTrackIndex);
+  const placed = duplicateToArrangementTarget(
     LiveAPI.from(livePath.track(destTrackIndex)),
     clip.id,
     targetBeats,
@@ -114,6 +128,13 @@ export function placeMovedClip({
     clip,
     true,
   );
+
+  if (loss != null && placed.exists()) {
+    // Kept for the move to say once its copy is noted.
+    reasons.envelopeLosses.set(clip.id, loss);
+  }
+
+  return placed;
 }
 
 // --- Helpers below main exports ---
@@ -126,6 +147,7 @@ export function placeMovedClip({
  * @param clip - The arrangement clip being moved
  * @param destination - The lane the clip lands on
  * @param targetBeats - Arrangement position to land at, in Ableton beats
+ * @param context - The call's silence file and lanes
  * @param reasons - What each clip has to say beyond its result
  * @returns The re-created clip, or null when the move was refused or only
  *   partly landed (either way, nothing further should touch the source)
@@ -134,6 +156,7 @@ function recreateOnTakeLane(
   clip: LiveAPI,
   destination: ArrangementTrack,
   targetBeats: number,
+  context: ScratchClipContext,
   reasons: ClipReasons,
 ): LiveAPI | null {
   const destTrackIndex = destination.trackIndex;
@@ -174,6 +197,7 @@ function recreateOnTakeLane(
       lane,
       targetBeats,
       { trackIndex: destTrackIndex, takeLane: laneIndex },
+      context,
       reasons,
     );
   } catch (error) {
@@ -189,6 +213,7 @@ function recreateOnTakeLane(
  * @param clip - The take-lane clip being moved
  * @param destTrackIndex - The track whose main lane the clip lands on
  * @param targetBeats - Arrangement position to land at, in Ableton beats
+ * @param context - The call's silence file and lanes
  * @param reasons - What each clip has to say beyond its result
  * @returns The re-created clip, or null when the move was refused or only
  *   partly landed (either way, nothing further should touch the source)
@@ -197,6 +222,7 @@ function promoteToMainLane(
   clip: LiveAPI,
   destTrackIndex: number,
   targetBeats: number,
+  context: ScratchClipContext,
   reasons: ClipReasons,
 ): LiveAPI | null {
   try {
@@ -205,6 +231,7 @@ function promoteToMainLane(
       LiveAPI.from(livePath.track(destTrackIndex)),
       targetBeats,
       { trackIndex: destTrackIndex, takeLane: null },
+      context,
       reasons,
     );
   } catch (error) {
@@ -229,6 +256,7 @@ function promoteToMainLane(
  * @param destination - The TakeLane, or the Track for the main lane
  * @param targetBeats - Arrangement position to land at, in Ableton beats
  * @param landing - The track and lane the clip lands on
+ * @param context - The call's silence file and lanes
  * @param reasons - What each clip has to say beyond its result
  * @returns The re-created clip, or null when it only partly landed (the clip's
  *   own entry says so; the source is left in place either way)
@@ -238,6 +266,7 @@ function recreateForMove(
   destination: LiveAPI,
   targetBeats: number,
   landing: ArrangementTrack,
+  context: ScratchClipContext,
   reasons: ClipReasons,
 ): LiveAPI | null {
   const landingPath = arrangementPath(landing.trackIndex, landing.takeLane);
@@ -252,6 +281,7 @@ function recreateForMove(
       undefined,
       undefined,
       losses,
+      context,
     );
 
     if (newClip.exists()) {

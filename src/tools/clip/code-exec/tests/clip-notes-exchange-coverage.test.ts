@@ -45,7 +45,9 @@ describe("applyNotesToClip dropped duplicates", () => {
       expectedDropped: 1,
     },
   ])("$desc", ({ notes, expectedDropped }) => {
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(v8Console, "emitWarning")
+      .mockImplementation(() => {});
     const { mockClip } = setupCollisionCase();
 
     const { collisions: dropped } = applyNotesToClip(mockClip, notes);

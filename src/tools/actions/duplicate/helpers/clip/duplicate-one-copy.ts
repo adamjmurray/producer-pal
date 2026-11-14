@@ -12,7 +12,7 @@ import {
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
-import { withLandedColor } from "../minimal-clip-info.ts";
+import { noteCopyEffects, withLandedColor } from "../minimal-clip-info.ts";
 import {
   changedBefore,
   clearedBefore,
@@ -20,11 +20,10 @@ import {
   copyClearingAsync,
   copyReach,
   mainLaneOf,
-  noteCleared,
   takeLaneOf,
   type CopyLane,
 } from "./overwrites/copy-overwrites.ts";
-import { copyLengthBeats } from "./arrangement-length.ts";
+import { copyLengthBeats, resizeCopy } from "./arrangement-length.ts";
 import { copySpanBeats } from "./copy-plan.ts";
 import {
   PartialRecreateError,
@@ -32,10 +31,8 @@ import {
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import {
-  arrangementSpan,
-  keptSpan,
-} from "#src/tools/shared/clip/arrangement-span.ts";
+import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
+import { withoutWriteEffects } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 
 /** What one copy attempt produced: the clip (with a detail when it isn't quite
  * what was asked for), or why there is none. */
@@ -157,12 +154,14 @@ async function clearingCopy(
   write: () => CopyAttempt | Promise<CopyAttempt>,
 ): Promise<CopyAttempt> {
   const { object, startBeats } = options;
-  // Re-created copies ignore the length, so it is only ever a wider net here.
+  // A re-created copy lands at the source's length before it is resized, so
+  // the copy may reach either.
   const spanBeats = copySpanBeats(
     object,
     options.arrangementLength,
     options.songTimeSigNumerator,
     options.songTimeSigDenominator,
+    options.target.takeLane != null,
   );
   const sourceBeats = copyLengthBeats(object);
   const { made, cleared } = await copyClearingAsync(
@@ -182,14 +181,15 @@ async function clearingCopy(
     return { refused: made.refused, cleared };
   }
 
-  noteCleared(made.copy, cleared);
+  noteCopyEffects(made.copy, cleared);
 
   return made;
 }
 
 /**
- * Re-creates one copy, reporting a refusal on the destination's own entry so the
- * rest of a multi-position call still lands.
+ * Re-creates one copy, then resizes it to any arrangementLength sent. A refusal
+ * goes on the destination's own entry so the rest of a multi-position call
+ * still lands.
  *
  * A failure after the clip was created still leaves a real, partial clip at
  * the destination ({@link PartialRecreateError}), which says so: reporting the
@@ -201,17 +201,14 @@ async function clearingCopy(
  * @param kind - What to call this copy in the reason
  * @returns The created clip, or why this destination got none
  */
-function recreateCopy(
+async function recreateCopy(
   options: CopyOptions,
   destination: LiveAPI,
   kind: "take-lane" | "promoted",
-): CopyAttempt {
+): Promise<CopyAttempt> {
   // Seeded with what a re-create is known to cost this source, then added to
   // with anything the copy itself turned out to lose.
   const losses = recreatedClipLosses(options.object);
-  // Read before the create, which can truncate the source itself.
-  const sourceSpan = arrangementSpan(options.object);
-
   let clip: LiveAPI;
 
   try {
@@ -222,6 +219,7 @@ function recreateCopy(
       options.name,
       options.color,
       losses,
+      options.context,
     );
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a
@@ -231,7 +229,7 @@ function recreateCopy(
         copy: withLandedColor(error.partialClip, options.color, (landed) =>
           joinDetails([
             `the ${kind} copy is incomplete (${error.message})`,
-            ignoredLength(options, keptSpan(error.partialClip, sourceSpan)),
+            options.arrangementLength == null ? undefined : "not resized",
             landed,
           ]),
         ),
@@ -243,16 +241,45 @@ function recreateCopy(
     };
   }
 
+  const resized =
+    options.arrangementLength == null
+      ? null
+      : await resizeRecreatedCopy(clip, options.arrangementLength, options);
+  // The source's length no longer matters once the copy is sized as asked.
+  const kept =
+    resized == null ? losses : losses.filter((loss) => !isSpanLoss(loss));
+
   // The clip exists, so a failure describing it is on its entry, not a refusal.
   return {
     copy: withLandedColor(clip, options.color, (landed) =>
-      joinDetails([
-        landedNote(kind, losses),
-        ignoredLength(options, keptSpan(clip, sourceSpan)),
-        landed,
-      ]),
+      joinDetails([landedNote(kind, kept), resized?.detail, landed]),
     ),
   };
+}
+
+/**
+ * Resize a re-created copy the way update-clip resizes any arrangement clip.
+ * What the resize overwrote is left out: the call's ledger reports it for the
+ * whole copy.
+ * @param clip - The copy
+ * @param arrangementLength - The length asked for
+ * @param options - Everything the copy needs
+ * @returns What the resize said about the copy
+ */
+async function resizeRecreatedCopy(
+  clip: LiveAPI,
+  arrangementLength: string,
+  options: CopyOptions,
+): Promise<{ detail?: string }> {
+  const [entry] = await resizeCopy(
+    clip.id,
+    arrangementLength,
+    undefined,
+    undefined,
+    options.context,
+  );
+
+  return { detail: withoutWriteEffects(entry?.detail) };
 }
 
 /**
@@ -268,25 +295,4 @@ function landedNote(kind: "take-lane" | "promoted", losses: string[]): string {
   return kind === "take-lane"
     ? `re-created on the take lane${cost}`
     : `promoted to the main lane by re-creating it${cost}`;
-}
-
-/**
- * The note for an arrangementLength a re-created copy was sent. It is never
- * used: the copy is rebuilt from the source, not resized. The kept-length claim
- * is made only when the copy's span was read back and matched.
- * @param options - Everything the copy needs
- * @param keptLength - Whether the copy's span was verified to match the source's
- * @returns The note for the copy's entry, or undefined when none was sent
- */
-function ignoredLength(
-  options: CopyOptions,
-  keptLength: boolean,
-): string | undefined {
-  if (options.arrangementLength == null) {
-    return undefined;
-  }
-
-  return keptLength
-    ? "arrangementLength ignored: the copy keeps the source's arrangement length"
-    : "arrangementLength ignored: a re-created copy isn't resized";
 }

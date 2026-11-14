@@ -3,32 +3,27 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
-import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
-  createAudioClipInSession,
-  removeSessionClip,
-  removeTempArrangementClip,
-  type CreatedClip,
-  EPSILON,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
-import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+  arrangementSpanOf,
+  resizeArrangementClip,
+} from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
-  pathPrefix,
-  targetLabel,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
-import {
-  clipReporterFor,
   noteClipReason,
   noteLanded,
+  refuseClipWork,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
-import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
+import { clearAheadOfClip } from "./clear-ahead-of-clip.ts";
+import {
+  handleUnloopedLengthening,
+  LIVE_STOPPED_IT,
+  noteLandedShort,
+} from "./unlooped-lengthening.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 export interface ArrangementContext {
   silenceWavPath?: string;
@@ -53,7 +48,7 @@ interface HandleArrangementLengtheningArgs {
 }
 
 /**
- * Handle lengthening of arrangement clips via tiling or content exposure
+ * Lengthens an arrangement clip in place, overwriting whatever it grows over.
  * @param options - Parameters object
  * @param options.clip - The LiveAPI clip object to lengthen
  * @param options.isAudioClip - Whether the clip is an audio clip
@@ -63,7 +58,7 @@ interface HandleArrangementLengtheningArgs {
  * @param options.currentEndTime - Current end time in beats
  * @param options.context - Per-request context
  * @param options.reasons - What each clip has to say beyond its result
- * @returns Array of updated clip info
+ * @returns The clip, when it grew
  */
 export function handleArrangementLengthening({
   clip,
@@ -75,47 +70,35 @@ export function handleArrangementLengthening({
   context,
   reasons,
 }: HandleArrangementLengtheningArgs): ClipIdResult[] {
-  const updatedClips: ClipIdResult[] = [];
+  const track = LiveAPI.from(livePath.track(requireTrackIndex(clip)));
 
-  const isLooping = (clip.getProperty("looping") as number) > 0;
-  const clipLoopStart = clip.getProperty("loop_start") as number;
-  const clipLoopEnd = clip.getProperty("loop_end") as number;
-  const clipStartMarker = clip.getProperty("start_marker") as number;
-  const clipEndMarker = clip.getProperty("end_marker") as number;
+  // A take lane can't be cleared: Live deletes no temp clip there. The caller
+  // stops a take-lane clip at its neighbor instead.
+  const clearAhead = (targetEnd: number): void => {
+    if (isTakeLaneClip(clip)) {
+      return;
+    }
 
-  // For unlooped clips, use end_marker - start_marker (actual playback length)
-  // For looped clips, use loop region
-  const clipLength = isLooping
-    ? clipLoopEnd - clipLoopStart
-    : clipEndMarker - clipStartMarker;
-
-  // Get track for clip operations
-  const trackIndex = clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
-
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  // Tiling speaks for this clip, so what it has to say goes on this clip's
-  // entry rather than into a warning.
-  const tilingContext: TilingContext = {
-    ...(context as TilingContext),
-    reportClip: clipReporterFor(reasons),
-    // A scratch clip Live won't remove is this clip's to report.
-    reportScratch: (message) => noteClipReason(reasons, clip.id, message),
+    clearAheadOfClip({
+      track,
+      isAudioClip,
+      from: currentEndTime,
+      to: targetEnd,
+      context,
+      // A scratch clip Live won't remove is this clip's to report.
+      reportScratch: (message) => noteClipReason(reasons, clip.id, message),
+    });
   };
 
-  // Handle unlooped clips separately from looped clips
-  if (!isLooping) {
+  if ((clip.getProperty("looping") as number) === 0) {
     const grown = handleUnloopedLengthening({
       clip,
       isAudioClip,
       arrangementLengthBeats,
       currentArrangementLength,
       currentEndTime,
-      clipStartMarker,
       track,
+      clearAhead,
       reasons,
     });
 
@@ -127,367 +110,104 @@ export function handleArrangementLengthening({
     return grown;
   }
 
-  // Tiles land one at a time, so a throw partway leaves some in the Set.
-  // Report those, with why the rest didn't land.
-  const placed: CreatedClip[] = [];
-  let tiledClips: ClipIdResult[];
+  clearAhead(currentStartTime + arrangementLengthBeats);
 
-  try {
-    // Branch: expose hidden content vs tiling (looped clips only)
-    if (arrangementLengthBeats < clipLength) {
-      // Expose hidden content by tiling with start_marker offsets
-      const currentOffset = clipStartMarker - clipLoopStart;
-      const remainingLength = arrangementLengthBeats - currentArrangementLength;
-
-      tiledClips = tileClipToRange(
-        clip,
-        track,
-        currentEndTime,
-        remainingLength,
-        tilingContext,
-        {
-          adjustPreRoll: false,
-          startOffset: currentOffset + currentArrangementLength,
-          tileLength: currentArrangementLength,
-          placed,
-        },
-      );
-    } else {
-      const currentOffset = clipStartMarker - clipLoopStart;
-      // One pass is the whole loop plus any pre-roll: a start marker inside
-      // the loop doesn't shorten it, Live wraps to loop_start and plays out
-      // the rest.
-      const totalContentLength =
-        clipLoopEnd - Math.min(clipStartMarker, clipLoopStart);
-
-      tiledClips = createLoopedClipTiles({
-        clip,
-        isAudioClip,
-        arrangementLengthBeats,
-        currentArrangementLength,
-        currentStartTime,
-        currentEndTime,
-        totalContentLength,
-        currentOffset,
-        track,
-        context: tilingContext,
-        placed,
-        reasons,
-      });
-    }
-  } catch (error) {
-    if (placed.length === 0) {
-      throw error;
-    }
-
-    noteClipReason(
-      reasons,
-      clip.id,
-      `arrangementLength didn't finish: ${errorMessage(error)}`,
-    );
-    tiledClips = placed;
-  }
-
-  // A pass whose every tile was refused changed nothing.
-  if (tiledClips.length > 0) {
-    noteLanded(reasons, "lengthened", { id: clip.id });
-  }
-
-  updatedClips.push({ id: clip.id });
-  updatedClips.push(...tiledClips);
-
-  return updatedClips;
-}
-
-interface CreateLoopedClipTilesArgs {
-  clip: LiveAPI;
-  isAudioClip: boolean;
-  arrangementLengthBeats: number;
-  currentArrangementLength: number;
-  currentStartTime: number;
-  currentEndTime: number;
-  totalContentLength: number;
-  currentOffset: number;
-  track: LiveAPI;
-  context: TilingContext;
-  /** Collects each tile as it lands */
-  placed: CreatedClip[];
-  /** What each clip has to say beyond its result. */
-  reasons: ClipReasons;
-}
-
-/**
- * Create tiles for looped clips
- * @param options - Parameters object
- * @param options.clip - The LiveAPI clip object
- * @param options.isAudioClip - Whether the clip is an audio clip
- * @param options.arrangementLengthBeats - Target length in beats
- * @param options.currentArrangementLength - Current length in beats
- * @param options.currentStartTime - Current start time in beats
- * @param options.currentEndTime - Current end time in beats
- * @param options.totalContentLength - Total content length in beats
- * @param options.currentOffset - Current offset from loop start
- * @param options.track - The LiveAPI track object
- * @param options.context - Tool execution context
- * @param options.placed - Collects each tile as it lands
- * @param options.reasons - What each clip has to say beyond its result
- * @returns Array of tiled clip info
- */
-function createLoopedClipTiles({
-  clip,
-  isAudioClip,
-  arrangementLengthBeats,
-  currentArrangementLength,
-  currentStartTime,
-  currentEndTime,
-  totalContentLength,
-  currentOffset,
-  track,
-  context,
-  placed,
-  reasons,
-}: CreateLoopedClipTilesArgs): ClipIdResult[] {
-  const updatedClips: ClipIdResult[] = [];
-
-  // Showing less than one pass: tile with start_marker offsets. EPSILON keeps
-  // a float wobble between two Live reads from truncating an exact pass.
-  if (currentArrangementLength < totalContentLength - EPSILON) {
-    const remainingLength = arrangementLengthBeats - currentArrangementLength;
-    const tiledClips = tileClipToRange(
-      clip,
-      track,
-      currentEndTime,
-      remainingLength,
-      context,
-      {
-        adjustPreRoll: true,
-        startOffset: currentOffset + currentArrangementLength,
-        tileLength: currentArrangementLength,
-        placed,
-      },
-    );
-
-    updatedClips.push(...tiledClips);
-
-    return updatedClips;
-  }
-
-  // If current arrangement length > total content length, shorten first then tile
-  if (currentArrangementLength > totalContentLength + EPSILON) {
-    let newEndTime = currentStartTime + totalContentLength;
-    const tempClipLength = currentEndTime - newEndTime;
-
-    // Create temp clip to truncate
-    truncateWithTempClip({
-      track,
-      isAudioClip,
-      position: newEndTime,
-      length: tempClipLength,
-      silenceWavPath: context.silenceWavPath,
-      lanes: context.lanes,
-      reportScratch: context.reportScratch,
-      // The clip is shorter from here, whatever the tiles after it do.
-      onCut: () => noteLanded(reasons, "shortened", { id: clip.id }),
-    });
-
-    newEndTime = currentStartTime + totalContentLength;
-    const firstTileLength = newEndTime - currentStartTime;
-    const remainingSpace = arrangementLengthBeats - firstTileLength;
-    const tiledClips = tileClipToRange(
-      clip,
-      track,
-      newEndTime,
-      remainingSpace,
-      context,
-      {
-        adjustPreRoll: true,
-        tileLength: firstTileLength,
-        placed,
-      },
-    );
-
-    updatedClips.push(...tiledClips);
-
-    return updatedClips;
-  }
-
-  // Tile the properly-sized clip at the same loop phase; only the first pass
-  // plays the pre-roll.
-  const firstTileLength = currentEndTime - currentStartTime;
-  const remainingSpace = arrangementLengthBeats - firstTileLength;
-  const tiledClips = tileClipToRange(
+  const landed = resizeSayingChange(
     clip,
-    track,
-    currentEndTime,
-    remainingSpace,
-    context,
-    {
-      adjustPreRoll: true,
-      startOffset: Math.max(currentOffset, 0),
-      tileLength: firstTileLength,
-      placed,
-    },
+    arrangementLengthBeats,
+    isAudioClip,
+    () => noteLanded(reasons, "lengthened", { id: clip.id }),
   );
 
-  updatedClips.push(...tiledClips);
+  // Clearing leaves nothing to stop it, so this is Live refusing the span.
+  if (landed <= currentArrangementLength + SAME_TIME_EPSILON) {
+    refuseClipWork(
+      reasons,
+      clip.id,
+      `arrangementLength unchanged: ${LIVE_STOPPED_IT}`,
+    );
 
-  return updatedClips;
+    return [];
+  }
+
+  if (landed < arrangementLengthBeats - SAME_TIME_EPSILON) {
+    noteLandedShort(reasons, clip.id, landed, LIVE_STOPPED_IT);
+  }
+
+  noteLanded(reasons, "lengthened", { id: clip.id });
+
+  return [{ id: clip.id }];
 }
 
 interface HandleArrangementShorteningArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   arrangementLengthBeats: number;
-  currentStartTime: number;
-  currentEndTime: number;
   context: ArrangementContext;
-  /** Where to say a scratch clip or scene couldn't be removed */
-  reportScratch?: (message: string) => void;
   /** Called once the clip is cut, even if a step after it throws */
   onCut?: () => void;
 }
 
 /**
- * Handle arrangement clip shortening
+ * Shortens an arrangement clip in place.
  * @param options - Parameters object
  * @param options.clip - The LiveAPI clip object to shorten
  * @param options.isAudioClip - Whether the clip is an audio clip
  * @param options.arrangementLengthBeats - Target length in beats
- * @param options.currentStartTime - Current start time in beats
- * @param options.currentEndTime - Current end time in beats
  * @param options.context - Tool execution context
- * @param options.reportScratch - Where to say a scratch clip or scene couldn't
- *   be removed
  * @param options.onCut - Called once the clip is cut
  */
 export function handleArrangementShortening({
   clip,
   isAudioClip,
   arrangementLengthBeats,
-  currentStartTime,
-  currentEndTime,
   context,
-  reportScratch,
   onCut,
 }: HandleArrangementShorteningArgs): void {
-  const newEndTime = currentStartTime + arrangementLengthBeats;
-  const tempClipLength = currentEndTime - newEndTime;
-
-  // Get track
-  const trackIndex = clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
-
-  const track = LiveAPI.from(livePath.track(trackIndex));
-
-  // Create temporary clip to truncate
-  truncateWithTempClip({
-    track,
-    isAudioClip,
-    position: newEndTime,
-    length: tempClipLength,
-    silenceWavPath: context.silenceWavPath as string,
-    lanes: context.lanes,
-    reportScratch,
-    onCut,
-    setupAudioClip: (tempClip: LiveAPI) => {
-      // Re-apply warping and looping to arrangement clip
-      tempClip.set("warping", 1);
-      tempClip.set("looping", 1);
-      tempClip.set("loop_end", tempClipLength);
-    },
-  });
-}
-
-interface TruncateWithTempClipArgs {
-  track: LiveAPI;
-  isAudioClip: boolean;
-  position: number;
-  length: number;
-  silenceWavPath: string;
-  lanes?: LaneView;
-  reportScratch?: (message: string) => void;
-  onCut?: (() => void) | undefined;
-  setupAudioClip?: ((tempClip: LiveAPI) => void) | null;
+  context.lanes?.clipChanged(clip);
+  resizeSayingChange(clip, arrangementLengthBeats, isAudioClip, () =>
+    onCut?.(),
+  );
+  onCut?.();
 }
 
 /**
- * Creates and immediately deletes a temporary clip to truncate arrangement clips.
- * The temp clip is deleted on every path, and a delete Live refuses is said
- * through reportScratch rather than thrown over the cut it follows.
- * @param options - Truncation options
- * @param options.track - Track to create temp clip on
- * @param options.isAudioClip - Whether to create audio or MIDI clip
- * @param options.position - Position for temp clip
- * @param options.length - Length of temp clip
- * @param options.silenceWavPath - Path to silence WAV (for audio clips)
- * @param options.lanes - The call's lanes, told what the temp clip cut into
- * @param options.reportScratch - Where to say a scratch clip or scene stayed
- * @param options.onCut - Called once the temp clip has cut the clip short
- * @param options.setupAudioClip - Optional callback to setup audio temp clip
+ * Resize a clip in place. A throw partway still says the clip changed when its
+ * span did, so the entry names what landed.
+ * @param clip - The arrangement clip
+ * @param spanBeats - Target span in beats
+ * @param isAudioClip - Whether the clip is audio
+ * @param onChangedBeforeThrow - Told when a throw follows a span change
+ * @returns The span the clip landed at, in beats
  */
-function truncateWithTempClip({
-  track,
-  isAudioClip,
-  position,
-  length,
-  silenceWavPath,
-  lanes,
-  reportScratch,
-  onCut,
-  setupAudioClip = null,
-}: TruncateWithTempClipArgs): void {
-  // The temp clip is gone by the time anything looks, so say what it trimmed.
-  lanes?.wroteOnTrack(track, position, position + length);
+function resizeSayingChange(
+  clip: LiveAPI,
+  spanBeats: number,
+  isAudioClip: boolean,
+  onChangedBeforeThrow: () => void,
+): number {
+  const before = arrangementSpanOf(clip);
 
-  if (isAudioClip) {
-    const session = createAudioClipInSession(
-      track,
-      length,
-      silenceWavPath,
-      reportScratch,
-    );
-    let tempClipId: string | undefined;
-
-    // The scratch clips go whether or not the copy landed: a throw would
-    // otherwise leave them in the Set with nothing to say so.
-    try {
-      const tempClip = clipFromDuplicateResult(
-        track.call(
-          "duplicate_clip_to_arrangement",
-          toLiveApiId(session.clip.id),
-          position,
-        ),
-      );
-
-      tempClipId = tempClip.id;
-      // The copy has cut the clip, whatever a step after it does.
-      onCut?.();
-
-      if (setupAudioClip) {
-        setupAudioClip(tempClip);
-      }
-    } finally {
-      if (tempClipId != null) {
-        removeTempArrangementClip(track, tempClipId, reportScratch);
-      }
-
-      removeSessionClip(session, reportScratch);
+  try {
+    return resizeArrangementClip({ clip, spanBeats, isAudioClip });
+  } catch (error) {
+    if (spanChangedFrom(clip, before)) {
+      onChangedBeforeThrow();
     }
-  } else {
-    const tempClipResult = track.call(
-      "create_midi_clip",
-      position,
-      length,
-    ) as string;
-    const tempClip = requireCreatedClip(
-      LiveAPI.from(tempClipResult),
-      pathPrefix(track),
-    );
 
-    onCut?.();
-    removeTempArrangementClip(track, tempClip.id, reportScratch);
+    throw error;
+  }
+}
+
+/**
+ * @param clip - The arrangement clip
+ * @param before - Its span before the resize, in beats
+ * @returns Whether its span changed; false when it can't be read
+ */
+function spanChangedFrom(clip: LiveAPI, before: number): boolean {
+  try {
+    return Math.abs(arrangementSpanOf(clip) - before) > SAME_TIME_EPSILON;
+  } catch {
+    return false;
   }
 }

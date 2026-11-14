@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import { projectRoot, repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 
 // Minimum percentage of blank lines required (5% = 1 blank line per 20 lines)
 const MIN_BLANK_LINE_RATIO = 0.05;
@@ -107,7 +107,7 @@ function findFilesWithInsufficientBlankLines(
       // Only check files with meaningful content (at least 20 lines)
       if (stats.totalLines >= 20 && stats.ratio < MIN_BLANK_LINE_RATIO) {
         results.push({
-          path: path.relative(projectRoot, fullPath),
+          path: repoPath(fullPath),
           ratio: stats.ratio,
           blankLines: stats.blankLines,
           totalLines: stats.totalLines,

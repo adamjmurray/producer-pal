@@ -32,18 +32,18 @@ import {
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
 import { listEntries } from "../path/path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_TRACK = "ppal-update-track";
-const TOOL_READ_TRACK = "ppal-read-track";
+const TOOL_UPDATE_TRACK = TOOLS.updateTrack;
 
 /** Bass is track 1 in basic-midi-4-track, and starts with no take lanes. */
 const LANE_PATH = /^t1\/l(\+|\d+)$/;
 
 /** Tools that write clips. A lane made through one is the wrong route. */
-const CLIP_WRITERS = new Set([
-  "ppal-create-clip",
-  "ppal-update-clip",
-  "ppal-duplicate",
+const CLIP_WRITERS = new Set<string>([
+  TOOLS.createClip,
+  TOOLS.updateClip,
+  TOOLS.duplicate,
 ]);
 
 /**
@@ -106,7 +106,7 @@ function assertReadListsLanes(): EvalAssertion {
     signal: true,
     description: "turn 2: ppal-read-track listed the Take A and Take B lanes",
     assert: (turns) => {
-      const call = requireSuccessfulToolCall(turns, 2, TOOL_READ_TRACK);
+      const call = requireSuccessfulToolCall(turns, 2, TOOLS.readTrack);
       const shown = argText(call.result);
 
       if (!shown.includes("Take A") || !shown.includes("Take B")) {
@@ -171,7 +171,7 @@ export const takeLaneUpdate: EvalScenario = {
 
     {
       type: "state",
-      tool: TOOL_READ_TRACK,
+      tool: TOOLS.readTrack,
       args: { path: "t1", include: ["arrangement-clips"] },
       expect: (result) => laneNames(result).join(",") === "Keeper,Take B",
       explain: (result) =>

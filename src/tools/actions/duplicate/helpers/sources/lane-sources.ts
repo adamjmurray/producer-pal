@@ -16,6 +16,7 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   existingId,
@@ -103,16 +104,16 @@ export function laneSource(id: string): LaneSource {
  * else the track it always named.
  */
 export const laneSourceLookup: SourceLookup = {
-  resolvePath: (entry) => {
+  resolvePath: (entry, label = "path") => {
     // An `l+` makes a lane, which is empty, so it names nothing to copy from.
-    refuseAppendedLane(entry);
+    refuseAppendedLane(entry, label);
 
-    return resolvePathEntry(entry, laneOrTrackIdAtPath);
+    return resolvePathEntry(entry, (path) => laneOrTrackIdAtPath(path, label));
   },
-  problem: (id) => {
+  problem: (id, label = "id") => {
     try {
       if (takeLaneById(id) == null) {
-        validateIdType(id, "track");
+        validateIdType(id, "track", label);
       }
 
       return null;
@@ -130,6 +131,7 @@ export const laneSourceLookup: SourceLookup = {
  * @param id - Source id(s), as the caller wrote them
  * @param path - Source path(s), as the caller wrote them
  * @param toPath - Destination path(s), as the caller wrote them
+ * @param names - The names `id` and `path` were sent under
  * @returns True when a source names a take lane
  * @throws Error when a lane source has no destination
  */
@@ -138,12 +140,13 @@ export function namesLaneSource(
   id: string | undefined,
   path: string | undefined,
   toPath: string | undefined,
+  names: TargetNames,
 ): boolean {
   if (type !== "track") {
     return false;
   }
 
-  const named = laneSourceNamed(id, path);
+  const named = laneSourceNamed(id, path, names);
 
   if (named == null) {
     return false;
@@ -162,25 +165,29 @@ export function namesLaneSource(
  * How the call named a take-lane source, for a refusal that quotes it.
  * @param id - Source id(s), as the caller wrote them
  * @param path - Source path(s), as the caller wrote them
+ * @param names - The names `id` and `path` were sent under
+ * @param names.idParam - The name the ids were sent under
+ * @param names.pathParam - The name the paths were sent under
  * @returns The first lane source named, or null when none is
  */
 function laneSourceNamed(
   id: string | undefined,
   path: string | undefined,
+  { idParam, pathParam }: TargetNames,
 ): string | null {
-  const paths = pathEntries(path, "path");
+  const paths = pathEntries(path, pathParam);
 
   for (const entry of paths) {
     if (takeLanePathEntry(entry)?.kind === "take-lane") {
-      return `path "${entry}" names a take lane`;
+      return `${pathParam} "${entry}" names a take lane`;
     }
   }
 
-  for (const entry of targetEntries(id, "id")) {
+  for (const entry of targetEntries(id, idParam)) {
     const lane = takeLaneById(entry);
 
     if (lane != null) {
-      return `id "${entry}" names take lane ${pathPrefix(lane)}`;
+      return `${idParam} "${entry}" names take lane ${pathPrefix(lane)}`;
     }
   }
 
@@ -191,15 +198,16 @@ function laneSourceNamed(
  * Refuses a source that appends a lane. `l+` makes a lane, which is empty, so
  * it names nothing to copy from.
  * @param entry - One path, as the caller wrote it
+ * @param label - The param the path was sent under
  * @throws Error when the entry appends a take lane
  */
-function refuseAppendedLane(entry: string): void {
+function refuseAppendedLane(entry: string, label: string): void {
   if (takeLanePathEntry(entry)?.kind !== "new-take-lane") {
     return;
   }
 
   throw new Error(
-    `path "${entry}" appends a take lane; copy from one that ` +
+    `${label} "${entry}" appends a take lane; copy from one that ` +
       `already holds clips, as "t2/l0"`,
   );
 }

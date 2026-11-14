@@ -9,8 +9,13 @@
 
 import { type Notation } from "#src/shared/notation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  refuseEmptyInEveryMeter,
+  refuseEmptyLength,
+} from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { failuresByMeter } from "#src/tools/clip/helpers/transform-meter-failures.ts";
 import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ListEntries,
@@ -37,8 +42,11 @@ export interface ClipPlan {
   clipLength: number;
   /** Duplicate notes dropped when no transform runs, said on each clip's entry */
   droppedDuplicates: number;
-  /** Why the transform can't be read in this meter, which fails this clip only */
-  transformFailure?: string;
+  /**
+   * Why this clip can't be made in its meter (a length that spans nothing in
+   * it, a transform it can't read), which fails this clip only
+   */
+  failure?: string;
 }
 
 /** The per-clip params, as the caller sent them, plus the call-wide ones. */
@@ -191,7 +199,7 @@ function markUnreadableTransforms(
 
   for (const [key, error] of failed) {
     for (const plan of (groups.get(key) as { plans: ClipPlan[] }).plans) {
-      plan.transformFailure = errorMessage(error);
+      plan.failure ??= errorMessage(error);
     }
   }
 }
@@ -203,6 +211,15 @@ function markUnreadableTransforms(
  * @returns The plan for that position
  */
 function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
+  // An audio clip takes its length from the sample, so its `length` is ignored.
+  const length = values.sampleFile ? null : values.length;
+
+  if (length != null) {
+    // Empty in every meter refuses the call; empty only in this clip's meter
+    // (`1bar-n/1` in 4/4) fails just this clip, below.
+    refuseEmptyInEveryMeter(length);
+  }
+
   const timing = resolveClipTimingContext(
     inputs.song,
     values.timeSignature,
@@ -214,6 +231,7 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
     },
   );
 
+  const failure = emptyLengthFailure(length, timing);
   const { notes, clipLength, droppedDuplicates } = prepareClipData(
     values.sampleFile,
     inputs.notationString,
@@ -232,5 +250,36 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
     notes,
     clipLength,
     droppedDuplicates,
+    ...(failure == null ? {} : { failure }),
   };
+}
+
+/**
+ * Says why a clip's length spans nothing in the clip's own meter.
+ * @param length - The length as sent, or null when the clip has none to read
+ * @param timing - The clip's meter and region
+ * @returns The reason, or undefined when the length spans something
+ */
+function emptyLengthFailure(
+  length: string | null,
+  timing: ClipTimingContext,
+): string | undefined {
+  if (length == null) {
+    return undefined;
+  }
+
+  try {
+    refuseEmptyLength(
+      length,
+      durationToAbletonBeats(
+        length,
+        timing.timeSigNumerator,
+        timing.timeSigDenominator,
+      ),
+    );
+  } catch (error) {
+    return errorMessage(error);
+  }
+
+  return undefined;
 }

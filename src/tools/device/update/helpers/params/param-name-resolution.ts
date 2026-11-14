@@ -7,7 +7,7 @@ import {
   formatParamName,
   trimmedParamName,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { strForValue } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+import { strForValue } from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 

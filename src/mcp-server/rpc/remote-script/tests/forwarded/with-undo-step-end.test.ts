@@ -10,8 +10,11 @@ import {
   startFakeRemoteScript,
 } from "../remote-script-test-helpers.ts";
 import { markChangedNothing } from "../../forwarded/changed-nothing.ts";
+import { remoteScriptRequest } from "../../remote-script-client.ts";
 import { STANDARD_TOOL_DEFS } from "../../../../create-mcp-server.ts";
 import { withUndoStepEnd } from "../../forwarded/with-undo-step-end.ts";
+
+vi.mock(import("../../remote-script-client.ts"), { spy: true });
 
 const OK = { content: [{ type: "text", text: "{}" }] };
 const TIMEOUT = {
@@ -59,7 +62,11 @@ async function startScript(
  * @returns Nothing
  */
 async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  // The request starts a microtask after the call returns.
+  await new Promise((resolve) => setImmediate(resolve));
+  await Promise.allSettled(
+    vi.mocked(remoteScriptRequest).mock.results.map((result) => result.value),
+  );
 }
 
 /**
@@ -92,7 +99,8 @@ describe("withUndoStepEnd", () => {
     const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
     expect(script.requests[0]).toStrictEqual({
       method: "POST",
       route: "/undo/end",
@@ -116,9 +124,11 @@ describe("withUndoStepEnd", () => {
     const throwing = withUndoStepEnd(() => Promise.reject(new Error("boom")));
 
     expect(await failing("ppal-update-clip", {})).toBe(failed);
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
     await expect(throwing("ppal-update-clip", {})).rejects.toThrow("boom");
-    await vi.waitFor(() => expect(script.requests).toHaveLength(2));
+    await settle();
+    expect(script.requests).toHaveLength(2);
   });
 
   it("passes the arguments and overrides through", async () => {
@@ -270,7 +280,8 @@ describe("withUndoStepEnd", () => {
 
     finish(OK);
     await write;
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
 
     finish(OK);
     await read;
@@ -294,7 +305,8 @@ describe("withUndoStepEnd", () => {
     const call = withUndoStepEnd(() => Promise.resolve(failed));
 
     await call("ppal-update-clip", {});
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("ends the step when one of overlapping calls may have changed the Set", async () => {
@@ -307,7 +319,8 @@ describe("withUndoStepEnd", () => {
     await noop;
     finish(OK);
     await write;
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("sends nothing when every overlapping call changed nothing", async () => {
@@ -336,7 +349,8 @@ describe("withUndoStepEnd", () => {
 
     finish(OK);
     await later;
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("ends the step after a throw, even if an earlier call changed nothing", async () => {
@@ -344,7 +358,8 @@ describe("withUndoStepEnd", () => {
     const call = withUndoStepEnd(() => Promise.reject(new Error("boom")));
 
     await expect(call("ppal-update-clip", {})).rejects.toThrow("boom");
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("sends nothing after a timeout", async () => {
@@ -369,7 +384,6 @@ describe("withUndoStepEnd", () => {
 
     finish(OK);
     await second;
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
     await settle();
     expect(script.requests).toHaveLength(1);
   });
@@ -391,7 +405,8 @@ describe("withUndoStepEnd", () => {
 
     finish(OK);
     await later;
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("returns the result when the remote script drops the connection", async () => {
@@ -399,8 +414,8 @@ describe("withUndoStepEnd", () => {
     const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
     await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("returns the result when no remote script answers", async () => {

@@ -107,12 +107,12 @@ describe("ConversationItem", () => {
       const { container } = renderItem({
         conv: createTestSummary({
           title: "Known Model",
-          model: "gemini-3.8-flash",
+          model: "gemini-4-carbon",
           modelLabel: null,
         }),
       });
 
-      expect(container.textContent).toContain("Gemini 3.8 Flash");
+      expect(container.textContent).toContain("Gemini 4 Carbon");
     });
 
     it("resolves model label from stored label when preset lookup fails", () => {

@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   blankTargetIgnores,
   type TargetParams,
@@ -51,7 +53,6 @@ import {
   type ClipSlotEntry,
   type SlotPayload,
 } from "./helpers/playback/session-clip-targets.ts";
-import { select } from "./select.ts";
 
 interface PlaybackArgs {
   action?: string;
@@ -122,13 +123,15 @@ interface PlaybackChecked extends PlaybackCall {
   plan: TimelinePlan;
   writes: TimelineWrites;
   state: PlaybackState;
-  /** The tracks stop-session-clips has already stopped */
-  stopped: Set<number>;
+  /** The tracks stop-session-clips has already stopped, by Live path */
+  stopped: Set<string>;
 }
 
 const PLAY_SESSION_CLIPS = "play-session-clips";
 const PLAY_SCENE = "play-scene";
 const STOP = "stop";
+const CLIPS_FIRED = "session clips fired";
+const CLIPS_STOPPED = "session clips stopped";
 const SESSION_CLIP_ACTIONS = [PLAY_SESSION_CLIPS, "stop-session-clips"];
 
 const ACTIONS = new Set([
@@ -265,7 +268,7 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
   }
 
   if (call.clips.length === 0) {
-    throw new Error(idOrPathRequired(call.action));
+    throw new Error(idOrPathRequired("clip", call.action));
   }
 
   if (call.action !== PLAY_SESSION_CLIPS) {
@@ -302,7 +305,7 @@ function checkPlayback(call: PlaybackCall): PlaybackChecked {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   if (call.action === PLAY_SCENE) {
-    sceneToPlay(call.sceneIndex ?? undefined);
+    sceneToPlay(call.sceneIndex);
   }
 
   return {
@@ -344,14 +347,14 @@ function beforeTargets(checked: PlaybackChecked, call: Call): void {
       break;
 
     case PLAY_SCENE:
-      checked.state = handlePlayScene(sceneIndex ?? undefined);
+      checked.state = handlePlayScene(sceneIndex);
       call.landed("scene fired");
       break;
 
     case "stop-all-session-clips":
       // The transport/arrangement might still be playing, so isPlaying stays.
       liveSet.call("stop_all_clips");
-      call.landed("session clips stopped");
+      call.landed(CLIPS_STOPPED);
       break;
 
     case STOP:
@@ -381,6 +384,24 @@ function writeClip(
   const clipId = clip.exists() ? clip.id : undefined;
   let detail: string | undefined;
 
+  // A return track's slot only ever holds an envelope clip: no group slots.
+  if (isReturnSlotPosition(position)) {
+    if (action === PLAY_SESSION_CLIPS) {
+      slot.call("fire");
+      step.call.landed(CLIPS_FIRED);
+    } else {
+      stopTrackOnce(
+        LiveAPI.from(livePath.returnTrack(position.returnIndex)),
+        step,
+      );
+    }
+
+    return {
+      ...(clipId != null && { id: clipId }),
+      path,
+    };
+  }
+
   if (action === PLAY_SESSION_CLIPS) {
     // A group track's slot holds no clip. Read what it reaches before firing.
     if (clipId == null && slot.getProperty("controls_other_clips")) {
@@ -391,20 +412,15 @@ function writeClip(
     }
 
     slot.call("fire");
-    step.call.landed("session clips fired");
-  } else if (!stopped.has(position.trackIndex)) {
+    step.call.landed(CLIPS_FIRED);
+  } else {
     const track = LiveAPI.from(livePath.track(position.trackIndex));
 
-    if (isGroupTrack(track)) {
+    if (!stopped.has(track.path) && isGroupTrack(track)) {
       detail = stoppedGroupSlotDetail(track);
     }
 
-    // A track stops all its clips at once, so two slots on it are one Live call.
-    // Not ClipSlot.stop or Clip.stop: they can't cancel a queued launch.
-    track.call("stop_all_clips");
-    // Only once it went through: after a throw, the next slot tries again.
-    stopped.add(position.trackIndex);
-    step.call.landed("session clips stopped");
+    stopTrackOnce(track, step);
   }
 
   return {
@@ -412,6 +428,26 @@ function writeClip(
     path,
     ...(detail != null && { detail }),
   };
+}
+
+/**
+ * Stop every clip on a track, unless this call already has. A track stops all
+ * its clips at once, so two slots on it are one Live call. Not ClipSlot.stop or
+ * Clip.stop: they can't cancel a queued launch, on a return track either.
+ * @param track - The track, regular or return
+ * @param step - The slot's step in the call
+ */
+function stopTrackOnce(track: LiveAPI, step: Step<PlaybackChecked>): void {
+  const { stopped } = step.checked;
+
+  if (stopped.has(track.path)) {
+    return;
+  }
+
+  track.call("stop_all_clips");
+  // Only once it went through: after a throw, the next slot tries again.
+  stopped.add(track.path);
+  step.call.landed(CLIPS_STOPPED);
 }
 
 /**
@@ -479,7 +515,8 @@ function settlePlayback(
 }
 
 /**
- * Handle focus (view switching) if requested
+ * Handle focus (view switching) if requested. A failed switch warns: the
+ * transport has already changed, and the result must still say so.
  * @param action - The playback action
  * @param focus - Whether to focus
  */
@@ -489,9 +526,9 @@ function handleFocus(action: string, focus?: boolean): void {
   }
 
   if (action === PLAY_ARRANGEMENT) {
-    select({ view: "arrangement" });
+    focusSelect({ view: "arrangement" });
   } else if (action === PLAY_SCENE || action === PLAY_SESSION_CLIPS) {
-    select({ view: "session" });
+    focusSelect({ view: "session" });
   }
 }
 

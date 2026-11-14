@@ -144,7 +144,7 @@ describe("SettingsScreen", () => {
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasApiKey: false,
-    settingsConfigured: false,
+    chatSetUp: false,
     settingsLoaded: true,
     saveError: null,
     enabledTools: {} as Record<string, boolean>,
@@ -375,7 +375,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: false })}
+          settings={ss({ chatSetUp: false })}
         />,
       );
       expect(
@@ -385,10 +385,7 @@ describe("SettingsScreen", () => {
 
     it("does not show browser storage message when settings configured", () => {
       render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
-        />,
+        <SettingsScreen {...defaultProps} settings={ss({ chatSetUp: true })} />,
       );
       expect(
         screen.queryByText("Settings will be stored in this web browser."),
@@ -397,22 +394,20 @@ describe("SettingsScreen", () => {
   });
 
   describe("Cancel button", () => {
-    it("is not shown when settings not configured", () => {
+    it("reads Close when chat is not set up", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: false })}
+          settings={ss({ chatSetUp: false })}
         />,
       );
       expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Close" })).toBeDefined();
     });
 
     it("is shown when settings configured", () => {
       render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
-        />,
+        <SettingsScreen {...defaultProps} settings={ss({ chatSetUp: true })} />,
       );
       expect(screen.getByRole("button", { name: "Cancel" })).toBeDefined();
     });
@@ -423,7 +418,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
+          settings={ss({ chatSetUp: true })}
           cancelSettings={cancelSettings}
         />,
       );
@@ -650,6 +645,22 @@ describe("SettingsScreen", () => {
     });
   });
   describe("dialog chrome and the remaining tabs", () => {
+    /**
+     * Answer each Installation status read with a body of its own shape.
+     * @param device - The device status
+     * @param remote - The remote script status
+     */
+    function stubStatuses(
+      device = deviceStatusBody(),
+      remote = statusBody(),
+    ): void {
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(url.includes("/device-install") ? device : remote),
+        ),
+      );
+    }
+
     it("shakes the dialog when a blocked close asks for attention", () => {
       const { container } = render(
         <SettingsScreen {...defaultProps} shake={true} />,
@@ -677,14 +688,7 @@ describe("SettingsScreen", () => {
     });
 
     it("renders the installation tab", async () => {
-      // The tab's two status reads need bodies of their own shape.
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
-          ),
-        ),
-      );
+      stubStatuses();
       render(<SettingsScreen {...defaultProps} activeTab="installation" />);
 
       expect(await screen.findByTestId("installation-tab")).toBeDefined();
@@ -692,13 +696,7 @@ describe("SettingsScreen", () => {
 
     it("marks the Installation tab when the install is incomplete, on any tab, with one read each", async () => {
       // No copy in the User Library: the install is unfinished.
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
-          ),
-        ),
-      );
+      stubStatuses();
       render(<SettingsScreen {...defaultProps} />);
 
       expect(await screen.findByLabelText("needs attention")).toBeDefined();
@@ -713,14 +711,9 @@ describe("SettingsScreen", () => {
     });
 
     it("shows no dot once the device and remote script are current", async () => {
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install")
-              ? deviceStatusBody({ state: "same", installedVersion: "1.2.0" })
-              : statusBody({ installed: true, installedVersion: "1.2.0" }),
-          ),
-        ),
+      stubStatuses(
+        deviceStatusBody({ state: "same", installedVersion: "1.2.0" }),
+        statusBody({ installed: true, installedVersion: "1.2.0" }),
       );
       render(<SettingsScreen {...defaultProps} activeTab="installation" />);
       await screen.findByTestId("device-status");

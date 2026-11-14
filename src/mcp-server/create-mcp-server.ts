@@ -4,11 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { VERSION } from "#src/shared/config.ts";
+import { SMALL_MODEL_MODE_CAPABILITY, VERSION } from "#src/shared/config.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { toolDefPluginHost } from "#src/tools/advanced/plugin-host/plugin-host.def.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
@@ -23,6 +25,7 @@ import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
+import { toolDefUi } from "#src/tools/ui/ui.def.ts";
 import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
@@ -67,6 +70,17 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefLibrary,
 ];
 
+/**
+ * Tools offered only when the Direct Live API opt-in is on. The plug-in host
+ * debug tool rides on ppal-live-api's gate and whitelist entry: it is on
+ * exactly when ppal-live-api is. It is also compiled in only by a dev build
+ * (ENABLE_LIVE_API), so a release build never carries it.
+ */
+export const OPT_IN_TOOL_DEFS: ToolDefFunction[] = [
+  toolDefLiveApi,
+  ...(process.env.ENABLE_LIVE_API === "true" ? [toolDefPluginHost] : []),
+];
+
 /** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */
 export const TOOL_NAMES: readonly string[] = Object.freeze(
   STANDARD_TOOL_DEFS.map((td) => td.toolName),
@@ -96,6 +110,16 @@ export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
 
     return Object.keys(inputSchema).filter((key) => !(key in published));
   }),
+);
+
+/**
+ * Standard tools small-model mode leaves out entirely (`omitInSmallModel`). The
+ * eval framework skips scenarios that require one, since they can't pass there.
+ */
+export const SMALL_MODEL_HIDDEN_TOOLS: ReadonlySet<string> = new Set(
+  STANDARD_TOOL_DEFS.filter((td) => !isOfferedInMode(td, true)).map(
+    (td) => td.toolName,
+  ),
 );
 
 interface CreateMcpServerOptions {
@@ -129,10 +153,19 @@ export function createMcpServer(
   } = options;
   const includedSet = tools ? new Set(tools) : null;
 
-  const server = new McpServer({
-    name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
-    version: VERSION,
-  });
+  // The setting rides in the initialize result so a portal can read it over
+  // /mcp (see SMALL_MODEL_MODE_CAPABILITY).
+  const server = new McpServer(
+    {
+      name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
+      version: VERSION,
+    },
+    {
+      capabilities: {
+        experimental: { [SMALL_MODEL_MODE_CAPABILITY]: { smallModelMode } },
+      },
+    },
+  );
 
   for (const toolDef of STANDARD_TOOL_DEFS) {
     if (includedSet && !includedSet.has(toolDef.toolName)) {
@@ -147,7 +180,14 @@ export function createMcpServer(
     isLiveApiToolActive(liveApiEnabled, smallModelMode) &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
-    toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
+    for (const toolDef of OPT_IN_TOOL_DEFS) {
+      toolDef(server, callLiveApi, { smallModelMode, notation });
+    }
+  }
+
+  // Experimental ppal-ui, only in a build with ENABLE_GEN_UI.
+  if (isGenUiEnabled() && (!includedSet || includedSet.has(GEN_UI_TOOL_ID))) {
+    toolDefUi(server, callLiveApi, { smallModelMode, notation });
   }
 
   trimListedSchemas(server);
@@ -276,11 +316,11 @@ export function validateTools(
  * @returns The valid tool names
  */
 function getValidToolNames(liveApiEnabled: boolean): string[] {
-  if (!liveApiEnabled) {
-    return [...TOOL_NAMES];
-  }
-
-  return [...TOOL_NAMES, toolDefLiveApi.toolName];
+  return [
+    ...TOOL_NAMES,
+    ...(liveApiEnabled ? [toolDefLiveApi.toolName] : []),
+    ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
+  ];
 }
 
 /**

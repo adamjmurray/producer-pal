@@ -233,8 +233,12 @@ describe("swapForLibraryCopy", () => {
     });
   });
 
-  it("fails with the remote script's own reason when it is out of date", async () => {
-    request.mockResolvedValue({ available: false, outdated: "it is too old" });
+  it("fails with the remote script's own reason when it is out of date, worded for a person", async () => {
+    request.mockResolvedValue({
+      available: false,
+      outdated: "it is too old; update it with ppal-manage",
+      outdatedWithoutManage: "it is too old",
+    });
 
     expect(await swapForLibraryCopy(scratch().library, deps)).toStrictEqual({
       status: "failed",

@@ -12,6 +12,12 @@
 // leaves Live untouched and the update helpers can assume their target is there.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type AnySlotPosition,
+  slotLivePath,
+  slotPositionText,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
@@ -21,7 +27,7 @@ interface SelectTargets {
   trackIndex?: number;
   sceneId?: string;
   sceneIndex?: number;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
+  clipSlot?: AnySlotPosition;
   devicePath?: string;
   /** The param the device path came from, for the refusal */
   devicePathParam?: "path" | "devicePath";
@@ -122,20 +128,18 @@ function requireTarget(api: LiveAPI, kind: string, path: string): void {
 /**
  * Refuse a clip slot, saying whether the track or the scene is missing.
  * @param slot - The clip slot coordinates
- * @param slot.trackIndex - 0-based track index
- * @param slot.sceneIndex - 0-based scene index
  */
-function requireClipSlot({
-  trackIndex,
-  sceneIndex,
-}: {
-  trackIndex: number;
-  sceneIndex: number;
-}): void {
+function requireClipSlot(slot: AnySlotPosition): void {
+  const { sceneIndex } = slot;
+  const onReturn = isReturnSlotPosition(slot);
+  const trackPath = onReturn
+    ? livePath.returnTrack(slot.returnIndex)
+    : livePath.track(slot.trackIndex);
+
   requireTarget(
-    LiveAPI.from(livePath.track(trackIndex)),
+    LiveAPI.from(trackPath),
     "track",
-    `t${trackIndex}`,
+    onReturn ? `rt${slot.returnIndex}` : `t${slot.trackIndex}`,
   );
   requireTarget(
     LiveAPI.from(livePath.scene(sceneIndex)),
@@ -143,9 +147,9 @@ function requireClipSlot({
     `s${sceneIndex}`,
   );
   requireTarget(
-    LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)),
+    LiveAPI.from(slotLivePath(slot)),
     "clip slot",
-    `t${trackIndex}/s${sceneIndex}`,
+    slotPositionText(slot),
   );
 }
 
@@ -160,7 +164,7 @@ function requireDevice(
   devicePath: string,
   devicePathParam: "path" | "devicePath",
 ): LiveAPI {
-  const resolved = resolvePathToLiveApi(devicePath);
+  const resolved = resolvePathToLiveApi(devicePath, devicePathParam);
 
   if (resolved.namesNothing != null) {
     throw new Error(`no device at "${devicePath}": ${resolved.namesNothing}`);

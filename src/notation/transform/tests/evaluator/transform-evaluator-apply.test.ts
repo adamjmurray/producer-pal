@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   createTestNote,
@@ -148,7 +148,7 @@ describe("applyTransforms", () => {
     });
 
     it("warns when a duration transform deletes a note", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
       const notes = createTestNote();
 
       applyTransforms(notes, "duration = -1", 4, 4);
@@ -679,7 +679,9 @@ probability += -0.2`;
     });
 
     it("warns about audio parameters for MIDI clips", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warnSpy = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const notes = createTestNote();
 
       applyTransforms(notes, "gain = 0.5", 4, 4);

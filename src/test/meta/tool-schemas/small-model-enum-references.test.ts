@@ -32,7 +32,7 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 //
 // Matching treats `-` as a word character, so a trimmed `routings` does not fire
 // on a surviving `available-routings`. It stays case-sensitive because enum
-// values are exact literals — that is what keeps `folder` off `sampleFolder`.
+// values are exact literals — that is what keeps `folder` off `inFolder`.
 
 /**
  * Trimmed values that are also ordinary English on a given tool, keyed by tool
@@ -41,8 +41,7 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
  * the prose could not be read as offering the value — don't loosen the match.
  *
  * `folder` is a ppal-library `kind` value and the word it uses for a directory
- * ("absolute folder path", "the user's sample folder"). Neither site offers a
- * kind.
+ * ("absolute folder path"). No site offers a kind.
  */
 const ORDINARY_WORDS: Record<string, readonly string[]> = {
   "ppal-library": ["folder"],

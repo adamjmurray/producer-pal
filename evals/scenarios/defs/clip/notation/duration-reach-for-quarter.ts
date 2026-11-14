@@ -29,6 +29,7 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { successfulToolCallsWith } from "../../../assertions/index.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
   MSG_CONNECT,
@@ -57,16 +58,19 @@ function classifyDurationReach(
   turns: EvalTurnResult[],
   turn: number,
 ): { reach: DurationReach; evidence: string } {
-  const transforms = getLastTransforms(turns, turn, TOOL_UPDATE_CLIP);
+  const written = durationWrite(turns, turn);
 
-  // Isolate the right-hand side of any `duration` / `duration +=` assignment.
-  const assignMatch = /duration\s*(?:\+=|=)\s*([^\n]+)/i.exec(transforms);
+  // A direct rewrite (`notes` + `preTransforms: "delete"`) sets the duration
+  // inline instead of through a transform. Same reach, different spelling.
+  const assignMatch = written.inline
+    ? null
+    : /duration\s*(?:\+=|=)\s*([^\n]+)/i.exec(written.text);
 
-  if (!assignMatch) {
-    return { reach: "unrecognized", evidence: transforms.slice(0, 100) };
+  if (!written.inline && !assignMatch) {
+    return { reach: "unrecognized", evidence: written.text.slice(0, 100) };
   }
 
-  const rhs = (assignMatch[1] as string).trim();
+  const rhs = (assignMatch?.[1] ?? written.text).trim();
 
   if (/\bn1?\/4\b/.test(rhs)) {
     return { reach: "n-absolute", evidence: rhs };
@@ -85,6 +89,39 @@ function classifyDurationReach(
   }
 
   return { reach: "unrecognized", evidence: rhs };
+}
+
+/**
+ * The text that sets the duration in the turn's update-clip call: its
+ * transforms, or, when the model rewrote the notes instead, the `notes` string.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index that performed the duration write
+ * @returns The text, and whether it is a notes string rather than transforms
+ */
+function durationWrite(
+  turns: EvalTurnResult[],
+  turn: number,
+): { text: string; inline: boolean } {
+  try {
+    return {
+      text: getLastTransforms(turns, turn, TOOL_UPDATE_CLIP),
+      inline: false,
+    };
+  } catch (error) {
+    const notes = successfulToolCallsWith(
+      turns,
+      turn,
+      TOOL_UPDATE_CLIP,
+      "notes",
+    ).at(-1)?.args.notes;
+
+    if (typeof notes !== "string") {
+      throw error;
+    }
+
+    return { text: notes, inline: true };
+  }
 }
 
 /**

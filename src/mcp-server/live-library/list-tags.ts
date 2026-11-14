@@ -14,12 +14,14 @@
  * Read-only: SELECT statements only.
  */
 
+import { type DatabaseSync } from "node:sqlite";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIST_TAGS_LIMIT,
   type LibraryListTagsResult,
+  type LibraryTag,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
@@ -54,9 +56,8 @@ export async function listTags(
   }
 
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIST_TAGS_LIMIT);
-  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
-  // immutable read can't see. Omitted from the response when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: Live's DB schema varies across releases, so a future
   // rename of the keywords/files tables or columns would throw a raw SQLite error
@@ -65,24 +66,18 @@ export async function listTags(
     const db = await openLiveDb(dbPath);
 
     try {
-      const rows = db
-        .prepare(
-          `SELECT kw.name AS name, COUNT(*) AS cnt
+      const grouped = `SELECT kw.name AS name, COUNT(*) AS cnt
            FROM keywords k
            JOIN files kw ON kw.file_id = k.keyw_id
            JOIN files f ON f.file_id = k.file_id
            WHERE ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
-           GROUP BY k.keyw_id
-           ORDER BY cnt DESC, kw.name ASC
-           LIMIT ?`,
-        )
-        .all(limit) as unknown as TagRow[];
-      const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
+           GROUP BY k.keyw_id`;
+      const page = topTags(db, grouped, [], limit);
 
       return {
         dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
-        tags,
+        ...(stale && { stalenessNote: stale }),
+        ...page,
       };
     } finally {
       db.close();
@@ -94,4 +89,55 @@ export async function listTags(
       detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
+}
+
+/**
+ * The most-used tags a GROUP BY query returns, with how many it left out when
+ * the limit cut the list off.
+ *
+ * @param db - Open database handle
+ * @param groupedSql - Query giving `name` and `cnt` per group, without ORDER BY or LIMIT
+ * @param params - Values for the query's placeholders
+ * @param limit - Max tags to return
+ * @returns Tags sorted by count desc, and `more` when any were left out
+ */
+export function topTags(
+  db: DatabaseSync,
+  groupedSql: string,
+  params: Array<string | number>,
+  limit: number,
+): { tags: LibraryTag[]; more?: number } {
+  // One row past the page tells us whether anything was cut off; only then is
+  // the full count worth running (as in search).
+  const rows = db
+    .prepare(`${groupedSql} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
+    .all(...params, limit + 1) as unknown as TagRow[];
+  const tags = rows
+    .slice(0, limit)
+    .map((r) => ({ name: r.name, count: r.cnt }));
+  const more =
+    rows.length > limit ? countGroups(db, groupedSql, params) - limit : 0;
+
+  return { tags, ...(more > 0 && { more }) };
+}
+
+/**
+ * Count the rows a GROUP BY query returns, so a list that hit its limit can say
+ * how many it left out.
+ *
+ * @param db - Open database handle
+ * @param groupedSql - The query, without ORDER BY or LIMIT
+ * @param params - Values for the query's placeholders
+ * @returns Number of groups
+ */
+function countGroups(
+  db: DatabaseSync,
+  groupedSql: string,
+  params: Array<string | number>,
+): number {
+  const row = db
+    .prepare(`SELECT COUNT(*) AS n FROM (${groupedSql})`)
+    .get(...params) as { n: number };
+
+  return row.n;
 }

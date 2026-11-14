@@ -6,7 +6,7 @@
 // Asking the remote script to copy a device with Live's own duplicate_device,
 // which Max for Live can't call.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   type DeviceDuplication,
   REMOTE_SCRIPT_ROUTES,

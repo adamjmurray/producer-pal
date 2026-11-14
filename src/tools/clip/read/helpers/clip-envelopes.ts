@@ -7,22 +7,43 @@
 // Producer Pal remote script can, over a round trip per envelope.
 
 import { formatEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
   envelopeRoute,
 } from "#src/tools/clip/envelopes/envelope-route.ts";
 import {
+  type EnvelopeTrack,
+  envelopeSlotOf,
+  trackObject,
+  trackText,
+} from "#src/tools/clip/envelopes/envelope-track.ts";
+import {
   ENVELOPE_ROUTES,
   type EnvelopeListResult,
   type EnvelopeReadResult,
 } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
+import {
+  parseSlotName,
+  readSlotMap,
+  slotName,
+  type SlotMap,
+} from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
+import {
+  detectHostedPlugin,
+  hostedParamId,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 
 /** How many events of one envelope a read returns before it says `truncated`. */
 const MAX_ENVELOPE_EVENTS = 32;
 
 /** A device segment of the remote script's device path: d0, or c1 for a chain. */
-const DEVICE_SEGMENT = /^([dc])(\d+)$/;
+const DEVICE_SEGMENT = /^(d|c|rc)(\d+)$/;
+/** Where a segment's letters lead. */
+const SEGMENT_CHILDREN: Record<string, string> = {
+  d: "devices",
+  c: "chains",
+  rc: "return_chains",
+};
 
 /** A mixer send, as the remote script names it: send0, send1, ... */
 const SEND_PARAMETER = /^send(\d+)$/;
@@ -41,8 +62,10 @@ export interface ClipEnvelope {
   parameter: string;
   /** The Live parameter object's id */
   id?: string;
-  /** The device the parameter belongs to, "t3/d0"; absent for a mixer param */
+  /** The device the parameter belongs to, "t3/d0"; absent for a mixer param and a hosted plug-in's param, whose `id` has it */
   device?: string;
+  /** The wrapper's automation slot, when this is a hosted plug-in's param: its `parameter` and `id` are the plug-in's */
+  slot?: string;
   eventCount: number;
   /** Set when the clip holds more events than the read returned */
   truncated?: true;
@@ -60,6 +83,7 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
  * @param isArrangementClip - Whether the clip is in the arrangement
  * @param clipMeter - Getter for the clip's meter, which spells the event times
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns One entry per automated parameter, each saying why when its events
  *   couldn't be read or can't play, or why there are none to report at all
  */
@@ -67,24 +91,26 @@ export async function clipEnvelopes(
   clip: LiveAPI,
   isArrangementClip: boolean,
   clipMeter: () => { numerator: number; denominator: number },
-  deadline?: number | null,
+  deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<ClipEnvelope[] | string> {
   if (isArrangementClip) {
     return ARRANGEMENT_CLIP_NOTE;
   }
 
-  const trackIndex = clip.trackIndex;
-  const slot = clip.sceneIndex;
+  const placed = envelopeSlotOf(clip);
 
-  if (trackIndex == null || slot == null) {
+  if (placed == null) {
     return "only a clip in a session clip slot can report its automation";
   }
 
-  const target = { track: `t${String(trackIndex)}`, slot };
+  const { track, slot } = placed;
+  const target = { track: trackText(track), slot };
   const listed = await envelopeRoute<EnvelopeListResult>(
     ENVELOPE_ROUTES.list,
     target,
     deadline,
+    manage,
   );
 
   if (!listed.ok) {
@@ -103,13 +129,16 @@ export async function clipEnvelopes(
     (clip.getProperty("is_audio_clip") as number) > 0 &&
     (clip.getProperty("warping") as number) === 0;
   const envelopes: ClipEnvelope[] = [];
+  const wrappers = new Map<string, SlotMap | null>();
 
   let stalledReason: string | undefined;
 
   for (const entry of listed.result.envelopes) {
+    const identity = envelopeIdentity(track, entry, wrappers);
+
     if (stalledReason != null) {
       envelopes.push(
-        unreadEnvelope(trackIndex, entry, `not read: ${stalledReason}`),
+        unreadEnvelope(identity, entry, `not read: ${stalledReason}`),
       );
 
       continue;
@@ -123,6 +152,7 @@ export async function clipEnvelopes(
         limit: MAX_ENVELOPE_EVENTS,
       },
       deadline,
+      manage,
     );
 
     if (!read.ok) {
@@ -136,13 +166,13 @@ export async function clipEnvelopes(
         stalledReason = read.reason;
       }
 
-      envelopes.push(unreadEnvelope(trackIndex, entry, read.reason));
+      envelopes.push(unreadEnvelope(identity, entry, read.reason));
 
       continue;
     }
 
     envelopes.push(
-      envelopeEntry(trackIndex, entry, read.result, clipMeter, unwarped),
+      envelopeEntry(identity, entry, read.result, clipMeter, unwarped),
     );
   }
 
@@ -160,46 +190,112 @@ function parameterTarget(entry: ListedEnvelope): {
   device?: string;
   parameter?: string | number;
 } {
-  return entry.device == null
-    ? { parameter: entry.parameter_name }
-    : { device: entry.device, parameter: entry.parameter_index };
+  // A mixer parameter goes by name: the track's, or a chain's with `device`.
+  return {
+    ...(entry.device != null && { device: entry.device }),
+    parameter: entry.parameter_name ?? entry.parameter_index,
+  };
 }
 
 /**
- * Name one listed envelope's parameter on a result entry.
- * @param trackIndex - The clip's track, which spells the device path
+ * Name one listed envelope's parameter on a result entry. A hosted plug-in's
+ * param is named as the plug-in has it, with the slot that carries it.
+ * @param track - The clip's track, which spells the device path
  * @param entry - What the list route said about the parameter
- * @returns The parameter, id and device the entry names it by
+ * @param wrappers - What this read has learned about each device's slots
+ * @returns The parameter, id, device and slot the entry names it by
  */
-function envelopeIdentity(
-  trackIndex: number,
+export function envelopeIdentity(
+  track: EnvelopeTrack,
   entry: ListedEnvelope,
-): Pick<ClipEnvelope, "parameter" | "id" | "device"> {
-  const id = parameterId(trackIndex, entry);
+  wrappers: Map<string, SlotMap | null>,
+): Pick<ClipEnvelope, "parameter" | "id" | "device" | "slot"> {
+  const hosted = hostedIdentity(track, entry, wrappers);
+
+  if (hosted != null) {
+    return hosted;
+  }
+
+  const id = parameterId(track, entry);
 
   return {
     parameter: entry.parameter.name,
     ...(id != null && { id }),
     ...(entry.device != null && {
-      device: `t${String(trackIndex)}/${entry.device}`,
+      device: `${trackText(track)}/${entry.device}`,
     }),
   };
 }
 
 /**
+ * Name an envelope on a wrapper's automation slot by the plug-in param the slot
+ * drives, when it drives one.
+ * @param track - The clip's track, which spells the device path
+ * @param entry - What the list route said about the parameter
+ * @param wrappers - What this read has learned about each device's slots
+ * @returns The plug-in param's name, an id that targets it, and the slot; null
+ *   for any other parameter, and for a slot that drives nothing
+ */
+function hostedIdentity(
+  track: EnvelopeTrack,
+  entry: ListedEnvelope,
+  wrappers: Map<string, SlotMap | null>,
+): Pick<ClipEnvelope, "parameter" | "id" | "slot"> | null {
+  const slot = parseSlotName(entry.parameter.name.trim());
+
+  if (slot == null || entry.device == null) {
+    return null;
+  }
+
+  if (!wrappers.has(entry.device)) {
+    wrappers.set(entry.device, slotsOf(track, entry.device));
+  }
+
+  const driven = wrappers.get(entry.device)?.mapped.get(slot);
+
+  // The id spells the device path, so the entry leaves `device` out.
+
+  return driven == null
+    ? null
+    : {
+        parameter: driven.name,
+        id: `${trackText(track)}/${entry.device}/${hostedParamId(driven.index)}`,
+        slot: slotName(slot),
+      };
+}
+
+/**
+ * @param track - The clip's track
+ * @param device - The remote script's device path
+ * @returns What the device's slots drive, or null when it isn't a hosted
+ *   plug-in or can't say
+ */
+function slotsOf(track: EnvelopeTrack, device: string): SlotMap | null {
+  const wrapper = deviceAt(trackObject(track), device);
+
+  if (wrapper == null || detectHostedPlugin(wrapper) == null) {
+    return null;
+  }
+
+  const read = readSlotMap(wrapper.id);
+
+  return read.ok ? read.slots : null;
+}
+
+/**
  * Build the entry for a parameter whose events weren't read.
- * @param trackIndex - The clip's track
+ * @param identity - How the entry names the parameter
  * @param entry - What the list route said about the parameter
  * @param detail - Why its events are missing
  * @returns The entry, with the event count the list gave
  */
 function unreadEnvelope(
-  trackIndex: number,
+  identity: Pick<ClipEnvelope, "parameter" | "id" | "device" | "slot">,
   entry: ListedEnvelope,
   detail: string,
 ): ClipEnvelope {
   return {
-    ...envelopeIdentity(trackIndex, entry),
+    ...identity,
     eventCount: entry.event_count,
     detail,
   };
@@ -207,7 +303,7 @@ function unreadEnvelope(
 
 /**
  * Build one envelope's result entry.
- * @param trackIndex - The clip's track, which spells the device path
+ * @param identity - How the entry names the parameter
  * @param entry - What the list route said about the parameter
  * @param read - What the read route returned for it
  * @param clipMeter - Getter for the clip's meter
@@ -215,7 +311,7 @@ function unreadEnvelope(
  * @returns The entry for the clip result
  */
 function envelopeEntry(
-  trackIndex: number,
+  identity: Pick<ClipEnvelope, "parameter" | "id" | "device" | "slot">,
   entry: ListedEnvelope,
   read: EnvelopeReadResult,
   clipMeter: () => { numerator: number; denominator: number },
@@ -224,7 +320,7 @@ function envelopeEntry(
   const { numerator, denominator } = clipMeter();
 
   return {
-    ...envelopeIdentity(trackIndex, entry),
+    ...identity,
     eventCount: read.event_count ?? entry.event_count,
     ...(read.truncated === true && { truncated: true as const }),
     events: formatEnvelopeNotation(
@@ -243,32 +339,37 @@ function envelopeEntry(
 /**
  * The id of the Live parameter an envelope automates, so a caller can address
  * it the way every other tool result does.
- * @param trackIndex - The clip's track
+ * @param track - The clip's track
  * @param entry - One envelope from the list route
  * @returns The parameter's id, or null when nothing is at that address
  */
-function parameterId(trackIndex: number, entry: ListedEnvelope): string | null {
-  const track = LiveAPI.from(livePath.track(trackIndex));
+function parameterId(
+  track: EnvelopeTrack,
+  entry: ListedEnvelope,
+): string | null {
+  const object = trackObject(track);
+  // A name is a mixer parameter: the track's, or the chain's `device` ends on.
+  const holder = entry.device == null ? object : deviceAt(object, entry.device);
+
+  if (holder == null) {
+    return null;
+  }
+
   const parameter =
-    entry.device == null
-      ? mixerParameter(track, entry.parameter_name)
-      : deviceParameter(track, entry.device, entry.parameter_index ?? 0);
+    entry.parameter_name == null
+      ? holder.child("parameters", String(entry.parameter_index ?? 0))
+      : mixerParameter(holder, entry.parameter_name);
 
   return parameter != null && parameter.exists() ? parameter.id : null;
 }
 
 /**
- * Walk d0, d0/c1/d0 to a device, then to one of its parameters.
+ * Walk d0, d0/c1/d0, d0/rc0/d0 to a device, or d0/c1 to a chain.
  * @param track - The clip's track
  * @param device - The remote script's device path
- * @param index - The parameter's index on that device
- * @returns The parameter, or null when the path isn't one we can walk
+ * @returns The device or chain, or null when the path isn't one we can walk
  */
-function deviceParameter(
-  track: LiveAPI,
-  device: string,
-  index: number,
-): LiveAPI | null {
+function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
   let container = track;
 
   for (const segment of device.split("/")) {
@@ -279,21 +380,21 @@ function deviceParameter(
     }
 
     container = container.child(
-      match[1] === "d" ? "devices" : "chains",
+      SEGMENT_CHILDREN[match[1] as string] as string,
       match[2] as string,
     );
   }
 
-  return container.child("parameters", String(index));
+  return container;
 }
 
 /**
- * The track mixer's volume, pan or send, as the remote script names it.
- * @param track - The clip's track
+ * A mixer's volume, pan or send, as the remote script names it.
+ * @param track - The clip's track, or a rack chain
  * @param name - volume, pan, or send0..
  * @returns The parameter, or null when the name isn't one of those
  */
-function mixerParameter(track: LiveAPI, name?: string): LiveAPI | null {
+export function mixerParameter(track: LiveAPI, name?: string): LiveAPI | null {
   const mixer = track.child("mixer_device");
 
   if (name === "volume") {

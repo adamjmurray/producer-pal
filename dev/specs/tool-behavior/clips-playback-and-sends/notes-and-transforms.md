@@ -2,6 +2,17 @@
 
 Part of [Clips, Playback and Sends](README.md).
 
+## The scale transforms snap to
+
+`snap()` and `step()` use the scale of the clip being edited, the `scale:mask`
+variable. update-clip reads it after writing any `scale` of the same call. A
+clip with its scale off, or on chromatic, has no mask, so they pass notes
+through, even while the Live Set has a scale. create-clip has no clip to read
+yet, so it uses the scale it was asked for, or else the Live Set's, which a new
+clip starts with. On Live older than 12.4.15, clips have no scale and every
+transform uses the Live Set's. An audio clip's transforms use the Live Set's
+too.
+
 ## Transform counts
 
 `ppal-create-clip` and `ppal-update-clip` (transforms alone, or with `notes`)
@@ -22,10 +33,20 @@ after:
   `merge()` on a lone note). A `repeat` counts its copies, not the originals.
   Values are compared at 32-bit float resolution, the way Live stores them, so
   writing back the value a note already holds changes nothing.
-- `transformed: 0` is reported when transforms ran and changed nothing: it is
-  the caller's only sign that its selector matched nothing or its edit was a
-  no-op. Only `deletedNotes` is left out at 0, and `transformed` is absent when
-  no transform ran.
+- `transformed: 0` is reported when transforms ran and changed nothing. Only
+  `deletedNotes` is left out at 0, and `transformed` is absent when no transform
+  ran.
+- When transforms ran and changed and deleted nothing, the clip's entry says why
+  in `detail`, because the two causes need different fixes: "no notes matched
+  the selector", or "the transforms changed none of the N matched notes" ("the
+  transforms didn't change the 1 matched note" for one). `preTransforms` and
+  `transforms` are judged together. Neither is said when a statement failed or
+  was skipped (an expression error, a failed `where()`, a skipped note op),
+  since that has its own detail, nor when every statement was an audio-only
+  parameter ignored on a MIDI clip. Every tool that runs transforms says it the
+  same way (update-clip, create-clip, and duplicate through update-clip). With
+  `duplicateLoop`, preTransforms and the later notes/transforms stage are judged
+  together, the stage that matched more notes giving N.
 - `preTransforms` and `transforms` in one call count as one pass running both
   would, against how each note started: a note both changed counts once, and one
   that `transforms` puts back as it was counts as neither. When `transforms`
@@ -39,9 +60,10 @@ after:
 
 Live keeps a note that starts before the clip's region or at or after its end,
 but never plays it. A note far enough out is also past the window every note
-read and rewrite uses, so it drops out of `noteCount` and later reads. No
-refusal, no skip: the write lands as asked, and the clip's entry says so in
-`detail`:
+read and rewrite uses, so it drops out of `noteCount` and later reads. On a
+looping clip the window ends at `loop_end`, so every note at or past it drops
+out, and no edit (replace, transform, delete) touches it. No refusal, no skip:
+the write lands as asked, and the clip's entry says so in `detail`:
 
 - `ppal-create-clip`: `N notes landed outside the region and won't play`, for
   the notes the call wrote (after any transform).
@@ -55,6 +77,25 @@ refusal, no skip: the write lands as asked, and the clip's entry says so in
 - An update with `duplicateLoop` or `arrangementLength` is not checked: either
   can change the region after the notes are written.
 - Muted notes are never counted. `code` rewrites are not checked yet.
+
+## Notes cut short by an overlap
+
+Live holds no two overlapping notes at one pitch: it cuts the earlier one at the
+later one's start. A write that overlaps notes this way (a quarter note on every
+eighth beat in 6/8, say) lands shorter than written, and the clip's entry says
+so in `detail`: `N notes shortened by the next note at the same pitch`.
+
+- Every path that writes notes checks it: `ppal-create-clip` (notes, and `code`
+  as its own write), and `ppal-update-clip` notes, transform-only edits and
+  `code` rewrites. A notes write in any notation counts: the cause is Live's
+  rule, not the spelling.
+- The clip is read back and compared with what was written, and only when two
+  written notes at one pitch overlap, so a write with no overlap costs no read.
+  A note already restated from the clip counts too when a new note cuts it.
+- Counted apart from the muted variants below, so a note is never reported
+  twice. A muted note cut by a muted note is not counted: neither is visible.
+- A create-clip call with `code` reports the code's overlaps, not those of the
+  `notes` it replaced.
 
 ## Muted notes
 
@@ -78,11 +119,11 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
   the model never asked for that note's slot.
 - **Overlaps follow Live**: Live cuts whichever same-pitch note starts earlier
   at the next one's start, muted or not. After a note write the clip is read
-  back (only when it has muted notes), and `detail` says when a muted note
-  shortened a note, or a note shortened a muted one. A `code` rewrite is a note
-  write too, so update-clip says the same of it (once, on the target's first
-  clip when tiling made copies). A clip create-clip just made holds no muted
-  notes, so its `code` has nothing to report.
+  back (when it has muted notes or same-pitch overlaps), and `detail` says when
+  a muted note shortened a note, or a note shortened a muted one. A `code`
+  rewrite is a note write too, so update-clip says the same of it. A clip
+  create-clip just made holds no muted notes, so its `code` has nothing to
+  report.
 - **Bar copy skips them**: they aren't in the source bar the model sees.
 - **Copying a whole clip keeps them** (duplicate to a new place, take lanes);
   that isn't an edit of notes the model sees. Replacing, emptying or moving a

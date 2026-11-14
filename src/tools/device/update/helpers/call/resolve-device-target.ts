@@ -26,6 +26,9 @@ export type ResolvedTarget =
   | { kind: "object"; target: LiveAPI }
   | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
+/** A path that names nothing, as opposed to one that can't be resolved. */
+export class NothingThereError extends Error {}
+
 /** An object's own last path segment, so the rest of the path is its container. */
 const OWN_SEGMENT = /\/[^/]+$/;
 
@@ -34,22 +37,26 @@ const OWN_SEGMENT = /\/[^/]+$/;
  * @param item - The target, tagged with the param that named it
  * @param item.param - Which param named it
  * @param item.value - The id or path
+ * @param item.sent - The param it was sent under, when it was an alias
  * @returns The resolved target
  * @throws Error when it names nothing a target can be
  */
 export function resolveNamedTarget({
   param,
   value,
+  sent = param,
 }: NamedTarget): ResolvedTarget {
   const resolved =
-    param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
+    param === "id"
+      ? resolveIdToTarget(value)
+      : resolvePathToTarget(value, sent);
 
   if (!resolved) {
-    throw new Error(
-      param === "id"
-        ? idDoesNotExist(value)
-        : `${nothingAtPath(value)}${nestedRackHintForPath(value)}`,
-    );
+    throw param === "id"
+      ? new Error(idDoesNotExist(value, undefined, sent))
+      : new NothingThereError(
+          `${nothingAtPath(value, undefined, sent)}${nestedRackHintForPath(value, sent)}`,
+        );
   }
 
   return resolved;
@@ -162,15 +169,21 @@ function resolvePathToTargetSafe(path: string): ResolvedTarget | null {
 /**
  * Resolve a path to a Live API target (device, chain, or drum pad)
  * @param path - Device/chain/drum-pad path
+ * @param label - The param the path was sent under
  * @returns Resolved target or null if not found
  */
-function resolvePathToTarget(path: string): ResolvedTarget | null {
-  const resolved = resolvePathToLiveApi(path);
+function resolvePathToTarget(
+  path: string,
+  label = "path",
+): ResolvedTarget | null {
+  const resolved = resolvePathToLiveApi(path, label);
 
   // A type segment that named no device says what the container holds instead
   // of the bare miss the substituted position would report.
   if (resolved.namesNothing != null) {
-    throw new Error(nothingAtPath(path, resolved.namesNothing));
+    throw new NothingThereError(
+      nothingAtPath(path, resolved.namesNothing, label),
+    );
   }
 
   switch (resolved.targetType) {

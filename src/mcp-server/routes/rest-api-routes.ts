@@ -10,6 +10,8 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { toolDefUi } from "#src/tools/ui/ui.def.ts";
+import { isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import {
   collectHiddenParams,
   hiddenParamWarnings,
@@ -27,6 +29,7 @@ import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "../create-mcp-server.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/browser/request-origin.ts";
 import { requestBody } from "../helpers/http/request-body.ts";
 import {
   resolveRequestProfile,
@@ -37,7 +40,7 @@ import {
   type ToolDefFunction,
 } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 
 interface RestApiConfig {
   tools: string[];
@@ -62,9 +65,15 @@ function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
     isOfferedInMode(td, profile.smallModelMode),
   );
 
-  return isLiveApiToolActive(profile.liveApiEnabled, profile.smallModelMode)
+  const withLiveApi = isLiveApiToolActive(
+    profile.liveApiEnabled,
+    profile.smallModelMode,
+  )
     ? [...standard, toolDefLiveApi]
     : standard;
+
+  // Experimental, only in a build with ENABLE_GEN_UI.
+  return isGenUiEnabled() ? [...withLiveApi, toolDefUi] : withLiveApi;
 }
 
 /**
@@ -89,55 +98,30 @@ export function registerRestApiRoutes(
   getConfig: () => RestApiConfig,
   buildCallLiveApi: (profile: RequestProfile) => CallLiveApiFunction,
 ): void {
-  // Like POST /mcp (see create-express-app.ts), these endpoints are NOT
-  // origin-gated the way POST /config is: the chat UI reaches them same-origin
-  // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
-  // localhost gate would 403 the documented unauthenticated remote-access
-  // feature's own requests.
   app.get("/api/tools", (req: Request, res: Response): void => {
-    const profile = resolveRequestProfile(req, getConfig());
-    const enabledSet = new Set(profile.tools);
-    // Resolve descriptions and schemas against this request's notation and mode,
-    // the same way define-tool.ts registers them for MCP. Without this the
-    // catalog served bar|beat `notes` guidance while execution honored the
-    // caller's notation, making a stark/midi-json client send input that fails
-    // to parse.
-    const context = {
-      notation: profile.notation,
-      smallModelMode: profile.smallModelMode,
-    };
-
-    const tools = activeToolDefs(profile)
-      .filter((td) => enabledSet.has(td.toolName))
-      .map((td) => {
-        // Same resolution define-tool.ts registers with, deprecation filter
-        // included, so the REST catalog can't advertise a param MCP hides.
-        const { published } = resolveToolSchema(
-          td.toolOptions.inputSchema,
-          context,
-        );
-
-        return {
-          name: td.toolName,
-          title: td.toolOptions.title,
-          description: resolveModalDescription(
-            td.toolOptions.description,
-            context,
-          ),
-          annotations: td.toolOptions.annotations,
-          inputSchema: z.toJSONSchema(z.object(published)),
-        };
-      });
-
-    res.json({ tools });
+    res.json({ tools: toolCatalog(resolveRequestProfile(req, getConfig())) });
   });
 
+  // POST runs a tool, so it gets the same-origin gate (not the localhost-only
+  // one used for POST /config): the chat UI reaches it from the page URL, which
+  // over LAN/tunnel is a non-localhost origin. Without a gate any website could
+  // send a no-cors POST with no body, and the tool would run with empty args.
   app.post(
     "/api/tools/:toolName",
     async (
       req: Request<{ toolName: string }>,
       res: Response,
     ): Promise<void> => {
+      if (
+        rejectForeignOriginWrite(
+          req,
+          res,
+          "cross-site /api/tools calls are not allowed",
+        )
+      ) {
+        return;
+      }
+
       const { toolName } = req.params;
       const profile = resolveRequestProfile(req, getConfig());
       const enabledSet = new Set(profile.tools);
@@ -249,7 +233,7 @@ export function registerRestApiRoutes(
 
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
       } catch (error) {
-        console.error(`REST API error calling ${toolName}: ${String(error)}`);
+        nodeError(`REST API error calling ${toolName}: ${String(error)}`);
         res.status(500).json({ error: "Internal server error" });
       }
     },
@@ -292,6 +276,47 @@ function parseToolArgs(
   }
 
   return { data: parsed.data };
+}
+
+/**
+ * The tool catalog GET /api/tools serves for one request.
+ *
+ * @param profile - The resolved settings for this request
+ * @returns Each enabled tool's name, description and input schema
+ */
+function toolCatalog(profile: RequestProfile): object[] {
+  const enabledSet = new Set(profile.tools);
+  // Resolve descriptions and schemas against this request's notation and mode,
+  // the same way define-tool.ts registers them for MCP. Without this the
+  // catalog served bar|beat `notes` guidance while execution honored the
+  // caller's notation, making a stark/midi-json client send input that fails
+  // to parse.
+  const context = {
+    notation: profile.notation,
+    smallModelMode: profile.smallModelMode,
+  };
+
+  return activeToolDefs(profile)
+    .filter((td) => enabledSet.has(td.toolName))
+    .map((td) => {
+      // Same resolution define-tool.ts registers with, deprecation filter
+      // included, so the REST catalog can't advertise a param MCP hides.
+      const { published } = resolveToolSchema(
+        td.toolOptions.inputSchema,
+        context,
+      );
+
+      return {
+        name: td.toolName,
+        title: td.toolOptions.title,
+        description: resolveModalDescription(
+          td.toolOptions.description,
+          context,
+        ),
+        annotations: td.toolOptions.annotations,
+        inputSchema: z.toJSONSchema(z.object(published)),
+      };
+    });
 }
 
 /**

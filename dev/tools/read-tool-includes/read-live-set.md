@@ -31,7 +31,9 @@ reports.
 - `tracks` — replaces `regularTrackCount`/`returnTrackCount` with full track
   arrays (`tracks`, `returnTracks`, `mainTrack`). Each track uses read-track
   default format: id, name, type, instrument name, clip/device counts
-- `scenes` — replaces `sceneCount` with scene list (read-scene default format)
+- `scenes` — replaces `sceneCount` with scene list (read-scene default format).
+  On Live 13 a scene's `clipCount` includes its return-track clips, and each
+  return track reports its own `sessionClipCount`
 - `routings` — propagated: adds routing info to tracks
 - `mixer` — propagated: adds gain, pan, sends to tracks
 - `color` — propagated: adds hex color to tracks and scenes

@@ -154,7 +154,9 @@ describe("ppal-read-scene", () => {
     const message = getToolErrorMessage(result);
 
     expect(message).not.toContain("executing tool");
-    expect(message).toBe("Error: id or path is required");
+    expect(message).toMatch(
+      /^Error: id or path is required, e\.g\. path: "s0"/,
+    );
   });
 });
 

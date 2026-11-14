@@ -53,14 +53,14 @@ describe("duplicate - arrangementLength functionality", () => {
 
     // New implementation uses holding area for shortening
     // The mocked createShortenedClipInHolding and moveClipFromHolding handle the details
-    // Just verify the result is correct - the holding area operations are tested in arrangement-tiling.test.js
+    // Just verify the result is correct - the holding area operations are tested in scratch-and-holding-clips.test.ts
   });
 
   it("measures an unwarped audio clip by its markers, not its stale length", async () => {
     // Live reports an unwarped session clip's `length` as if it were still
     // warped, so a 6s one-shot claims 4 beats at 120bpm when it really plays
-    // 12. Trusting that took the lengthening branch and tiled a second copy on
-    // top of audio that was still sounding.
+    // 12. Trusting that took the lengthening branch when the copy needed
+    // shortening.
     registerSourceClip({
       length: 4, // stale
       looping: 0,
@@ -86,7 +86,7 @@ describe("duplicate - arrangementLength functionality", () => {
       arrangementLength: "2bar", // 8 beats: shorter than 12, longer than 4
     });
 
-    // Shortening, so it goes through the holding area rather than tiling.
+    // Shortening, so it goes through the holding area, not update-clip.
     expect(createShortenedClipInHoldingMock).toHaveBeenCalled();
     expect(updateClipMock).not.toHaveBeenCalled();
   });
@@ -207,42 +207,6 @@ describe("duplicate - arrangementLength functionality", () => {
     });
   });
 
-  // update-clip names a snapped color on its first entry only; a tile after it
-  // is a copy of that clip and sits on the same swatch.
-  it("says a snapped color on every tile of a lengthened copy", async () => {
-    const first = livePath.track(0).arrangementClip(0);
-    const tile = livePath.track(0).arrangementClip(1);
-    const snap = "color #FF0000 is not in Live's palette; landed as #FF3636";
-
-    setupLoopingLengthening().properties.arrangement_clips = children(
-      first,
-      tile,
-    );
-    registerArrangementClip(0, 1, 20).get.mockImplementation((prop: string) => [
-      prop === "color" ? 16725558 : prop === "is_arrangement_clip" ? 1 : 20,
-    ]);
-    updateClipMock.mockReturnValueOnce([
-      { id: first, color: "#FF3636", detail: snap },
-      { id: tile },
-    ]);
-
-    const result = await duplicate({
-      type: "clip",
-      id: "clip1",
-      arrangementStart: "5|1",
-      arrangementLength: "1bar+n/2",
-      color: "#FF0000",
-    });
-
-    expect(result).toStrictEqual({
-      path: "t0",
-      clips: [
-        { id: first, path: "t0[5|1]", color: "#FF3636", detail: snap },
-        { id: tile, path: "t0[6|1]", color: "#FF3636", detail: snap },
-      ],
-    });
-  });
-
   it("should duplicate a non-looping clip at original length when requested length is longer", async () => {
     registerSourceClip({
       length: 4,
@@ -345,7 +309,7 @@ describe("duplicate - arrangementLength functionality", () => {
         arrangementStart: "5|1",
         arrangementLength: "0bar", // 0 bars + 0 beats = 0 total
       }),
-    ).rejects.toThrow('arrangementLength must be positive, got "0bar"');
+    ).rejects.toThrow('arrangementLength "0bar" must be longer than zero');
   });
 
   it("should work normally without arrangementLength (backward compatibility)", async () => {
@@ -442,7 +406,7 @@ function setupLoopingLengthening(): RegisteredMockObject {
 // Duplicate "clip1" to bar 5 with an arrangementLength longer than the clip,
 // then assert the shared lengthening contract: the implementation first
 // duplicates the clip into the arrangement at beat 16, then delegates to
-// updateClip for lengthening/tiling. The mocked updateClip handles the
+// updateClip for lengthening. The mocked updateClip handles the
 // complexity — its behavior is tested in update-clip.test.js — so we only check
 // that the single clip it returns is passed back as the result object directly.
 // Takes the track 0 mock handle and the arrangementLength to request; returns

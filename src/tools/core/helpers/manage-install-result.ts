@@ -1,0 +1,171 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+// What an install-producer-pal call tells the caller. No V8 code in here: the
+// portal bundles it.
+
+import {
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
+} from "#src/shared/version-check.ts";
+import {
+  type InstallPart,
+  type InstallReply,
+  type ManageInstallResult,
+  type PluginHostPart,
+} from "./manage-contract.ts";
+
+const INSTALL = "install-producer-pal";
+// The device works without the remote script, so this needs no restart.
+const DRAG_NOW =
+  "The device is in the User Library: the user can drag Producer Pal onto a MIDI track in Live right away, without the restart.";
+const ADD = "add-producer-pal";
+
+/**
+ * Live only reads Remote Scripts at startup, so the restart comes first: until
+ * then a first install isn't in the Control Surface list to choose.
+ */
+const FINISH_IN_LIVE =
+  'restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None. It takes one free slot and no MIDI, so their other controllers keep working.';
+
+/** Where the call was answered, which decides what is left to do. */
+export interface InstallContext {
+  /** Whether Producer Pal is running in the Live Set already */
+  running: boolean;
+}
+
+/**
+ * The result of an install the route answered. Each file reports for itself, so
+ * one that installed is never hidden by one that didn't. Only a call that
+ * installed nothing at all is an error: a wrapper that failed is reported and
+ * never makes the call fail, and a wrapper that landed keeps it a result.
+ * @param reply - What the install route answered
+ * @param context - Where the call was answered
+ * @returns Both files' outcomes, and what the user does next
+ * @throws Error with the route's own wording when nothing was installed
+ */
+export function manageInstallResult(
+  reply: InstallReply,
+  context: InstallContext,
+): ManageInstallResult {
+  if (!reply.ran) {
+    throw new Error(reply.error);
+  }
+
+  const { remoteScript, device, pluginHost } = reply;
+
+  if (
+    remoteScript.ok === false &&
+    device.ok === false &&
+    !pluginHost?.some(landed)
+  ) {
+    const script = withoutPeriod(remoteScript.detail);
+    const deviceWhy = withoutPeriod(device.detail);
+
+    throw new Error(
+      script === deviceWhy
+        ? `nothing was installed: ${script}.`
+        : `nothing was installed. Remote script: ${script}. Device: ${deviceWhy}.`,
+    );
+  }
+
+  const steps =
+    remoteScript.ok === false && device.ok === false
+      ? `Only the plug-in host wrappers were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call ${INSTALL} again to retry.`
+      : nextSteps(remoteScript, device, context);
+
+  return {
+    remoteScript,
+    device,
+    ...(pluginHost == null ? {} : { pluginHost }),
+    nextSteps: pluginHost?.some((part) => part.ok === false)
+      ? `${steps} ${wrapperRetry(pluginHost)}`
+      : steps,
+  };
+}
+
+/**
+ * @param remoteScript - What became of the remote script
+ * @param device - What became of the device
+ * @param context - Where the call was answered
+ * @returns What to tell the user, and what to call next
+ */
+function nextSteps(
+  remoteScript: InstallPart,
+  device: InstallPart,
+  context: InstallContext,
+): string {
+  if (unchanged(remoteScript) && unchanged(device)) {
+    const unwritten =
+      "Nothing was written (see remoteScript and device), so no restart is needed.";
+
+    return context.running
+      ? unwritten
+      : `${unwritten} Call ${ADD} (ask the user first). ${DRAG_NOW}`;
+  }
+
+  const finish = `Tell the user to finish in Live: ${FINISH_IN_LIVE}`;
+
+  if (device.ok === false) {
+    const retry = context.running
+      ? `Call ${INSTALL} again to retry the device.`
+      : `Then call ${ADD}, which retries the device, or call ${INSTALL} again.`;
+
+    return `Only the remote script was installed; the device was not (see device). Tell the user why, and to finish in Live: ${FINISH_IN_LIVE} ${retry}`;
+  }
+
+  if (remoteScript.ok === false) {
+    const drag = context.running ? "" : ` ${DRAG_NOW}`;
+
+    return `Only the device was installed; the remote script was not (see remoteScript). Tell the user why, and call ${INSTALL} again to retry it.${drag}`;
+  }
+
+  return context.running
+    ? `${finish} Once they have, call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`
+    : `${finish} Then call ${ADD} (ask the user first). ${DRAG_NOW}`;
+}
+
+/**
+ * @param part - What became of the remote script or the device
+ * @returns True when nothing was written: the file is current, or a different
+ *   copy was kept
+ */
+function unchanged(part: InstallPart): boolean {
+  return (
+    part.ok == null && (part.status === "current" || part.status === "kept")
+  );
+}
+
+/**
+ * @param part - What became of one wrapper
+ * @returns True when the wrapper file was written
+ */
+function landed(part: PluginHostPart): boolean {
+  return (
+    part.ok == null &&
+    (part.status === "installed" || part.status === "updated")
+  );
+}
+
+/**
+ * @param pluginHost - The wrappers' parts, at least one of which failed
+ * @returns What to tell the user about the wrappers that didn't install
+ */
+function wrapperRetry(pluginHost: PluginHostPart[]): string {
+  const names = pluginHost
+    .filter((part) => part.ok === false)
+    .map((part) => part.name)
+    .join(", ");
+
+  return `Plug-in hosting needs ${names} (see pluginHost): tell the user why, and call ${INSTALL} again to retry.`;
+}
+
+/**
+ * @param text - A reason
+ * @returns It without a closing period, to sit in a longer sentence
+ */
+function withoutPeriod(text: string): string {
+  return text.replace(/\.$/, "");
+}

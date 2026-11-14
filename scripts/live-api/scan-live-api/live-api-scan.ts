@@ -23,43 +23,62 @@ export interface ScanContext {
   seenTypes: Set<string>;
 }
 
+/** The `ppal-live-api` result: one entry in `results` per operation. */
+export interface RawApiResult {
+  path?: string;
+  id: string;
+  results: unknown[];
+}
+
+/**
+ * Pull the `ppal-live-api` result out of a REST response body. The REST
+ * default is parsed JSON, so `result` is the tool's `{ path?, id, results }`
+ * object; an error comes back as `isError` with a string.
+ * @param data - Parsed REST response body
+ * @returns The tool result, or null when the call failed or has no results
+ */
+export function parseRawApiResponse(data: unknown): RawApiResult | null {
+  const body = data as {
+    result?: Partial<RawApiResult> | string | null;
+  } | null;
+  const result = body?.result;
+
+  if (
+    (data as { isError?: boolean } | null)?.isError ||
+    result == null ||
+    typeof result !== "object" ||
+    !Array.isArray(result.results)
+  ) {
+    return null;
+  }
+
+  return result as RawApiResult;
+}
+
 /**
  * Call the raw live API via REST
- *
- * Requests `?format=compact` explicitly: the REST default is now parsed JSON,
- * but getInfo/getPropertyValue below regex-parse the compact `result:"..."`
- * string form, so the scan needs the compact response shape.
  * @param baseUrl - Base URL of the Producer Pal server
  * @param path - Live API path
  * @param operations - Operations to execute
- * @returns Compact result text or null
+ * @returns The tool result, or null on failure
  */
 export async function callRawApi(
   baseUrl: string,
   path: string,
   operations: Record<string, unknown>[],
-): Promise<string | null> {
+): Promise<RawApiResult | null> {
   try {
-    const res = await fetch(
-      `${baseUrl}/api/tools/ppal-live-api?format=compact`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path, operations }),
-      },
-    );
+    const res = await fetch(`${baseUrl}/api/tools/ppal-live-api`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, operations }),
+    });
 
     if (!res.ok) {
       return null;
     }
 
-    const data = (await res.json()) as { result?: string; isError?: boolean };
-
-    if (data.isError || !data.result) {
-      return null;
-    }
-
-    return data.result;
+    return parseRawApiResponse(await res.json());
   } catch {
     return null;
   }
@@ -69,75 +88,44 @@ export async function callRawApi(
  * Get info for a Live API path
  * @param baseUrl - Base URL
  * @param path - Live API path
- * @returns Parsed info string or null
+ * @returns Info string, or null if nothing exists at the path
  */
 export async function getInfo(
   baseUrl: string,
   path: string,
 ): Promise<string | null> {
   const result = await callRawApi(baseUrl, path, [{ type: "info" }]);
+  const info = result?.results[0];
 
-  if (!result) {
+  // Id "0" means no Live object is at the path.
+  if (result == null || result.id === "0" || typeof info !== "string") {
     return null;
   }
 
-  const match = /result:"(.*?)\\ndone/.exec(result);
-
-  if (!match) {
-    return null;
-  }
-
-  return (match[1] as string).replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
+  return info === "" ? null : info;
 }
 
 /**
- * Get a property value
+ * Get a property value as a string. `get` returns an array of values; this
+ * reads the first one and stringifies it.
  * @param baseUrl - Base URL
  * @param path - Live API path
  * @param property - Property name
- * @returns Result text or null
- */
-export async function getProperty(
-  baseUrl: string,
-  path: string,
-  property: string,
-): Promise<string | null> {
-  return await callRawApi(baseUrl, path, [{ type: "get", property }]);
-}
-
-/**
- * Get a property value as a string. Reads the first element of the
- * `result:[...]` array that `get` operations return — strings come back
- * unquoted, scalars (numbers/bools) are stringified.
- * @param baseUrl - Base URL
- * @param path - Live API path
- * @param property - Property name
- * @returns The first array element, or null if the result couldn't be parsed
+ * @returns The first value, or null if it couldn't be read
  */
 export async function getPropertyValue(
   baseUrl: string,
   path: string,
   property: string,
 ): Promise<string | null> {
-  const raw = await getProperty(baseUrl, path, property);
+  const result = await callRawApi(baseUrl, path, [{ type: "get", property }]);
+  const values = result?.results[0];
 
-  if (!raw) {
+  if (!Array.isArray(values) || values.length === 0) {
     return null;
   }
 
-  const match = /result:\[(?:"((?:[^"\\]|\\.)*)"|([^,\]]+))/.exec(raw);
-
-  if (!match) {
-    return null;
-  }
-
-  const value = match[1] ?? match[2];
-
-  if (value == null) {
-    return null;
-  }
-
-  return value.replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
+  return String(values[0]);
 }
 
 /**

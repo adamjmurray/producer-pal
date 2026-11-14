@@ -49,7 +49,7 @@ describe("useSettings crypto error handling", () => {
   it("logs (does not throw) when the post-mount decrypt-load fails", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
-      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-3.8-flash" }),
+      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-4-carbon" }),
     );
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -81,11 +81,11 @@ describe("useSettings crypto error handling", () => {
     const { result, errorSpy } = await renderPastFailedLoad();
 
     const initialSavedModel = result.current.savedModel;
-    const initialSettingsConfigured = result.current.settingsConfigured;
+    const initialChatSetUp = result.current.chatSetUp;
 
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
-      result.current.setModel("gemini-3.8-flash");
+      result.current.setModel("gemini-4-carbon");
     });
 
     let saved: boolean | undefined;
@@ -101,7 +101,7 @@ describe("useSettings crypto error handling", () => {
     expect(saved).toBe(false);
     expect(result.current.saveError).toMatch(/encrypt boom/);
     expect(result.current.savedModel).toBe(initialSavedModel);
-    expect(result.current.settingsConfigured).toBe(initialSettingsConfigured);
+    expect(result.current.chatSetUp).toBe(initialChatSetUp);
     await waitForHookState(() => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to save provider settings",

@@ -7,16 +7,18 @@ import {
   differentBuildReason,
   outdatedReason,
   type RemoteScriptAsker,
+  type RemoteScriptUnavailable,
 } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 
 /**
  * The oldest remote script this server works with, so an older script reads as
  * out of date instead of as missing a feature. The version bump raises it to the
- * new release whenever the script changed since the last one. -rcN tags of one
- * x.y.z order by N; other tags don't.
+ * new release whenever the script changed since the last one, and the release
+ * build refuses a stale one. -rcN tags of one x.y.z order by N; other tags
+ * don't.
  */
-export const MIN_REMOTE_SCRIPT_VERSION = "2.5.0";
+export const MIN_REMOTE_SCRIPT_VERSION = "2.6.0-rc1";
 
 /**
  * Dev switch (POST /config `remoteScriptMinVersion`): replaces the minimum, so
@@ -37,17 +39,19 @@ export function setRemoteScriptMinVersion(version: string | null): void {
  * Whether a remote script is too old, and why.
  * @param running - The version the script reported, or null when not known
  * @param asker - Who is asking: the portal words it for its own model
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The reason worded for the model, or null when it is new enough or
  *   its version isn't known
  */
 export function outdatedScript(
   running: string | null,
   asker: RemoteScriptAsker = "device",
+  manage = true,
 ): string | null {
   const needs = minRemoteScriptVersion();
 
   return running != null && isNewerVersion(running, needs)
-    ? outdatedReason(running, needs, asker)
+    ? outdatedReason(running, needs, asker, manage)
     : null;
 }
 
@@ -59,6 +63,7 @@ export function outdatedScript(
  * @param body - The reply's JSON body
  * @param running - The version the script reported, when known
  * @param asker - Who is asking
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The out-of-date reason, or null for any other reply
  */
 export function unknownRouteReason(
@@ -66,6 +71,7 @@ export function unknownRouteReason(
   body: Record<string, unknown>,
   running: string | null,
   asker: RemoteScriptAsker = "device",
+  manage = true,
 ): string | null {
   const unknown =
     status === 404 &&
@@ -81,8 +87,31 @@ export function unknownRouteReason(
 
   // New enough by version, so it's another build of it.
   return running != null && !isNewerVersion(running, needs)
-    ? differentBuildReason(running, asker)
-    : outdatedReason(running, needs, asker);
+    ? differentBuildReason(running, asker, manage)
+    : outdatedReason(running, needs, asker, manage);
+}
+
+/**
+ * An out-of-date reason worded for a caller with ppal-manage, and for one
+ * without. Only V8 knows which the caller is, so both go back; the portal always
+ * has the tool, so it gets one.
+ * @param reason - The reason, worded for a caller with or without the tool
+ * @param asker - Who is asking
+ * @returns The reply fields, or null when there is no reason
+ */
+export function outdatedFields(
+  reason: (manage: boolean) => string | null,
+  asker: RemoteScriptAsker = "device",
+): Pick<RemoteScriptUnavailable, "outdated" | "outdatedWithoutManage"> | null {
+  const outdated = reason(true);
+
+  if (outdated == null) {
+    return null;
+  }
+
+  return asker === "portal"
+    ? { outdated }
+    : { outdated, outdatedWithoutManage: reason(false) ?? outdated };
 }
 
 /** @returns The minimum in force: the dev override, else the built-in one */

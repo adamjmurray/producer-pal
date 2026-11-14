@@ -53,18 +53,44 @@ describe("CopyButton", () => {
     expect(await screen.findByText("Done")).toBeTruthy();
   });
 
-  it("keeps the idle label and does not throw when the write is denied", async () => {
-    writeText.mockRejectedValue(new Error("clipboard denied"));
-    render(<CopyButton text="x" />);
+  it("copies without the async clipboard API, as on a plain-HTTP page", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    const execCommand = vi.fn().mockReturnValue(true);
+
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand,
+    });
+    render(<CopyButton text="hello" />);
 
     fireEvent.click(screen.getByText("Copy"));
 
-    // Let the rejected clipboard promise settle, then confirm the label is
-    // unchanged (the rejection was swallowed, not surfaced or thrown).
+    expect(await screen.findByText("Copied")).toBeTruthy();
+    expect(execCommand).toHaveBeenCalledWith("copy");
+  });
+
+  it("shows 'Copy failed' briefly when nothing can copy", async () => {
+    vi.useFakeTimers();
+    writeText.mockRejectedValue(new Error("clipboard denied"));
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn().mockReturnValue(false),
+    });
+    render(<CopyButton text="x" failedLabel="Nope" />);
+
     await act(async () => {
-      await Promise.resolve();
+      fireEvent.click(screen.getByText("Copy"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText("Nope")).toBeTruthy();
+    expect(screen.queryByText("Copied")).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
     });
     expect(screen.getByText("Copy")).toBeTruthy();
-    expect(screen.queryByText("Copied")).toBeNull();
   });
 });

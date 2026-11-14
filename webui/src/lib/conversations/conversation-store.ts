@@ -5,6 +5,7 @@
 
 import { type Notation } from "#src/shared/notation";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { randomUuid } from "#webui/lib/utils/random-uuid";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -388,5 +389,5 @@ interface Claim {
  * @returns The fresh slot
  */
 function freshSlot(): Slot {
-  return { id: crypto.randomUUID(), state: "fresh", claim: { dead: false } };
+  return { id: randomUuid(), state: "fresh", claim: { dead: false } };
 }

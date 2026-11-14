@@ -67,7 +67,7 @@ export {
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
 export { contextWritePreserves } from "./context/context-write-preserve.ts";
-export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { connectToAbleton } from "./workflow/connect/connect-to-ableton.ts";
 export { deleteTargets } from "./workflow/delete-targets.ts";
 export {
   libraryDiscoveryActions,
@@ -87,10 +87,11 @@ export { deviceMovePairing } from "./device/device-move-pairing.ts";
 export { deviceTypePaths } from "./device/device-type-paths.ts";
 export { deviceKitByName } from "./device/presets/device-kit-by-name.ts";
 export { deviceCopyInPlace } from "./device/device-copy-in-place.ts";
-export { deviceMappedMacros } from "./device/device-mapped-macros.ts";
+export { deviceMappedMacros } from "./device/params/device-mapped-macros.ts";
+export { deviceOptionParams } from "./device/params/device-option-params.ts";
 export { devicePresetSwapByName } from "./device/presets/device-preset-swap-by-name.ts";
 export { deviceLibraryPadSamples } from "./device/device-library-pad-samples.ts";
-export { drumPadForceGuard } from "./device/drum-pad-force-guard.ts";
+export { drumPadForceGuard } from "./device/pads/drum-pad-force-guard.ts";
 export { deviceSoundDesign } from "./device/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
@@ -154,7 +155,10 @@ export {
 } from "./pairing/track-list-pairing.ts";
 export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
-export { rackPadOps } from "./device/rack-pad-ops.ts";
+export { rackPadOps } from "./device/pads/rack-pad-ops.ts";
+export { rackInPadAddLayer } from "./device/pads/rack-in-pad-add-layer.ts";
+export { rackInPadLayerGain } from "./device/pads/rack-in-pad-layer-gain.ts";
+export { rackInPadReadLayers } from "./device/pads/rack-in-pad-read-layers.ts";
 export { partialFailureHonesty } from "./result/partial-failure-honesty.ts";
 export { writeTrustSilentResult } from "./result/write-result-trust.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
@@ -164,3 +168,13 @@ export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts"
 export { updateLiveSet } from "./workflow/update-live-set.ts";
 export { pathInsertPosition } from "./path/path-insert-position.ts";
 export { pathLocatorCoordinate } from "./path/path-locator-coordinate.ts";
+export { upgradeDeviceVersionCheck } from "./workflow/connect/upgrade-device-version-check.ts";
+export { upgradeFirstMessageFullConnect } from "./workflow/connect/upgrade-first-message-full-connect.ts";
+export { upgradeRemoteScriptRestartCheck } from "./workflow/connect/upgrade-remote-script-restart-check.ts";
+export { stepSequencerClip } from "./clip/live-13/step-sequencer-clip.ts";
+export { returnEnvelopeClip } from "./clip/live-13/return-envelope-clip.ts";
+export { sceneReturnClips } from "./clip/live-13/scene-return-clips.ts";
+export { fixedChainRack } from "./device/live-13/fixed-chain-rack.ts";
+export { macroCountLanding } from "./device/live-13/macro-count-landing.ts";
+export { drumSynthInactiveParam } from "./device/live-13/drum-synth-inactive-param.ts";
+export { transientShaperSidechain } from "./device/live-13/transient-shaper-sidechain.ts";

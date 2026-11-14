@@ -15,16 +15,16 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deleteProjectContextSidecar,
-  projectContextSidecarPath,
   readProjectContextSidecar,
   writeProjectContextSidecar,
 } from "../project-context-backup-store.ts";
+import { projectContextSidecarPath } from "../project-context-sidecar-path.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 let projectDir = "";

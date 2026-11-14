@@ -56,22 +56,6 @@ export function savePresets(presets: ChatPreset[]): void {
 }
 
 /**
- * Generate a stable preset id. Prefers crypto.randomUUID; falls back to a
- * timestamp+random string for environments without it.
- * @returns A unique id string
- */
-export function createPresetId(): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/**
  * Whether a preset's captured settings equal the given live buffer fields —
  * used to flag "unsaved edits" when the buffer has drifted from the selected
  * preset. A preset with no captured toolset or notation (legacy / "inherit")

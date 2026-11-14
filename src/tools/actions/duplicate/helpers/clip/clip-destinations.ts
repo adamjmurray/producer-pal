@@ -17,21 +17,23 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
-  parseClipDestinationList,
-  type ClipDestinationPath,
+  type AnySlotPosition,
+  slotPositionText,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import {
+  parseEnvelopeAwareDestinationList,
+  type EnvelopeAwareDestination,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   slotPath,
   type ClipPath,
+  type ReturnSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { skippedCopy } from "../minimal-clip-info.ts";
-import {
-  parseSlotList,
-  type ClipSlotPosition,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
  * One arrangement destination. A null `trackIndex` is a bare `[5|1]`: the entry
@@ -58,8 +60,11 @@ const ALONE: BesideEntries = { arrangement: false, position: false };
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
-  /** Clip slots, in order. Empty for arrangement destinations. */
-  slots: ClipSlotPosition[];
+  /**
+   * Clip slots, in order, on regular or return tracks. Empty for arrangement
+   * destinations.
+   */
+  slots: AnySlotPosition[];
   /**
    * Arrangement destinations, in order, null where the path named something
    * this call can't use. Empty means the source's own track.
@@ -81,14 +86,14 @@ export interface ClipDestinations {
  * Resolves a clip duplicate's destination from its path params.
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart was given
+ * @param startParam - The param that named positions, or null when none did
  * @param beside - What other sources' toPath entries name
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
-  hasArrangementParams: boolean,
+  startParam: string | null,
   beside: BesideEntries = ALONE,
 ): ClipDestinations {
   const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
@@ -100,16 +105,16 @@ export function resolveClipDestinations(
   });
 
   if (toSlot != null) {
-    return legacySlotDestinations(toSlot, hasArrangementParams);
+    return legacySlotDestinations(toSlot, startParam);
   }
 
   const entries = resolveDestinationPositions(
-    parseClipDestinationList(toPath, "toPath"),
+    parseEnvelopeAwareDestinationList(toPath, "toPath"),
     { paramName: "toPath" },
   );
 
-  if (hasArrangementParams) {
-    return arrangementDestinations(entries, beside);
+  if (startParam != null) {
+    return arrangementDestinations(entries, startParam, beside);
   }
 
   if (entries.length === 0) {
@@ -120,7 +125,9 @@ export function resolveClipDestinations(
 
   // A coordinate — bare or not — made the call an arrangement duplicate above,
   // so every entry left here named a lane.
-  return clipSlotDestinations(entries.map(({ lane }) => lane as ClipPath));
+  return clipSlotDestinations(
+    entries.map(({ lane }) => lane as ClipPath | ReturnSlotPath),
+  );
 }
 
 /**
@@ -147,12 +154,12 @@ export function warnInapplicableClipParams(
 /**
  * Resolves the deprecated toSlot param, which only ever named clip slots.
  * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart was given
+ * @param startParam - The param that named positions, or null when none did
  * @returns Clip slot destinations
  */
 function legacySlotDestinations(
   toSlot: string,
-  hasArrangementParams: boolean,
+  startParam: string | null,
 ): ClipDestinations {
   // namedHiddenPath already dropped a toSlot that names nothing, so this always
   // gets at least one entry.
@@ -161,9 +168,9 @@ function legacySlotDestinations(
   // toSlot only ever named clip slots, so it can't be the arrangement
   // destination arrangementStart wants. Drop the weaker of the two rather than
   // failing the call, the way toPath does for the same conflict.
-  if (hasArrangementParams) {
+  if (startParam != null) {
     warnIgnored(
-      "arrangementStart",
+      startParam,
       "toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
@@ -190,12 +197,14 @@ function legacySlotDestinations(
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
  * @param entries - Parsed clip destinations, lane and position apart
+ * @param startParam - The param that named positions, for a warning
  * @param beside - What other sources' entries name: these slots are part of a
  *   mixed list, or these tracks need positions of their own
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(
-  entries: ClipDestinationPath[],
+  entries: EnvelopeAwareDestination[],
+  startParam: string,
   beside: BesideEntries,
 ): ClipDestinations {
   // A coordinate is its own entry's position, so when any entry — this
@@ -203,7 +212,7 @@ function arrangementDestinations(
   // its own: arrangementStart was refused alongside them.
   const fromPath =
     beside.position || entries.some((entry) => entry.position != null);
-  const slots: ClipSlotPosition[] = [];
+  const slots: AnySlotPosition[] = [];
   const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
   const arrangementRefusals: (TargetSkip | null)[] = [];
   const arrangementPositions = entries.map((entry) => entry.position);
@@ -213,6 +222,17 @@ function arrangementDestinations(
 
     if (lane == null) {
       arrangementTargets.push({ trackIndex: null, takeLane: null });
+    } else if (lane.kind === "return-slot") {
+      slots.push({
+        returnIndex: lane.returnIndex,
+        sceneIndex: lane.sceneIndex,
+      });
+      arrangementTargets.push(null);
+      arrangementRefusals[arrangementRefusals.length - 1] = skippedCopy(
+        formatObjectPath(lane),
+        "a return-track slot can't take an arrangement copy; an envelope " +
+          "clip can only go to a return-track slot",
+      );
     } else if (lane.kind === "slot") {
       const slot = slotPath(lane.trackIndex, lane.sceneIndex);
 
@@ -245,9 +265,7 @@ function arrangementDestinations(
     };
   }
 
-  const named = slots
-    .map((slot) => `t${slot.trackIndex}/s${slot.sceneIndex}`)
-    .join(", ");
+  const named = slots.map(slotPositionText).join(", ");
 
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but clip slots, across every source, the position has
@@ -258,7 +276,7 @@ function arrangementDestinations(
     arrangementTargets.every((target) => target == null)
   ) {
     warnIgnored(
-      "arrangementStart",
+      startParam,
       `toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
@@ -302,10 +320,21 @@ function noPositionError(lane: ClipPath): Error {
  * @param paths - Parsed clip destination paths
  * @returns Clip slot destinations
  */
-function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: ClipSlotPosition[] = [];
+function clipSlotDestinations(
+  paths: Array<ClipPath | ReturnSlotPath>,
+): ClipDestinations {
+  const slots: AnySlotPosition[] = [];
 
   for (const path of paths) {
+    if (path.kind === "return-slot") {
+      slots.push({
+        returnIndex: path.returnIndex,
+        sceneIndex: path.sceneIndex,
+      });
+
+      continue;
+    }
+
     // A bare track names two places at once, and guessing between them is how a
     // copy ends up on top of the source. A take lane names the arrangement
     // outright, so it needs a position there rather than a scene.

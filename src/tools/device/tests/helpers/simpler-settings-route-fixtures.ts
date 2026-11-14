@@ -7,7 +7,7 @@
 // mocks node-request-v8-protocol.ts itself.
 
 import { vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   SIMPLER_SETTINGS_ROUTES,
   type SimplerSettingsEntry,

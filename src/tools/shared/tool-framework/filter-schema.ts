@@ -302,8 +302,10 @@ function rebuildEnum(
 function hideEnumValues(schema: ZodType, valuesToHide: string[]): ZodType {
   const unwrapped = unwrapEnum(schema);
   const { enumSchema, values, defaultValue, description, isArray } = unwrapped;
-  const kept = keptValues(values, valuesToHide);
   const aliases = getEnumAliases(enumSchema);
+  // Keep what the enum already hides: the rebuild replaces its whole list.
+  const hidden = [...new Set([...(aliases?.hidden ?? []), ...valuesToHide])];
+  const kept = keptValues(values, hidden);
 
   // An aliased enum rebuilds so its refusal lists only what stays published.
   if (aliases != null) {
@@ -313,7 +315,7 @@ function hideEnumValues(schema: ZodType, valuesToHide: string[]): ZodType {
       aliasedEnum(
         aliases.canonical as [string, ...string[]],
         aliases.aliases,
-        valuesToHide,
+        hidden,
       ),
     );
   }

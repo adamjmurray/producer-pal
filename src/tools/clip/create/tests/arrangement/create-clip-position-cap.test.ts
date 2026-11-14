@@ -13,9 +13,9 @@ import { validateArrangementPositions } from "#src/tools/clip/create/helpers/cli
 import { registerArrangementTrack } from "../create-clip-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const PAST_CAP =
@@ -36,22 +36,22 @@ describe("validateArrangementPositions", () => {
 
   it("allows the last position Live takes", () => {
     expect(() =>
-      validateArrangementPositions(at("394201|1"), 4, 4),
+      validateArrangementPositions(at("394201|1"), 4, 4, "arrangementStart"),
     ).not.toThrow();
   });
 
   it("refuses the first position past it, in bar|beat", () => {
-    expect(() => validateArrangementPositions(at("394201|2"), 4, 4)).toThrow(
-      PAST_CAP,
-    );
+    expect(() =>
+      validateArrangementPositions(at("394201|2"), 4, 4, "arrangementStart"),
+    ).toThrow(PAST_CAP);
   });
 
   it("states the last position in the song's meter", () => {
     // 1,576,800 beats is 262,800 bars of 6/4
     expect(MAX_ARRANGEMENT_POSITION_BEATS / 6).toBe(262_800);
-    expect(() => validateArrangementPositions(at("262802|1"), 6, 4)).toThrow(
-      "(262801|1)",
-    );
+    expect(() =>
+      validateArrangementPositions(at("262802|1"), 6, 4, "arrangementStart"),
+    ).toThrow("(262801|1)");
   });
 });
 
@@ -112,7 +112,7 @@ describe("createClip - arrangement positions past the last Live allows", () => {
         path: "t0/l0[1|1],t0/l0[394202|1]",
         notes: "C3 1|1",
       }),
-    ).rejects.toThrow(PAST_CAP);
+    ).rejects.toThrow("path is past the last position Live allows (394201|1)");
 
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(track.call).not.toHaveBeenCalledWith(

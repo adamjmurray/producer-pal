@@ -17,6 +17,7 @@ import {
   type PitchState,
   type StreamVelocityValue,
 } from "./interpreter-buffer-state.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { clampProbability, clampVelocity } from "./value-clamping.ts";
 
 /**
@@ -51,25 +52,50 @@ export function buildVelocityStream(
  * `processDurationUpdate`: the whole-note fraction scales by the time-signature
  * denominator and the bar component by beatsPerBar. The stream cycles each
  * note's LENGTH; with `@step` omitted those same cycled values also advance the
- * position (the duration-fold — see `expandRepeatPattern`).
+ * position (the duration-fold — see `expandRepeatPattern`). A value that
+ * resolves to zero or less warns and takes the duration in effect before the
+ * stream, as a scalar duration update keeps its previous one.
  * @param values - Raw duration stream values from the parser
  * @param beatsPerBar - Beats per bar (musical beats)
  * @param timeSigDenominator - Time signature denominator
+ * @param previousDuration - The duration in effect before the stream
  * @returns Durations in musical beats
  */
 export function buildDurationStream(
   values: StreamDuration[],
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
+  previousDuration: number,
 ): number[] {
   return values.map((value) => {
     const fractionBeats = wholeNoteFractionToMusicalBeats(
       value.duration,
       timeSigDenominator,
     );
+    const beats = (value.bars ?? 0) * beatsPerBar + fractionBeats;
 
-    return (value.bars ?? 0) * beatsPerBar + fractionBeats;
+    return isUsableDuration(beats) ? beats : previousDuration;
   });
+}
+
+/**
+ * Whether a resolved duration can be used. A note can't have a non-positive
+ * length, so zero or less warns and returns false: the caller keeps its
+ * previous duration. A bar-minus tail can over-subtract (`1bar-n5/4` is -1 beat
+ * in 4/4), which the grammar can't catch because it doesn't know the meter.
+ * @param beats - The resolved duration in musical beats
+ * @returns True when the duration is above 0
+ */
+export function isUsableDuration(beats: number): boolean {
+  if (beats > 0) {
+    return true;
+  }
+
+  emitWarning(
+    `duration resolves to ${beats} musical beats (non-positive); keeping the previous duration`,
+  );
+
+  return false;
 }
 
 /**

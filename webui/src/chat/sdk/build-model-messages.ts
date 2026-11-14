@@ -6,12 +6,16 @@
 import { type ReasoningPart } from "@ai-sdk/provider-utils";
 import {
   type FilePart,
+  type JSONValue,
   type ModelMessage,
   type TextPart,
   type ToolCallPart,
   type ToolResultPart,
   type UserModelMessage,
 } from "ai";
+import { isModelMismatch } from "#webui/chat/helpers/model-identity";
+import { type ReasoningReplay } from "./reasoning-replay";
+import { withThoughtSignature } from "./streaming/gemini-thought-signatures";
 import { type ChatImage, type ChatMessage } from "./types";
 
 /**
@@ -85,16 +89,16 @@ export type DanglingToolReason = "canceled" | "failed";
  * whose turn carries a content ARRAY rather than a string — see
  * {@link mergeUserContent}.
  * @param history - Chat history to convert
- * @param includeReasoning - When true, re-emit captured signed reasoning blocks
- *   on assistant messages (only valid when the request enables thinking — see
- *   isAnthropicThinkingEnabled). Keeps the Anthropic cache prefix byte-stable
- *   across turns. Defaults to false so non-thinking requests are unchanged.
+ * @param includeReasoning - Which captured signed reasoning to re-emit on
+ *   assistant messages (only valid when the request enables thinking — see
+ *   reasoningReplayFor). Keeps the cache prefix byte-stable across turns.
+ *   Defaults to false so non-thinking requests are unchanged.
  * @param maxImages - Most images the request may carry
  * @returns Array of ModelMessage for streamText
  */
 export function buildModelMessages(
   history: ChatMessage[],
-  includeReasoning = false,
+  includeReasoning: ReasoningReplay = false,
   maxImages = MAX_REQUEST_IMAGES,
 ): ModelMessage[] {
   const messages: ModelMessage[] = [];
@@ -262,12 +266,12 @@ function splitUserContent(content: UserContent): {
  * produces a single assistant message (or nothing, for a degenerate empty turn).
  * @param messages - The output array to append to
  * @param msg - The assistant chat message to convert
- * @param includeReasoning - Whether re-emitting captured reasoning blocks is allowed
+ * @param includeReasoning - Which captured reasoning blocks may be re-emitted
  */
 function appendAssistantMessages(
   messages: ModelMessage[],
   msg: ChatMessage,
-  includeReasoning: boolean,
+  includeReasoning: ReasoningReplay,
 ): void {
   // All-or-nothing: only re-emit reasoning when EVERY captured part is signed
   // or redacted. A message that mixes signed and unsigned parts (e.g. reasoning
@@ -275,17 +279,14 @@ function appendAssistantMessages(
   // otherwise emit just the signed subset — a partial thinking sequence whose
   // signature no longer matches its (truncated) content, which Anthropic
   // rejects. Falling back to plain content sends a valid non-thinking turn.
-  const reasoningParts = msg.reasoningParts ?? [];
-  const emitReasoning =
-    includeReasoning &&
-    reasoningParts.length > 0 &&
-    reasoningParts.every((p) => p.signature != null || p.redactedData != null);
+  const emitReasoning = reasoningToEmit(msg, includeReasoning);
+  const toolCalls = msg.toolCalls ?? [];
 
-  if (!msg.toolCalls || msg.toolCalls.length === 0) {
+  if (toolCalls.length === 0) {
     // Plain string unless we need to carry reasoning blocks (which require the
     // structured content form).
     const content = emitReasoning
-      ? buildAssistantContent(msg, true)
+      ? buildAssistantContent(msg, emitReasoning)
       : msg.content;
 
     // A redacted-reasoning-only turn has no text and no tool calls, so it
@@ -315,8 +316,79 @@ function appendAssistantMessages(
   // assume a complete history.)
   messages.push({
     role: "tool",
-    content: buildToolResultContent(msg),
+    content: buildToolResultContent(toolCalls, msg.toolResults ?? []),
   });
+}
+
+/** The reasoning to re-send with one assistant message, in the form to send it. */
+type ReasoningToEmit =
+  | false
+  | { google: string }
+  | { openrouter: NonNullable<ChatMessage["openrouterReasoningDetails"]> }
+  | { anthropic: ReasoningPart[] };
+
+/**
+ * Decide which reasoning, if any, goes back out with one assistant message.
+ * @param msg - The assistant chat message
+ * @param includeReasoning - Which reasoning the request may re-emit
+ * @returns The reasoning to emit; false when this message has none to send
+ */
+function reasoningToEmit(
+  msg: ChatMessage,
+  includeReasoning: ReasoningReplay,
+): ReasoningToEmit {
+  if (typeof includeReasoning === "object") {
+    // A reasoning-only message has nothing else to carry it, and an empty
+    // assistant message is rejected. Signed blocks only mean something to the
+    // model that signed them, so a message from another model (or one whose
+    // model is unknown) goes back as plain content.
+    const google = "google" in includeReasoning;
+    const hasContent = msg.content !== "" || (msg.toolCalls?.length ?? 0) > 0;
+    const sameModel =
+      msg.responseModel != null &&
+      !isModelMismatch(
+        google ? includeReasoning.google : includeReasoning.openrouter,
+        msg.responseModel,
+      );
+
+    if (!hasContent || !sameModel) {
+      return false;
+    }
+
+    if (google) {
+      return includeReasoning;
+    }
+
+    return msg.openrouterReasoningDetails == null
+      ? false
+      : { openrouter: msg.openrouterReasoningDetails };
+  }
+
+  if (!includeReasoning) {
+    return false;
+  }
+
+  const blocks: ReasoningPart[] = [];
+
+  for (const rp of msg.reasoningParts ?? []) {
+    if (rp.signature != null) {
+      blocks.push({
+        type: "reasoning",
+        text: rp.text,
+        providerOptions: { anthropic: { signature: rp.signature } },
+      });
+    } else if (rp.redactedData != null) {
+      blocks.push({
+        type: "reasoning",
+        text: "",
+        providerOptions: { anthropic: { redactedData: rp.redactedData } },
+      });
+    } else {
+      return false;
+    }
+  }
+
+  return blocks.length > 0 ? { anthropic: blocks } : false;
 }
 
 /**
@@ -341,12 +413,12 @@ function appendAssistantMessages(
  * apart.
  * @param history - Chat history the retry would resume from
  * @param includeReasoning - Same flag the retry's own buildModelMessages call
- *   will use (see isAnthropicThinkingEnabled)
+ *   will use (see reasoningReplayFor)
  * @returns True when a resume must append a user turn to be a valid request
  */
 export function endsOnAssistantTurn(
   history: ChatMessage[],
-  includeReasoning = false,
+  includeReasoning: ReasoningReplay = false,
 ): boolean {
   return (
     buildModelMessages(history, includeReasoning).at(-1)?.role === "assistant"
@@ -411,30 +483,63 @@ export function reconcileDanglingToolCalls(
  * because reaching here means the turn's reconcile never ran — a history saved
  * mid-tool and reloaded (autosave fires on the first tool-call part), which says
  * nothing about who ended the turn.
- * @param msg - Assistant message with tool calls
+ * @param toolCalls - The assistant message's tool calls
+ * @param toolResults - The results recorded so far
  * @returns Array of ToolResultPart, one per tool-call, in tool-call order
  */
-function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
-  const resultsById = new Map(
-    (msg.toolResults ?? []).map((tr) => [tr.id, tr] as const),
-  );
+function buildToolResultContent(
+  toolCalls: NonNullable<ChatMessage["toolCalls"]>,
+  toolResults: NonNullable<ChatMessage["toolResults"]>,
+): ToolResultPart[] {
+  const resultsById = new Map(toolResults.map((tr) => [tr.id, tr] as const));
 
-  return (msg.toolCalls ?? []).map((tc) => {
+  return toolCalls.map((tc) => {
     const tr = resultsById.get(tc.id);
-    const value =
-      tr == null
-        ? FAILED_TOOL_RESULT_TEXT
-        : typeof tr.result === "string"
-          ? tr.result
-          : JSON.stringify(tr.result);
 
     return {
       type: "tool-result" as const,
       toolCallId: tc.id,
       toolName: tc.name,
-      output: { type: "text" as const, value },
+      output:
+        tr == null ? toolOutput(FAILED_TOOL_RESULT_TEXT) : resultOutput(tr),
     };
   });
+}
+
+/**
+ * A recorded result as the SDK sent it within a turn. A failure is `error-text`:
+ * plain text would change the request (Anthropic `is_error`, OpenAI and Gemini
+ * wrap it) and miss the prompt cache.
+ * @param entry - Recorded tool result
+ * @returns The tool-result output
+ */
+function resultOutput(
+  entry: NonNullable<ChatMessage["toolResults"]>[number],
+): ToolResultPart["output"] {
+  if (!entry.isError) {
+    return toolOutput(entry.result);
+  }
+
+  const { result, errorText } = entry;
+
+  return {
+    type: "error-text",
+    value:
+      errorText ??
+      (typeof result === "string" ? result : JSON.stringify(result)),
+  };
+}
+
+/**
+ * A tool result as the SDK sends it within a turn. Gemini words text and JSON
+ * differently, so anything else breaks its cache on the next turn.
+ * @param result - Recorded tool result
+ * @returns The tool-result output
+ */
+function toolOutput(result: unknown): ToolResultPart["output"] {
+  return typeof result === "string"
+    ? { type: "text", value: result }
+    : { type: "json", value: result as JSONValue };
 }
 
 /**
@@ -443,44 +548,60 @@ function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
  * text/tool_use, and re-sending the signed block verbatim is what keeps the
  * request prefix byte-stable across turns for prompt caching.
  * @param msg - Assistant message
- * @param includeReasoning - Whether to prepend captured signed reasoning blocks
+ * @param reasoning - Which captured signed reasoning blocks to prepend
  * @returns Structured content array
  */
 function buildAssistantContent(
   msg: ChatMessage,
-  includeReasoning: boolean,
+  reasoning: ReasoningToEmit,
 ): Array<ReasoningPart | TextPart | ToolCallPart> {
   const parts: Array<ReasoningPart | TextPart | ToolCallPart> = [];
+  const google = reasoning !== false && "google" in reasoning;
+  // Gemini's signatures go only to the Gemini model that made them.
+  const signed = <T extends object>(part: T, signature?: string): T =>
+    google ? withThoughtSignature(part, signature) : part;
 
-  if (includeReasoning) {
-    for (const rp of msg.reasoningParts ?? []) {
-      if (rp.signature != null) {
-        parts.push({
-          type: "reasoning",
-          text: rp.text,
-          providerOptions: { anthropic: { signature: rp.signature } },
-        });
-      } else if (rp.redactedData != null) {
-        parts.push({
-          type: "reasoning",
-          text: "",
-          providerOptions: { anthropic: { redactedData: rp.redactedData } },
-        });
+  if (reasoning !== false) {
+    if ("google" in reasoning) {
+      // Thought summaries go back as the SDK sends them within a turn.
+      for (const rp of msg.reasoningParts ?? []) {
+        parts.push(
+          signed({ type: "reasoning", text: rp.text }, rp.thoughtSignature),
+        );
       }
+    } else if ("openrouter" in reasoning) {
+      // One part carrying the whole step's details, as OpenRouter's own stream
+      // hands them to the SDK within a turn.
+      parts.push({
+        type: "reasoning",
+        text: msg.reasoning ?? "",
+        providerOptions: {
+          openrouter: { reasoning_details: reasoning.openrouter },
+        },
+      });
+    } else {
+      parts.push(...reasoning.anthropic);
     }
   }
 
   if (msg.content) {
-    parts.push({ type: "text", text: msg.content });
+    parts.push(
+      signed({ type: "text", text: msg.content }, msg.textThoughtSignature),
+    );
   }
 
   for (const tc of msg.toolCalls ?? []) {
-    parts.push({
-      type: "tool-call",
-      toolCallId: tc.id,
-      toolName: tc.name,
-      input: tc.args,
-    });
+    parts.push(
+      signed(
+        {
+          type: "tool-call",
+          toolCallId: tc.id,
+          toolName: tc.name,
+          input: tc.args,
+        },
+        tc.thoughtSignature,
+      ),
+    );
   }
 
   return parts;

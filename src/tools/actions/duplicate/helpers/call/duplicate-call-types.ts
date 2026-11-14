@@ -3,21 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type EnvelopeReads } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import {
   type ArrangementTrack,
   type ResolvedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type AnySlotPosition } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import {
   type Cover,
   type Step,
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
-import { type SlotCopySource } from "../clip/duplicate-clip-slot.ts";
+import { type SlotCopySource } from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { type ScenePass } from "../sources/scene-clips.ts";
 import { type LaneTarget } from "../sources/copy-clip-to-lane.ts";
 import { type SourceShare } from "../sources/source-plan.ts";
@@ -57,6 +59,8 @@ export interface DuplicateCall {
   type: string;
   id?: string;
   path?: string;
+  /** The names those were sent under, for an error that quotes them */
+  names: TargetNames;
   count: number;
   /** Whether the call copies clips lane to lane instead of making a track */
   laneCopy: boolean;
@@ -112,7 +116,7 @@ export type CopyBody =
   | { kind: "track"; sourceId: string }
   | { kind: "scene"; sourceId: string }
   | { kind: "scene-arrangement"; sourceId: string; startBeats: number }
-  | { kind: "slot"; sourceId: string; turn: number; slot: ClipSlotPosition }
+  | { kind: "slot"; sourceId: string; turn: number; slot: AnySlotPosition }
   | ArrangementCopy
   | { kind: "lane"; entry: string; target: LaneTarget }
   | { kind: "device" | "chain" | "pad"; sourceId: string; toPath?: string };
@@ -150,12 +154,16 @@ export type CopyDraft =
   | {
       /** How a skip entry addresses it */
       named: NamedTarget;
+      /** What `named` named at the start, when it is a source's path */
+      atStart?: string | null;
       /** Why it can't be made */
       skip: string;
       make?: undefined;
     }
   | {
       named: NamedTarget;
+      /** What `named` named at the start, when it is a source's path */
+      atStart?: string | null;
       skip?: undefined;
       /** What the copy is, and what it writes over, once its label is known */
       make: (label: CopyLabel) => CopyMade;
@@ -176,6 +184,10 @@ export interface DuplicateRun {
   spares: Map<string, Spare>;
   /** What each source clip's slot copies share, by the clip's id */
   slotSources: Map<string, SlotCopySource>;
+  /** What a copy of each source clip to another track drops, by the clip's id */
+  envelopeLosses: Map<string, string | null>;
+  /** What the call has learned about listing envelopes through the remote script */
+  envelopeReads: EnvelopeReads;
   /** Deprecated: the name for a take lane a copy makes */
   takeLaneName: string | undefined;
   /** Whether any destination the call named is a take lane */

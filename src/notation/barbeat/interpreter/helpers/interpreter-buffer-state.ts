@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 export interface PitchState {
   pitch: number;
@@ -166,7 +166,7 @@ export function validateBufferedState(
   const buffered = countBufferedPitches(state);
 
   if (buffered > 0 && !state.pitchesEmitted) {
-    console.warn(
+    emitWarning(
       `${buffered} pitch(es) buffered but not emitted before ${operationType}`,
     );
   }
@@ -175,7 +175,7 @@ export function validateBufferedState(
     (state.stateChangedSinceLastPitch && state.pitchGroupStarted) ||
     state.stateChangedAfterEmission
   ) {
-    console.warn(`state change won't affect anything before ${operationType}`);
+    emitWarning(`state change won't affect anything before ${operationType}`);
   }
 }
 

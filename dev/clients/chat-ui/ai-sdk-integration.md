@@ -24,6 +24,37 @@ All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Vercel AI
 Gateway, Ollama) go through this single code path via provider-specific model
 factories in `provider/provider-factories.ts`.
 
+**Local model proxy:** a model server on this computer may send no CORS headers
+(DwarfStar's `ds4-server`), so the browser can't call it. For the `custom`
+provider only, when the base URL's host is exactly `localhost`, `127.0.0.1` or
+`[::1]` and the page itself is served from one of those too,
+`chat/sdk/provider/local-model/local-model-proxy.ts` hands the provider (and the
+Test connection button) a `fetch` that calls `POST|GET /local-model-proxy` on
+the Producer Pal server, with the real URL in the `X-Local-Model-URL` header. LM
+Studio and Ollama send CORS headers and stay direct, as does any other URL. The
+server side is `src/mcp-server/helpers/http/browser/local-model-proxy-route.ts`:
+
+- Targets: a loopback host over http or https, no credentials, and a path ending
+  in `/models`, `/chat/completions`, `/completions`, `/responses` or `/messages`
+  (any prefix, any query). Never Producer Pal's own port, so the proxy can't
+  call its routes. Redirects are never followed (answered 502). The loopback
+  check lives in `src/shared/config.ts`, shared with the UI.
+- Callers: Producer Pal's own chat page only. The connection must be loopback
+  with a loopback `Host` and no proxy headers, and any `Origin` must be this
+  server's own origin. The Vite dev server's origin (loopback, port 5173) also
+  passes in a dev build (`ENABLE_LIVE_API=true`, which a release build refuses).
+  Any other page, even on localhost, and a chat UI opened over the LAN or a
+  tunnel, gets a 403 with an explanation. CORS lists `Authorization` in
+  Allow-Headers for that dev origin only; the built chat UI is same-origin and
+  never preflights.
+- Only `content-type`, `accept`, `authorization` and `content-length` go
+  upstream; never cookie, origin, host or referer.
+- The request body streams through (no size limit) and the response streams back
+  unbuffered, so SSE works. The upstream request is dropped when the browser
+  disconnects.
+- Its own errors carry `X-Producer-Pal-Proxy-Error` and an OpenAI-style
+  `{ error: { message } }` body, which the AI SDK and Test connection show.
+
 **Locked Settings:**
 
 Provider, model, thinking level, small-model mode, the resolved system
@@ -56,6 +87,49 @@ Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant
 `ChatMessage` as `thinkingOverride` — only when it differs from the conversation
 default.
+
+**Signed reasoning and prompt caching:**
+
+Claude checks its prompt cache against the exact earlier assistant messages. A
+dropped thinking block changes the prefix, so the cache read stops there and the
+earlier tool results are billed again on the next turn. So `buildModelMessages`
+re-sends each turn's signed reasoning (`reasoningReplayFor`,
+`chat/sdk/reasoning-replay.ts`):
+
+- Direct Anthropic: `reasoningParts`, only while the `anthropic` thinking option
+  is on. Never widen that check; the API rejects reasoning when thinking is
+  disabled.
+- OpenRouter→Claude: `openrouterReasoningDetails` (Claude's complete, signed
+  `reasoning_details` only), always offered, but only for a step whose
+  `responseModel` is the request's model. A signature means nothing to another
+  model, so after a model switch those steps go back as plain content.
+  `transformOpenRouterRequest` is the last check: if the final body has no
+  reasoning, effort `none`, or a non-`anthropic/` model, it strips Claude's
+  `reasoning_details` from earlier turns. It runs after the "Off" settle, so a
+  model that can't turn reasoning off (Sonnet 5.5) keeps its blocks at "Off".
+
+**Raw stream tests:**
+
+`chat/sdk/tests/stream/` feeds each provider's raw server-sent events through
+the real AI SDK provider and `streamText` loop (only `fetch` is stubbed) into
+`ChatSdkClient`, then checks the history and the next request's wire body. It
+covers Anthropic, OpenAI (Responses), Gemini, and the Chat Completions routes
+(LM Studio, custom, Ollama). The main fixtures (reasoning, tool calls, text,
+cut-off) were checked against real recordings in 2026-11: Anthropic (Haiku and
+Sonnet), OpenAI (GPT luna), Gemini (3.8 flash) and LM Studio (Qwen). Mid-stream
+errors, content-filter stops and blocked prompts are still built by hand: none
+can be triggered with harmless input (Anthropic's documented refusal string did
+not fire on Haiku). `scripts/probes/record-provider-streams.ts` records real
+streams (paid; needs your keys) to check or refresh a fixture; `--max-output`
+caps the answer and `--prompt` swaps the prompt. OpenRouter's raw stream is
+covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
+
+What the tests pin down: only Anthropic and OpenRouter→Claude reasoning is sent
+back on a later turn. Gemini thought summaries, OpenAI reasoning summaries and
+local models' thinking are display-only. The SDK keeps them within a turn, then
+earlier turns go back as plain text and tool calls. For Gemini 3 the SDK adds a
+`skip_thought_signature_validator` signature to those earlier calls and logs an
+AI SDK warning.
 
 **Response Model Tracking:**
 

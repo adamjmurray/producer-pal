@@ -32,6 +32,7 @@ import {
 } from "../helpers/clip-tool-constants.ts";
 import { getTransforms } from "../helpers/clip-turn-readers.ts";
 import { assertMidiJsonNotes } from "../helpers/midi-json-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Snare and hats in the Set's drum map. */
 const SNARE = 40;
@@ -58,7 +59,7 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
   reuseLiveSet: true,
   setup: async (mcpClient: Client) => {
     await mcpClient.callTool({
-      name: "ppal-update-clip",
+      name: TOOLS.updateClip,
       arguments: { path: "t0/s0", transforms: "velocity = 100\ndeviation = 0" },
     });
   },
@@ -72,7 +73,7 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     assertNotesRead(1),
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },

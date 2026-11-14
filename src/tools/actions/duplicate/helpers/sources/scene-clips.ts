@@ -9,8 +9,12 @@
 
 import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  regularSceneClips,
+  returnSceneClips,
+} from "#src/tools/shared/clip/slot-contents/scene-slot-clips.ts";
 import { copyLengthBeats } from "../clip/arrangement-length.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireSceneIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** One clip of a scene, and the track holding it. */
 export interface SceneClip {
@@ -21,45 +25,13 @@ export interface SceneClip {
 /** What a scene holds, read once. */
 export interface ScenePass {
   sceneIndex: number;
-  /** Its clips, in track order */
+  /** Its clips on regular tracks, in track order */
   clips: SceneClip[];
+  /** Where its Live 13 return-track clips sit ("rt0/s1"): they have no
+   * arrangement lane, so a copy there leaves them out */
+  returnClips: string[];
   /** The longest clip copy (pre-roll included), never under 4 beats, in Ableton beats */
   length: number;
-}
-
-/**
- * Callback type for forEachClipInScene
- */
-type ClipInSceneCallback = (
-  clip: LiveAPI,
-  clipSlot: LiveAPI,
-  trackIndex: number,
-) => void;
-
-/**
- * Iterate over all clips in a scene and call a callback for each
- * @param sceneIndex - Scene index
- * @param trackIds - Array of track IDs
- * @param callback - Callback to call for each clip
- */
-export function forEachClipInScene(
-  sceneIndex: number,
-  trackIds: string[],
-  callback: ClipInSceneCallback,
-): void {
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(sceneIndex),
-    );
-
-    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = clipSlot.child("clip");
-
-      if (clip.exists()) {
-        callback(clip, clipSlot, trackIndex);
-      }
-    }
-  }
 }
 
 /**
@@ -75,13 +47,7 @@ export function sceneIndexOf(sceneId: string): number {
     throw new Error(idDoesNotExist(sceneId, "scene"));
   }
 
-  const sceneIndex = scene.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(`no scene index for ${targetLabel(scene)}`);
-  }
-
-  return sceneIndex;
+  return requireSceneIndex(scene);
 }
 
 /**
@@ -90,17 +56,24 @@ export function sceneIndexOf(sceneId: string): number {
  * @returns The pass
  */
 export function readSceneClips(sceneIndex: number): ScenePass {
-  const trackIds = LiveAPI.from(livePath.liveSet).getChildIds("tracks");
+  const trackCount = LiveAPI.from(livePath.liveSet).getChildIds(
+    "tracks",
+  ).length;
   const clips: SceneClip[] = [];
   // A scene is never shorter than 4 beats.
   let length = 4;
 
-  forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
-    clips.push({ clip, trackIndex });
+  for (const { clip, trackIndex } of regularSceneClips(
+    sceneIndex,
+    trackCount,
+  )) {
+    clips.push({ clip, trackIndex: trackIndex as number });
     length = Math.max(length, copyLengthBeats(clip));
-  });
+  }
 
-  return { sceneIndex, clips, length };
+  const returnClips = returnSceneClips(sceneIndex).map(({ path }) => path);
+
+  return { sceneIndex, clips, returnClips, length };
 }
 
 /**

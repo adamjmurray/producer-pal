@@ -8,7 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   handleArrangementOperations,

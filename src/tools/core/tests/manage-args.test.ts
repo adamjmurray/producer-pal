@@ -9,12 +9,32 @@ import { checkManageArgs } from "../helpers/manage-args.ts";
 describe("checkManageArgs", () => {
   it("passes the action and the params it reads", () => {
     expect(
-      checkManageArgs({ action: "install-remote-script", userLibrary: "/x" }),
+      checkManageArgs({ action: "install-producer-pal", userLibrary: "/x" }),
     ).toStrictEqual({
-      action: "install-remote-script",
+      action: "install-producer-pal",
       userLibrary: "/x",
       steps: undefined,
     });
+  });
+
+  it("reads the retired install name as the action that replaced it", () => {
+    expect(
+      checkManageArgs({ action: "install-remote-script", userLibrary: "/x" }),
+    ).toStrictEqual(
+      checkManageArgs({ action: "install-producer-pal", userLibrary: "/x" }),
+    );
+    expect(() =>
+      checkManageArgs({ action: "install-remote-script", steps: 2 }),
+    ).toThrow(/steps is only for action "undo" or "redo"/);
+  });
+
+  it("doesn't list the retired name as a choice", () => {
+    expect(() => checkManageArgs({ action: "wipe" })).toThrow(
+      /^action must be one of: install-producer-pal, /,
+    );
+    expect(() => checkManageArgs({ action: "wipe" })).not.toThrow(
+      /install-remote-script/,
+    );
   });
 
   it("reads steps sent as text", () => {
@@ -23,13 +43,13 @@ describe("checkManageArgs", () => {
 
   it("names the actions when none is given", () => {
     expect(() => checkManageArgs({})).toThrow(
-      "action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo",
+      "action must be one of: install-producer-pal, add-producer-pal, update-producer-pal, undo, redo",
     );
   });
 
   it("names the action it doesn't know", () => {
     expect(() => checkManageArgs({ action: "wipe" })).toThrow(
-      'action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo, not "wipe"',
+      'action must be one of: install-producer-pal, add-producer-pal, update-producer-pal, undo, redo, not "wipe"',
     );
   });
 
@@ -61,7 +81,7 @@ describe("checkManageArgs", () => {
 
   it("refuses steps on an install", () => {
     expect(() =>
-      checkManageArgs({ action: "install-remote-script", steps: 2 }),
+      checkManageArgs({ action: "install-producer-pal", steps: 2 }),
     ).toThrow(/steps/);
   });
 

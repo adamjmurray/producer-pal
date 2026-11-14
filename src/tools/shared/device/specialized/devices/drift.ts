@@ -14,6 +14,7 @@ import {
   writeIntInRange,
 } from "../specialized-param-access.ts";
 import {
+  type InactiveWhenRule,
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "../specialized-device-types.ts";
@@ -123,22 +124,15 @@ export const driftSpec: SpecializedDeviceSpec = {
   displayNames: ["Drift"],
 
   // The LFO and Cyclic Envelope each expose four rate params (Hz / ms / ratio /
-  // synced note value); the "Time Mode" enum picks which one applies, but Live
-  // reports all four active. Each mode leaves its own value live and the other
-  // three inactive.
+  // synced note value); the mode enum picks which one applies, but Live reports
+  // all four active. Each mode leaves its own value live and the other three
+  // inactive. The first two rules use Live 12.4.16's names, the last two the
+  // earlier ones (a rule whose controller is missing is skipped).
   inactiveWhen: [
-    exclusiveModes("LFO Time Mode", {
-      Freq: "LFO Rate",
-      Time: "LFO Time",
-      Ratio: "LFO Ratio",
-      Sync: "LFO Synced",
-    }),
-    exclusiveModes("Cyc Env Time Mode", {
-      Freq: "Cyc Env Rate",
-      Time: "Cyc Env Time",
-      Ratio: "Cyc Env Ratio",
-      Sync: "Cyc Env Synced",
-    }),
+    rateModes("LFO Mode", "LFO", "LFO Freq"),
+    rateModes("Cyc Env Mode", "Cyc Env"),
+    rateModes("LFO Time Mode", "LFO"),
+    rateModes("Cyc Env Time Mode", "Cyc Env"),
   ],
 
   params: [
@@ -195,3 +189,24 @@ export const driftSpec: SpecializedDeviceSpec = {
     },
   ],
 };
+
+/**
+ * One of Drift's four-way rate rules: the mode keeps one rate param active.
+ * @param controller - The mode param
+ * @param section - The rate params' prefix ("LFO" or "Cyc Env")
+ * @param freq - The Hz rate param: "<section> Rate" but for the LFO since
+ *   Live 12.4.16
+ * @returns The rule
+ */
+function rateModes(
+  controller: string,
+  section: string,
+  freq = `${section} Rate`,
+): InactiveWhenRule {
+  return exclusiveModes(controller, {
+    Freq: freq,
+    Time: `${section} Time`,
+    Ratio: `${section} Ratio`,
+    Sync: `${section} Synced`,
+  });
+}

@@ -18,8 +18,9 @@ import {
 import { assertNamesTarget } from "../../path/path-assertions.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import { assertMidiJsonNotes } from "../helpers/midi-json-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /** Closed hats (Ab1) in the Set's drum map. */
 const HATS = 44;
@@ -51,7 +52,7 @@ export const swingAndQuantize: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clip state is read
     assertNotesRead(1),

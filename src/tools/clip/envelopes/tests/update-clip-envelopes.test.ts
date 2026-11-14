@@ -6,14 +6,15 @@
 // update-clip's `envelopes` param, the one part of a clip write that goes out
 // to the Producer Pal remote script.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { useFakeDate } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupArrangementMidiClipMock,
@@ -27,10 +28,13 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** A ramp and a jump, in the clip's 4/4. */
 const NOTATION = "1|1 0 / 3|1 0.8 _ 4|1 0.2";
@@ -59,9 +63,6 @@ const VOLUME_ID = "476";
 
 /** The same parameter as VOLUME_ID, spelled with a leading zero. */
 const VOLUME_ID_PADDED = "0476";
-
-/** A chain's own mixer parameter, inside a rack on the clip's track. */
-const CHAIN_MIXER_ID = "477";
 
 /** The track's Activator, a mixer parameter that isn't volume, pan or a send. */
 const ACTIVATOR_ID = "478";
@@ -97,10 +98,6 @@ describe("updateClip - envelopes", () => {
     registerMockObject(VOLUME_ID_PADDED, {
       type: "DeviceParameter",
       path: `${livePath.track(0).mixerDevice()} volume`,
-    });
-    registerMockObject(CHAIN_MIXER_ID, {
-      type: "DeviceParameter",
-      path: `${livePath.track(0).device(0).chain(1)} mixer_device volume`,
     });
     registerMockObject(ACTIVATOR_ID, {
       type: "DeviceParameter",
@@ -433,13 +430,7 @@ describe("updateClip - envelopes", () => {
   });
 
   describe("at the request deadline", () => {
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+    useFakeDate();
 
     it("waits no longer than the time left, and sends nothing once it's gone", async () => {
       const deadline = Date.now() + 1000;
@@ -589,19 +580,6 @@ describe("updateClip - envelopes", () => {
     );
   });
 
-  it("names a chain's own mixer parameter, not a drum pad or return chain", async () => {
-    const result = await updateClip({
-      id: "123",
-      envelopes: `${CHAIN_MIXER_ID}: ${NOTATION}`,
-    });
-
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        detail: `envelope "${CHAIN_MIXER_ID}": id ${CHAIN_MIXER_ID} is a rack chain's own mixer parameter, which clip automation can't reach`,
-      }),
-    );
-  });
-
   it("names a track mixer parameter that has no mixer name", async () => {
     const result = await updateClip({
       id: "123",
@@ -610,7 +588,7 @@ describe("updateClip - envelopes", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only the track's volume, pan and sends`,
+        detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only a track's or a rack chain's volume, pan and sends`,
       }),
     );
   });

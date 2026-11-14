@@ -25,6 +25,7 @@ import {
   allKnownKindFourCCs,
   deriveItemType,
   deviceTypeForKind,
+  SOURCE_FOLDER_KIND,
   folderKindsForSource,
   fourCCsForKind,
   keywordsForType,
@@ -64,7 +65,7 @@ const LINKED_TO_PLUGIN = `(COALESCE(f.device_id, '') LIKE 'device:au:%'
 
 /** Column list every candidate SELECT shares, matching SearchRow. */
 export const CANDIDATE_COLUMNS = `f.file_id, f.parent_id, f.name, f.use_count,
-  f.file_type, f.subtype, p.folder_kind AS folder_kind,
+  f.file_type, f.subtype, ${SOURCE_FOLDER_KIND} AS folder_kind,
   ${LINKED_TO_PLUGIN} AS linked_to_plugin`;
 
 /** FROM clause every candidate SELECT shares (places join supplies source). */
@@ -454,15 +455,7 @@ function sourceCondition(source: LibrarySource): {
 } {
   const kinds = folderKindsForSource(source);
 
-  // Defensive: source=sample-folder has no DB encoding and yields an empty
-  // kinds list. The tool caller filters this out, but the route is publicly
-  // reachable — emit an impossible predicate to keep the SQL valid (no rows
-  // match) rather than producing `IN ()`.
-  if (kinds.length === 0) {
-    return { sql: "1 = 0", params: [] };
-  }
-
-  const inKinds = `p.folder_kind IN (${kinds.map(() => "?").join(",")})`;
+  const inKinds = `(${SOURCE_FOLDER_KIND}) IN (${kinds.map(() => "?").join(",")})`;
   const inPresetFolder = `p.folder_kind = ${PRESET_FOLDER_KIND}`;
 
   if (source === "plugin") {

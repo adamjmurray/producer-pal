@@ -40,28 +40,25 @@ The suite skips itself when the variable is absent from the test environment.
 
 ### Remote script tests
 
-The `ppal-create-device-browser`, `ppal-create-device-preset` and
-`ppal-update-device-preset` suites load Max for Live devices and presets through
-the Producer Pal remote script, so they need the script installed and selected
-as a control surface — see
-[remote-script/README.md](../../remote-script/README.md). They only run when
-asked:
+Suites that use the Producer Pal remote script (browser loads, presets,
+envelopes, undo, `ppal-manage`) need it installed and selected as a control
+surface — see [remote-script/README.md](../../remote-script/README.md). They run
+by default, and a script that doesn't answer `/ping` fails them rather than
+skipping them. On a machine without the script, skip them explicitly:
 
 ```bash
-npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+E2E_REMOTE_SCRIPT=false npm run e2e:mcp
 ```
 
-That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable a
-suite skips itself. With it, a remote script that doesn't answer `/ping` fails
-the suite instead of skipping it.
-
 `POST /config { "remoteScriptEnabled": false }` makes a running script look
-uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
+uninstalled (a test switch, on any build; `resetConfig()` turns it back on).
 `control/ppal-remote-script-switch` covers it.
 
 `POST /config { "remoteScriptMinVersion": "99.0.0" }` makes a running script
-look out of date (`null` clears it; debug builds only, and `resetConfig()`
-clears it). `control/ppal-remote-script-min-version` covers it.
+look out of date (`null` clears it, and so does `resetConfig()`).
+`control/ppal-remote-script-min-version` covers it.
+`device/create/ppal-create-device-manage-wording` uses both with small-model
+mode to check a refusal names `ppal-manage` only for a caller that has it.
 
 ### The direct Live API tool is off during e2e
 
@@ -110,14 +107,15 @@ listing everything in it. Those specs are the reference for writing assertions.
 The table lists the ones the MCP suites open; `arrangement-sections` is used by
 the evals.
 
-| Set                      | Covers                                                |
-| ------------------------ | ----------------------------------------------------- |
-| `e2e-test-set`           | everything else; the default                          |
-| `racks-test`             | nested racks, macro-mapped params, rack return chains |
-| `arrangement-clip-tests` | arrangement clip edits                                |
-| `tracks-test`            | frozen tracks, nested groups                          |
-| `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder   |
-| `ppal-drum-pad`          | the Producer Pal device inside a drum pad             |
+| Set                      | Covers                                                    |
+| ------------------------ | --------------------------------------------------------- |
+| `e2e-test-set`           | everything else; the default                              |
+| `racks-test`             | nested racks, macro-mapped params, rack return chains     |
+| `arrangement-clip-tests` | arrangement clip edits                                    |
+| `tracks-test`            | frozen tracks, nested groups                              |
+| `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder       |
+| `ppal-drum-pad`          | the Producer Pal device inside a drum pad                 |
+| `live-13-test`           | Live 13 only: step sequencer, envelope clips, fixed racks |
 
 `e2e/live-sets/presets/` holds a rack preset with the Producer Pal device in it.
 See `specs/ppal-drum-pad-spec.md` for how a test loads it.
@@ -141,6 +139,11 @@ Set the `MCP_URL` environment variable to use a different server:
 MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 ```
 
+That machine's device needs **Remote Control** on.
+
+A server on another machine refuses the remote script switches, so
+`resetConfig()` skips them there.
+
 ## Testing another Live version
 
 `ABLETON_APP` names the app bundle the tests open Sets with, so a Live installed
@@ -153,8 +156,13 @@ fails with "Unable to find application named" even though the app is there:
 
 ```bash
 ABLETON_APP="/Applications/Ableton Live 12 Suite 12.3.app" \
-  npm run e2e:mcp -- track/ppal-take-lanes
+  npm run e2e:mcp -- track/take-lanes/ppal-take-lanes
 ```
+
+A suite that opens a Live 13 Set skips itself on Live 12:
+`describe.skipIf(!LIVE_13_OR_NEWER)` from `e2e/mcp/e2e-test-set.ts`, with
+`setupMcpTestContext` called inside the `describe` so no hook opens the Set. It
+reads the version from the app bundle `ABLETON_APP` names.
 
 A Set opens only in the Live that saved it or a newer one. Point an older Live
 at a Set a newer one saved and Live puts up a modal instead of opening it — the

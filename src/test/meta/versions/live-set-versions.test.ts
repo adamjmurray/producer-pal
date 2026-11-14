@@ -40,6 +40,13 @@ const MINOR_VERSION_ATTR = /\bMinorVersion="([^"]*)"/;
 // test — so the pattern is strict and a miss throws.
 const MINOR_VERSION_FORMAT = /^(\d+)\.\d+_(\d{5})$/;
 
+// Sets that test features only a newer Live has, so they can't be saved from
+// MIN_LIVE_VERSION. Each maps to the schema key of the Live it needs. Tests
+// that open one must skip on an older Live.
+const NEWER_LIVE_SETS: Record<string, number> = {
+  "e2e/live-sets/live-13-test Project/live-13-test.als": 130,
+};
+
 describe("test Live Set and preset versions", () => {
   const liveFiles = TEST_LIVE_SET_DIRS.flatMap(findLiveFiles);
   const minSchema = parseMinLiveVersion(MIN_LIVE_VERSION);
@@ -50,8 +57,22 @@ describe("test Live Set and preset versions", () => {
     expect(liveFiles.some((file) => file.endsWith(".adg"))).toBe(true);
   });
 
+  it.each(Object.keys(NEWER_LIVE_SETS))(
+    "newer-Live exception %s still exists",
+    (relPath) => {
+      expect(liveFiles).toContain(relPath);
+    },
+  );
+
   it.each(liveFiles)("%s opens in Live " + MIN_LIVE_VERSION, (relPath) => {
     const schema = readSchemaVersion(path.join(projectRoot, relPath));
+    const allowed = NEWER_LIVE_SETS[relPath];
+
+    if (allowed != null) {
+      expect(schema).toBeLessThanOrEqual(allowed);
+
+      return;
+    }
 
     if (schema > minSchema) {
       expect.fail(
@@ -67,6 +88,7 @@ describe("parseSchemaVersion", () => {
   it.each([
     ["12.0_12300", 123],
     ["12.0_12402", 124],
+    ["13.0_13013", 130],
   ])("reads %s as %i", (stamp, expected) => {
     expect(parseSchemaVersion(stamp)).toBe(expected);
   });
@@ -88,11 +110,17 @@ describe("parseSchemaVersion", () => {
  * @returns Repo-relative paths to the files found, sorted
  */
 function findLiveFiles(relDir: string): string[] {
-  return readdirSync(path.join(projectRoot, relDir), { recursive: true })
-    .map(String)
-    .filter((entry) => LIVE_FILE_EXTENSIONS.some((ext) => entry.endsWith(ext)))
-    .map((entry) => path.join(relDir, entry))
-    .toSorted();
+  return (
+    readdirSync(path.join(projectRoot, relDir), { recursive: true })
+      .map(String)
+      .filter((entry) =>
+        LIVE_FILE_EXTENSIONS.some((ext) => entry.endsWith(ext)),
+      )
+      // Live's own save backups: gitignored, and stamped by whatever Live saved.
+      .filter((entry) => !entry.split(path.sep).includes("Backup"))
+      .map((entry) => path.join(relDir, entry))
+      .toSorted()
+  );
 }
 
 /**

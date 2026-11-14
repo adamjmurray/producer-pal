@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { createClipsForLength } from "../arrangement-length.ts";
+import { createClipForLength } from "../arrangement-length.ts";
 import { type CopyEvent, type StampWorld } from "./stamp-world-test-helpers.ts";
 
 /** What a copy's entry says when Live wrote the clip's automation to the lane. */
@@ -16,17 +16,17 @@ export const LANE_WRITE_NOTE =
  * @param world - The Set
  * @param lengthBeats - The arrangementLength, in beats
  * @param context - Overrides for the call's context
- * @returns The entries createClipsForLength gave
+ * @returns The copy createClipForLength gave
  */
 export function copyAtLength(
   world: StampWorld,
   lengthBeats: number,
   context: Record<string, unknown> = {},
-): ReturnType<typeof createClipsForLength> {
+): ReturnType<typeof createClipForLength> {
   const source = LiveAPI.from(world.source.path);
   const track = LiveAPI.from(livePath.track(0));
 
-  return createClipsForLength(
+  return createClipForLength(
     source,
     track,
     16,

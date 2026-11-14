@@ -73,7 +73,8 @@ export function resolveFragmentAlias(name: string): string {
  * resolver warns about an unknown fragment (that is how a stale driver override
  * gets caught), so every name a driver can reach has to resolve.
  *
- * `code-transforms` only carries text in a code-execution build. The two
+ * `code-transforms` only carries text in a code-execution build.
+ * `duplicate-basic` is one line of the small-model Rules list. The two
  * midi-json `-write` names are empty because midi-json is symmetric enough not
  * to be split, while both drivers' `-write` ref is notation-templated; the alias
  * map can't do this job — it folds two DEPTH refs onto one body, and there is no
@@ -82,9 +83,15 @@ export function resolveFragmentAlias(name: string): string {
  * @param enableCodeExec - Whether the experimental code-transform tool is on
  * @returns Fragment name → built-in body
  */
+// One bullet of the small-model driver's Rules list. A fragment only so its
+// gate can drop it for a caller without the tool; too small to be worth a slot.
+const DUPLICATE_BASIC =
+  "- To copy a clip, scene, track or device, use `ppal-duplicate` — don't re-create it by hand.";
+
 function nonSlotFragments(enableCodeExec: boolean): Record<string, string> {
   return {
     "code-transforms": enableCodeExec ? codeTransforms : "",
+    "duplicate-basic": DUPLICATE_BASIC,
     "midi-json-standard-write": "",
     "midi-json-basic-write": "",
   };

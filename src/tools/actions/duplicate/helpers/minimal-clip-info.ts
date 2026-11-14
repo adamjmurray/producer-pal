@@ -18,10 +18,14 @@ import {
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  returnSlotPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   objectPathForApi,
+  requireTrackIndex,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -70,9 +74,7 @@ export function getMinimalClipInfo(
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (isArrangementClip) {
-    if (clip.trackIndex == null) {
-      throw new Error(`no track for arrangement clip ${targetLabel(clip)}`);
-    }
+    const trackIndex = requireTrackIndex(clip, "arrangement clip");
 
     // The path spells the lane and the start, so nothing else reports either.
     const entry = {
@@ -81,13 +83,22 @@ export function getMinimalClipInfo(
       ...(detail != null && { detail }),
     };
 
-    recordCopySpan(entry, clip, clip.trackIndex);
+    recordCopySpan(entry, clip, trackIndex);
 
     return entry;
   }
 
   const trackIndex = clip.trackIndex;
   const sceneIndex = clip.sceneIndex;
+
+  // An envelope clip sits in a return track's slot.
+  if (clip.returnTrackIndex != null && clip.returnClipSlotIndex != null) {
+    return {
+      id: clip.id,
+      path: returnSlotPath(clip.returnTrackIndex, clip.returnClipSlotIndex),
+      ...(detail != null && { detail }),
+    };
+  }
 
   if (trackIndex == null || sceneIndex == null) {
     throw new Error(`no clip slot for clip ${targetLabel(clip)}`);

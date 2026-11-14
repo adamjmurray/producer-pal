@@ -168,13 +168,18 @@ function preferencesRoot(): string | null {
  */
 function userLibraryPathInCfg(xml: string): string | null {
   const entry = USER_LIBRARY_ENTRY.exec(xml)?.[1];
-  const parent = entry == null ? undefined : PROJECT_PATH.exec(entry)?.[1];
+
+  if (entry == null) {
+    return null;
+  }
+
+  const parent = PROJECT_PATH.exec(entry)?.[1];
 
   if (parent == null || parent === "") {
     return null;
   }
 
-  const name = PROJECT_NAME.exec(entry ?? "")?.[1];
+  const name = PROJECT_NAME.exec(entry)?.[1];
 
   return join(
     decodeXml(parent),

@@ -9,6 +9,7 @@
 import { lookUpMappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts";
 import { READ_DETAIL_MAX_WAIT_MS } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { isUnusedHiddenMacro } from "#src/tools/shared/device/helpers/params/hidden-macros.ts";
 import { findInReadResult } from "./find-in-read-result.ts";
 
 /** A rack's `macros` as the read wrote it, before and after this pass. */
@@ -23,6 +24,7 @@ interface RackMacros {
 interface MacroRack {
   id: string;
   macros: RackMacros;
+  parameters?: { name?: unknown }[];
 }
 
 /**
@@ -56,6 +58,7 @@ export async function addMappedMacros(
 
     if (answer != null && "mapped" in answer) {
       reportMapped(rack.macros, answer.mapped);
+      dropUnmappedHiddenMacros(rack);
     }
   }
 
@@ -78,6 +81,25 @@ function reportMapped(macros: RackMacros, mapped: number[]): void {
   if (hidden.length > 0) {
     macros.hiddenMapped = hidden;
   }
+}
+
+/**
+ * Take the hidden macros nothing maps to out of the rack's `parameters`. A
+ * hidden macro that is mapped stays: it still drives what it is mapped to.
+ * @param rack - A rack whose `macros` now says which are mapped
+ */
+function dropUnmappedHiddenMacros(rack: MacroRack): void {
+  const { parameters, macros } = rack;
+
+  if (parameters == null) {
+    return;
+  }
+
+  rack.parameters = parameters.filter(
+    (param) =>
+      typeof param.name !== "string" ||
+      !isUnusedHiddenMacro(param.name, macros.count, macros.hiddenMapped),
+  );
 }
 
 /**

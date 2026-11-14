@@ -7,7 +7,7 @@
 // distinction, and applying a restore without losing a write that raced it.
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -137,7 +137,9 @@ describe("applying a restored blob around a concurrent write", () => {
     projectContext("");
     vi.mocked(outlet).mockClear();
 
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     // Two session starts racing on the same sidecar. The second one's snapshot
     // no longer matches, but the param already holds exactly what it carries —

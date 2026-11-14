@@ -12,7 +12,7 @@ import {
   ARRANGEMENT_SPLIT_MODE,
   LEGACY_SPLIT_MODE,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/splitting/arrangement-splitting-params.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { pathNamesSomething } from "#src/tools/shared/validation/helpers/object-paths.ts";

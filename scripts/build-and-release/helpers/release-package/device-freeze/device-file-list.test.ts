@@ -83,7 +83,7 @@ describe("listDeviceFiles", () => {
       "device/m2.png",
     );
     write("device/o1", "lic/o2", "device/o3");
-    const { files, warnings } = listDeviceFiles(
+    const { files } = listDeviceFiles(
       deviceDir,
       patcherWith({
         patchers: ["a.maxpat", "b.maxpat"],
@@ -106,7 +106,6 @@ describe("listDeviceFiles", () => {
     expect(files.find((f) => f.name === "o2")?.path).toBe(
       join(deviceDir, "../lic", "o2"),
     );
-    expect(warnings).toStrictEqual([]);
   });
 
   it("puts a patcher's references right after it, following nested patchers", () => {
@@ -151,17 +150,16 @@ describe("listDeviceFiles", () => {
     expect(files.map((f) => f.nodeScript)).toStrictEqual([false, false, true]);
   });
 
-  it("warns about a project entry that is not on disk and leaves it out", () => {
-    write("device/srv.mjs", "device/adapter.js");
-    const { files, warnings } = listDeviceFiles(
-      deviceDir,
-      patcherWith({ other: ["gone-license"] }),
-    );
+  it.each(["patchers", "media", "other"] as const)(
+    "refuses a %s project entry that is not on disk",
+    (section) => {
+      write("device/srv.mjs", "device/adapter.js");
 
-    expect(files.map((f) => f.name)).toStrictEqual(["srv.mjs", "adapter.js"]);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("gone-license");
-  });
+      expect(() =>
+        listDeviceFiles(deviceDir, patcherWith({ [section]: ["gone-file"] })),
+      ).toThrow(/gone-file is in the device's project but not at .*gone-file/);
+    },
+  );
 
   it("refuses a script a box uses that is not built, and says how to build", () => {
     write("device/adapter.js");

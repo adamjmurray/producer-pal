@@ -14,7 +14,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
   description:
-    "Read clip settings, MIDI notes, audio properties, and automation. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id or by any path covering it.",
+    "Read clip settings, MIDI notes, audio properties, and automation. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id or by any path covering it. A MIDI clip shows `scale` only when it differs from the Live Set's (\"\" = off).",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -27,7 +27,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .string()
       .optional()
       .describe(
-        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
+        "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'; 'rt<return>/s<scene>' on a Live 13 return track), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
 
     ...clipSlotAliases("t0/s3"),

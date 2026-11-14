@@ -9,15 +9,15 @@ Returns scene overview by default. Use `include` to add detail.
 
 ## Default response (no includes)
 
-| Field           | Type     | Description                                          |
-| --------------- | -------- | ---------------------------------------------------- |
-| `id`            | `string` | Scene ID                                             |
-| `path`          | `string` | Where the scene is: `"s0"`                           |
-| `name`          | `string` | Scene name with 1-based number (e.g., `"Intro (1)"`) |
-| `clipCount`     | `number` | Number of non-empty clips in the scene               |
-| `tempo`         | `number` | Only present when scene tempo is enabled             |
-| `timeSignature` | `string` | Only present when scene time sig is enabled          |
-| `triggered`     | `true`   | Only present when scene is triggered                 |
+| Field           | Type     | Description                                                               |
+| --------------- | -------- | ------------------------------------------------------------------------- |
+| `id`            | `string` | Scene ID                                                                  |
+| `path`          | `string` | Where the scene is: `"s0"`                                                |
+| `name`          | `string` | Scene name with 1-based number (e.g., `"Intro (1)"`)                      |
+| `clipCount`     | `number` | Number of non-empty clips in the scene, return tracks' included (Live 13) |
+| `tempo`         | `number` | Only present when scene tempo is enabled                                  |
+| `timeSignature` | `string` | Only present when scene time sig is enabled                               |
+| `triggered`     | `true`   | Only present when scene is triggered                                      |
 
 ## Include: `"clips"`
 
@@ -25,9 +25,9 @@ Replaces `clipCount` with full clip details for all non-empty clips in the
 scene. Each clip is read via `readClip()`. Clips carry no `view` (see
 [Redundant field stripping](README.md#redundant-field-stripping)).
 
-| Field   | Type     | Description                               |
-| ------- | -------- | ----------------------------------------- |
-| `clips` | `Clip[]` | Non-empty clips across all regular tracks |
+| Field   | Type     | Description                                                                                        |
+| ------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `clips` | `Clip[]` | Non-empty clips across all regular tracks, then (Live 13) the return tracks'; each has `trackName` |
 
 ## Include: `"notes"`, `"sample"`, `"timing"`, `"warp"`, `"color"`
 

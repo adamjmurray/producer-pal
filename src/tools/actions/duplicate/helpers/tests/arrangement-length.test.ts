@@ -37,7 +37,7 @@ describe("parseArrangementLength", () => {
 
   it("throws error for zero length", () => {
     expect(() => parseArrangementLength("0bar", 4, 4)).toThrow(
-      "arrangementLength must be positive",
+      'arrangementLength "0bar" must be longer than zero',
     );
   });
 

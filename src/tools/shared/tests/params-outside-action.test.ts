@@ -13,13 +13,16 @@ import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { library } from "#src/tools/session/library.ts";
 import { playback } from "#src/tools/session/playback.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 type Tool = (args: never, toolContext?: never) => unknown;
 

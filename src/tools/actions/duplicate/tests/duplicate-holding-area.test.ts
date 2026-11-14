@@ -15,8 +15,8 @@ import {
   setupArrangementClip,
   setupLiveSet,
   setupTrack,
-} from "#src/tools/shared/arrangement/tests/helpers/arrangement-tiling-test-helpers.ts";
-import { createClipsForLength } from "../helpers/clip/arrangement-length.ts";
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-mock-objects.ts";
+import { createClipForLength } from "../helpers/clip/arrangement-length.ts";
 
 /** An 8-bar source clip at the top of the arrangement. */
 const SOURCE_LENGTH = 32;
@@ -122,14 +122,14 @@ function holdingDuplicatePosition(): number {
   return call[2] as number;
 }
 
-describe("createClipsForLength holding area", () => {
+describe("createClipForLength holding area", () => {
   it("keeps the holding area clear of the shortened clip's target", async () => {
     // The holding copy is what gets moved onto the target. If it sits in the
     // target span, moveClipFromHolding reads that as a self-overlap and skips
     // the clear — leaving the crash the clear exists to prevent.
     const { sourceClip, track } = setupShortenOverHoldingArea();
 
-    await createClipsForLength(
+    await createClipForLength(
       sourceClip,
       track,
       TARGET_START,
@@ -148,7 +148,7 @@ describe("createClipsForLength holding area", () => {
   it("clears the target before moving the shortened copy onto it", async () => {
     const { sourceClip, track } = setupShortenOverHoldingArea();
 
-    const result = await createClipsForLength(
+    const result = await createClipForLength(
       sourceClip,
       track,
       TARGET_START,
@@ -160,10 +160,8 @@ describe("createClipsForLength holding area", () => {
     );
 
     expect(track.call).toHaveBeenCalledWith("delete_clip", "id 700");
-    expect(result).toStrictEqual([
-      // TARGET_START 64 in 4/4 is bar 17 beat 1
-      { id: "400", path: "t0[17|1]" },
-    ]);
+    // TARGET_START 64 in 4/4 is bar 17 beat 1
+    expect(result).toStrictEqual({ id: "400", path: "t0[17|1]" });
   });
 });
 
@@ -253,7 +251,7 @@ function setupTrackTrackingItsClips(): LiveAPI {
   return LiveAPI.from(livePath.track(0));
 }
 
-describe("createClipsForLength across a multi-position duplicate", () => {
+describe("createClipForLength across a multi-position duplicate", () => {
   it("stages each copy past the one the same call already placed", async () => {
     // Regression: the holding area was song_length captured at request start,
     // so a copy placed at the end of the arrangement sat exactly where a later
@@ -277,7 +275,7 @@ describe("createClipsForLength across a multi-position duplicate", () => {
 
     // Copy A lands at the end of the arrangement; copy B lands to its left.
     for (const start of [232, 40]) {
-      await createClipsForLength(
+      await createClipForLength(
         sourceClip,
         track,
         start,

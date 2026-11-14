@@ -17,7 +17,11 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { type CommentTree } from "../comment-scan-helpers.ts";
-import { findSourceFiles, projectRoot } from "../meta-test-helpers.ts";
+import {
+  findSourceFiles,
+  projectRoot,
+  repoPath,
+} from "../meta-test-helpers.ts";
 
 /** The exported functions and classes of one module. */
 export interface ModuleExports {
@@ -32,17 +36,21 @@ export interface ModuleExports {
 /**
  * Every non-test module in a tree that exports a function or a class
  * @param tree - Tree name, resolved against the project root
+ * @param skip - Modules to leave out, before they are parsed
  * @returns One entry per module, sorted by path
  */
-export function scanMainExports(tree: CommentTree): ModuleExports[] {
+export function scanMainExports(
+  tree: CommentTree,
+  skip: (file: string, source: string) => boolean = () => false,
+): ModuleExports[] {
   return findSourceFiles(path.join(projectRoot, tree), true)
     .filter((file) => isScannedModule(file))
-    .map((file) =>
-      scanModuleSource(
-        path.relative(projectRoot, file),
-        fs.readFileSync(file, "utf8"),
-      ),
-    )
+    .map((file) => ({
+      file: repoPath(file),
+      source: fs.readFileSync(file, "utf8"),
+    }))
+    .filter(({ file, source }) => !skip(file, source))
+    .map(({ file, source }) => scanModuleSource(file, source))
     .filter((entry) => entry.names.length > 0)
     .toSorted((a, b) => a.file.localeCompare(b.file));
 }
@@ -82,7 +90,29 @@ export function namesItsFile(entry: ModuleExports): boolean {
  * @returns The offending modules, sorted by path
  */
 export function findMainExportViolations(tree: CommentTree): ModuleExports[] {
-  return scanMainExports(tree).filter((entry) => !namesItsFile(entry));
+  return scanMainExports(tree, namesItsFileAtAGlance).filter(
+    (entry) => !namesItsFile(entry),
+  );
+}
+
+/** A plain `export function` or `export class` line, and the name it exports. */
+const PLAIN_EXPORT =
+  /^export\s+(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|class)\s+([\w$]+)/gm;
+
+/**
+ * Whether a plain export line already names the file. Such a module passes
+ * whatever else it exports, so it can skip the parse, which is most of the
+ * scan's cost. Assumes no line inside a string starts with `export function`.
+ * @param file - Repo-relative path
+ * @param source - The module's source
+ * @returns True when the module is known to pass
+ */
+function namesItsFileAtAGlance(file: string, source: string): boolean {
+  return namesItsFile({
+    file,
+    expected: expectedName(path.basename(file)),
+    names: [...source.matchAll(PLAIN_EXPORT)].map((match) => match[1] ?? ""),
+  });
 }
 
 const TS_EXTENSIONS = new Set([".ts", ".tsx"]);
@@ -150,12 +180,10 @@ function sameWord(word: string, fileWord: string): boolean {
  * @returns Exported names
  */
 function exportedNames(filePath: string, source: string): string[] {
-  const parsed = ts.createSourceFile(
-    filePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-  );
+  const parsed = ts.createSourceFile(filePath, source, {
+    languageVersion: ts.ScriptTarget.Latest,
+    jsDocParsingMode: ts.JSDocParsingMode.ParseNone,
+  });
   const names: string[] = [];
   const local = new Set<string>();
 
@@ -205,12 +233,11 @@ function declaredNames(statement: ts.Statement): string[] {
     return [];
   }
 
-  return statement.declarationList.declarations
-    .filter(
-      (declaration) =>
-        ts.isIdentifier(declaration.name) && isFunctionValue(declaration),
-    )
-    .map((declaration) => declaration.name.getText());
+  return statement.declarationList.declarations.flatMap((declaration) =>
+    ts.isIdentifier(declaration.name) && isFunctionValue(declaration)
+      ? [declaration.name.text]
+      : [],
+  );
 }
 
 /**

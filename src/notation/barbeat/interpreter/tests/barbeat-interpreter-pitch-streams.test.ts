@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 // Interpret `notation` and assert the resulting [pitch, start_time] pairs.
 // Returns the notes so callers can make further assertions on the same result.
@@ -253,7 +253,9 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
 
     it("drops out-of-range pitches per voice, keeping the layered rest", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       // C9 (132) is dropped from its voice at index 1; C3 keeps sounding.
       expectPitchStarts("C3 [E3 C9] 1|1,2", [
@@ -268,7 +270,9 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
 
     it("warns and emits nothing when every layered voice is empty", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const result = interpretNotation("[C9 D9] 1|1");
 
       expect(result).toStrictEqual([]);
@@ -329,7 +333,9 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
 
     it("drops out-of-range pitches per chord, keeping the rest", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       // C9 (132) is out of range and dropped; C3 still emits at step 0.
       expectPitchStarts("[(C3 C9) E3] 1|1x2@n/4", [
@@ -375,7 +381,9 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
 
   describe("dangling / unemitted stream warnings", () => {
     it("warns when a pitch stream is buffered but never emitted", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       interpretNotation("[C3 E3 G3]");
 
@@ -386,7 +394,9 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
 
     it("warns when @clear discards a buffered pitch stream", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       interpretNotation("[C3 E3] @clear");
 

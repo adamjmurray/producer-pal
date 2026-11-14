@@ -1,0 +1,15 @@
+# Scan only code that ships or runs for users: the device, server, portal,
+# chat UI, remote script, docs site, examples and workflows. Tests, evals and
+# dev scripts never run on a user's machine, and are most of the code.
+paths:
+  - src
+  - webui
+  - remote-script
+  - docs/.vitepress
+  - examples
+  - .github
+paths-ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/tests/**"
+  - "**/test/**"

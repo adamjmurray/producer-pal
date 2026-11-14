@@ -188,14 +188,11 @@ function AssistantRow({
         timestamp={timestamp}
         showRetry={canRetry && previousUserMessageIdx >= 0}
         onRetry={() => void handleRetry(previousUserMessageIdx)}
-        showCompact={
+        onCompact={
           canRetry && handleCompact != null && isLastAssistantMessage
+            ? () => void handleCompact(originalIdx)
+            : undefined
         }
-        onCompact={() => {
-          if (handleCompact) {
-            void handleCompact(originalIdx);
-          }
-        }}
       />
     </>
   );
@@ -253,29 +250,26 @@ function AssistantBubble({
  * @param props.timestamp - Timestamp element
  * @param props.showRetry - Whether to show retry button
  * @param props.onRetry - Retry callback
- * @param props.showCompact - Whether to show the compact button
- * @param props.onCompact - Compact-up-to-here callback
+ * @param props.onCompact - Compact-up-to-here callback; no button without it
  * @returns Gutter element
  */
 function RightGutter({
   timestamp,
   showRetry,
   onRetry,
-  showCompact,
   onCompact,
 }: {
   timestamp: VNode;
   showRetry: boolean;
   onRetry: () => void;
-  showCompact: boolean;
-  onCompact: () => void;
+  onCompact?: () => void;
 }) {
   return (
     <div className="flex flex-col items-start self-stretch">
       {timestamp}
-      {(showCompact || showRetry) && (
+      {(onCompact != null || showRetry) && (
         <div className="mt-auto flex flex-col">
-          {showCompact && <CompactButton onClick={onCompact} />}
+          {onCompact != null && <CompactButton onClick={onCompact} />}
           {showRetry && <RetryButton onClick={onRetry} />}
         </div>
       )}

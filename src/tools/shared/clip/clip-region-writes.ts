@@ -12,8 +12,14 @@ export interface ClipRegion {
 }
 
 /**
- * The writes that move a clip's region, in an order Live accepts (see
- * endMovesFirst).
+ * The writes that move a clip's region, in an order Live accepts.
+ *
+ * A looping clip checks each write against the other three values, so the
+ * four can't be ordered pair by pair. Live refuses or clamps a write that
+ * leaves loop_start at or past loop_end, start_marker at or past end_marker,
+ * or start_marker at or past loop_end (across the pairs). So: every end that
+ * grows goes first, then both starts, then every end that shrinks. Each write
+ * then lands, as long as the final region is valid.
  * @param current - The pairs' current ends
  * @param current.loop_end - The current loop_end
  * @param current.end_marker - The current end_marker
@@ -24,15 +30,13 @@ export function clipRegionWrites(
   current: Pick<ClipRegion, "loop_end" | "end_marker">,
   next: ClipRegion,
 ): ClipRegion {
-  const loopEndFirst = endMovesFirst(next.loop_start, current.loop_end);
-  const markerEndFirst = endMovesFirst(next.start_marker, current.end_marker);
   const writes: Partial<ClipRegion> = {};
 
-  if (loopEndFirst) {
+  if (endMovesFirst(next.loop_end, current.loop_end)) {
     writes.loop_end = next.loop_end;
   }
 
-  if (markerEndFirst) {
+  if (endMovesFirst(next.end_marker, current.end_marker)) {
     writes.end_marker = next.end_marker;
   }
 
@@ -46,20 +50,16 @@ export function clipRegionWrites(
 }
 
 /**
- * Whether a start/end pair (loop brace or markers) must move its end first.
- *
- * Live rejects a loop_start past loop_end and silently drops a start_marker
- * past end_marker. So a pair writes its start first, unless the new start is
- * at or past the pair's current end. Either way every write lands, as long as
- * the new start is before the new end. The loop brace and the markers can sit
- * apart, so each pair decides alone.
- * @param nextStart - Where the pair's start is going, or null if not written
- * @param currentEnd - Where the pair's end is now
- * @returns True to write the end before the start
+ * Whether an end must be written before the starts: it is not moving down.
+ * Every start is written before an end that shrinks, and after one that grows,
+ * so no start is ever written at or past an end it is about to be below.
+ * @param nextEnd - Where the end is going, or null if not written
+ * @param currentEnd - Where the end is now
+ * @returns True to write the end before the starts
  */
 export function endMovesFirst(
-  nextStart: number | null,
+  nextEnd: number | null,
   currentEnd: number,
 ): boolean {
-  return nextStart != null && nextStart >= currentEnd;
+  return nextEnd != null && nextEnd >= currentEnd;
 }

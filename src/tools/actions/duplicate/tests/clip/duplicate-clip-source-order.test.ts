@@ -220,8 +220,8 @@ describe("duplicate clip fan-out order", () => {
     expect(opOrder).toStrictEqual(["t0", "t1"]);
   });
 
-  it("defers a copy whose arrangementLength tiles into the source", async () => {
-    // Same start, but 16 bars of tiling reaches the source at bar 9, so this
+  it("defers a copy whose arrangementLength reaches into the source", async () => {
+    // Same start, but a 16-bar copy reaches the source at bar 9, so this
     // copy does have to go last.
     setupSource(true, SOURCE_AT_BAR_9);
 
@@ -284,10 +284,10 @@ describe("duplicate clip fan-out order", () => {
   });
 
   it("orders a take-lane source by its own length, not arrangementLength", async () => {
-    // Every copy of a take-lane source is re-created, and a re-created copy is
-    // always the source's length — arrangementLength is ignored (with a
-    // warning). Ordering by it put a copy that really does reach the source
-    // into the safe bucket, ahead of the copy that then read the leftover.
+    // Every copy of a take-lane source is re-created at the source's length,
+    // then resized. Ordering by a shorter length put a copy that really does
+    // reach the source into the safe bucket, ahead of the copy that then read
+    // the leftover.
     setupSource(true, LONG_SOURCE_AT_BAR_9, 0);
 
     await duplicate({

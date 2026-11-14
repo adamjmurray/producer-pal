@@ -6,6 +6,7 @@
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { noteEntry } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { whereObjectIs } from "#src/tools/shared/write-pipeline/where-object-is.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type AppliedTarget,
@@ -18,10 +19,12 @@ import {
   type Target,
   type WriteSpec,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { clipDeletes } from "./helpers/clip-deletes.ts";
 import { deleteObjectByType } from "./helpers/delete-object-by-type.ts";
 import {
   type DeletePayload,
   NOTHING_TO_DELETE,
+  deletePathId,
   deleteTargets,
 } from "./helpers/delete-targets.ts";
 import {
@@ -61,6 +64,9 @@ interface DeleteChecked {
   tracks: Map<number, LiveAPI>;
   /** Which named tracks are groups, and which sit inside one that is named */
   groups: GroupDeletes;
+  /** What each scene's or track's delete says about the clips that go with it,
+   * by target index, read before the first delete */
+  clips: ReadonlyMap<number, string>;
 }
 
 /**
@@ -99,10 +105,16 @@ const DELETE_WRITE: WriteSpec<
     sent,
     tracks: new Map(),
     groups: groupDeletes(type, targets),
+    clips: clipDeletes(type, targets),
   }),
   plan: planDeletes,
   write: deleteTarget,
   settle: settleDelete,
+  // Deleting an object shifts the siblings after it.
+  locate: {
+    idAt: (path, { type }) => deletePathId(path, type),
+    whereIs: (id) => whereObjectIs(id),
+  },
 };
 
 // --- Helpers below main export ---
@@ -170,12 +182,15 @@ function deleteTarget(
     return noteEntry(named, `${NOTHING_TO_DELETE}${data.hint ?? ""}`);
   }
 
-  const { type, tracks, groups } = step.checked;
+  const { type, tracks, groups, clips } = step.checked;
   const { id } = data;
   const address = step.planned;
-  const alsoDeleted = alsoDeletedDetail(
-    groups.unnamedInside.get(step.index) ?? [],
-  );
+  const alsoDeleted =
+    clips.get(step.index) ??
+    alsoDeletedDetail(
+      groups.unnamedInside.get(step.index) ?? [],
+      groups.insideClips.get(step.index),
+    );
   let { object } = data;
 
   if (groups.covered.has(step.index)) {
@@ -183,15 +198,24 @@ function deleteTarget(
     object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      return { id, ...addressField(address, true) };
+      return {
+        id,
+        ...addressField(address, true),
+        ...(clips.has(step.index) && { detail: clips.get(step.index) }),
+      };
     }
   }
 
   const refusal = deleteObjectByType(type, id, object, tracks, (phrase) =>
-    step.landed(landedPhrase(phrase, groups, step.index, alsoDeleted), {
-      id,
-      ...addressField(address, type === "track"),
-    }),
+    step.landed(
+      clips.has(step.index)
+        ? `${phrase}, ${alsoDeleted}`
+        : landedPhrase(phrase, groups, step.index, alsoDeleted),
+      {
+        id,
+        ...addressField(address, type === "track" || type === "scene"),
+      },
+    ),
   );
 
   if (refusal != null) {
