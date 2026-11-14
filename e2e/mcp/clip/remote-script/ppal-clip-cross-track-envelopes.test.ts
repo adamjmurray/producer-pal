@@ -12,13 +12,14 @@
  * Uses: e2e-test-set — t8 is the empty MIDI track, which gets an Auto Filter
  * and the source clip; t0 "Drums" s6 is an empty slot to copy to, and t3 "Lead"
  * (an instrument, so its lanes can be read) gets an Auto Filter and the
- * arrangement copy.
+ * arrangement copy. t7 "Racks" has an Instrument Rack whose chain's own volume
+ * takes an envelope.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- clip/remote-script/ppal-clip-cross-track-envelopes
  */
 import { describe, expect, it } from "vitest";
-import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../../e2e-test-set.ts";
 import {
   createTestDeviceAt,
   setConfig,
@@ -191,6 +192,53 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect((await parameterNamed(target, "Frequency")).automation).toBe(
         undefined,
       );
+    });
+
+    // A chain's volume sits on the chain's own mixer, not in a device's
+    // parameter list, and no read gives its id, so the Live API is asked.
+    it("writes, reads and names an envelope on a rack chain's own volume", async () => {
+      const chain = `t${String(RACKS_TRACK)}/d0/c0`;
+      const slot = `t${String(RACKS_TRACK)}/s0`;
+
+      await setConfig({ liveApiEnabled: true });
+
+      const volume = await call<{ id: string }>("ppal-live-api", {
+        path: `live_set tracks ${String(RACKS_TRACK)} devices 0 chains 0 mixer_device volume`,
+        operations: [{ type: "get-property", property: "name" }],
+      });
+      const clip = await createClipInSlot(ctx, slot, {
+        notes: "C3 1|1",
+        length: "4bar",
+      });
+      const written = await call<{ envelopes?: number }>("ppal-update-clip", {
+        id: clip,
+        envelopes: `${volume.id}: 1|1 0.2 / 1|3 0.6`,
+      });
+
+      expect(written.envelopes).toBe(1);
+
+      const { envelopes } = await call<{
+        envelopes: Array<{ id?: string; device?: string; events?: string }>;
+      }>("ppal-read-clip", { path: slot, include: ["envelopes"] });
+
+      expect(envelopes).toStrictEqual([
+        expect.objectContaining({
+          id: volume.id,
+          device: chain,
+          events: expect.stringMatching(/^1\|1 0\.2 .*\/ 1\|3 0\.6/) as string,
+        }),
+      ]);
+
+      const copy = await call<Entry>("ppal-duplicate", {
+        type: "clip",
+        path: slot,
+        toPath: DESTINATION_SLOT,
+      });
+
+      expect(copy.detail).toBe(
+        `dropped the device envelopes, which don't copy to another track: Chain Volume (${chain})`,
+      );
+      expect(await envelopeNames(DESTINATION_SLOT)).toStrictEqual([]);
     });
 
     it("says nothing for a copy within the same track", async () => {

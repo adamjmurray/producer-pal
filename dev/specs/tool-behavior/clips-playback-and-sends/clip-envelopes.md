@@ -238,12 +238,10 @@ never get it, and it is omitted otherwise.
 
 `ppal-read-clip` `envelopes` lists each automated parameter. One on a rack
 chain's own volume, pan or send has the chain's path as its `device`
-(`t0/d0/c1`); its `id` is no write target, and a line naming it is skipped with
-`is a rack chain's own mixer parameter, whose envelope can be read but not written`.
-An envelope's `detail` is a note about it: why `events` is absent, or, on an
-unwarped audio clip,
-`doesn't play: the clip is unwarped. Turn warping on to hear it` beside the
-events. One field, not two: both are plain text for the model about why the
+(`t0/d0/c1`), and its `id` is a write target like any other. An envelope's
+`detail` is a note about it: why `events` is absent, or, on an unwarped audio
+clip, `doesn't play: the clip is unwarped. Turn warping on to hear it` beside
+the events. One field, not two: both are plain text for the model about why the
 envelope isn't what it looks like.
 
 When the clip's `has_envelopes` is true but no automation was found, `envelopes`

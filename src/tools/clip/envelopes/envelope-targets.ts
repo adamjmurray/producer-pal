@@ -24,9 +24,13 @@ const DEVICE_PARAMETER =
 const MIXER_PARAMETER =
   /^live_set (?:tracks|return_tracks) \d+ mixer_device (?:(volume|panning)|sends (\d+))$/;
 
+/** A rack chain's own volume, pan or send; group 1 is the chain's Live path. */
+const CHAIN_MIXER_PARAMETER =
+  /^(live_set (?:tracks|return_tracks) \d+(?: devices \d+ chains \d+)+) mixer_device (?:(volume|panning)|sends (\d+))$/;
+
 /** Which parameter of which device an envelope route writes. */
 export interface EnvelopeTarget {
-  /** d0, or d0/c1/d0 into rack chains; absent for a mixer parameter */
+  /** d0, or d0/c1/d0 into rack chains; d0/c1 for that chain's own mixer; absent for the track's */
   device?: string;
   /** The parameter's index on its device, or volume/pan/send0.. */
   parameter: string | number;
@@ -146,26 +150,39 @@ function trackParameter(target: string, path: string): EnvelopeTarget {
     return { parameter: mixerParameterName(mixer[1], mixer[2]) };
   }
 
+  const chainMixer = CHAIN_MIXER_PARAMETER.exec(path);
+
+  if (chainMixer != null) {
+    return {
+      device: pathOnTrack(chainMixer[1] as string),
+      parameter: mixerParameterName(chainMixer[2], chainMixer[3]),
+    };
+  }
+
   const device = DEVICE_PARAMETER.exec(path);
 
   if (device == null) {
     throw new Error(`id ${target} ${unreachableReason(path)}`);
   }
 
-  // The path matched, so its track prefix did too and it always spells.
-  const devicePath = extractDevicePath(path) as string;
+  return { device: pathOnTrack(path), parameter: Number(device[1]) };
+}
 
-  return {
-    // The first segment is the track, which the request names separately.
-    device: devicePath.split("/").slice(1).join("/"),
-    parameter: Number(device[1]),
-  };
+/**
+ * Spell a device or chain the way the remote script walks to it from the track.
+ * @param path - A Live path that already matched one of the patterns above
+ * @returns d0, d0/c1/d0, or d0/c1 for a chain
+ */
+function pathOnTrack(path: string): string {
+  // The path matched, so its track prefix did too and it always spells. The
+  // first segment is the track, which the request names separately.
+  return (extractDevicePath(path) as string).split("/").slice(1).join("/");
 }
 
 /**
  * Say why a parameter on the clip's track can't be addressed. The remote
- * script's device walk only spells devices and chains, and the track's volume,
- * pan and sends.
+ * script's device walk only spells devices and chains, and a track's or a
+ * chain's volume, pan and sends.
  * @param path - The parameter's Live path
  * @returns What's wrong with where it sits, to follow "id N"
  */
@@ -179,9 +196,7 @@ function unreachableReason(path: string): string {
   }
 
   if (path.includes(" mixer_device ")) {
-    return path.includes(" chains ")
-      ? "is a rack chain's own mixer parameter, whose envelope can be read but not written"
-      : "is a mixer parameter clip automation can't reach: only the track's volume, pan and sends";
+    return "is a mixer parameter clip automation can't reach: only a track's or a rack chain's volume, pan and sends";
   }
 
   return "is a parameter clip automation can't reach";

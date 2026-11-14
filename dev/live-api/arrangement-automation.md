@@ -63,8 +63,9 @@ it can't read what to carry. A clip re-created on a take lane carries no
 envelopes at all.
 
 What carries: mixer volume, pan, sends, track activator, rack macros, and device
-parameters inside racks. Chain mixer volume doesn't (and `ppal-update-clip`
-already refuses chain and drum-pad parameters).
+parameters inside racks. A rack chain's own volume carried too when written
+through `ppal-update-clip` on Live 12.4 (an earlier check found it didn't).
+`ppal-update-clip` refuses drum-pad parameters.
 
 ## Writing a lane under an existing arrangement clip
 

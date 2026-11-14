@@ -592,16 +592,31 @@ describe("updateClip - envelopes", () => {
     );
   });
 
-  it("names a chain's own mixer parameter, not a drum pad or return chain", async () => {
-    const result = await updateClip({
+  it("writes a rack chain's own mixer parameter by its mixer name", async () => {
+    registerMockObject("482", {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).device(0).chain(1).device(0).chain(0)} mixer_device sends 1`,
+    });
+    mockNonExistentObjects();
+
+    await updateClip({
       id: "123",
       envelopes: `${CHAIN_MIXER_ID}: ${NOTATION}`,
     });
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        detail: `envelope "${CHAIN_MIXER_ID}": id ${CHAIN_MIXER_ID} is a rack chain's own mixer parameter, whose envelope can be read but not written`,
-      }),
+    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual({
+      track: "t0",
+      slot: 0,
+      device: "d0/c1",
+      parameter: "volume",
+      points: POINTS,
+    });
+
+    vi.mocked(requestNode).mockClear();
+    await updateClip({ id: "123", envelopes: `482: ${NOTATION}` });
+
+    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual(
+      expect.objectContaining({ device: "d0/c1/d0/c0", parameter: "send1" }),
     );
   });
 
@@ -613,7 +628,7 @@ describe("updateClip - envelopes", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only the track's volume, pan and sends`,
+        detail: `envelope "${ACTIVATOR_ID}": id ${ACTIVATOR_ID} is a mixer parameter clip automation can't reach: only a track's or a rack chain's volume, pan and sends`,
       }),
     );
   });
