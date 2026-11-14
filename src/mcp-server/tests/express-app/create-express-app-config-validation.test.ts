@@ -131,6 +131,26 @@ describe("POST /config validation and device failures", () => {
       return outlet;
     }
 
+    /**
+     * Flip liveApiEnabled and check the call fails naming only that field.
+     *
+     * @param before - The config before the call
+     * @returns The 502 body
+     */
+    async function flipLiveApiExpecting502(
+      before: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> {
+      const response = await appState.postConfig({
+        liveApiEnabled: !before.liveApiEnabled,
+      });
+      const body: Record<string, unknown> = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(body.fields).toStrictEqual(["liveApiEnabled"]);
+
+      return body;
+    }
+
     it("sends the rest, names the field that failed and rolls it back", async () => {
       const before = await getConfig();
       const outlet = failOutlets("notation");
@@ -189,25 +209,53 @@ describe("POST /config validation and device failures", () => {
       expect(after.jsonOutput).toBe(before.jsonOutput);
     });
 
-    it("restores liveApiEnabled and the whitelist when the tools send fails", async () => {
+    it.each([
+      // The send that fails, then the one that got through and is sent back.
+      ["tools", "liveApiEnabled"],
+      ["liveApiEnabled", "tools"],
+    ])(
+      "rolls the flag and the whitelist back together when the %s send fails",
+      async (failing, putBack) => {
+        const before = await getConfig();
+        const outlet = failOutlets(failing);
+        const body = await flipLiveApiExpecting502(before);
+
+        expect(body.unrestored).toBeUndefined();
+        const after = await getConfig();
+
+        expect(after.tools).toStrictEqual(before.tools);
+        expect(after.liveApiEnabled).toBe(before.liveApiEnabled);
+
+        // What reached the device is sent back with its old value.
+        expect(outlet).toHaveBeenLastCalledWith(
+          "config",
+          putBack,
+          putBack === "tools"
+            ? JSON.stringify(before.tools)
+            : before.liveApiEnabled,
+        );
+      },
+    );
+
+    it("says so when a setting that reached the device cannot be put back", async () => {
       const before = await getConfig();
+      const outlet = vi.fn((_channel: string, key: string) =>
+        key === "tools" ||
+        (key === "liveApiEnabled" &&
+          outlet.mock.calls.filter(([, k]) => k === key).length > 1)
+          ? Promise.reject(new Error(`no ${key}`))
+          : Promise.resolve(),
+      );
 
-      failOutlets("tools");
-      const response = await appState.postConfig({
-        liveApiEnabled: !before.liveApiEnabled,
-      });
-      const body = await response.json();
+      Max.outlet = outlet as unknown as typeof Max.outlet;
+      const body = await flipLiveApiExpecting502(before);
 
-      expect(response.status).toBe(502);
-      expect(body.fields).toStrictEqual(["liveApiEnabled"]);
+      expect(body.unrestored).toStrictEqual(["liveApiEnabled"]);
+      expect(body.error).toContain("may hold a new value");
       const after = await getConfig();
 
+      expect(after.liveApiEnabled).toBe(before.liveApiEnabled);
       expect(after.tools).toStrictEqual(before.tools);
-      // The flag itself reached the device, so Node keeps it.
-      expect(after.liveApiEnabled).toBe(!before.liveApiEnabled);
-
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-      await appState.postConfig({ liveApiEnabled: before.liveApiEnabled });
     });
 
     it("keeps a setting that reached the device by another route", async () => {

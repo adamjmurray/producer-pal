@@ -46,7 +46,11 @@ success it returns the new config.
 If the device doesn't take a setting (a send to Max fails), the other settings
 are still sent and kept, and the call returns `502` with `{error, fields}`
 naming the fields that failed. Those are rolled back in Node, so `GET /config`
-always matches the device; retry them. Code: `emitConfigOutlets()` in
+always matches the device; retry them. A field is all-or-nothing:
+`liveApiEnabled` sends the flag and the tool list, and if either send fails both
+are rolled back and the one that got through is sent back with its old value. If
+that put-back fails too, the reply adds `unrestored` (the fields where the
+device may hold the new value). Code: `emitConfigOutlets()` in
 `src/mcp-server/helpers/http/config/config-outlets.ts`, `parseConfigBody()` in
 `src/mcp-server/helpers/http/config/config-body.ts`, `handleConfigUpdate()` in
 `src/mcp-server/create-express-app.ts`.

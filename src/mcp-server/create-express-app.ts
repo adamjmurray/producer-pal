@@ -460,15 +460,23 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const before = { ...config };
   const outlets = applyConfigUpdate(parsed.value);
 
-  // Send everything to V8, even if one send fails. A setting that didn't get
-  // through is rolled back in Node, so GET /config still matches the device.
-  const failedFields = await emitConfigOutlets(config, before, outlets);
+  // Send everything to V8, even if one send fails. A field that didn't get
+  // through is rolled back in Node (and on the device), so GET /config still
+  // matches the device.
+  const { fields, unrestored } = await emitConfigOutlets(
+    config,
+    before,
+    outlets,
+  );
 
-  if (failedFields.length > 0) {
+  if (fields.length > 0) {
     res.status(502).json({
       error:
-        "Some settings did not reach the device and were left unchanged. Retry them.",
-      fields: failedFields,
+        unrestored.length > 0
+          ? "Some settings did not reach the device and were left unchanged in Node, but the device may hold a new value for the fields in `unrestored`. Retry them."
+          : "Some settings did not reach the device and were left unchanged. Retry them.",
+      fields,
+      ...(unrestored.length > 0 && { unrestored }),
     });
 
     return;
