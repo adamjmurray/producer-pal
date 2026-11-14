@@ -176,6 +176,19 @@ describe("REST API Routes", () => {
       expect(params).not.toContain("toSlot");
     });
 
+    it("describes what a caller sends, the same as the MCP catalog", async () => {
+      // A param with a default is optional to send. Described as parsed
+      // output, it would be listed as required.
+      const response = await fetch(`${appState.baseUrl}/api/tools`);
+      const body = await response.json();
+      const duplicate = body.tools.find(
+        (t: { name: string }) => t.name === "ppal-duplicate",
+      );
+
+      expect(duplicate.inputSchema.properties).toHaveProperty("count");
+      expect(duplicate.inputSchema.required).toStrictEqual(["type"]);
+    });
+
     it("allows cross-origin requests (LAN/tunnel chat uses a non-localhost origin)", async () => {
       // /api/tools is intentionally NOT localhost-gated like /config: the chat
       // UI reaches it same-origin from the page URL, which over LAN/tunnel is a

@@ -314,7 +314,9 @@ function toolCatalog(profile: RequestProfile): object[] {
           context,
         ),
         annotations: td.toolOptions.annotations,
-        inputSchema: z.toJSONSchema(z.object(published)),
+        // What a caller sends, as MCP publishes it: read as parsed output, a
+        // param with a default is listed as required.
+        inputSchema: z.toJSONSchema(z.object(published), { io: "input" }),
       };
     });
 }
