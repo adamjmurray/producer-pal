@@ -169,14 +169,27 @@ describe("updateTrack routing by name", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("falls back to the identifier when the available list is empty", () => {
+  it("refuses a number that is not an available identifier", () => {
+    expect(() => updateTrack({ id: "123", outputRoutingType: "99" })).toThrow(
+      'the track has no outputRoutingType named "99"',
+    );
+
+    expect(track.set).not.toHaveBeenCalledWith(
+      "output_routing_type",
+      expect.anything(),
+    );
+  });
+
+  it("refuses an identifier when the available list is empty", () => {
     const bare = registerMockObject("456", { path: livePath.track(1) });
 
-    updateTrack({ id: "456", outputRoutingType: "25" });
+    expect(() => updateTrack({ id: "456", outputRoutingType: "25" })).toThrow(
+      "available: none",
+    );
 
-    expect(bare.set).toHaveBeenCalledWith(
+    expect(bare.set).not.toHaveBeenCalledWith(
       "output_routing_type",
-      '{"output_routing_type":{"identifier":25}}',
+      expect.anything(),
     );
   });
 

@@ -235,8 +235,8 @@ function setRouting(
 
 /**
  * Resolve a routing display name (case-insensitive) against the track's
- * available list, falling back to treating the value as Live's numeric
- * identifier so callers that already have one keep working.
+ * available list. One of the list's numeric identifiers works too, so callers
+ * that already have one keep working.
  * @param track - Track object
  * @param routing - The Live routing property (e.g. "input_routing_type") and
  *   the param the value was sent under
@@ -276,9 +276,15 @@ function resolveRoutingIdentifier(
     return Number(first.identifier);
   }
 
+  // A number counts only when it is one of the options: Live may take an
+  // unknown identifier without routing anything, and the entry would say it
+  // landed.
   const asNumber = Number(wanted);
+  const isAvailable = available.some(
+    (routing) => Number(routing.identifier) === asNumber,
+  );
 
-  if (wanted !== "" && Number.isFinite(asNumber)) {
+  if (wanted !== "" && isAvailable) {
     return asNumber;
   }
 

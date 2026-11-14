@@ -15,14 +15,35 @@ import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+const ROUTING = {
+  available_input_routing_types: [
+    '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
+  ],
+  available_input_routing_channels: [
+    '{"available_input_routing_channels": [{"display_name": "1", "identifier": 1}]}',
+  ],
+  available_output_routing_types: [
+    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
+  ],
+  available_output_routing_channels: [
+    '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
+  ],
+};
+
 describe("updateTrack", () => {
   let track123: RegisteredMockObject;
   let track456: RegisteredMockObject;
   let track789: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: livePath.track(0) });
-    track456 = registerMockObject("456", { path: livePath.track(1) });
+    track123 = registerMockObject("123", {
+      path: livePath.track(0),
+      properties: ROUTING,
+    });
+    track456 = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: ROUTING,
+    });
     track789 = registerMockObject("789", { path: livePath.track(2) });
   });
 
@@ -392,7 +413,7 @@ describe("updateTrack", () => {
       it("skips input routing on a return track but still applies output routing", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
-          properties: { can_be_armed: 0 },
+          properties: { can_be_armed: 0, ...ROUTING },
         });
 
         const result = updateTrack({
