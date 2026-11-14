@@ -115,11 +115,8 @@ describe("updateClip - envelopes on a rack chain's own mixer", () => {
 
   it.each([
     ["t0/d0/c1/send3", "t0/d0/c1 has no send3"],
-    ["t0/d0/c5/volume", 'nothing at envelopes target "t0/d0/c5"'],
-    [
-      "t0/d0/volume",
-      "t0/d0 is a device, not a rack chain: name a device parameter by its id",
-    ],
+    ["t0/d0/c5/volume", 'chain at envelopes target "t0/d0/c5" does not exist'],
+    ["t0/d0/volume", 'envelopes target "t0/d0" resolves to device, not chain'],
     [
       "t1/d0/c0/volume",
       "t1/d0/c0 is not on the clip's track (t0), and a clip can only automate its own track",

@@ -240,11 +240,12 @@ never get it, and it is omitted otherwise.
 chain's own volume, pan or send has the chain's path as its `device`
 (`t0/d0/c1`), and its `id` is a write target like any other. So is the chain's
 path and the mixer name, `t0/d0/c1/volume` (`pan`, `send0`..), which needs no
-id: no device read gives a chain mixer parameter's. A path that reaches none is
-that line's `detail`: `t0/d0/c1 has no send3`,
-`t0/d0 is a device, not a rack chain: name a device parameter by its id`, or the
-wording an id on another track or in a drum pad gets. An envelope's `detail` is
-a note about it: why `events` is absent, or, on an unwarped audio clip,
+id: no device read gives a chain mixer parameter's. The chain is spelled as any
+tool takes one, a drum pad's layer included (`t0/d0/pC1/c0/send0`). A path that
+reaches none is that line's `detail`: `t0/d0/c1 has no send3`,
+`envelopes target "t0/d0" resolves to device, not chain`, or the wording an id
+on another track or in a return chain gets. An envelope's `detail` is a note
+about it: why `events` is absent, or, on an unwarped audio clip,
 `doesn't play: the clip is unwarped. Turn warping on to hear it` beside the
 events. One field, not two: both are plain text for the model about why the
 envelope isn't what it looks like.

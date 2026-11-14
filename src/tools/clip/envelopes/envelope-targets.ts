@@ -9,10 +9,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
-import {
-  nothingAtPath,
-  resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { mixerParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { type EnvelopeTrack, isOnTrack, trackText } from "./envelope-track.ts";
@@ -168,38 +165,26 @@ function chainMixerPath(
   name: string,
   track: EnvelopeTrack,
 ): string {
-  const resolved = resolvePathToLiveApi(chainPath, "envelopes target");
+  // The shared lookup takes every spelling of a chain: a rack's `c1`, a drum
+  // pad's layer `pC1/c0`, a return chain.
+  const found = resolvePathForType("chain", chainPath, "envelopes target");
 
-  if (resolved.targetType === "drum-pad") {
-    throw new Error(
-      `${resolved.path} is inside a drum pad, which clip automation can't reach`,
-    );
+  if (found.id == null) {
+    throw new Error(found.reason);
   }
 
-  const chain = LiveAPI.from(resolved.liveApiPath);
-
-  if (resolved.namesNothing != null || !chain.exists()) {
-    throw new Error(
-      nothingAtPath(resolved.path, resolved.namesNothing, "envelopes target"),
-    );
-  }
-
-  if (resolved.targetType === "device") {
-    throw new Error(
-      `${resolved.path} is a device, not a rack chain: name a device parameter by its id`,
-    );
-  }
+  const chain = LiveAPI.from(found.id);
 
   if (!isOnTrack(chain, track)) {
     throw new Error(
-      `${resolved.path} is not on the clip's track (${trackText(track)}), and a clip can only automate its own track`,
+      `${chainPath} is not on the clip's track (${trackText(track)}), and a clip can only automate its own track`,
     );
   }
 
   const parameter = mixerParameter(chain, name);
 
   if (parameter?.exists() !== true) {
-    throw new Error(`${resolved.path} has no ${name}`);
+    throw new Error(`${chainPath} has no ${name}`);
   }
 
   return parameter.path;
