@@ -103,7 +103,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       default:
         "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
         "'t2[5|1]' or 't2[loc:Chorus]' = that spot on the track's arrangement (bar|beat, or loc:<locator name or id> - use loc: when the user names a section, so the clip still lands right if they move it); " +
-        "'t2/l0' = its first take lane (created if missing). '[5|1]' alone = that spot on the source clip's own track; 't2' alone needs a position; no toPath = the source's own track. " +
+        "'t2/l0' = its first take lane (created if missing). '[5|1]' alone = that spot on the source clip's own track; 't2' alone needs a position. Required. " +
         "The track must match the clip's MIDI/audio type. An arrangement clip's automation stays behind; a session clip's envelopes are written to the track's lane over the copy's span. " +
         "Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
         "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); no toPath = the chain's own rack. " +
