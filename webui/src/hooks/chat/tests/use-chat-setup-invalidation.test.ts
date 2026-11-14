@@ -368,3 +368,48 @@ describe("setup failure on a restored conversation", () => {
     );
   });
 });
+
+describe("MCP connect failure after the client was built", () => {
+  /**
+   * Send twice through a client whose first connect fails.
+   * @param secondConnect - How the retried connect behaves
+   * @returns What the adapter recorded and the chat result
+   */
+  async function sendAfterFailedConnect(secondConnect: () => Promise<void>) {
+    const clients: MockChatClient[] = [];
+    const sent: string[] = [];
+    const adapter = trackingAdapter({ clients, sent }, (client) => {
+      client.initialize = vi
+        .fn<() => Promise<void>>()
+        .mockRejectedValueOnce(new Error("MCP connect failed"))
+        .mockImplementation(secondConnect);
+    });
+    const { result } = renderChat(propsWith(adapter));
+
+    await sendMessage(result, "first");
+    await sendMessage(result, "second");
+
+    return { clients, sent, result };
+  }
+
+  it("connects again before the next send streams", async () => {
+    // The failed client is kept (it holds the history the error is shown
+    // against), but it has no tools. Streaming on it as-is sends the model a
+    // turn with nothing to call.
+    const { clients, sent } = await sendAfterFailedConnect(async () => {});
+
+    expect(clients).toHaveLength(1);
+    expect(clients[0]!.initialize).toHaveBeenCalledTimes(2);
+    expect(sent).toStrictEqual(["second"]);
+  });
+
+  it("fails the next send too while the connect still fails", async () => {
+    const { clients, sent, result } = await sendAfterFailedConnect(async () => {
+      throw new Error("MCP still down");
+    });
+
+    expect(clients[0]!.initialize).toHaveBeenCalledTimes(2);
+    expect(sent).toStrictEqual([]);
+    expect(hasErrorPart(result)).toBe(true);
+  });
+});

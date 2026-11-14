@@ -59,6 +59,13 @@ export interface UseInitializeChatReturn<TMessage> {
     overrides?: MessageOverrides,
     stillLive?: () => boolean,
   ) => Promise<void>;
+  /**
+   * Connect the current client again if its last connect failed. A client whose
+   * connect failed is kept (it holds the history the error is shown against)
+   * but has no tools, so a send must not stream on it as it is. Throws when the
+   * connect fails again.
+   */
+  reconnectIfNeeded: () => Promise<void>;
   /** Apply the lock published for the current client, if one is still waiting. */
   applyPendingLock: () => void;
   /** Drop the published lock — the client it describes is gone. */
@@ -99,6 +106,33 @@ export function useInitializeChat<
   const { active, clientRef, pendingInitRef } = deps;
   const { lockSettings } = active;
   const pendingLockRef = useRef<LockedSettingsInput | null>(null);
+  // The client whose connect failed, until a connect on it succeeds.
+  const unconnectedRef = useRef<TClient | null>(null);
+
+  const connect = useCallback(
+    async (client: TClient) => {
+      try {
+        await connectClient(client, pendingInitRef);
+      } catch (error) {
+        unconnectedRef.current = client;
+
+        throw error;
+      }
+
+      if (unconnectedRef.current === client) {
+        unconnectedRef.current = null;
+      }
+    },
+    [pendingInitRef],
+  );
+
+  const reconnectIfNeeded = useCallback(async () => {
+    const client = clientRef.current;
+
+    if (client && unconnectedRef.current === client) {
+      await connect(client);
+    }
+  }, [clientRef, connect]);
 
   const applyPendingLock = useCallback(() => {
     const pending = pendingLockRef.current;
@@ -171,7 +205,7 @@ export function useInitializeChat<
         enabledTools: init.enabledTools,
         maxToolSteps: init.maxToolSteps,
       };
-      await connectClient(clientRef.current, pendingInitRef);
+      await connect(clientRef.current);
 
       // Stopped or superseded while connecting: applying the lock now would
       // overwrite the live turn's with a snapshot of a turn that never streamed.
@@ -195,10 +229,15 @@ export function useInitializeChat<
       adapter,
       extraParams,
       clientRef,
-      pendingInitRef,
+      connect,
       applyPendingLock,
     ],
   );
 
-  return { initializeChat, applyPendingLock, clearPendingLock };
+  return {
+    initializeChat,
+    reconnectIfNeeded,
+    applyPendingLock,
+    clearPendingLock,
+  };
 }
