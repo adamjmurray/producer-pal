@@ -157,7 +157,10 @@ export function useInitializeChat<
     ) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
-      const effectiveThinking = overrides?.thinking ?? thinking;
+      // A retry, edit or restore sends no override: it keeps the level the
+      // conversation is locked to, and only a new one takes the default.
+      const effectiveThinking =
+        overrides?.thinking ?? active.activeThinking ?? thinking;
       // Continue a restored conversation on its locked provider+model (see
       // resolveInitConnection); brand-new conversations fall back to current
       // settings. Rebuilding from current settings here is what previously
