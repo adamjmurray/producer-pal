@@ -386,22 +386,23 @@ export function extractWorkerResult(
 ): string {
   const last = messages.at(-1);
 
-  const reason =
-    last?.isError === true ? streamEndReason(last.content) : undefined;
+  if (last?.isError === true) {
+    const reason = streamEndReason(last.content);
 
-  if (reason != null) {
-    // A reply cut off by the output limit keeps its partial text, ahead of the
-    // reason. The other notices have nothing worth keeping.
-    const before = messages.at(-2);
+    if (reason != null) {
+      // A reply cut off by the output limit keeps its partial text, ahead of
+      // the reason. The other notices have nothing worth keeping.
+      const before = messages.at(-2);
 
-    const partial =
-      streamEndKeepsPartialText(last?.content ?? "") &&
-      before?.role === "assistant" &&
-      before.isError !== true
-        ? before.content.trim()
-        : "";
+      const partial =
+        streamEndKeepsPartialText(last.content) &&
+        before?.role === "assistant" &&
+        before.isError !== true
+          ? before.content.trim()
+          : "";
 
-    return partial ? `${partial}\n\n[${reason}]` : reason;
+      return partial ? `${partial}\n\n[${reason}]` : reason;
+    }
   }
 
   for (let i = messages.length - 1; i >= 0; i--) {

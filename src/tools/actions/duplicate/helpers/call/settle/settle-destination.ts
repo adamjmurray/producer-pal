@@ -247,9 +247,7 @@ function foldLocatorParam(
 
   // A comma-only locator names nothing but is still sent, so it is refused as
   // naming no locator.
-  const names = targetEntries(locator, "locator");
-
-  return (names.length === 0 ? [""] : names)
+  return targetEntries(locator, "locator")
     .map((name) => locatorPosition(name.replaceAll(",", "\\,")))
     .join(",");
 }

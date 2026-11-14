@@ -280,8 +280,9 @@ function appendAssistantMessages(
   // signature no longer matches its (truncated) content, which Anthropic
   // rejects. Falling back to plain content sends a valid non-thinking turn.
   const emitReasoning = reasoningToEmit(msg, includeReasoning);
+  const toolCalls = msg.toolCalls ?? [];
 
-  if (!msg.toolCalls || msg.toolCalls.length === 0) {
+  if (toolCalls.length === 0) {
     // Plain string unless we need to carry reasoning blocks (which require the
     // structured content form).
     const content = emitReasoning
@@ -315,9 +316,16 @@ function appendAssistantMessages(
   // assume a complete history.)
   messages.push({
     role: "tool",
-    content: buildToolResultContent(msg),
+    content: buildToolResultContent(toolCalls, msg.toolResults ?? []),
   });
 }
+
+/** The reasoning to re-send with one assistant message, in the form to send it. */
+type ReasoningToEmit =
+  | false
+  | { google: string }
+  | { openrouter: NonNullable<ChatMessage["openrouterReasoningDetails"]> }
+  | { anthropic: ReasoningPart[] };
 
 /**
  * Decide which reasoning, if any, goes back out with one assistant message.
@@ -328,7 +336,7 @@ function appendAssistantMessages(
 function reasoningToEmit(
   msg: ChatMessage,
   includeReasoning: ReasoningReplay,
-): ReasoningReplay {
+): ReasoningToEmit {
   if (typeof includeReasoning === "object") {
     // A reasoning-only message has nothing else to carry it, and an empty
     // assistant message is rejected. Signed blocks only mean something to the
@@ -342,18 +350,45 @@ function reasoningToEmit(
         google ? includeReasoning.google : includeReasoning.openrouter,
         msg.responseModel,
       );
-    const hasReasoning = google || msg.openrouterReasoningDetails != null;
 
-    return hasReasoning && hasContent && sameModel ? includeReasoning : false;
+    if (!hasContent || !sameModel) {
+      return false;
+    }
+
+    if (google) {
+      return includeReasoning;
+    }
+
+    return msg.openrouterReasoningDetails == null
+      ? false
+      : { openrouter: msg.openrouterReasoningDetails };
   }
 
-  const reasoningParts = msg.reasoningParts ?? [];
+  if (!includeReasoning) {
+    return false;
+  }
 
-  return (
-    includeReasoning &&
-    reasoningParts.length > 0 &&
-    reasoningParts.every((p) => p.signature != null || p.redactedData != null)
-  );
+  const blocks: ReasoningPart[] = [];
+
+  for (const rp of msg.reasoningParts ?? []) {
+    if (rp.signature != null) {
+      blocks.push({
+        type: "reasoning",
+        text: rp.text,
+        providerOptions: { anthropic: { signature: rp.signature } },
+      });
+    } else if (rp.redactedData != null) {
+      blocks.push({
+        type: "reasoning",
+        text: "",
+        providerOptions: { anthropic: { redactedData: rp.redactedData } },
+      });
+    } else {
+      return false;
+    }
+  }
+
+  return blocks.length > 0 ? { anthropic: blocks } : false;
 }
 
 /**
@@ -448,15 +483,17 @@ export function reconcileDanglingToolCalls(
  * because reaching here means the turn's reconcile never ran — a history saved
  * mid-tool and reloaded (autosave fires on the first tool-call part), which says
  * nothing about who ended the turn.
- * @param msg - Assistant message with tool calls
+ * @param toolCalls - The assistant message's tool calls
+ * @param toolResults - The results recorded so far
  * @returns Array of ToolResultPart, one per tool-call, in tool-call order
  */
-function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
-  const resultsById = new Map(
-    (msg.toolResults ?? []).map((tr) => [tr.id, tr] as const),
-  );
+function buildToolResultContent(
+  toolCalls: NonNullable<ChatMessage["toolCalls"]>,
+  toolResults: NonNullable<ChatMessage["toolResults"]>,
+): ToolResultPart[] {
+  const resultsById = new Map(toolResults.map((tr) => [tr.id, tr] as const));
 
-  return (msg.toolCalls ?? []).map((tc) => {
+  return toolCalls.map((tc) => {
     const tr = resultsById.get(tc.id);
 
     return {
@@ -511,54 +548,39 @@ function toolOutput(result: unknown): ToolResultPart["output"] {
  * text/tool_use, and re-sending the signed block verbatim is what keeps the
  * request prefix byte-stable across turns for prompt caching.
  * @param msg - Assistant message
- * @param includeReasoning - Which captured signed reasoning blocks to prepend
+ * @param reasoning - Which captured signed reasoning blocks to prepend
  * @returns Structured content array
  */
 function buildAssistantContent(
   msg: ChatMessage,
-  includeReasoning: ReasoningReplay,
+  reasoning: ReasoningToEmit,
 ): Array<ReasoningPart | TextPart | ToolCallPart> {
   const parts: Array<ReasoningPart | TextPart | ToolCallPart> = [];
-  const google =
-    typeof includeReasoning === "object" && "google" in includeReasoning;
+  const google = reasoning !== false && "google" in reasoning;
   // Gemini's signatures go only to the Gemini model that made them.
   const signed = <T extends object>(part: T, signature?: string): T =>
     google ? withThoughtSignature(part, signature) : part;
 
-  if (google) {
-    // Thought summaries go back as the SDK sends them within a turn.
-    for (const rp of msg.reasoningParts ?? []) {
-      parts.push(
-        signed({ type: "reasoning", text: rp.text }, rp.thoughtSignature),
-      );
-    }
-  } else if (typeof includeReasoning === "object") {
-    // One part carrying the whole step's details, as OpenRouter's own stream
-    // hands them to the SDK within a turn.
-    if (msg.openrouterReasoningDetails != null) {
+  if (reasoning !== false) {
+    if ("google" in reasoning) {
+      // Thought summaries go back as the SDK sends them within a turn.
+      for (const rp of msg.reasoningParts ?? []) {
+        parts.push(
+          signed({ type: "reasoning", text: rp.text }, rp.thoughtSignature),
+        );
+      }
+    } else if ("openrouter" in reasoning) {
+      // One part carrying the whole step's details, as OpenRouter's own stream
+      // hands them to the SDK within a turn.
       parts.push({
         type: "reasoning",
         text: msg.reasoning ?? "",
         providerOptions: {
-          openrouter: { reasoning_details: msg.openrouterReasoningDetails },
+          openrouter: { reasoning_details: reasoning.openrouter },
         },
       });
-    }
-  } else if (includeReasoning) {
-    for (const rp of msg.reasoningParts ?? []) {
-      if (rp.signature != null) {
-        parts.push({
-          type: "reasoning",
-          text: rp.text,
-          providerOptions: { anthropic: { signature: rp.signature } },
-        });
-      } else if (rp.redactedData != null) {
-        parts.push({
-          type: "reasoning",
-          text: "",
-          providerOptions: { anthropic: { redactedData: rp.redactedData } },
-        });
-      }
+    } else {
+      parts.push(...reasoning.anthropic);
     }
   }
 

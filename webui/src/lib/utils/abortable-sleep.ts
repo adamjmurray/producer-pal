@@ -27,20 +27,16 @@ export function abortableSleep(
       return;
     }
 
-    const timer: { id: ReturnType<typeof setTimeout> | null } = { id: null };
-
-    const onAbort = () => {
-      if (timer.id != null) {
-        clearTimeout(timer.id);
-      }
-
-      reject(new Error(abortMessage));
-    };
-
-    timer.id = setTimeout(() => {
+    const timer = setTimeout(() => {
       abortSignal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new Error(abortMessage));
+    };
+
     abortSignal?.addEventListener("abort", onAbort, { once: true });
   });
 }

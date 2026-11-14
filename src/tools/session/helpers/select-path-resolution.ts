@@ -121,7 +121,8 @@ export function resolvePath(
   return {
     ...fromPath,
     trackIndex: args.trackIndex ?? fromPath.trackIndex,
-    category: merge("trackType", args.trackType, fromPath.category),
+    // assertPathAgrees already refused a trackType that disagrees.
+    category: args.trackType ?? fromPath.category,
     sceneIndex: args.sceneIndex ?? fromPath.sceneIndex,
   };
 }
@@ -183,30 +184,6 @@ function deprecatedHint(params: Record<string, unknown>): string {
   );
 
   return `${sent.join(" and ")} ${sent.length > 1 ? "are" : "is"} deprecated`;
-}
-
-/**
- * Combine a param with what `path` said, refusing to pick when they disagree —
- * honoring one and dropping the other is the silent wrong-target bug.
- * @param name - Param name, for the error
- * @param explicit - What the caller passed as its own param
- * @param fromPath - What the path named
- * @returns The agreed value, or whichever one was given
- */
-function merge<T>(
-  name: string,
-  explicit: T | undefined,
-  fromPath: T | undefined,
-): T | undefined {
-  if (explicit == null) {
-    return fromPath;
-  }
-
-  if (fromPath == null || explicit === fromPath) {
-    return explicit;
-  }
-
-  throw pathConflict(name);
 }
 
 /**

@@ -503,12 +503,14 @@ export function startSplitting(
 
       return range == null
         ? []
-        : (rescanSplitClips(
-            new Map([[clip.id, range]]),
-            [],
-            laneViewOf(context),
-            (trackIndex) => tracks.get(trackIndex)?.track,
-          ).get(clip.id) ?? []);
+        : [
+            ...rescanSplitClips(
+              new Map([[clip.id, range]]),
+              [],
+              laneViewOf(context),
+              (trackIndex) => tracks.get(trackIndex)?.track,
+            ).values(),
+          ].flat();
     },
     cut: (clip) => {
       const clipId = clip.id;

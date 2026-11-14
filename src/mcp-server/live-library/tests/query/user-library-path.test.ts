@@ -242,6 +242,25 @@ describe("findUserLibraryPath from Live's preferences", () => {
   });
 
   it.each([
+    ["has no ProjectPath", ""],
+    ["has an empty ProjectPath", '<ProjectPath Value="" />'],
+  ])("skips a Library.cfg whose entry %s", async (_, pathTag) => {
+    const library = folder(join(scratchDir, "Lib", "User Library"));
+
+    writeCfg(macCfg("12.3"), join(scratchDir, "Lib"), 1000);
+    folder(dirname(macCfg("12.4")));
+    writeFileSync(
+      macCfg("12.4"),
+      `<Ableton><ContentLibrary><UserLibrary><LibraryProject Id="0">
+        <ProjectName Value="User Library" />
+        ${pathTag}
+      </LibraryProject></UserLibrary></ContentLibrary></Ableton>`,
+    );
+
+    expect(await findUserLibraryPath()).toBe(library);
+  });
+
+  it.each([
     ["has no ProjectName", ""],
     ["has an empty ProjectName", '<ProjectName Value="" />'],
   ])("names the folder User Library when the entry %s", async (_, nameTag) => {

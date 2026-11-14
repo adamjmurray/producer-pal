@@ -305,7 +305,7 @@ function checkPlayback(call: PlaybackCall): PlaybackChecked {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   if (call.action === PLAY_SCENE) {
-    sceneToPlay(call.sceneIndex ?? undefined);
+    sceneToPlay(call.sceneIndex);
   }
 
   return {
@@ -347,7 +347,7 @@ function beforeTargets(checked: PlaybackChecked, call: Call): void {
       break;
 
     case PLAY_SCENE:
-      checked.state = handlePlayScene(sceneIndex ?? undefined);
+      checked.state = handlePlayScene(sceneIndex);
       call.landed("scene fired");
       break;
 

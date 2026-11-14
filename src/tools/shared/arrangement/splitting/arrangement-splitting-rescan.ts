@@ -38,11 +38,11 @@ export function rescanSplitClips(
   // Kept in the original range order: a splice can insert a clip whose id is
   // itself a later range's key (Live leaves the first piece on the original
   // id), so which index findIndex lands on depends on this order.
-  for (const [oldClipId] of splitClipRanges) {
+  for (const [oldClipId, fresh] of freshByOldId) {
     const staleIndex = clips.findIndex((c) => c.id === oldClipId);
 
     if (staleIndex !== -1) {
-      clips.splice(staleIndex, 1, ...(freshByOldId.get(oldClipId) ?? []));
+      clips.splice(staleIndex, 1, ...fresh);
     }
   }
 
@@ -65,37 +65,34 @@ function freshClipsByOldId(
   lanes: LaneView,
   trackFor?: (trackIndex: number) => LiveAPI | undefined,
 ): Map<string, LiveAPI[]> {
-  const rangesByTrack = new Map<number, [string, SplitClipRange][]>();
+  const freshByOldId = new Map<string, LiveAPI[]>();
+  const rangesByTrack = new Map<number, Array<[SplitClipRange, LiveAPI[]]>>();
 
   for (const [oldClipId, range] of splitClipRanges) {
+    const fresh: LiveAPI[] = [];
+    const entry: [SplitClipRange, LiveAPI[]] = [range, fresh];
     const forTrack = rangesByTrack.get(range.trackIndex);
 
+    freshByOldId.set(oldClipId, fresh);
+
     if (forTrack) {
-      forTrack.push([oldClipId, range]);
+      forTrack.push(entry);
     } else {
-      rangesByTrack.set(range.trackIndex, [[oldClipId, range]]);
+      rangesByTrack.set(range.trackIndex, [entry]);
     }
   }
 
-  const freshByOldId = new Map<string, LiveAPI[]>();
-
   for (const [trackIndex, ranges] of rangesByTrack) {
-    for (const [oldClipId] of ranges) {
-      freshByOldId.set(oldClipId, []);
-    }
-
     for (const { id, start } of lanes.clips(
       { kind: "track", trackIndex },
       trackFor?.(trackIndex),
     )) {
-      for (const [oldClipId, range] of ranges) {
+      for (const [range, fresh] of ranges) {
         if (
           start >= range.startTime - SAME_TIME_EPSILON &&
           start < range.endTime - SAME_TIME_EPSILON
         ) {
-          (freshByOldId.get(oldClipId) as LiveAPI[]).push(
-            LiveAPI.from(toLiveApiId(id)),
-          );
+          fresh.push(LiveAPI.from(toLiveApiId(id)));
         }
       }
     }

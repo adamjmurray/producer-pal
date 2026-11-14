@@ -62,11 +62,6 @@ export function extractResponseFailure(event: unknown): ResponseFailure | null {
   return null;
 }
 
-// How many seconds each rate-limit unit normalizes to. OpenAI reports the wait
-// as "166ms", "3.057s", or (rarely) "2m"; all three flow through the same
-// countdown/auto-retry path once normalized to seconds.
-const RETRY_UNIT_SECONDS: Record<string, number> = { ms: 0.001, s: 1, m: 60 };
-
 // Fallback wait when a rate_limit_exceeded message carries no parseable time, so
 // the retry UI still renders and auto-retry still arms instead of leaving a dead
 // error banner with no path forward.
@@ -92,9 +87,14 @@ export function parseRetrySeconds(message: string): number | null {
     return null;
   }
 
-  const multiplier = RETRY_UNIT_SECONDS[match[2]?.toLowerCase() ?? "s"] ?? 1;
+  // OpenAI reports the wait as "166ms", "3.057s", or (rarely) "2m".
+  const unit = match[2]?.toLowerCase();
 
-  return value * multiplier;
+  if (unit === "ms") {
+    return value * 0.001;
+  }
+
+  return unit === "m" ? value * 60 : value;
 }
 
 /**

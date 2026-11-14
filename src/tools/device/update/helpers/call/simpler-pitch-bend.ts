@@ -50,6 +50,8 @@ interface PitchBendCall {
 interface PitchBendEntry {
   entry: ParamEntry;
   setting: keyof SimplerSettings;
+  /** The setting's largest value */
+  max: number;
   /** The name as the call spelled it */
   key: string;
 }
@@ -105,7 +107,7 @@ export function writePitchBendParams(
 function pitchBendEntries(params: ParamEntry[]): PitchBendEntry[] {
   const found: PitchBendEntry[] = [];
 
-  for (const { setting } of SETTINGS) {
+  for (const { setting, max } of SETTINGS) {
     const last = params.findLast((entry) => {
       const { key, byId } = paramEntryKey(entry);
 
@@ -113,7 +115,12 @@ function pitchBendEntries(params: ParamEntry[]): PitchBendEntry[] {
     });
 
     if (last != null) {
-      found.push({ entry: last, setting, key: paramEntryKey(last).key });
+      found.push({
+        entry: last,
+        setting,
+        max,
+        key: paramEntryKey(last).key,
+      });
     }
   }
 
@@ -215,8 +222,7 @@ async function settle(
  * @returns The reason, or null when it can be written
  */
 function refuseValue(item: PitchBendEntry): string | null {
-  const { entry, setting, key } = item;
-  const max = SETTINGS.find((s) => s.setting === setting)?.max ?? 0;
+  const { entry, max, key } = item;
   const raw = entry.value.trim();
   const int = coerceInt(raw);
 

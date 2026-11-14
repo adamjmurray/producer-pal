@@ -456,7 +456,7 @@ export function handleDuplicateLoopWithEdits({
     mergeResult.length = dupResult.length;
   }
 
-  return withPreCounts(mergeResult ?? dupResult, preCounts);
+  return withPreCounts(mergeResult, preCounts);
 }
 
 /**

@@ -134,7 +134,7 @@ export function makeCollectionNodeRoutes(
     const names = requireStringArray(args, "names");
     const slugs = names.map((name) => config.slugify(name));
     const lastMention = (i: number): number =>
-      slugs[i] === "" ? i : slugs.lastIndexOf(slugs[i] ?? "");
+      slugs[i] === "" ? i : slugs.findLastIndex((slug) => slug === slugs[i]);
 
     const entries = names.map((name, i): CollectionNameEntry => {
       if (lastMention(i) !== i) {

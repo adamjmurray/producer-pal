@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type FunctionNode } from "../../parser/transform-parser.ts";
+import {
+  type ExpressionNode,
+  type FunctionNode,
+} from "../../parser/transform-parser.ts";
 import { type ArityNode } from "./function-arity.ts";
 
 const WAVEFORMS = new Set(["cos", "sin", "tri", "saw", "square"]);
@@ -61,7 +64,7 @@ function* functionCalls(node: ArityNode | undefined): Generator<FunctionNode> {
 }
 
 // The first per-note variable in an expression, as written (`note.start`).
-function findNoteProperty(node: ArityNode | undefined): string | null {
+function findNoteProperty(node: ExpressionNode | undefined): string | null {
   if (node == null || typeof node !== "object") {
     return null;
   }
@@ -75,10 +78,6 @@ function findNoteProperty(node: ArityNode | undefined): string | null {
     case "function":
       return firstProperty(node.args);
 
-    case "not":
-      return findNoteProperty(node.operand);
-
-    case "barBeatPoint":
     case "nDuration":
     case "barDuration":
     case "pitchLiteral":
@@ -89,7 +88,7 @@ function findNoteProperty(node: ArityNode | undefined): string | null {
   }
 }
 
-function firstProperty(nodes: ArityNode[]): string | null {
+function firstProperty(nodes: ExpressionNode[]): string | null {
   for (const node of nodes) {
     const property = findNoteProperty(node);
 

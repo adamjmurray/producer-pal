@@ -149,11 +149,10 @@ export async function stampAutomation(
   }
 
   if (placed != null) {
-    const said = joinDetails([stampedNote(stamped, lengthBeats), ...notes]);
-
-    if (said != null) {
-      appendDetail(placed, said);
-    }
+    appendDetail(
+      placed,
+      [stampedNote(stamped, lengthBeats), ...notes].join("; "),
+    );
 
     return placed;
   }
@@ -395,15 +394,30 @@ function deleteStamp(track: LiveAPI, copy: LiveAPI, at: number): void {
  * @returns The account, or undefined when nothing was stamped and nothing went wrong
  */
 function laneNote(stamped: Stamped, lengthBeats: number): string | undefined {
-  if (stamped.beats <= 0) {
-    return stamped.problem == null
-      ? undefined
-      : `automation not written (${stamped.problem})`;
+  if (stamped.problem != null) {
+    return problemNote(stamped, stamped.problem, lengthBeats);
   }
 
-  return stamped.problem == null
-    ? `automation written for all ${beatsText(lengthBeats)} beats`
-    : `automation written for the first ${beatsText(stamped.beats)} of ${beatsText(lengthBeats)} beats only (${stamped.problem})`;
+  return stamped.beats <= 0
+    ? undefined
+    : `automation written for all ${beatsText(lengthBeats)} beats`;
+}
+
+/**
+ * What the lane got when the stamping hit a problem.
+ * @param stamped - How far the stamping got
+ * @param problem - What stopped it
+ * @param lengthBeats - The length it was after
+ * @returns The account
+ */
+function problemNote(
+  stamped: Stamped,
+  problem: string,
+  lengthBeats: number,
+): string {
+  return stamped.beats <= 0
+    ? `automation not written (${problem})`
+    : `automation written for the first ${beatsText(stamped.beats)} of ${beatsText(lengthBeats)} beats only (${problem})`;
 }
 
 /**
@@ -412,13 +426,10 @@ function laneNote(stamped: Stamped, lengthBeats: number): string | undefined {
  * @param lengthBeats - The length it was after
  * @returns The note for the clip's entry
  */
-function stampedNote(
-  stamped: Stamped,
-  lengthBeats: number,
-): string | undefined {
+function stampedNote(stamped: Stamped, lengthBeats: number): string {
   return stamped.problem == null
     ? LANE_WRITE_NOTE
-    : laneNote(stamped, lengthBeats);
+    : problemNote(stamped, stamped.problem, lengthBeats);
 }
 
 /**

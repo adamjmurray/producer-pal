@@ -259,7 +259,7 @@ const CONNECT_PATTERN =
  * @returns First non-empty line, or the whole string if single-line
  */
 function firstLine(content: string): string {
-  return content.split("\n")[0]?.trim() ?? "";
+  return content.replace(/\n[\s\S]*/, "").trim();
 }
 
 /**

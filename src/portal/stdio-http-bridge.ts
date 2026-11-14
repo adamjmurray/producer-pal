@@ -433,6 +433,8 @@ export class StdioHttpBridge {
           return own;
         }
 
+        const args = request.params.arguments ?? {};
+
         // The client this call is on, if it got that far
         let client: Client | null = null;
 
@@ -440,8 +442,6 @@ export class StdioHttpBridge {
         try {
           await this._ensureHttpConnection(this._timeLeft(deadline));
           client = this.httpClient as Client;
-
-          const args = request.params.arguments ?? {};
 
           // A setup call that used its budget getting connected sends nothing.
           if (this._budgetSpent(deadline)) {
@@ -484,7 +484,7 @@ export class StdioHttpBridge {
           // (a connect that ran out is wrapped, with no code). The connection
           // is still alive, so isConnected stays set.
           if (this._setupBudgetRanOut(deadline, errorCode)) {
-            return forwardedSetupTimeout(request.params.arguments ?? {}, true);
+            return forwardedSetupTimeout(args, true);
           }
 
           // A numeric code normally means we connected and got a structured

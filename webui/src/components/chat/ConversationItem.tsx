@@ -230,6 +230,8 @@ function resolveModelLabel(
  * @returns Metadata row element
  */
 function ConversationMeta({ conv }: { conv: ConversationSummary }) {
+  const cached = conv.totalUsage?.cacheReadTokens ?? 0;
+
   return (
     <div className="@container flex w-full gap-2 px-4 pt-0.5 pb-2 text-left text-[10px] text-zinc-400 dark:text-zinc-500">
       <div className="whitespace-nowrap">
@@ -250,9 +252,8 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
           title="token usage (input [cached] → output)"
         >
           tokens: {compactNumber(conv.totalUsage.inputTokens ?? 0)}
-          {(conv.totalUsage.cacheReadTokens ?? 0) > 0 &&
-            ` (${compactNumber(conv.totalUsage.cacheReadTokens ?? 0)} cached)`}{" "}
-          → {compactNumber(conv.totalUsage.outputTokens ?? 0)}
+          {cached > 0 && ` (${compactNumber(cached)} cached)`} →{" "}
+          {compactNumber(conv.totalUsage.outputTokens ?? 0)}
         </div>
       )}
       {conv.model && (

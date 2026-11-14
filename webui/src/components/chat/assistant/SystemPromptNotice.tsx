@@ -46,7 +46,7 @@ export function SystemPromptNotice(
     }
   }, [importedPromptDiffers, systemInstruction]);
 
-  const firstLine = systemInstruction.split("\n")[0]?.trim() ?? "";
+  const firstLine = systemInstruction.replace(/\n[\s\S]*/, "").trim();
 
   return (
     <div className="col-span-3">

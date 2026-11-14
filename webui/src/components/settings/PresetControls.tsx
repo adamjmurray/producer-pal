@@ -131,21 +131,16 @@ export function PresetControls({
           draft.start();
           setError(null);
         }}
-        onUpdate={() =>
-          selected && updatePreset(selected.id, fields, editDescription)
-        }
-        onDelete={() => {
+        onUpdate={(preset) => updatePreset(preset.id, fields, editDescription)}
+        onDelete={(preset) => {
           // Keep the selection when the write failed — the preset is still in
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
-          if (selected && deletePreset(selected.id) != null) {
+          if (deletePreset(preset.id) != null) {
             return;
           }
 
-          if (selected) {
-            settings.forgetDeletedPreset(selected.id);
-          }
-
+          settings.forgetDeletedPreset(preset.id);
           setSelectedId("");
           setEditDescription("");
         }}

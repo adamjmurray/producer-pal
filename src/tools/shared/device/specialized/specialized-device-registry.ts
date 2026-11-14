@@ -410,12 +410,11 @@ export function isParamInactiveBySpecialized(
   paramName: string,
 ): boolean {
   const spec = getSpecForDevice(device);
-  const rules = spec?.inactiveWhen;
 
   return (
-    rules != null &&
-    ruleMarksInactive(rules, paramName, (controller) =>
-      readControllerValue(device, spec?.params ?? [], controller),
+    spec?.inactiveWhen != null &&
+    ruleMarksInactive(spec.inactiveWhen, paramName, (controller) =>
+      readControllerValue(device, spec.params, controller),
     )
   );
 }

@@ -260,11 +260,13 @@ function settleLane(
   made: MadeClip,
   payload: CreatePayload,
 ): string | undefined {
-  const { lane, laneApi, clip } = made;
+  const { arrangement, clip } = made;
 
-  if (lane == null) {
+  if (arrangement == null) {
     return undefined;
   }
+
+  const { lane, api } = arrangement;
 
   try {
     const { position } = payload;
@@ -284,9 +286,7 @@ function settleLane(
       },
     );
 
-    return run.ledger.afterWrite(lane, [clip.id], {
-      api: laneApi ?? undefined,
-    });
+    return run.ledger.afterWrite(lane, [clip.id], { api });
   } catch (error) {
     // The lane may have changed unseen, so what is known of it is no good.
     run.ledger.forget(lane);
