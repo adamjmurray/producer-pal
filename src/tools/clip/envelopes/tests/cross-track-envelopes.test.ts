@@ -111,6 +111,22 @@ describe("cross-track envelope loss", () => {
       );
     });
 
+    // The rack isn't on the other track, so its chains' mixers aren't either.
+    it("names an envelope on a rack chain's own mixer", async () => {
+      answerEnvelopeList([
+        VOLUME_ENVELOPE,
+        { ...VOLUME_ENVELOPE, device: "d0/c1" },
+      ]);
+
+      expect(
+        await crossTrackEnvelopeLoss(
+          sessionClip(),
+          { kind: "regular", index: 1 },
+          CONTEXT,
+        ),
+      ).toBe(`${DROPPED}: ${VOLUME_ENVELOPE.parameter.name} (t0/d0/c1)`);
+    });
+
     it("says nothing when only mixer envelopes were on the clip", async () => {
       answerEnvelopeList([VOLUME_ENVELOPE]);
 

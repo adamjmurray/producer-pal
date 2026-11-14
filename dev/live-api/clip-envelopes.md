@@ -13,7 +13,8 @@ before 12.4.
 
 Only **automation** envelopes on **track and device parameters** (mixer volume,
 pan, sends, and device parameters inside racks too), on **Session** clips that
-are **MIDI or warped audio**.
+are **MIDI or warped audio**. A rack chain's own volume, pan and sends take
+envelopes as well; Producer Pal reads those but doesn't write them.
 
 | Envelope                                  | Read / write                  | `clear_all_envelopes` |
 | ----------------------------------------- | ----------------------------- | --------------------- |

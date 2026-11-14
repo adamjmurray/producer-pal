@@ -31,7 +31,7 @@ export interface EnvelopeRequest {
   /** 0-based Session slot; give this or arrangementIndex */
   slot?: number;
   arrangementIndex?: number;
-  /** d0, or d0/c1/d0 into rack chains; absent means the mixer */
+  /** d0, or d0/c1/d0 into rack chains; d0/c1 for a chain's own mixer; absent means the track's mixer */
   device?: string;
   /** A device parameter's exact name or 0-based index, or volume/pan/send0.. */
   parameter?: string | number;
@@ -87,7 +87,10 @@ export interface EnvelopeListResult {
   envelopes: {
     /** Set for a mixer parameter: volume, pan or send0.. */
     parameter_name?: string;
-    /** Set for a device parameter, with parameter_index */
+    /**
+     * A device (d0/c1/d0), with parameter_index; or a rack chain (d0/c1), with
+     * parameter_name for the chain's own mixer. Absent for the track's mixer.
+     */
     device?: string;
     parameter_index?: number;
     parameter: ParameterInfo;

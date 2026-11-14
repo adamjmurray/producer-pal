@@ -56,14 +56,27 @@ class FakeClip:
         return FakeEnvelope() if any(param is p for p in self.params) else None
 
 
+def mixer(sends=0):
+    return types.SimpleNamespace(
+        volume=FakeParam("Volume"),
+        panning=FakeParam("Pan"),
+        sends=[FakeParam("Send %d" % i) for i in range(sends)],
+    )
+
+
+def chain(devices, sends=0):
+    return types.SimpleNamespace(devices=devices, mixer_device=mixer(sends))
+
+
 def device(*names, chains=None, return_chains=None):
     fake = types.SimpleNamespace(
         parameters=[FakeParam(n) for n in names], can_have_chains=chains is not None
     )
     if chains is not None:
-        fake.chains = [types.SimpleNamespace(devices=c) for c in chains]
+        # A chain has a send per return chain of its rack.
+        fake.chains = [chain(c, len(return_chains or [])) for c in chains]
     if return_chains is not None:
-        fake.return_chains = [types.SimpleNamespace(devices=c) for c in return_chains]
+        fake.return_chains = [chain(c) for c in return_chains]
     return fake
 
 
@@ -76,10 +89,9 @@ class World:
         self.rack = device("Macro 1", chains=[[self.synth]], return_chains=[[self.reverb]])
         self.effect_rack = device("Macro 1", chains=[[device("Gain")]])
         self.clip = FakeClip(self.synth.parameters[0], self.reverb.parameters[1])
-        mixer = types.SimpleNamespace(volume=FakeParam("Volume"), panning=FakeParam("Pan"), sends=[])
         slot = types.SimpleNamespace(has_clip=True, clip=self.clip)
         track = types.SimpleNamespace(
-            clip_slots=[slot], devices=[self.rack, self.effect_rack], mixer_device=mixer
+            clip_slots=[slot], devices=[self.rack, self.effect_rack], mixer_device=mixer()
         )
         self.bridge = types.SimpleNamespace(
             song=types.SimpleNamespace(tracks=[track], return_tracks=[])
@@ -109,6 +121,42 @@ class RackChainEnvelopeTest(unittest.TestCase):
         with self.assertRaises(RouteError) as caught:
             self.world.call("read", device="d1/rc0/d0", parameter=0)
         self.assertEqual(caught.exception.status, 404)
+
+
+class ChainMixerEnvelopeTest(unittest.TestCase):
+    """A chain has a volume, pan and sends of its own, named like the track's."""
+
+    def setUp(self):
+        self.world = World()
+        chain_mixer = self.world.rack.chains[0].mixer_device
+        return_mixer = self.world.rack.return_chains[0].mixer_device
+        self.world.clip.params = (
+            chain_mixer.volume,
+            chain_mixer.sends[0],
+            return_mixer.panning,
+        )
+
+    def test_list_names_a_chains_own_mixer_envelopes(self):
+        listed = self.world.call("list")["envelopes"]
+        self.assertEqual(
+            [(e["device"], e["parameter_name"]) for e in listed],
+            [("d0/c0", "volume"), ("d0/c0", "send0"), ("d0/rc0", "pan")],
+        )
+
+    def test_read_takes_the_address_list_gave(self):
+        read = self.world.call("read", device="d0/c0", parameter="send0")
+        self.assertIs(read["exists"], True)
+        self.assertEqual(read["parameter"]["name"], "Send 0")
+
+    def test_a_chain_takes_only_mixer_names(self):
+        with self.assertRaises(RouteError) as caught:
+            self.world.call("read", device="d0/c0", parameter=0)
+        self.assertEqual(caught.exception.status, 400)
+
+    def test_a_send_the_chain_lacks_is_refused(self):
+        with self.assertRaises(RouteError) as caught:
+            self.world.call("read", device="d1/c0", parameter="send0")
+        self.assertEqual(caught.exception.status, 400)
 
 
 if __name__ == "__main__":

@@ -180,7 +180,7 @@ function unreachableReason(path: string): string {
 
   if (path.includes(" mixer_device ")) {
     return path.includes(" chains ")
-      ? "is a rack chain's own mixer parameter, which clip automation can't reach"
+      ? "is a rack chain's own mixer parameter, whose envelope can be read but not written"
       : "is a mixer parameter clip automation can't reach: only the track's volume, pan and sends";
   }
 

@@ -28,8 +28,10 @@ devices are the parameters; the main track has no clips), `slot` (0-based
 Session slot) or `arrangement_index` (regular tracks only), and a parameter:
 `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device` (`d0`,
 `d0/c1/d0` into rack chains, `d0/rc0/d0` into a Drum Rack's return chains) plus
-`parameter` as an exact name or 0-based index. A rack chain's own mixer isn't
-reached, so an envelope on one is never listed.
+`parameter` as an exact name or 0-based index. A `device` that ends on a chain
+(`d0/c1`, `d0/rc0`) names that chain's own mixer, and takes the mixer names.
+`/list` gives each envelope the address `/read` takes: `parameter_name` for a
+mixer parameter, `device` and `parameter_index` for a device's.
 
 | Route    | Params                                 | Returns                                                                                                                                                                              |
 | -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

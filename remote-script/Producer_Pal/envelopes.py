@@ -290,33 +290,49 @@ def _device(track, path):
 
 
 def _parameter(track, params):
-    """A device parameter by name or index, or a mixer parameter by name."""
+    """A device parameter by name or index, or a mixer parameter by name: the
+    track's own, or a rack chain's when `device` ends on the chain."""
     name = params.get("parameter", "volume")
-    if params.get("device"):
-        device = _device(track, params["device"])
-        parameters = list(device.parameters)
-        if isinstance(name, int) or str(name).isdigit():
-            i = whole_number(name, "parameter")
-            if i >= len(parameters):
-                raise RouteError(404, "no parameter %s" % i)
-            return parameters[i]
-        hits = [p for p in parameters if p.name.casefold() == str(name).casefold()]
-        if len(hits) != 1:
-            raise RouteError(
-                400,
-                "parameter must match exactly one name",
-                available=[p.name for p in parameters],
-            )
-        return hits[0]
-    mixer = track.mixer_device
+    if not params.get("device"):
+        return _mixer_parameter(track.mixer_device, name)
+    device = _device(track, params["device"])
+    if re.search(r"c\d+$", str(params["device"])):
+        return _mixer_parameter(device.mixer_device, name)
+    parameters = list(device.parameters)
+    if isinstance(name, int) or str(name).isdigit():
+        i = whole_number(name, "parameter")
+        if i >= len(parameters):
+            raise RouteError(404, "no parameter %s" % i)
+        return parameters[i]
+    hits = [p for p in parameters if p.name.casefold() == str(name).casefold()]
+    if len(hits) != 1:
+        raise RouteError(
+            400,
+            "parameter must match exactly one name",
+            available=[p.name for p in parameters],
+        )
+    return hits[0]
+
+
+def _mixer_parameter(mixer, name):
+    """volume, pan or send0.. on a track's or a chain's mixer."""
     if name == "volume":
         return mixer.volume
     if name == "pan":
         return mixer.panning
+    sends = members(mixer, "sends")
     m = re.fullmatch(r"send(\d+)", str(name))
-    if m and int(m[1]) < len(mixer.sends):
-        return mixer.sends[int(m[1])]
+    if m and int(m[1]) < len(sends):
+        return sends[int(m[1])]
     raise RouteError(400, "mixer parameter must be volume, pan or send0..")
+
+
+def _mixer_parameters(mixer):
+    """(name, parameter) for a mixer's volume, pan and sends."""
+    yield "volume", mixer.volume
+    yield "pan", mixer.panning
+    for i, send in enumerate(members(mixer, "sends")):
+        yield "send%d" % i, send
 
 
 def _automated(track, clip):
@@ -330,18 +346,22 @@ def _automated(track, clip):
 
 
 def _automatable(track):
-    """(target, parameter) for every mixer and device parameter on the track."""
-    mixer = track.mixer_device
-    yield {"parameter_name": "volume"}, mixer.volume
-    yield {"parameter_name": "pan"}, mixer.panning
-    for i, send in enumerate(mixer.sends):
-        yield {"parameter_name": "send%d" % i}, send
-    for path, device in _devices(track, ""):
-        for i, param in enumerate(device.parameters):
-            yield {"device": path, "parameter_index": i}, param
+    """(target, parameter) for every mixer and device parameter on the track,
+    a rack chain's own mixer included."""
+    for name, param in _mixer_parameters(track.mixer_device):
+        yield {"parameter_name": name}, param
+    for path, found in _devices(track, ""):
+        if hasattr(found, "parameters"):
+            for i, param in enumerate(found.parameters):
+                yield {"device": path, "parameter_index": i}, param
+        else:
+            for name, param in _mixer_parameters(found.mixer_device):
+                yield {"device": path, "parameter_name": name}, param
 
 
 def _devices(holder, prefix):
+    """(path, object) for every device under `holder`, and every rack chain
+    just ahead of the devices in it."""
     for i, device in enumerate(holder.devices):
         path = "%sd%d" % (prefix, i)
         yield path, device
@@ -350,7 +370,9 @@ def _devices(holder, prefix):
         # Only a Drum Rack has return chains.
         for word, chains in _CHAIN_LISTS.items():
             for j, chain in enumerate(members(device, chains)):
-                for found in _devices(chain, "%s/%s%d/" % (path, word, j)):
+                chain_path = "%s/%s%d" % (path, word, j)
+                yield chain_path, chain
+                for found in _devices(chain, chain_path + "/"):
                     yield found
 
 

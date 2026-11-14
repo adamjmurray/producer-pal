@@ -190,9 +190,11 @@ function parameterTarget(entry: ListedEnvelope): {
   device?: string;
   parameter?: string | number;
 } {
-  return entry.device == null
-    ? { parameter: entry.parameter_name }
-    : { device: entry.device, parameter: entry.parameter_index };
+  // A mixer parameter goes by name: the track's, or a chain's with `device`.
+  return {
+    ...(entry.device != null && { device: entry.device }),
+    parameter: entry.parameter_name ?? entry.parameter_index,
+  };
 }
 
 /**
@@ -346,34 +348,26 @@ function parameterId(
   entry: ListedEnvelope,
 ): string | null {
   const object = trackObject(track);
+  // A name is a mixer parameter: the track's, or the chain's `device` ends on.
+  const holder = entry.device == null ? object : deviceAt(object, entry.device);
+
+  if (holder == null) {
+    return null;
+  }
+
   const parameter =
-    entry.device == null
-      ? mixerParameter(object, entry.parameter_name)
-      : deviceParameter(object, entry.device, entry.parameter_index ?? 0);
+    entry.parameter_name == null
+      ? holder.child("parameters", String(entry.parameter_index ?? 0))
+      : mixerParameter(holder, entry.parameter_name);
 
   return parameter != null && parameter.exists() ? parameter.id : null;
 }
 
 /**
- * Walk d0, d0/c1/d0 to a device, then to one of its parameters.
+ * Walk d0, d0/c1/d0, d0/rc0/d0 to a device, or d0/c1 to a chain.
  * @param track - The clip's track
  * @param device - The remote script's device path
- * @param index - The parameter's index on that device
- * @returns The parameter, or null when the path isn't one we can walk
- */
-function deviceParameter(
-  track: LiveAPI,
-  device: string,
-  index: number,
-): LiveAPI | null {
-  return deviceAt(track, device)?.child("parameters", String(index)) ?? null;
-}
-
-/**
- * Walk d0, d0/c1/d0, d0/rc0/d0 to a device.
- * @param track - The clip's track
- * @param device - The remote script's device path
- * @returns The device, or null when the path isn't one we can walk
+ * @returns The device or chain, or null when the path isn't one we can walk
  */
 function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
   let container = track;
@@ -395,8 +389,8 @@ function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
 }
 
 /**
- * The track mixer's volume, pan or send, as the remote script names it.
- * @param track - The clip's track
+ * A mixer's volume, pan or send, as the remote script names it.
+ * @param track - The clip's track, or a rack chain
  * @param name - volume, pan, or send0..
  * @returns The parameter, or null when the name isn't one of those
  */

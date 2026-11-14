@@ -600,7 +600,7 @@ describe("updateClip - envelopes", () => {
 
     expect(result).toStrictEqual(
       expect.objectContaining({
-        detail: `envelope "${CHAIN_MIXER_ID}": id ${CHAIN_MIXER_ID} is a rack chain's own mixer parameter, which clip automation can't reach`,
+        detail: `envelope "${CHAIN_MIXER_ID}": id ${CHAIN_MIXER_ID} is a rack chain's own mixer parameter, whose envelope can be read but not written`,
       }),
     );
   });

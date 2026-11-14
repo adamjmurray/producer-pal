@@ -159,8 +159,10 @@ target's entry says what was dropped. A return track counts as a track.
 - **A session clip** names the device envelopes, by Live's parameter name and
   the source device's path: `detail` reads
   `dropped the device envelopes, which don't copy to another track: Frequency (t0/d1), Macro 1 (t0/d0)`.
-  A hosted plug-in's param is named as the plug-in names it. Mixer envelopes are
-  never listed. A clip with only mixer envelopes says nothing.
+  A hosted plug-in's param is named as the plug-in names it. An envelope on a
+  rack chain's own volume, pan or send is named with the chain's path
+  (`Chain Volume (t0/d0/c1)`), since the rack stays behind. The track's own
+  mixer envelopes are never listed. A clip with only those says nothing.
 - **An arrangement clip** can't list them, so when `has_envelopes` is true its
   entry says
   `any device envelopes were dropped, since they don't copy to another track`.
@@ -234,10 +236,14 @@ Any clip read (`ppal-read-clip`, and the clips `ppal-read-track` and
 also covers envelopes `include: ["envelopes"]` can't read. Arrangement clips
 never get it, and it is omitted otherwise.
 
-`ppal-read-clip` `envelopes` lists each automated parameter. An envelope's
-`detail` is a note about it: why `events` is absent, or, on an unwarped audio
-clip, `doesn't play: the clip is unwarped. Turn warping on to hear it` beside
-the events. One field, not two: both are plain text for the model about why the
+`ppal-read-clip` `envelopes` lists each automated parameter. One on a rack
+chain's own volume, pan or send has the chain's path as its `device`
+(`t0/d0/c1`); its `id` is no write target, and a line naming it is skipped with
+`is a rack chain's own mixer parameter, whose envelope can be read but not written`.
+An envelope's `detail` is a note about it: why `events` is absent, or, on an
+unwarped audio clip,
+`doesn't play: the clip is unwarped. Turn warping on to hear it` beside the
+events. One field, not two: both are plain text for the model about why the
 envelope isn't what it looks like.
 
 When the clip's `has_envelopes` is true but no automation was found, `envelopes`

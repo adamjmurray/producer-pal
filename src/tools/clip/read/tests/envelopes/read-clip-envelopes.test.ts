@@ -361,6 +361,57 @@ describe("readClip - envelopes", () => {
     ]);
   });
 
+  // A chain's volume, pan and sends sit on the chain's own mixer.
+  it("names a rack chain's own mixer parameter, and reads it by name", async () => {
+    setupClip();
+
+    const chain = livePath.track(0).device(0).chain(1);
+
+    registerMockObject("chain-volume", {
+      path: `${chain} mixer_device volume`,
+    });
+    registerMockObject("chain-send", {
+      path: `${chain} mixer_device sends 0`,
+    });
+    mockNonExistentObjects();
+    answerEnvelopeRoutes([
+      {
+        device: "d0/c1",
+        parameter_name: "volume",
+        parameter: parameterInfo("Chain Volume"),
+        event_count: 2,
+      },
+      {
+        device: "d0/c1",
+        parameter_name: "send0",
+        parameter: parameterInfo("Chain Send A"),
+        event_count: 2,
+      },
+    ]);
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Chain Volume",
+        id: "chain-volume",
+        device: "t0/d0/c1",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+      {
+        parameter: "Chain Send A",
+        id: "chain-send",
+        device: "t0/d0/c1",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+    ]);
+    expect(requestNode).toHaveBeenCalledWith(
+      ENVELOPE_ROUTES.read,
+      { track: "t0", slot: 1, device: "d0/c1", parameter: "send0", limit: 32 },
+      expect.anything(),
+    );
+  });
+
   it("falls back to the listed count when a read gives none", async () => {
     setupClip();
     answerEnvelopeRoutes([{ ...MIXER_VOLUME, event_count: 5 }], {
