@@ -10,44 +10,45 @@ the model for a fix that landed in between: `duplicate-loop` read as "luna
 fails, gemma passes" until run 2 turned out to predate the refusal of
 `start`/`length` beside `duplicateLoop`.
 
-| #   | model             | mode            | commit       | trials | ran | pass      | input  | wall   |
-| --- | ----------------- | --------------- | ------------ | ------ | --- | --------- | ------ | ------ |
-| 1   | gpt-5.6-luna      | default         | not recorded | 3      | 231 | 186 (81%) | 84.4M  | 2h05m  |
-| 2   | gpt-5.6-luna      | default         | `c3a8484fb`  | 3      | 276 | 249 (90%) | 115.4M | 3h23m  |
-| 3   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 41 (69%)  | 3.4M   | 33m    |
-| 4   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m    |
-| 5   | gemma-4-26b-a4b   | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m  |
-| 6   | gpt-5.6-luna      | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m  |
-| 7   | gpt-5.6-luna      | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m  |
-| 8   | gpt-5.6-luna      | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m  |
-| 9   | gpt-5.6-luna      | default         | `d5971a5bd`  | 3      | 301 | 273 (91%) | 130.7M | 4h11m  |
-| 10  | gpt-5.6-luna      | default         | `ba97d9173`  | 3      | 300 | 268 (89%) | 131.0M | 2h52m  |
-| 11  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m  |
-| 12  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m  |
-| 13  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m  |
-| 14  | gpt-6-luna        | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m  |
-| 15  | gpt-6-luna        | default         | `144eead60`  | 3      | 355 | 317 (89%) | 167.1M | 4h15m  |
-| 16  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 74  | 66 (89%)  | 4.0M   | 2h06m  |
-| 17  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 75  | 63 (84%)  | 4.4M   | 2h08m  |
-| 18  | gpt-6-luna        | default         | `4852e3680`+ | 3      | 381 | 341 (90%) | 174.2M | 3h24m  |
-| 19  | claude-haiku-5-5  | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m  |
-| 20  | gpt-6-luna        | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m  |
-| 21  | claude-haiku-5-5  | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m  |
-| 22  | gpt-6-luna        | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m  |
-| 23  | claude-haiku-5-5  | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m  |
-| 24  | claude-sonnet-5-5 | default         | `e90a887ba`+ | 3      | 381 | 377 (99%) | 91.4M  | 1h26m  |
-| 25  | gpt-6.1-terra     | default         | `e90a887ba`+ | 3      | 381 | 371 (97%) | 139.3M | 4h20m  |
-| 26  | gpt-6-luna        | default         | not recorded | 3      | 390 | 343 (88%) | 177.0M | 3h14m  |
-| 27  | claude-haiku-5-5  | default         | not recorded | 3      | 390 | 376 (96%) | 97.3M  | 1h35m  |
-| 28  | qwen3.8-27b       | default         | `49eea231d`  | 3      | 392 | 371 (95%) | 79.4M  | 12h07m |
-| 29  | gpt-6-luna        | `thinking:high` | `49eea231d`? | 3      | 390 | 379 (97%) | 173.3M | 5h05m  |
-| 30  | claude-haiku-5-5  | default         | `49eea231d`? | 3      | 390 | 383 (98%) | 98.2M  | 1h33m  |
-| 31  | gpt-6-luna        | `thinking:high` | `6c1b9b427`? | 3      | 393 | 380 (97%) | 180.5M | 5h44m  |
-| 32  | claude-haiku-5-5  | default         | `6c1b9b427`? | 3      | 393 | 381 (97%) | 101.8M | 2h16m  |
-| 33  | qwen3.8-27b       | `--small-model` | `6c1b9b427`? | 3      | 231 | 214 (93%) | 15.4M  | 4h05m  |
-| 34  | gpt-6-luna        | `thinking:high` | `fc8f151e6`  | 3      | 393 | 379 (96%) | 163.5M | 7h06m  |
-| 35  | claude-haiku-5-5  | default         | `fc8f151e6`  | 3      | 393 | 386 (98%) | 89.9M  | 1h26m  |
-| 36  | muse-glimmer-30b  | `--small-model` | `01219a45c`  | 3      | 228 | 201 (88%) | 14.9M  | 2h38m  |
+| #   | model              | mode            | commit       | trials | ran | pass      | input  | wall   |
+| --- | ------------------ | --------------- | ------------ | ------ | --- | --------- | ------ | ------ |
+| 1   | gpt-5.6-luna       | default         | not recorded | 3      | 231 | 186 (81%) | 84.4M  | 2h05m  |
+| 2   | gpt-5.6-luna       | default         | `c3a8484fb`  | 3      | 276 | 249 (90%) | 115.4M | 3h23m  |
+| 3   | gemma-4-26b-a4b    | `--small-model` | `90ead3407`  | 1      | 59  | 41 (69%)  | 3.4M   | 33m    |
+| 4   | gemma-4-26b-a4b    | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m    |
+| 5   | gemma-4-26b-a4b    | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m  |
+| 6   | gpt-5.6-luna       | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m  |
+| 7   | gpt-5.6-luna       | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m  |
+| 8   | gpt-5.6-luna       | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m  |
+| 9   | gpt-5.6-luna       | default         | `d5971a5bd`  | 3      | 301 | 273 (91%) | 130.7M | 4h11m  |
+| 10  | gpt-5.6-luna       | default         | `ba97d9173`  | 3      | 300 | 268 (89%) | 131.0M | 2h52m  |
+| 11  | qwen3.8-27b        | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m  |
+| 12  | qwen3.8-27b        | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m  |
+| 13  | qwen3.8-27b        | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m  |
+| 14  | gpt-6-luna         | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m  |
+| 15  | gpt-6-luna         | default         | `144eead60`  | 3      | 355 | 317 (89%) | 167.1M | 4h15m  |
+| 16  | gemma-4-31b        | `--small-model` | `144eead60`  | 1      | 74  | 66 (89%)  | 4.0M   | 2h06m  |
+| 17  | gemma-4-31b        | `--small-model` | `144eead60`  | 1      | 75  | 63 (84%)  | 4.4M   | 2h08m  |
+| 18  | gpt-6-luna         | default         | `4852e3680`+ | 3      | 381 | 341 (90%) | 174.2M | 3h24m  |
+| 19  | claude-haiku-5-5   | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m  |
+| 20  | gpt-6-luna         | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m  |
+| 21  | claude-haiku-5-5   | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m  |
+| 22  | gpt-6-luna         | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m  |
+| 23  | claude-haiku-5-5   | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m  |
+| 24  | claude-sonnet-5-5  | default         | `e90a887ba`+ | 3      | 381 | 377 (99%) | 91.4M  | 1h26m  |
+| 25  | gpt-6.1-terra      | default         | `e90a887ba`+ | 3      | 381 | 371 (97%) | 139.3M | 4h20m  |
+| 26  | gpt-6-luna         | default         | not recorded | 3      | 390 | 343 (88%) | 177.0M | 3h14m  |
+| 27  | claude-haiku-5-5   | default         | not recorded | 3      | 390 | 376 (96%) | 97.3M  | 1h35m  |
+| 28  | qwen3.8-27b        | default         | `49eea231d`  | 3      | 392 | 371 (95%) | 79.4M  | 12h07m |
+| 29  | gpt-6-luna         | `thinking:high` | `49eea231d`? | 3      | 390 | 379 (97%) | 173.3M | 5h05m  |
+| 30  | claude-haiku-5-5   | default         | `49eea231d`? | 3      | 390 | 383 (98%) | 98.2M  | 1h33m  |
+| 31  | gpt-6-luna         | `thinking:high` | `6c1b9b427`? | 3      | 393 | 380 (97%) | 180.5M | 5h44m  |
+| 32  | claude-haiku-5-5   | default         | `6c1b9b427`? | 3      | 393 | 381 (97%) | 101.8M | 2h16m  |
+| 33  | qwen3.8-27b        | `--small-model` | `6c1b9b427`? | 3      | 231 | 214 (93%) | 15.4M  | 4h05m  |
+| 34  | gpt-6-luna         | `thinking:high` | `fc8f151e6`  | 3      | 393 | 379 (96%) | 163.5M | 7h06m  |
+| 35  | claude-haiku-5-5   | default         | `fc8f151e6`  | 3      | 393 | 386 (98%) | 89.9M  | 1h26m  |
+| 36  | muse-glimmer-30b   | `--small-model` | `01219a45c`  | 3      | 228 | 201 (88%) | 14.9M  | 2h38m  |
+| 37  | qwen3.8-flash-next | default         | `c8edb1676`  | 3      | 402 | 393 (98%) | 84.9M  | 5h53m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -159,3 +160,11 @@ Six trials errored in setup and three failed on a grader bug, both since fixed;
 `rack-in-pad-read-layers`, `rack-in-pad-add-layer` and `locator-navigation` were
 re-run (`2026-11-13T10-00-50Z`) and those trials replace the first ones in the
 total. Input and wall cover the main run only; wall is scenario time.
+
+**Run 37 is qwen3.8-flash-next's first run** (`qwen3.8-flash-next:125b-mlx` on
+Ollama: 180B params, nvfp4, MLX runner; Live 12.4.16). Its Modelfile asks for a
+256K context, so it ran from a derived tag with `num_ctx 65536`; it peaked at 86
+GB on a 128 GB Mac. Debug build of `c8edb1676`, `--decider jev` with Luna
+judging escalations; Jev decided 58 of 93 judged replies. Ollama reports no
+model build to the harness, so the quant is recorded only here. Wall is scenario
+time.
