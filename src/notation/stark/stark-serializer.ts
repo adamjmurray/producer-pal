@@ -50,6 +50,7 @@ import {
 import {
   type DurationGridEntry,
   durationEntry,
+  exactDurationBefore,
   floorDuration,
   MAX_GRID_BEATS,
   restNoteValues,
@@ -217,12 +218,18 @@ function legatoDuration(
   capBeats: number,
 ): DurationGridEntry {
   const snapped = snapDuration(naturalBeats);
+  const fitted =
+    snapped.beats <= capBeats + SAME_TIME_EPSILON
+      ? snapped
+      : floorDuration(capBeats);
 
-  if (snapped.beats <= capBeats + SAME_TIME_EPSILON) {
-    return snapped;
+  if (!Number.isFinite(capBeats)) {
+    return fitted;
   }
 
-  return floorDuration(capBeats);
+  // Prefer a value that leaves a rest the grid can spell, so the next onset
+  // lands where it is. Off-grid onsets have none; keep the plain fit.
+  return exactDurationBefore(naturalBeats, capBeats) ?? fitted;
 }
 
 // Fill a gap with `z` rest tokens (greedy, largest grid note value first).
