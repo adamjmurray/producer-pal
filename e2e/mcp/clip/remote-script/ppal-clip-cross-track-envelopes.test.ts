@@ -195,35 +195,32 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     });
 
     // A chain's volume sits on the chain's own mixer, not in a device's
-    // parameter list, and no read gives its id, so the Live API is asked.
+    // parameter list, so it is named by the chain's path.
     it("writes, reads and names an envelope on a rack chain's own volume", async () => {
       const chain = `t${String(RACKS_TRACK)}/d0/c0`;
       const slot = `t${String(RACKS_TRACK)}/s0`;
-
-      await setConfig({ liveApiEnabled: true });
-
-      const volume = await call<{ id: string }>("ppal-live-api", {
-        path: `live_set tracks ${String(RACKS_TRACK)} devices 0 chains 0 mixer_device volume`,
-        operations: [{ type: "get-property", property: "name" }],
-      });
       const clip = await createClipInSlot(ctx, slot, {
         notes: "C3 1|1",
         length: "4bar",
       });
       const written = await call<{ envelopes?: number }>("ppal-update-clip", {
         id: clip,
-        envelopes: `${volume.id}: 1|1 0.2 / 1|3 0.6`,
+        envelopes: `${chain}/volume: 1|1 0.2 / 1|3 0.6`,
       });
 
       expect(written.envelopes).toBe(1);
 
       const { envelopes } = await call<{
-        envelopes: Array<{ id?: string; device?: string; events?: string }>;
+        envelopes: Array<{
+          parameter: string;
+          device?: string;
+          events?: string;
+        }>;
       }>("ppal-read-clip", { path: slot, include: ["envelopes"] });
 
       expect(envelopes).toStrictEqual([
         expect.objectContaining({
-          id: volume.id,
+          parameter: "Chain Volume",
           device: chain,
           events: expect.stringMatching(/^1\|1 0\.2 .*\/ 1\|3 0\.6/) as string,
         }),

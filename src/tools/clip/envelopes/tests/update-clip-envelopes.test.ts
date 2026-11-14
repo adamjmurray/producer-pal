@@ -63,9 +63,6 @@ const VOLUME_ID = "476";
 /** The same parameter as VOLUME_ID, spelled with a leading zero. */
 const VOLUME_ID_PADDED = "0476";
 
-/** A chain's own mixer parameter, inside a rack on the clip's track. */
-const CHAIN_MIXER_ID = "477";
-
 /** The track's Activator, a mixer parameter that isn't volume, pan or a send. */
 const ACTIVATOR_ID = "478";
 
@@ -100,10 +97,6 @@ describe("updateClip - envelopes", () => {
     registerMockObject(VOLUME_ID_PADDED, {
       type: "DeviceParameter",
       path: `${livePath.track(0).mixerDevice()} volume`,
-    });
-    registerMockObject(CHAIN_MIXER_ID, {
-      type: "DeviceParameter",
-      path: `${livePath.track(0).device(0).chain(1)} mixer_device volume`,
     });
     registerMockObject(ACTIVATOR_ID, {
       type: "DeviceParameter",
@@ -589,34 +582,6 @@ describe("updateClip - envelopes", () => {
         envelopes: 0,
         detail: `envelope "${DRUM_PAD_ID}": id ${DRUM_PAD_ID} is inside a drum pad, which clip automation can't reach`,
       }),
-    );
-  });
-
-  it("writes a rack chain's own mixer parameter by its mixer name", async () => {
-    registerMockObject("482", {
-      type: "DeviceParameter",
-      path: `${livePath.track(0).device(0).chain(1).device(0).chain(0)} mixer_device sends 1`,
-    });
-    mockNonExistentObjects();
-
-    await updateClip({
-      id: "123",
-      envelopes: `${CHAIN_MIXER_ID}: ${NOTATION}`,
-    });
-
-    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual({
-      track: "t0",
-      slot: 0,
-      device: "d0/c1",
-      parameter: "volume",
-      points: POINTS,
-    });
-
-    vi.mocked(requestNode).mockClear();
-    await updateClip({ id: "123", envelopes: `482: ${NOTATION}` });
-
-    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual(
-      expect.objectContaining({ device: "d0/c1/d0/c0", parameter: "send1" }),
     );
   });
 

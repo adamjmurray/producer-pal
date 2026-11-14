@@ -3,11 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Turning an `envelopes` target — a Live parameter id, or a mixer name — into
-// the address the remote script takes.
+// Turning an `envelopes` target — a Live parameter id, a mixer name, or a rack
+// chain's mixer name like `t0/d0/c1/volume` — into the address the remote
+// script takes.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
+import {
+  nothingAtPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { mixerParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { type EnvelopeTrack, isOnTrack, trackText } from "./envelope-track.ts";
 import {
@@ -27,6 +33,10 @@ const MIXER_PARAMETER =
 /** A rack chain's own volume, pan or send; group 1 is the chain's Live path. */
 const CHAIN_MIXER_PARAMETER =
   /^(live_set (?:tracks|return_tracks) \d+(?: devices \d+ chains \d+)+) mixer_device (?:(volume|panning)|sends (\d+))$/;
+
+/** A rack chain's path, then one of its mixer's names: `t0/d0/c1/volume`. */
+export const CHAIN_MIXER_TARGET =
+  /^((?:t\d+|rt\d+)(?:\/[^/\s:]+)+)\/(volume|pan|send\d+)$/;
 
 /** Which parameter of which device an envelope route writes. */
 export interface EnvelopeTarget {
@@ -112,6 +122,15 @@ export function findSameParameter(
  *   somewhere clip automation can't reach
  */
 function envelopeTarget(target: string, track: EnvelopeTrack): EnvelopeTarget {
+  const chainMixer = CHAIN_MIXER_TARGET.exec(target);
+
+  if (chainMixer != null) {
+    return trackParameter(
+      target,
+      chainMixerPath(chainMixer[1] as string, chainMixer[2] as string, track),
+    );
+  }
+
   if (!/^\d+$/.test(target)) {
     // A mixer name is already the remote script's own spelling.
     return { parameter: target };
@@ -133,12 +152,62 @@ function envelopeTarget(target: string, track: EnvelopeTrack): EnvelopeTarget {
     );
   }
 
-  return trackParameter(target, parameter.path);
+  return trackParameter(`id ${target}`, parameter.path);
+}
+
+/**
+ * Find the mixer parameter a chain target names, on the clip's own track.
+ * @param chainPath - The chain's path, as written
+ * @param name - volume, pan, or send0..
+ * @param track - The track the clip sits on
+ * @returns The parameter's Live path
+ * @throws Error saying why the target reaches no chain mixer parameter
+ */
+function chainMixerPath(
+  chainPath: string,
+  name: string,
+  track: EnvelopeTrack,
+): string {
+  const resolved = resolvePathToLiveApi(chainPath, "envelopes target");
+
+  if (resolved.targetType === "drum-pad") {
+    throw new Error(
+      `${resolved.path} is inside a drum pad, which clip automation can't reach`,
+    );
+  }
+
+  const chain = LiveAPI.from(resolved.liveApiPath);
+
+  if (resolved.namesNothing != null || !chain.exists()) {
+    throw new Error(
+      nothingAtPath(resolved.path, resolved.namesNothing, "envelopes target"),
+    );
+  }
+
+  if (resolved.targetType === "device") {
+    throw new Error(
+      `${resolved.path} is a device, not a rack chain: name a device parameter by its id`,
+    );
+  }
+
+  if (!isOnTrack(chain, track)) {
+    throw new Error(
+      `${resolved.path} is not on the clip's track (${trackText(track)}), and a clip can only automate its own track`,
+    );
+  }
+
+  const parameter = mixerParameter(chain, name);
+
+  if (parameter?.exists() !== true) {
+    throw new Error(`${resolved.path} has no ${name}`);
+  }
+
+  return parameter.path;
 }
 
 /**
  * Address a parameter already known to sit on the clip's track.
- * @param target - The target as the call wrote it, for the error
+ * @param target - What the error calls the target: `id 472`, or its path
  * @param path - The parameter's Live path
  * @returns The address the remote script takes
  * @throws Error when the parameter is somewhere the remote script can't walk
@@ -162,7 +231,7 @@ function trackParameter(target: string, path: string): EnvelopeTarget {
   const device = DEVICE_PARAMETER.exec(path);
 
   if (device == null) {
-    throw new Error(`id ${target} ${unreachableReason(path)}`);
+    throw new Error(`${target} ${unreachableReason(path)}`);
   }
 
   return { device: pathOnTrack(path), parameter: Number(device[1]) };
@@ -184,7 +253,7 @@ function pathOnTrack(path: string): string {
  * script's device walk only spells devices and chains, and a track's or a
  * chain's volume, pan and sends.
  * @param path - The parameter's Live path
- * @returns What's wrong with where it sits, to follow "id N"
+ * @returns What's wrong with where it sits, to follow the target
  */
 function unreachableReason(path: string): string {
   if (path.includes(" drum_pads ")) {

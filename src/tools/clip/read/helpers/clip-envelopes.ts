@@ -394,7 +394,7 @@ function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
  * @param name - volume, pan, or send0..
  * @returns The parameter, or null when the name isn't one of those
  */
-function mixerParameter(track: LiveAPI, name?: string): LiveAPI | null {
+export function mixerParameter(track: LiveAPI, name?: string): LiveAPI | null {
   const mixer = track.child("mixer_device");
 
   if (name === "volume") {
