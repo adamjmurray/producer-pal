@@ -87,6 +87,9 @@ script.
   Producer Pal is already running, it ends with: once the user has restarted,
   call `ppal-connect` with `versionCheck: true`, then a note: never connected in
   this chat? Call a plain one instead (see [ppal-connect](ppal-connect.md)).
+  When both files report `current` or `kept` (nothing was written), `nextSteps`
+  says so and that no restart is needed, and, when Producer Pal isn't running,
+  to call `add-producer-pal` (the model asks first).
 
 - **One part fails:** the call does what it can and reports both. It is a
   result, not an error: the part that failed is `{ ok: false, path?, detail }`,

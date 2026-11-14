@@ -163,6 +163,45 @@ describe("manageInstallResult next steps", () => {
     expect(nextSteps).toContain("If this chat hasn't called ppal-connect yet");
   });
 
+  it.each([
+    ["current", "current"],
+    ["current", "kept"],
+    ["kept", "current"],
+    ["kept", "kept"],
+  ] as const)(
+    "asks for no restart when the script is %s and the device %s",
+    (script, device) => {
+      for (const running of [true, false]) {
+        const { nextSteps } = manageInstallResult(
+          {
+            ran: true,
+            remoteScript: { status: script, path: "/s" },
+            device: { status: device, path: "/d" },
+          },
+          { running },
+        );
+
+        expect(nextSteps).toContain("no restart is needed");
+        expect(nextSteps).not.toContain("restart Live, then");
+        expect(nextSteps).not.toContain("versionCheck");
+        expect(nextSteps.includes("add-producer-pal")).toBe(!running);
+      }
+    },
+  );
+
+  it("still asks for a restart when only the device was already current", () => {
+    const { nextSteps } = manageInstallResult(
+      {
+        ran: true,
+        remoteScript: OK,
+        device: { status: "current", path: "/d" },
+      },
+      { running: true },
+    );
+
+    expect(nextSteps).toContain("restart Live, then");
+  });
+
   it("leaves the connect check out when nothing is running to connect to", () => {
     const { nextSteps } = manageInstallResult(
       { ran: true, remoteScript: OK, device: OK },

@@ -97,6 +97,15 @@ function nextSteps(
   device: InstallPart,
   context: InstallContext,
 ): string {
+  if (unchanged(remoteScript) && unchanged(device)) {
+    const unwritten =
+      "Nothing was written (see remoteScript and device), so no restart is needed.";
+
+    return context.running
+      ? unwritten
+      : `${unwritten} Call ${ADD} (ask the user first). ${DRAG_NOW}`;
+  }
+
   const finish = `Tell the user to finish in Live: ${FINISH_IN_LIVE}`;
 
   if (device.ok === false) {
@@ -116,6 +125,17 @@ function nextSteps(
   return context.running
     ? `${finish} Once they have, call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`
     : `${finish} Then call ${ADD} (ask the user first). ${DRAG_NOW}`;
+}
+
+/**
+ * @param part - What became of the remote script or the device
+ * @returns True when nothing was written: the file is current, or a different
+ *   copy was kept
+ */
+function unchanged(part: InstallPart): boolean {
+  return (
+    part.ok == null && (part.status === "current" || part.status === "kept")
+  );
 }
 
 /**
