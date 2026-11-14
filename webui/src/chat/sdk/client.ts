@@ -40,6 +40,7 @@ import {
 } from "./subagent/subagent-session";
 import { DEFAULT_MAX_TOOL_STEPS } from "./step-budget";
 import { streamEndNotice } from "./streaming/stream-end-notice";
+import { createStreamInterrupt } from "./streaming/stream-interrupt";
 import {
   type ChatClientConfig,
   type ChatMessage,
@@ -479,6 +480,7 @@ export class ChatSdkClient {
     let stepIndex = 0;
 
     const errorSignal = createStreamErrorSignal();
+    const interrupt = createStreamInterrupt(abortSignal);
 
     const result = streamText({
       model: this.config.model,
@@ -492,7 +494,7 @@ export class ChatSdkClient {
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(this.maxSteps),
       providerOptions,
-      abortSignal,
+      abortSignal: interrupt.signal,
       onError: errorSignal.onError,
       onStepEnd: (event) => {
         let count = 0;
@@ -555,6 +557,11 @@ export class ChatSdkClient {
         } else if (part.type === "start-step" && addedCurrentMsg) {
           // Between tool steps: check if a queued user message should interrupt
           if (shouldInterrupt?.()) {
+            // Leaving this loop does not stop streamText: its own loop is
+            // already requesting the next step and would run that step's
+            // tools, with nothing recorded in the history. Abort it.
+            interrupt.stop();
+
             return;
           }
 
@@ -578,6 +585,7 @@ export class ChatSdkClient {
 
       throw error;
     } finally {
+      interrupt.release();
       // A stream that ended mid-tool leaves the in-flight assistant message
       // holding a tool-call with no tool-result. Backfill one so the history
       // stays valid (providers reject an unmatched tool-call) and the UI doesn't
