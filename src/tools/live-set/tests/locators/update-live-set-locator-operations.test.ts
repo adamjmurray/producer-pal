@@ -224,6 +224,26 @@ describe("updateLiveSet - locator operations", () => {
       });
     });
 
+    it.each(["Verse ", "Verse", " Verse"])(
+      'deletes a locator named "Verse " by the name %j',
+      async (locatorName) => {
+        setupLocatorMocks(liveSet, {
+          cuePoints: [{ id: "26", time: 0, name: "Verse " }],
+        });
+
+        const result = await updateLiveSet({
+          locatorOperation: "delete",
+          locatorName,
+        });
+
+        expect(result.locator).toStrictEqual({
+          operation: "delete",
+          count: 1,
+          name: locatorName.trim(),
+        });
+      },
+    );
+
     it("deletes a locator by an all-digit name", async () => {
       // The match must still find it by its string name.
       setupLocatorMocks(liveSet, {
