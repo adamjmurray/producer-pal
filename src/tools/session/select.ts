@@ -97,7 +97,7 @@ export interface SelectResult {
     detail?: string;
   };
   selectedDrumPad?: { id: string; path: string };
-  selectedChain?: { id: string; path: string };
+  selectedChain?: { id: string; path?: string };
 }
 
 /** What the call asked for, read once. */

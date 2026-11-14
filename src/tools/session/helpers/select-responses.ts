@@ -9,7 +9,6 @@ import {
   type AnySlotPosition,
   slotLivePath,
 } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import {
   objectPathForApi,
   pathField,
@@ -131,7 +130,7 @@ export function buildDeviceResponseFromDevice(
     return undefined;
   }
 
-  const path = devicePath ?? extractDevicePath(device.path);
+  const path = devicePath ?? objectPathForApi(device);
 
   return path ? { id: device.id, path } : undefined;
 }
@@ -339,7 +338,7 @@ function readSelectedDeviceInfo(
     return undefined;
   }
 
-  const path = extractDevicePath(device.path);
+  const path = objectPathForApi(device);
 
   return path ? { id: rawId, path } : undefined;
 }

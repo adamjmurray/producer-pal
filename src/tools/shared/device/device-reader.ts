@@ -26,7 +26,6 @@ import {
   appendParameters,
 } from "./helpers/params/param-listing.ts";
 import { describeDevice, deviceClassName } from "./helpers/device-identity.ts";
-import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { fixedChainLimit } from "./helpers/path/rack-chain-limit.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
@@ -34,6 +33,7 @@ import {
   readSpecializedModulations,
   readSpecializedOptions,
 } from "./specialized/specialized-device-registry.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** How deep readDevice walks a rack tree when the caller doesn't say. */
 export const DEFAULT_MAX_DEPTH = 4;
@@ -50,7 +50,7 @@ export interface ReadDeviceOptions {
   paramSearch?: string;
   depth?: number;
   maxDepth?: number;
-  parentPath?: string;
+  parentPath?: string | null;
   /**
    * The caller drops the chains afterwards and is walking only to find a drum
    * rack. Chain identity and the chain mixer are then pure cost, so the walk
@@ -338,8 +338,11 @@ export function readDevice(
   const deviceType = getDeviceType(device);
   const hosted = detectHostedPlugin(device);
   const className = deviceClassName(device, hosted);
-  // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
-  const path = parentPath ?? extractDevicePath(device.path);
+  // A walk threads its path down, or null when it shows none. A device read on
+  // its own is spelled the way results spell it: pad-relative under a drum
+  // chain, which costs a build per chain above it.
+  const path =
+    parentPath === undefined ? (objectPathForApi(device) ?? null) : parentPath;
   const deviceInfo = describeDevice(device, {
     deviceType,
     className,

@@ -165,7 +165,14 @@ function processRegularChains(
 
     deviceInfo.chains = chains.map((chain, index) =>
       chainsHidden
-        ? hiddenChainInfo(chain, depth, maxDepth, readDeviceFn, deviceOptions)
+        ? hiddenChainInfo(
+            chain,
+            devicePath ? buildChainPath(devicePath, index) : null,
+            depth,
+            maxDepth,
+            readDeviceFn,
+            deviceOptions,
+          )
         : buildChainAtDepth(
             chain,
             devicePath ? buildChainPath(devicePath, index) : null,
@@ -188,6 +195,7 @@ function processRegularChains(
  * search descends into. Skipping buildChainInfo skips the chain mixer, which
  * is a mixer, a volume, a pan and one send per return chain, per chain.
  * @param chain - Chain LiveAPI object
+ * @param chainPath - Resolved chain path
  * @param depth - Current depth
  * @param maxDepth - Max depth for device expansion
  * @param readDeviceFn - readDevice function for recursive expansion
@@ -196,6 +204,7 @@ function processRegularChains(
  */
 function hiddenChainInfo(
   chain: LiveAPI,
+  chainPath: string | null,
   depth: number,
   maxDepth: number,
   readDeviceFn: ReadDeviceFn,
@@ -205,10 +214,16 @@ function hiddenChainInfo(
     return {};
   }
 
+  // Thread the path down, as a shown chain does: a kit found below is named
+  // by it, and leaving a device to spell its own costs a build per chain
+  // above it.
   return {
-    devices: chain
-      .getChildren("devices")
-      .map((device) => readDeviceFn(device, deviceOptions)),
+    devices: chain.getChildren("devices").map((device, deviceIndex) =>
+      readDeviceFn(device, {
+        ...deviceOptions,
+        parentPath: chainPath ? `${chainPath}/d${deviceIndex}` : null,
+      }),
+    ),
   };
 }
 
