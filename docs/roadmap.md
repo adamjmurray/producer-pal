@@ -14,7 +14,7 @@ In consideration:
 - Fetch available local models instead of configuring manually in the built-in
   chat
 - Automation in the units of the parameter (dB, Hz, ms)
-- Moving and duplicating tracks, scenes and rack chains
+- Moving tracks, scenes and rack chains
 - Session clip launch settings (launch mode, quantization, legato)
 
 ## Changelog
