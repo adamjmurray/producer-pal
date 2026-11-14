@@ -94,12 +94,13 @@ export async function syncProjectContextBackup(
   }
 
   // Restore is only valid on the first sync of a session: a device (re)load is
-  // the one thing that wipes the param (e.g. an upgrade). After that, an empty
-  // param is a deliberate user clear — Node propagates it instead of restoring.
+  // the one thing that wipes the param (e.g. an upgrade). After that an empty
+  // param is never restored.
   // isEdit is always false: a sync runs before every tool call and only
   // observes the param, so it must never push a stale blob over a differing
   // sidecar (that is how reopening an older Set used to clobber the folder's
-  // shared notes). Creating a MISSING sidecar still works from here.
+  // shared notes), nor delete one for an empty param (a Set with no context
+  // saved into the folder). Creating a MISSING sidecar still works from here.
   const { ok, restored } = await requestSync(filePath, content, {
     allowRestore,
     isEdit: false,

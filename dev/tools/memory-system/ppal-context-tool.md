@@ -83,16 +83,20 @@ filesystem):
   **restore** (also updates Node's `config.projectContext` mirror directly, so a
   restore during `ppal-connect` shows in that response's injected block — the
   Max round-trip that re-persists the param can't be relied on to land in time);
-  otherwise ⇒ **clear** (delete the sidecar). Otherwise a no-op.
+  otherwise, on a genuine write (`isEdit`) ⇒ **clear** (delete the sidecar).
+  Otherwise a no-op.
 
 **Restore vs. clear.** An empty param means either "device was upgraded, param
 wiped" (restore) or "the user cleared the context"
 (`ppal-context write content:""`, an explicit supported clear). Only a device
 (re)load wipes the param, and that resets V8's module-level memo, so restore is
 gated on `allowRestore = !memo.syncedOnce` — allowed only on the session's first
-sync. After that first sync, an empty param is a deliberate clear, and the route
-_deletes_ the sidecar so the clear sticks and isn't resurrected by a restore on
-the next load.
+sync. After that first sync an empty param is never restored. It is a clear only
+when a genuine write emptied it (`isEdit`, below): the route then _deletes_ the
+sidecar so the clear sticks and isn't resurrected by a restore on the next load.
+A sync that merely sees an empty param deletes nothing — it may be a Set with no
+context saved into a folder that has notes (Save As), and those notes belong to
+the folder's other Sets.
 
 The tool-call sync is the primary trigger, but a **manual edit** (device-UI
 textedit or webui `POST /config`) changes the context without invoking a tool,
@@ -164,13 +168,13 @@ opening a previous version of a Set in the folder replaced the project's current
 notes with that Set's stale ones, with no context write and no user intent.
 
 The rule now enforced: create a _missing_ sidecar always (covering a first save,
-a Save-As, and a moved folder), but overwrite an _existing, differing_ one only
+a Save-As, and a moved folder), but overwrite or delete an _existing_ one only
 on a real project-context write. An `isEdit` flag on the sync request is what
 separates them, and each V8 entry point knows which kind it is:
 
 - `syncProjectContextBackup` runs before every tool call and only _observes_ the
   param, so it always sends `isEdit: false`. It can still create a missing
-  sidecar; it can never replace a differing one.
+  sidecar; it can never replace a differing one or delete one.
 - `backupProjectContextOnEdit` is only ever reached by a genuine write, so it
   sends `isEdit: true` — except while the device may have loaded wiped (no sync
   yet and no load echo with content), where even a write waits its turn.

@@ -171,13 +171,13 @@ describe("syncProjectContextBackup — restore", () => {
 });
 
 describe("syncProjectContextBackup — allowRestore gating", () => {
-  it("sends allowRestore:false once a sync has completed (an in-session clear)", async () => {
+  it("sends allowRestore:false once a sync has completed", async () => {
     setFilePath(SAVED_PATH);
     mockSyncResult("backup");
     await syncProjectContextBackup("Genre: jungle");
 
-    // User clears the project context; the next sync must not restore.
-    mockSyncResult("clear");
+    // The param is empty now; the next sync must not restore.
+    mockSyncResult("none");
     const restored = await syncProjectContextBackup("");
 
     expect(restored).toBeNull();

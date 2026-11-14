@@ -26,8 +26,8 @@ export interface ProjectContextSyncArgs {
   /**
    * Whether an empty param may be restored from the sidecar. Only true on the
    * first sync of a session (a device (re)load — the one way an upgrade wipes
-   * the param). After that, an empty param is a deliberate user clear, so we
-   * propagate the clear instead of resurrecting the backup.
+   * the param). After that an empty param is never restored: it is a clear when
+   * `isEdit` says the user emptied it, and otherwise left alone.
    */
   allowRestore: boolean;
   /**
@@ -36,9 +36,11 @@ export interface ProjectContextSyncArgs {
    * device-load echo or a passing pre-tool-call sync, both of which only
    * observe the param.
    *
-   * Only a write may overwrite an existing sidecar whose content differs. One
-   * sidecar is shared by every Set in a Live Project folder, so a load must not
-   * push an older Set's saved blob over the folder's newer notes. A MISSING
+   * Only a write may overwrite an existing sidecar whose content differs, or
+   * delete one. One sidecar is shared by every Set in a Live Project folder, so
+   * a load must not push an older Set's saved blob over the folder's newer
+   * notes, and saving a Set with no context into the folder (Save As) must not
+   * delete them. A MISSING
    * sidecar is always created either way — that is what covers a first save, a
    * Save-As, and a moved project folder.
    */
@@ -109,10 +111,15 @@ function syncRoute(
   }
 
   // Empty param. On the first sync of a session it may be an upgrade-wiped
-  // device (restore); otherwise it's a deliberate clear (propagate to disk).
-  return allowRestore
-    ? restoreIfBackupExists(filePath, deps)
-    : clearBackupIfPresent(filePath);
+  // device (restore).
+  if (allowRestore) {
+    return restoreIfBackupExists(filePath, deps);
+  }
+
+  // Only a write that emptied the param is a clear. A sync that just saw an
+  // empty param may be a Set with no context saved into a folder that has
+  // notes (Save As), and deleting them there loses another Set's context.
+  return isEdit === true ? clearBackupIfPresent(filePath) : { action: "none" };
 }
 
 /**
@@ -148,8 +155,8 @@ function restoreIfBackupExists(
 }
 
 /**
- * Param was cleared by the user (empty, and not the session's first sync):
- * delete the sidecar so the clear sticks and isn't restored on the next load.
+ * Param was cleared by the user (an empty write, not the session's first
+ * sync): delete the sidecar so the clear sticks and isn't restored on the next load.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @returns "clear" when a sidecar was deleted, "failed" when the delete threw
