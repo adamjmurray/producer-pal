@@ -17,6 +17,7 @@ import {
 import { type EvalTurnResult, type LlmJudgeAssertion } from "../../types.ts";
 import {
   type CheckSummary,
+  isJudgeError,
   type LlmJudgeDetails,
   type LlmJudgeOverride,
 } from "../../assertions/llm-judge.ts";
@@ -217,6 +218,39 @@ describe("assertWithDeciderFirst", () => {
     expect(result.message).toBe(
       "Decider escalated (lowest answer 0.50 (req2) is between 0.3 and 0.85); LLM judge: fail (1 issue(s))",
     );
+  });
+
+  it("keeps the judge-error mark when the decider failed and the LLM judge did too", async () => {
+    const errored: LlmJudgeDetails = {
+      pass: false,
+      issues: ["timeout"],
+      judgeError: true,
+    };
+    const result = await assertWithDeciderFirst(
+      assertion,
+      turns,
+      "google",
+      undefined,
+      checks,
+      { provider: "openrouter", model: "jev-x" },
+      {
+        decider: async () => {
+          throw new Error("decider down");
+        },
+        llm: async () => ({
+          assertion,
+          earned: 0,
+          maxScore: 0,
+          message: "LLM judge error: timeout",
+          details: errored,
+        }),
+      },
+    );
+
+    expect(result.message).toBe(
+      "Decider escalated (decider call failed: decider down); LLM judge error: timeout",
+    );
+    expect(isJudgeError(result)).toBe(true);
   });
 
   it("hands an escalation the CLI judge override, thinking included", async () => {

@@ -10,7 +10,11 @@ import {
   type EvalTurnResult,
   type LlmJudgeAssertion,
 } from "../types.ts";
-import { assertWithLlmJudge, type LlmJudgeDetails } from "./llm-judge.ts";
+import {
+  assertWithLlmJudge,
+  isJudgeError,
+  type LlmJudgeDetails,
+} from "./llm-judge.ts";
 
 vi.mock(import("../helpers/judge/judge.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -125,7 +129,26 @@ describe("assertWithLlmJudge", () => {
       issues: ["boom"],
       provider: "openai",
       model: "gpt-x",
+      judgeError: true,
     });
+  });
+
+  it("marks a failed judge call, and a verdict never carries the mark", async () => {
+    vi.mocked(callJudge).mockRejectedValueOnce(new Error("boom"));
+
+    const failed = await assertWithLlmJudge(assertion, turns, "google");
+    const verdict = await assertWithLlmJudge(assertion, turns, "google");
+
+    expect(isJudgeError(failed)).toBe(true);
+    expect(isJudgeError(verdict)).toBe(false);
+  });
+
+  it("marks a reply the judge gave that cannot be parsed", async () => {
+    vi.mocked(callJudge).mockResolvedValueOnce("not json at all");
+
+    const result = await assertWithLlmJudge(assertion, turns, "google");
+
+    expect(isJudgeError(result)).toBe(true);
   });
 
   it("refuses the local provider but keeps the provider", async () => {
@@ -134,6 +157,7 @@ describe("assertWithLlmJudge", () => {
     expect(details.pass).toBe(false);
     expect(details.issues[0]).toContain("Local provider");
     expect(details.provider).toBe("local");
+    expect(details.judgeError).toBe(true);
     expect(callJudge).not.toHaveBeenCalled();
   });
 

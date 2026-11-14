@@ -36,7 +36,7 @@ import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 import { parseJudgeThinking } from "#evals/scenarios/run-env/parse-thinking-arg.ts";
 import {
   assertWithLlmJudge,
-  LLM_JUDGE_ERROR_PREFIX,
+  isJudgeError,
   type LlmJudgeDetails,
 } from "#evals/scenarios/assertions/llm-judge.ts";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
@@ -221,7 +221,7 @@ async function judgeOne(
     return "error";
   }
 
-  if (outcome.message.startsWith(LLM_JUDGE_ERROR_PREFIX)) {
+  if (isJudgeError(outcome)) {
     return "error";
   }
 

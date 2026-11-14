@@ -21,10 +21,12 @@ import {
 } from "../assertions/index.ts";
 import { type EvalSession } from "../eval-session.ts";
 import { assertionLabel } from "../helpers/json-results/assertion-label.ts";
-import { StoppedTurnError } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
+import {
+  isStepBudgetStop,
+  StoppedTurnError,
+} from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
 import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { type TurnResult } from "#evals/chat/shared/types.ts";
-import { isProviderRefusal } from "../helpers/trials/provider-refusal.ts";
 import { isQuietMode } from "../helpers/quiet-mode.ts";
 import {
   seedConnectTurn,
@@ -36,6 +38,18 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../types.ts";
+
+/**
+ * A turn that ended in a transport or provider error (refused, bad key, server
+ * failure, dropped connection). The model never answered, so the run is an
+ * infra error, not a graded fail.
+ */
+export class TurnTransportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TurnTransportError";
+  }
+}
 
 /**
  * Run the scenario's message turns, appending one result per turn.
@@ -90,10 +104,11 @@ export async function runMessageTurns(
 
     turns.push(toEvalTurn(i, message, turnResult, turnStart));
 
-    // The AI SDK reports a refused request as a turn error, not a throw. Later
-    // turns would be refused too, and grading them would score an outage.
-    if (turnResult.error != null && isProviderRefusal(turnResult.error)) {
-      throw new Error(turnResult.error);
+    // The AI SDK reports a failed request as a turn error, not a throw. Later
+    // turns would fail too, and grading them would score an outage. Only the
+    // agent CLIs report a step-budget stop (the model looping), and they throw.
+    if (turnResult.error != null && !isStepBudgetStop(turnResult.error)) {
+      throw new TurnTransportError(turnResult.error);
     }
   }
 }

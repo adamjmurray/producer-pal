@@ -70,6 +70,28 @@ export function mcpResultInjectedBlocks(value: unknown): string[] {
 }
 
 /**
+ * What a recorded tool call keeps beside its payload: the relayed warnings and
+ * the injected context blocks, each present only when non-empty. Every path
+ * that records a tool result spreads this, so a real call and a seeded one
+ * record the same thing.
+ *
+ * @param value - Raw MCP result, or its content array
+ * @returns `warnings` and `injectedBlocks`, left out when empty
+ */
+export function mcpResultExtras(value: unknown): {
+  warnings?: string[];
+  injectedBlocks?: string[];
+} {
+  const warnings = mcpResultWarnings(value);
+  const injectedBlocks = mcpResultInjectedBlocks(value);
+
+  return {
+    ...(warnings.length > 0 && { warnings }),
+    ...(injectedBlocks.length > 0 && { injectedBlocks }),
+  };
+}
+
+/**
  * Normalize either accepted shape down to the content-block array.
  *
  * @param value - Raw MCP result, or its content array

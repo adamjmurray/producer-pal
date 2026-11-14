@@ -359,4 +359,6 @@ export interface EvalScenarioResult {
   /** Which build of a local model ran (LM Studio or Ollama) */
   localModel?: LocalModelInfo;
   error?: string;
+  /** The error is transport or provider trouble, not the model's doing. */
+  infraError?: boolean;
 }

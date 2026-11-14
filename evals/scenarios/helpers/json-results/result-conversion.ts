@@ -8,6 +8,7 @@
  */
 
 import { isSignalAssertion } from "../../assertions/index.ts";
+import { isJudgeError } from "../../assertions/llm-judge.ts";
 import {
   type EvalAssertionResult,
   type EvalScenarioResult,
@@ -63,6 +64,8 @@ export function toJsonResult(
   const advisory = result.scenario.judgeAdvisory ?? false;
   const judge = buildJudge(result.assertions, advisory);
   const totalTiming = aggregateStepTimings(result.turns);
+  const judgeFailure = gatingJudgeFailure(result, checks, advisory);
+  const error = result.error ?? judgeFailure;
 
   return {
     version: judge?.decidedBy == null ? 1 : 2,
@@ -79,7 +82,7 @@ export function toJsonResult(
     configProfileId,
     ...(result.thinking != null && { thinking: result.thinking }),
     ...(result.instructions && { instructions: result.instructions }),
-    result: deriveOutcome(result, checks, judge),
+    result: deriveOutcome(result, checks, judge, judgeFailure != null),
     turns: result.turns.map(convertTurn),
     checks,
     ...(signals.length > 0 && { signals }),
@@ -90,8 +93,32 @@ export function toJsonResult(
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
     ...(totalTiming && { totalTiming }),
     ...(result.localModel && { localModel: result.localModel }),
-    ...(result.error && { error: result.error }),
+    ...(error && { error }),
   };
+}
+
+/**
+ * The message of a judge call that gave no verdict, when that decides the run.
+ * A failed check stands whatever the judge says, and an advisory judge never
+ * gates, so neither counts.
+ *
+ * @param result - Internal scenario result
+ * @param checks - Checks result
+ * @param advisory - Whether the judge is non-gating
+ * @returns The judge's failure message, or undefined
+ */
+function gatingJudgeFailure(
+  result: EvalScenarioResult,
+  checks: JsonChecks,
+  advisory: boolean,
+): string | undefined {
+  if (advisory || (checks.results.length > 0 && !checks.pass)) {
+    return undefined;
+  }
+
+  return result.assertions.find(
+    (a) => a.assertion.type === "llm_judge" && isJudgeError(a),
+  )?.message;
 }
 
 /**
@@ -190,22 +217,27 @@ function buildEfficiency(
  * Classify a run's outcome. A run that errored before the model's first turn
  * (the Set would not open, the config would not apply), that the provider cut
  * off (usage limit, credits, capacity), or that threw before its scripted turns
- * all ran (Live died, a call timed out, the CLI crashed), did not finish the
- * test. Calling it a fail turns an outage into a wall of convincing-looking
- * zeros, and `--resume` would keep it. A turn the step budget stopped is the
- * model looping, so it stays a fail.
+ * all ran (Live died, a call timed out, the CLI crashed), or whose turn ended
+ * in a transport error (bad key, rejected request, server failure), did not
+ * finish the test. So does a gating judge that gave no verdict (unless a check
+ * already failed the run). Calling
+ * any of them a fail turns an outage into a wall of convincing-looking zeros,
+ * and `--resume` would keep it. A turn the step budget stopped is the model
+ * looping, so it stays a fail.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
  * @param judge - Judge result (if any)
+ * @param judgeFailed - Whether a gating judge gave no verdict
  * @returns The run's outcome
  */
 function deriveOutcome(
   result: EvalScenarioResult,
   checks: JsonChecks,
   judge: JsonJudge | undefined,
+  judgeFailed: boolean,
 ): "pass" | "fail" | "error" {
-  if (result.error != null && isInfrastructureError(result)) {
+  if (judgeFailed || (result.error != null && isInfrastructureError(result))) {
     return "error";
   }
 
@@ -224,6 +256,7 @@ function isInfrastructureError(result: EvalScenarioResult): boolean {
 
   return (
     result.turns.length === 0 ||
+    result.infraError === true ||
     isProviderRefusal(error) ||
     (cutShort && !isStepBudgetStop(error))
   );

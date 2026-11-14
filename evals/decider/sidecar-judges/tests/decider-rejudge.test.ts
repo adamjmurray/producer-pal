@@ -366,7 +366,7 @@ describe("runRejudge", () => {
       earned: 0,
       maxScore: 0,
       message: "LLM judge error: timeout",
-      details: { pass: false, issues: ["timeout"] },
+      details: { pass: false, issues: ["timeout"], judgeError: true },
     }));
     const summary = await runRejudge(base(), deps(failing));
 

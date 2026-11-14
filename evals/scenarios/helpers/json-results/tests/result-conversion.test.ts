@@ -95,6 +95,7 @@ function judgeAssertion(
     issues: string[];
     provider?: string;
     model?: string;
+    judgeError?: true;
   },
   message: string,
 ): EvalAssertionResult {
@@ -316,6 +317,64 @@ describe("toJsonResult", () => {
 
       expect(result.result).toBe("pass");
     });
+  });
+
+  describe("a judge that gave no verdict", () => {
+    const failedJudge = judgeAssertion(
+      { pass: false, issues: ["timeout"], judgeError: true },
+      "LLM judge error: timeout",
+    );
+
+    it("is an error, so it is not scored or kept on resume", () => {
+      const result = convert({ assertions: [makeAssertion(), failedJudge] });
+
+      expect(result.result).toBe("error");
+      expect(result.error).toBe("LLM judge error: timeout");
+    });
+
+    it("is an error for a judge-only scenario", () => {
+      expect(convert({ assertions: [failedJudge] }).result).toBe("error");
+    });
+
+    it("stays a fail when a check already failed the run", () => {
+      const result = convert({
+        assertions: [makeAssertion({ earned: 0 }), failedJudge],
+      });
+
+      expect(result.result).toBe("fail");
+      expect(result).not.toHaveProperty("error");
+    });
+
+    it("does not stop an advisory judge from passing on its checks", () => {
+      const result = convert({
+        scenario: { ...makeResult().scenario, judgeAdvisory: true },
+        assertions: [makeAssertion(), failedJudge],
+      });
+
+      expect(result.result).toBe("pass");
+    });
+
+    it("stays a fail when the judge returned a real fail verdict", () => {
+      const result = convert({
+        assertions: [
+          makeAssertion(),
+          judgeAssertion(FAILING_JUDGE, "LLM judge: fail (2 issue(s))"),
+        ],
+      });
+
+      expect(result.result).toBe("fail");
+    });
+  });
+
+  it("grades a turn that ended in a transport error as an error", () => {
+    const result = convert({
+      turns: [makeTurn({ assistantResponse: "" })],
+      error: "Incorrect API key provided (HTTP 401)",
+      infraError: true,
+      assertions: [],
+    });
+
+    expect(result.result).toBe("error");
   });
 
   it("handles zero checks gracefully", () => {

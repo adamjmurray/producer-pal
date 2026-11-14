@@ -28,6 +28,7 @@ import { startToolOverrideProxy } from "./run-scenario/tool-override-proxy.ts";
 import {
   computeTotalUsage,
   runMessageTurns,
+  TurnTransportError,
 } from "./run-scenario/message-turns.ts";
 import {
   mergeConfigs,
@@ -191,6 +192,7 @@ export async function runScenario(
       assertions: [],
       totalDurationMs: Date.now() - startTime,
       error: errorMessage(error),
+      ...(error instanceof TurnTransportError && { infraError: true }),
     };
   } finally {
     if (session) {

@@ -13,7 +13,11 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../types.ts";
-import { runCorrectnessAssertion, runMessageTurns } from "./message-turns.ts";
+import {
+  runCorrectnessAssertion,
+  runMessageTurns,
+  TurnTransportError,
+} from "./message-turns.ts";
 
 describe("runCorrectnessAssertion", () => {
   it("scores an unknown assertion type as a failure, not a vacuous pass", async () => {
@@ -111,16 +115,49 @@ describe("runMessageTurns", () => {
     expect(turns[1]).not.toHaveProperty("finishReason");
   });
 
-  it("keeps going after a turn error that is not a refusal", async () => {
+  it.each([
+    ["a bad key", "Incorrect API key provided (HTTP 401)"],
+    ["a rejected request", "Bad request (HTTP 400)"],
+    ["an unknown model", "model not found (HTTP 404)"],
+    ["a server failure", "Bad gateway (HTTP 502)"],
+    ["a dropped connection", "Cannot connect to API: socket hang up"],
+  ])(
+    "stops at a turn that ended in %s, as an infra error",
+    async (_label, error) => {
+      const { run, turns, sendMessage } = runWithReplies({
+        text: "",
+        toolCalls: [],
+        error,
+      });
+
+      await expect(run).rejects.toThrow(TurnTransportError);
+      await expect(run).rejects.toThrow(error);
+      expect(turns).toHaveLength(1);
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("throws a refusal as the same kind of error", async () => {
+    const { run } = runWithReplies({
+      text: "",
+      toolCalls: [],
+      error: "rate limit exceeded",
+    });
+
+    await expect(run).rejects.toThrow(TurnTransportError);
+  });
+
+  it("does not treat a step-budget stop as a transport error", async () => {
     const { run, turns } = runWithReplies(
-      { text: "", toolCalls: [], error: "empty response" },
+      {
+        text: "",
+        toolCalls: [],
+        error: "codex CLI hit the step budget of 2 steps and was stopped.",
+      },
       { text: "done", toolCalls: [] },
     );
 
     await run;
-    expect(turns.map((turn) => turn.assistantResponse)).toStrictEqual([
-      "",
-      "done",
-    ]);
+    expect(turns).toHaveLength(2);
   });
 });

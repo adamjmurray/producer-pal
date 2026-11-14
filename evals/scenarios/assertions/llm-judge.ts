@@ -55,6 +55,19 @@ export interface LlmJudgeOverride {
 export interface LlmJudgeDetails extends SimpleJudgeResult {
   provider?: EvalProvider;
   model?: string;
+  /** The judge call or its parse failed: `pass` is not a verdict. */
+  judgeError?: true;
+}
+
+/**
+ * Whether a judge result is a failed judge call rather than a verdict. Looks at
+ * the details, not the message: the decider's escalation wraps the message.
+ *
+ * @param result - A judge assertion result
+ * @returns True when the judge gave no verdict
+ */
+export function isJudgeError(result: EvalAssertionResult): boolean {
+  return (result.details as LlmJudgeDetails | undefined)?.judgeError === true;
 }
 
 /** The parts of a turn the transcript shows; live and saved turns both fit. */
@@ -141,6 +154,7 @@ export async function assertWithLlmJudge(
       issues: [msg],
       provider,
       model: judgeModel,
+      judgeError: true,
     });
   }
 }

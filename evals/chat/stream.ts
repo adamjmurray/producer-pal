@@ -28,7 +28,7 @@ import {
   startThought,
 } from "./shared/formatting.ts";
 import {
-  mcpResultInjectedBlocks,
+  mcpResultExtras,
   mcpResultText,
   mcpResultWarnings,
 } from "./shared/mcp-result-text.ts";
@@ -497,18 +497,7 @@ function recordOutput(
   output: unknown,
 ): void {
   toolCall.result = formatOutput(output);
-
-  const warnings = mcpResultWarnings(output);
-
-  if (warnings.length > 0) {
-    toolCall.warnings = warnings;
-  }
-
-  const injected = mcpResultInjectedBlocks(output);
-
-  if (injected.length > 0) {
-    toolCall.injectedBlocks = injected;
-  }
+  Object.assign(toolCall, mcpResultExtras(output));
 }
 
 /**

@@ -17,11 +17,7 @@ import {
   type TokenUsage,
   tokensPerSecond,
 } from "#webui/chat/sdk/types.ts";
-import {
-  mcpResultInjectedBlocks,
-  mcpResultText,
-  mcpResultWarnings,
-} from "../shared/mcp-result-text.ts";
+import { mcpResultExtras, mcpResultText } from "../shared/mcp-result-text.ts";
 import { type ToolCall } from "../shared/types.ts";
 import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 
@@ -193,17 +189,7 @@ export function recordToolResult(call: ToolCall, value: unknown): void {
     call.isError = isError;
   }
 
-  const warnings = mcpResultWarnings(value);
-
-  if (warnings.length > 0) {
-    call.warnings = warnings;
-  }
-
-  const injected = mcpResultInjectedBlocks(value);
-
-  if (injected.length > 0) {
-    call.injectedBlocks = injected;
-  }
+  Object.assign(call, mcpResultExtras(value));
 }
 
 /**
