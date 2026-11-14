@@ -107,15 +107,13 @@ export function square(
 
 /**
  * Ramp generator - linearly interpolates from start to end
- * @param phase - Phase in cycles (0.0-1.0)
+ * @param phase - Position in the range, clamped to 0.0-1.0
  * @param start - Starting value
  * @param end - Ending value
  * @returns Interpolated value between start and end
  */
 export function ramp(phase: number, start: number, end: number): number {
-  const clampedPhase = Math.min(phase, 1.0);
-
-  return start + (end - start) * clampedPhase;
+  return start + (end - start) * clampPhase(phase);
 }
 
 /**
@@ -142,7 +140,7 @@ export function choose(options: number[]): number {
 
 /**
  * Curve generator - exponentially interpolates from start to end
- * @param phase - Phase in cycles (0.0-1.0)
+ * @param phase - Position in the range, clamped to 0.0-1.0
  * @param start - Starting value
  * @param end - Ending value
  * @param exponent - Curve exponent (must be > 0, which evaluateCurve enforces; >1: slow start, <1: fast start, 1: linear)
@@ -154,13 +152,23 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
-  const clampedPhase = Math.min(phase, 1.0);
-  const curvedPhase = Math.pow(clampedPhase, exponent);
+  const curvedPhase = Math.pow(clampPhase(phase), exponent);
 
   return start + (end - start) * curvedPhase;
 }
 
 // --- Helpers ---
+
+/**
+ * Hold a ramp's phase inside its range. A note can sit before the range start
+ * (float drift at a selector's edge, or an earlier line moved it), and a
+ * negative phase raised to a fractional exponent is NaN.
+ * @param phase - Position in the range, where 0 is its start and 1 its end
+ * @returns The phase, no lower than 0 and no higher than 1
+ */
+function clampPhase(phase: number): number {
+  return Math.min(Math.max(phase, 0), 1);
+}
 
 /**
  * Map any real phase into [0, 1). Plain `phase % 1.0` keeps the sign in JS, so a
