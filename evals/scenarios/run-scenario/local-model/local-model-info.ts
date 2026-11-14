@@ -5,25 +5,37 @@
 
 /**
  * Looks up which build of a local model served a run (quantization, format,
- * loaded context length) from LM Studio's native `/api/v1/models`. The
- * OpenAI-style endpoint the evals chat through reports only the model id.
+ * loaded context length) from LM Studio's `/api/v1/models` or Ollama's
+ * `/api/ps`. The OpenAI-style endpoint the evals chat through reports only the
+ * model id.
  */
 
 import { LOCAL_DEFAULT_BASE_URL } from "#evals/shared/provider-configs.ts";
+import { fetchLocalServerJson } from "./local-server-fetch.ts";
+import { fetchOllamaModelInfo } from "./ollama-model-info.ts";
 
 /** The local model build that served a run */
 export interface LocalModelInfo {
-  /** Variant id, e.g. "google/gemma-4-e4b@q4_k_m" */
+  /** Variant id: "google/gemma-4-e4b@q4_k_m" (LM Studio) or
+   *  "qwen3.8:latest" (Ollama) */
   variant: string;
   /** e.g. "Q4_K_M" or "4bit". Absent when the variant isn't LM Studio's
    *  selected one, since the listing describes only that one. */
   quantization?: string;
   bitsPerWeight?: number;
-  /** "gguf" or "mlx" */
+  /** "gguf" or "mlx" (LM Studio); "gguf" or "safetensors" (Ollama) */
   format?: string;
   /** Parameter count, e.g. "7.5B" */
   params?: string;
+  /** File size (LM Studio only) */
   sizeBytes?: number;
+  /** Ollama only: "llamacpp" or "mlx" */
+  runner?: string;
+  /** Ollama only: model digest */
+  digest?: string;
+  /** Ollama only: memory the loaded model uses, weights plus context cache.
+   *  Not a file size. */
+  memoryBytes?: number;
   /** Context length the model was loaded with, often far below its max */
   contextLength?: number;
 }
@@ -39,11 +51,9 @@ interface LmStudioModel {
   loaded_instances?: { id: string; config?: { context_length?: number } }[];
 }
 
-const LOOKUP_TIMEOUT_MS = 3000;
-
 /**
- * Fetch the build details of a local model. Never throws: servers without
- * LM Studio's API (e.g. Ollama) just yield nothing.
+ * Fetch the build details of a local model from LM Studio, else Ollama. Never
+ * throws: a server with neither API just yields nothing.
  *
  * @param modelId - Model id the run requested, optionally with `@variant`
  * @param baseUrl - Local server base URL (defaults like the local provider)
@@ -53,21 +63,12 @@ export async function fetchLocalModelInfo(
   modelId: string,
   baseUrl: string = process.env.LOCAL_BASE_URL ?? LOCAL_DEFAULT_BASE_URL,
 ): Promise<LocalModelInfo | undefined> {
-  try {
-    const response = await fetch(new URL("/api/v1/models", baseUrl), {
-      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
-    });
+  const lmStudio = (await fetchLocalServerJson("/api/v1/models", baseUrl)) as
+    | { models?: LmStudioModel[] }
+    | undefined;
+  const info = pickLocalModelInfo(lmStudio?.models ?? [], modelId);
 
-    if (!response.ok) {
-      return undefined;
-    }
-
-    const body = (await response.json()) as { models?: LmStudioModel[] };
-
-    return pickLocalModelInfo(body.models ?? [], modelId);
-  } catch {
-    return undefined;
-  }
+  return info ?? (await fetchOllamaModelInfo(modelId, baseUrl));
 }
 
 /**

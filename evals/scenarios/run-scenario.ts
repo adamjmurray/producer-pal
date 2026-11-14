@@ -11,7 +11,7 @@ import { styleText } from "node:util";
 import { formatScenarioHeader, orange } from "#evals/chat/shared/formatting.ts";
 import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
-import { fetchLocalModelInfo } from "./run-scenario/local-model-info.ts";
+import { fetchLocalModelInfo } from "./run-scenario/local-model/local-model-info.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { type StatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";

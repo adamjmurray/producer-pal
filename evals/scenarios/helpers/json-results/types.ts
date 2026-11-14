@@ -7,7 +7,7 @@
  * JSON-serializable types for persisted eval results
  */
 
-import { type LocalModelInfo } from "../../run-scenario/local-model-info.ts";
+import { type LocalModelInfo } from "../../run-scenario/local-model/local-model-info.ts";
 
 export const RESULTS_DIR = "evals/results";
 
@@ -72,7 +72,7 @@ export interface JsonEvalResult {
   /** Generation speed across every model call in the run */
   totalTiming?: JsonStepTiming;
   /** Which build of a local model ran: quantization, format, loaded context
-   *  length. LM Studio only. */
+   *  length. LM Studio or Ollama. */
   localModel?: LocalModelInfo;
   /** Error message if scenario failed */
   error?: string;
