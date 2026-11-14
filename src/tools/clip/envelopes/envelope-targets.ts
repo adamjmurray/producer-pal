@@ -27,9 +27,13 @@ const DEVICE_PARAMETER =
 const MIXER_PARAMETER =
   /^live_set (?:tracks|return_tracks) \d+ mixer_device (?:(volume|panning)|sends (\d+))$/;
 
-/** A rack chain's own volume, pan or send; group 1 is the chain's Live path. */
+/**
+ * A rack chain's or return chain's own volume, pan or send; group 1 is the
+ * chain's Live path. Only the last chain may be a return chain: a device inside
+ * one stays out of reach.
+ */
 const CHAIN_MIXER_PARAMETER =
-  /^(live_set (?:tracks|return_tracks) \d+(?: devices \d+ chains \d+)+) mixer_device (?:(volume|panning)|sends (\d+))$/;
+  /^(live_set (?:tracks|return_tracks) \d+(?: devices \d+ chains \d+)* devices \d+ (?:return_)?chains \d+) mixer_device (?:(volume|panning)|sends (\d+))$/;
 
 /** A rack chain's path, then one of its mixer's names: `t0/d0/c1/volume`. */
 export const CHAIN_MIXER_TARGET =
@@ -166,7 +170,7 @@ function chainMixerPath(
   track: EnvelopeTrack,
 ): string {
   // The shared lookup takes every spelling of a chain: a rack's `c1`, a drum
-  // pad's layer `pC1/c0`, a return chain.
+  // pad's layer `pC1/c0`, a return chain's `rc0`.
   const found = resolvePathForType("chain", chainPath, "envelopes target");
 
   if (found.id == null) {

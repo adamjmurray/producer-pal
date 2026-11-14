@@ -132,7 +132,7 @@ target id must sit on that return track.
 - **Targets.** The return's mixer (`volume`, `pan`, `send0`..; a send exists
   only if Live gives the return one), its devices and rack-chain devices by
   parameter id, and a hosted plug-in's param as `rt1/d0/h56`. Drum pads and
-  return chains stay out of reach, as on a regular track.
+  devices in return chains stay out of reach, as on a regular track.
 - **Only the clip's own track.** An id on another return track or a regular
   track is that line's `detail`:
   `id 473 is not on the clip's track (rt0), and a clip can only automate its own track`.
@@ -241,11 +241,13 @@ chain's own volume, pan or send has the chain's path as its `device`
 (`t0/d0/c1`), and its `id` is a write target like any other. So is the chain's
 path and the mixer name, `t0/d0/c1/volume` (`pan`, `send0`..), which needs no
 id: no device read gives a chain mixer parameter's. The chain is spelled as any
-tool takes one, a drum pad's layer included (`t0/d0/pC1/c0/send0`). A path that
-reaches none is that line's `detail`: `t0/d0/c1 has no send3`,
+tool takes one, a drum pad's layer (`t0/d0/pC1/c0/send0`) and a return chain
+(`t0/d0/rc0/volume`) included. A path that reaches none is that line's `detail`:
+`t0/d0/c1 has no send3`,
 `envelopes target "t0/d0" resolves to device, not chain`, or the wording an id
-on another track or in a return chain gets. An envelope's `detail` is a note
-about it: why `events` is absent, or, on an unwarped audio clip,
+on another track gets. A device inside a return chain stays out of reach, and so
+does a chain of a rack inside one. An envelope's `detail` is a note about it:
+why `events` is absent, or, on an unwarped audio clip,
 `doesn't play: the clip is unwarped. Turn warping on to hear it` beside the
 events. One field, not two: both are plain text for the model about why the
 envelope isn't what it looks like.

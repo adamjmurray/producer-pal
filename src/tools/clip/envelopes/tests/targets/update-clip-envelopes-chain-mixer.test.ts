@@ -37,6 +37,12 @@ const CHAIN_VOLUME_ID = "477";
 /** Send 1 of a chain two racks deep. */
 const NESTED_SEND_ID = "482";
 
+/** The pan of return chain 0 of the same rack. */
+const RETURN_PAN_ID = "483";
+
+/** The volume of a chain of a rack that sits inside that return chain. */
+const RETURN_DEVICE_CHAIN_ID = "484";
+
 /**
  * Expect one write, to a parameter.
  * @param target - The device and parameter the route was given
@@ -71,6 +77,18 @@ describe("updateClip - envelopes on a rack chain's own mixer", () => {
       type: "DeviceParameter",
       path: `${chain.device(0).chain(0)} mixer_device sends 1`,
     });
+    registerMockObject("return-chain", {
+      type: "Chain",
+      path: livePath.track(0).device(0).returnChain(0),
+    });
+    registerMockObject(RETURN_PAN_ID, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).device(0).returnChain(0)} mixer_device panning`,
+    });
+    registerMockObject(RETURN_DEVICE_CHAIN_ID, {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).device(0).returnChain(0).device(0).chain(0)} mixer_device volume`,
+    });
     mockNonExistentObjects();
     answerEnvelopeRoutes();
   });
@@ -97,6 +115,29 @@ describe("updateClip - envelopes on a rack chain's own mixer", () => {
     await updateClip({ id: "123", envelopes: `t0/d0/c1/volume: ${NOTATION}` });
 
     expectWriteTo({ device: "d0/c1", parameter: "volume" });
+  });
+
+  it.each([RETURN_PAN_ID, "t0/d0/rc0/pan"])(
+    "writes a return chain's own mixer, named as %s",
+    async (target) => {
+      await updateClip({ id: "123", envelopes: `${target}: ${NOTATION}` });
+
+      expectWriteTo({ device: "d0/rc0", parameter: "pan" });
+    },
+  );
+
+  it("still refuses a chain of a rack inside a return chain", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${RETURN_DEVICE_CHAIN_ID}: ${NOTATION}`,
+    });
+
+    expect(requestNode).not.toHaveBeenCalled();
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: `envelope "${RETURN_DEVICE_CHAIN_ID}": id ${RETURN_DEVICE_CHAIN_ID} is inside a rack return chain, which clip automation can't reach`,
+      }),
+    );
   });
 
   it("refuses the path and the id of one parameter together", async () => {
