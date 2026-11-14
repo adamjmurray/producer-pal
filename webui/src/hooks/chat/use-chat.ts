@@ -365,13 +365,21 @@ export function useChat<
           const shouldInterrupt = () => queueRef.current.length > queueBaseline;
 
           return await executeWithRetry({
-            executeStream: () =>
-              client.sendMessage(
+            executeStream: () => {
+              // The client records the message as its first act, so from here
+              // the history has it. Left stashed, a later failure of this turn
+              // (Stop during a rate-limit wait) would add it a second time.
+              if (stillCurrent()) {
+                pendingUserMessageRef.current = null;
+              }
+
+              return client.sendMessage(
                 toSentMessage({ text: userMessage, images }),
                 controller.signal,
                 filtered,
                 shouldInterrupt,
-              ),
+              );
+            },
             resumeStream: () =>
               client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
