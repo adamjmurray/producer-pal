@@ -198,7 +198,9 @@ The tables sit next to each tool's code and feed one helper,
   take lanes is refused as create-track and create-scene refuse it, since the
   list already says how many. A `count` above 25 is refused by the schema. The
   destination decides the rest (a session clip copy has no length), so that
-  stays a warning.
+  stays a warning. A `chain` holding devices on a return or main track is
+  refused before a chain is made: its devices can't be carried across, so the
+  copy would be empty.
 - **`ppal-update-live-set`** (`locator-updates.ts`): `locatorId` is for `delete`
   and `rename`; all three locator params need a `locatorOperation`.
 - **`ppal-update-device`** (`rack-macro-updates.ts`): `macroVariationIndex` is

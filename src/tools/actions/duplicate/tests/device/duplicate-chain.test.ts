@@ -628,3 +628,72 @@ describe("duplicate - chain", () => {
     expect(moveDeviceToPathMock).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Register a rack off the regular tracks, holding one chain.
+ * @param rackPath - The rack's Live path
+ * @param deviceIds - The devices on its chain
+ * @returns The rack mock
+ */
+function setupOffTrackRack(rackPath: string, deviceIds: string[] = []) {
+  registerMockObject("live_set", { path: livePath.liveSet });
+
+  const rack = registerMockObject("rack-0", {
+    path: rackPath,
+    type: "RackDevice",
+    properties: {
+      class_name: "AudioEffectGroupDevice",
+      has_macro_mappings: 0,
+      return_chains: [],
+    },
+    methods: { insert_chain: () => ["id", "chain-new"] },
+  });
+
+  registerMockObject("chain-0", {
+    path: `${rackPath} chains 0`,
+    type: "Chain",
+    properties: {
+      name: "Source",
+      mute: 0,
+      solo: 0,
+      devices: children(...deviceIds),
+    },
+  });
+  registerMockObject("chain-new", {
+    path: `${rackPath} chains 1`,
+    type: "Chain",
+    properties: { name: "", mute: 0, solo: 0, devices: [] },
+  });
+
+  return rack;
+}
+
+describe("duplicate - chain on a return or main track", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ["a return track", String(livePath.returnTrack(0).device(0))],
+    ["the main track", String(livePath.masterTrack().device(0))],
+  ])(
+    "refuses a chain with devices on %s, creating nothing",
+    async (_, rackPath) => {
+      const rack = setupOffTrackRack(rackPath, ["d-0"]);
+
+      await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
+        "its devices cannot be copied off a return or main track",
+      );
+      expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+    },
+  );
+
+  it("still copies an empty chain there, which has no devices to carry", async () => {
+    const rack = setupOffTrackRack(String(livePath.returnTrack(0).device(0)));
+
+    const result = await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(rack.call).toHaveBeenCalledWith("insert_chain");
+    expect(result).toStrictEqual({ id: "chain-new", path: "rt0/d0/c1" });
+  });
+});
