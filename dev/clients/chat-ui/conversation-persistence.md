@@ -22,11 +22,12 @@ exhaustive).
 **Images** (`lib/conversations/conversation-images.ts`): image bytes live in the
 `images` store of their own database, keyed by a hash of their content, so an
 edit/retry fork shares them instead of storing another copy. A stored message
-holds `{ mediaType, ref }`; `loadConversation` puts the bytes back, so callers
-only ever see inline images (`{ images: false }` skips that for metadata-only
-reads, such as the autosave's look at the saved record). A save writes only the
-bytes missing from the store. Export writes images inline, so an export file
-stays self-contained.
+lists `imageRefs: [{ mediaType, ref }]` and has no `images` key;
+`loadConversation` puts the bytes back as inline `images`, so callers only ever
+see inline images, never `imageRefs` (`{ images: false }` skips that for
+metadata-only reads, such as the autosave's look at the saved record). A save
+writes only the bytes missing from the store. Export writes images inline, so an
+export file stays self-contained.
 
 The two databases can't share a transaction, so:
 
@@ -53,8 +54,14 @@ store stays. A real future bump must skip version 2. No path raises the
 conversations database: an empty one (no stores) is deleted and recreated at
 version 1.
 
-An older UI reading a conversation with stored images shows broken thumbnails
-and fails on the next send in that conversation (it expects inline `data`).
+The refs sit in `imageRefs`, not `images`, because the released UI reads
+`images` as inline bytes and throws on a ref. It ignores `imageRefs`, shows no
+thumbnails for those messages, and writes the field back untouched when it
+re-saves a conversation (a loaded message object goes straight back into the
+saved record; only an edit or retry rebuilds the one message it changes, in a
+new fork record). Loading also accepts refs inside `images` (pre-release builds)
+and inline bytes there (older UI); both become `imageRefs` on the next save.
+Sweeps count refs from both fields.
 
 **Cross-tab**: every connection opens through
 `conversations/open-tracked-db.ts`. When a newer build needs an upgrade, this

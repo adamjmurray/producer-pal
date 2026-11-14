@@ -31,11 +31,25 @@ const knownRefs = new WeakMap<object, string>();
  */
 const unreadImages = new Map<string, ChatMessage[]>();
 
-/** How an image sits in a stored record: its bytes live under `ref`. */
+/**
+ * How an image sits in a stored record: its bytes live under `ref`. A stored
+ * message lists these in `imageRefs` and has no `images` key. The chat UI
+ * released before the image database reads `images` as inline bytes and would
+ * throw on a ref, so refs live in a field it ignores (it keeps the field when
+ * it saves a conversation back). Older records hold refs inside `images`
+ * (pre-release builds) or inline bytes there (older UI); both load, and move
+ * to `imageRefs` on their next save.
+ */
 interface StoredImage {
   mediaType: string;
   ref: string;
 }
+
+/** A message as stored: `images` and `imageRefs` are read loosely. */
+type StoredMessage = Omit<ChatMessage, "images"> & {
+  images?: unknown;
+  imageRefs?: unknown;
+};
 
 /** Anything persisted with chat messages (a conversation record). */
 interface WithMessages {
@@ -60,23 +74,38 @@ export interface LoadImagesOptions {
  * elsewhere swept are written again. The check shares the write transaction,
  * so a sweep can't land between it and the write.
  * @param record - Record with inline images
- * @returns A copy whose images are refs
+ * @returns A copy whose images are `imageRefs` and which has no `images`
  */
 export async function storeConversationImages<T extends WithMessages>(
   record: T,
 ): Promise<T> {
   const inline = new Map<string, string>();
-  const mapped = mapImages(record, (image) => {
-    if (isStoredImage(image)) {
-      return image;
+  const mapped = mapMessages(record, (message) => {
+    if (!hasImageFields(message)) {
+      return message;
     }
 
-    const ref = knownRefs.get(image) ?? hashImageData(image.data);
+    const imageRefs = imagesOf(message).map((image) => {
+      if (isStoredImage(image)) {
+        return image;
+      }
 
-    knownRefs.set(image, ref);
-    inline.set(ref, image.data);
+      const ref = knownRefs.get(image) ?? hashImageData(image.data);
 
-    return { mediaType: image.mediaType, ref };
+      knownRefs.set(image, ref);
+      inline.set(ref, image.data);
+
+      return { mediaType: image.mediaType, ref };
+    });
+    const {
+      images: _images,
+      imageRefs: _refs,
+      ...rest
+    } = message as StoredMessage;
+
+    return (
+      imageRefs.length > 0 ? { ...rest, imageRefs } : rest
+    ) as ChatMessage;
   });
   const stored = restoreUnreadImages(mapped);
 
@@ -94,7 +123,7 @@ export async function storeConversationImages<T extends WithMessages>(
  * image the same way.
  * @param record - Record as read from the conversation store
  * @param options - What to do when the bytes can't be read
- * @returns A copy with inline images
+ * @returns A copy with inline `images` and no `imageRefs`
  */
 export async function loadConversationImages<T extends WithMessages>(
   record: T,
@@ -122,30 +151,14 @@ export async function loadConversationImages<T extends WithMessages>(
       unreadImages.set(id, record.messages);
     }
 
-    return mapImages(record, (image) => (isStoredImage(image) ? null : image));
+    return withInlineImages(record, new Map());
   }
 
   if (typeof id === "string") {
     unreadImages.delete(id);
   }
 
-  return mapImages(record, (image) => {
-    if (!isStoredImage(image)) {
-      return image;
-    }
-
-    const data = bytes.get(image.ref);
-
-    if (data == null) {
-      return null;
-    }
-
-    const inline = { mediaType: image.mediaType, data };
-
-    knownRefs.set(inline, image.ref);
-
-    return inline;
-  });
+  return withInlineImages(record, bytes);
 }
 
 /**
@@ -170,7 +183,7 @@ async function readImageBytes(
 /**
  * Put back the image refs a conversation lost when it was opened without its
  * bytes. A message gets them back if it's still the same message (same role
- * and text) and has no images of its own.
+ * and text); refs it already lists are not repeated.
  * @param record - Record about to be saved
  * @returns The record, with those refs restored
  */
@@ -184,14 +197,22 @@ function restoreUnreadImages<T extends WithMessages>(record: T): T {
 
   const messages = record.messages.map((message, i) => {
     const before = original.at(i) ?? null;
-    const refs = storedImagesOf(before).filter(isStoredImage);
+    const lost = storedRefsOf(before);
 
-    return refs.length > 0 &&
-      storedImagesOf(message).length === 0 &&
-      before != null &&
-      message.role === before.role &&
-      message.content === before.content
-      ? { ...message, images: refs as unknown as ChatImage[] }
+    if (
+      lost.length === 0 ||
+      before == null ||
+      message.role !== before.role ||
+      message.content !== before.content
+    ) {
+      return message;
+    }
+
+    const have = storedRefsOf(message);
+    const missing = lost.filter((l) => !have.some((h) => h.ref === l.ref));
+
+    return missing.length > 0
+      ? { ...message, imageRefs: [...missing, ...have] }
       : message;
   });
 
@@ -299,10 +320,8 @@ function conversationImageRefs(records: WithMessages[]): Set<string> {
     // A corrupt or imported record can lack messages or carry a null one.
     for (const message of (record.messages as ChatMessage[] | undefined) ??
       []) {
-      for (const image of storedImagesOf(message)) {
-        if (isStoredImage(image)) {
-          refs.add(image.ref);
-        }
+      for (const image of storedRefsOf(message)) {
+        refs.add(image.ref);
       }
     }
   }
@@ -311,47 +330,104 @@ function conversationImageRefs(records: WithMessages[]): Set<string> {
 }
 
 /**
- * Copy a record, passing each image through `change`; null drops the image.
+ * Copy a record, passing each message through `change`.
  * @param record - Record to copy
- * @param change - Maps one image
- * @returns The copy (messages without images are reused as-is)
+ * @param change - Maps one message
+ * @returns The copy
  */
-function mapImages<T extends WithMessages>(
+function mapMessages<T extends WithMessages>(
   record: T,
-  change: (image: ChatImage | StoredImage) => ChatImage | StoredImage | null,
+  change: (message: ChatMessage) => ChatMessage,
 ): T {
-  const messages = (record.messages as ChatMessage[] | undefined)?.map(
-    (message) => {
-      const images = storedImagesOf(message);
-
-      if (images.length === 0) {
-        return message;
-      }
-
-      const mapped = images
-        .map(change)
-        .filter((image) => image != null) as ChatImage[];
-
-      return { ...message, images: mapped };
-    },
-  );
+  const messages = (record.messages as ChatMessage[] | undefined)?.map(change);
 
   return messages == null ? record : { ...record, messages };
 }
 
 /**
- * A message's images, read loosely since stored ones may be refs.
+ * Copy a stored record with every image inline, taking each ref's bytes (one
+ * with no bytes is dropped, since an empty image would fail the next model
+ * request). `imageRefs` never reaches memory.
+ * @param record - Record as read from the conversation store
+ * @param bytes - Bytes by ref
+ * @returns The copy
+ */
+function withInlineImages<T extends WithMessages>(
+  record: T,
+  bytes: Map<string, string | undefined>,
+): T {
+  return mapMessages(record, (message) => {
+    if (!hasImageFields(message)) {
+      return message;
+    }
+
+    const images = imagesOf(message).flatMap((image) => {
+      if (!isStoredImage(image)) {
+        return [image];
+      }
+
+      const data = bytes.get(image.ref);
+
+      if (data == null) {
+        return [];
+      }
+
+      const inline = { mediaType: image.mediaType, data };
+
+      knownRefs.set(inline, image.ref);
+
+      return [inline];
+    });
+    const { imageRefs: _refs, ...rest } = message as StoredMessage;
+
+    return { ...rest, images };
+  });
+}
+
+/**
+ * Whether a stored message has either image field, even an empty one.
+ * @param message - Stored or in-memory message
+ * @returns True if it has `images` or `imageRefs`
+ */
+function hasImageFields(message: ChatMessage | null): boolean {
+  return message != null && ("images" in message || "imageRefs" in message);
+}
+
+/**
+ * Every image a stored message holds, in order: `imageRefs` first, then
+ * `images`, which may hold inline images (older UI) or refs (pre-release
+ * builds). A ref listed in both is kept once.
  * @param message - Stored or in-memory message
  * @returns Its images, or none
  */
-function storedImagesOf(
-  message: ChatMessage | null,
-): Array<ChatImage | StoredImage> {
-  const images = (message as { images?: unknown } | null)?.images;
+function imagesOf(message: ChatMessage | null): Array<ChatImage | StoredImage> {
+  const { images, imageRefs } = (message ?? {}) as StoredMessage;
+  const listed = listOf(imageRefs).filter(isStoredImage);
+  const rest = listOf(images).filter(
+    (image) =>
+      typeof image === "object" &&
+      image != null &&
+      !(isStoredImage(image) && listed.some((r) => r.ref === image.ref)),
+  ) as Array<ChatImage | StoredImage>;
 
-  return Array.isArray(images)
-    ? (images as Array<ChatImage | StoredImage>)
-    : [];
+  return [...listed, ...rest];
+}
+
+/**
+ * A message's image refs.
+ * @param message - Stored or in-memory message
+ * @returns Its refs, or none
+ */
+function storedRefsOf(message: ChatMessage | null): StoredImage[] {
+  return imagesOf(message).filter(isStoredImage);
+}
+
+/**
+ * @param value - Anything
+ * @returns The value if it's an array, else an empty one
+ */
+function listOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 /**
@@ -359,8 +435,8 @@ function storedImagesOf(
  * @param image - Stored or inline image
  * @returns True for a ref
  */
-function isStoredImage(image: ChatImage | StoredImage): image is StoredImage {
-  return typeof (image as Partial<StoredImage>).ref === "string";
+function isStoredImage(image: unknown): image is StoredImage {
+  return typeof (image as Partial<StoredImage> | null)?.ref === "string";
 }
 
 /**

@@ -149,13 +149,13 @@ describe("a fresh install", () => {
     const old = await rawOpen(DB_NAME, 1);
 
     expect(old.version).toBe(1);
-    // What 2.5.0 would read: the record, with its image as a ref.
+    // What 2.5.0 would read: the record, with its image as a ref it ignores.
     expect(await rawGet(old, "conversations", "a")).toStrictEqual(
       expect.objectContaining({
         id: "a",
         messages: [
           expect.objectContaining({
-            images: [{ mediaType: "image/png", ref: expect.any(String) }],
+            imageRefs: [{ mediaType: "image/png", ref: expect.any(String) }],
           }),
         ],
       }),

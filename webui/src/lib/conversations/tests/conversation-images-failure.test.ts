@@ -25,6 +25,7 @@ import {
   loadConversationImages,
   storeConversationImages,
 } from "#webui/lib/conversations/conversation-images";
+import { failImageDbOpens } from "#webui/test-utils/conversation-image-test-helpers";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import { deleteIndexedDb } from "#webui/test-utils/indexeddb-test-helpers";
 
@@ -45,25 +46,6 @@ function withImage(id: string, content = "match this"): ConversationRecord {
       { role: "assistant", content: "ok" },
     ],
   });
-}
-
-/**
- * Make every open of the image database fail until the spy is restored.
- * @returns The spy
- */
-function failImageDbOpens(): ReturnType<typeof vi.spyOn> {
-  const open = indexedDB.open.bind(indexedDB);
-
-  return vi.spyOn(indexedDB, "open").mockImplementation(((
-    name: string,
-    version?: number,
-  ) => {
-    if (name === IMAGE_DB_NAME) {
-      throw new Error("image db unavailable");
-    }
-
-    return open(name, version);
-  }) as typeof indexedDB.open);
 }
 
 /**
