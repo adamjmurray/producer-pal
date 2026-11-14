@@ -229,6 +229,8 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   // lane shows up in read-track output and in a clip path, so a reader meets
   // one whether or not it can write.
   "arrangement-basic": ARRANGEMENT_TOOLS,
+  // One Rules bullet of the small-model driver, which names the tool.
+  "duplicate-basic": [DUPLICATE],
   // Only read-clip reports an envelope and only update-clip writes one, and
   // neither can without the remote script (see remoteScriptGatedFragments). A
   // writer keeps the read half: it needs it to read what it is about to replace.
