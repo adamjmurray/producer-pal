@@ -167,6 +167,10 @@ export interface ScenarioRequirements {
    *  in the basic skills tier, so skipped under `smallModelMode`. */
   brackets?: boolean;
 
+  /** Needs the memory layer (memory entries, onboarding). Small-model mode has
+   *  none, so skipped there. */
+  memory?: boolean;
+
   /** Explicit frontier-only escape hatch. Skipped under `smallModelMode`. */
   largeModel?: boolean;
 

@@ -7,12 +7,13 @@
  * Decide whether a scenario should be skipped under the active run environment,
  * and build the synthetic `skipped` result for runs that are.
  *
- * A scenario declares `requires` (transforms DSL, bracket notation, specific
- * tools, a small-model-excluded param, a large model, a Live version). When the
- * run environment can't satisfy a requirement — e.g. small-model mode doesn't
- * teach the transforms DSL or hides a needed tool, the `--tools` subset omits
- * it, or `ABLETON_APP` is an older Live — the scenario is reported as
- * `skipped` instead of being run and failed, so scores stay apples-to-apples.
+ * A scenario declares `requires` (transforms DSL, bracket notation, memory,
+ * specific tools, a small-model-excluded param, a large model, a Live
+ * version). When the run environment can't satisfy a requirement — e.g.
+ * small-model mode doesn't teach the transforms DSL or hides a needed tool, the
+ * `--tools` subset omits it, or `ABLETON_APP` is an older Live — the scenario
+ * is reported as `skipped` instead of being run and failed, so scores stay
+ * apples-to-apples.
  */
 
 import {
@@ -57,6 +58,10 @@ export function shouldSkipScenario(
 
   if (req.brackets && smallModel) {
     return "requires [...] stream notation (not taught in small-model/basic skills)";
+  }
+
+  if (req.memory && smallModel) {
+    return "requires memory (not in small-model mode)";
   }
 
   if (req.largeModel && smallModel) {

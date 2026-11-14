@@ -81,6 +81,23 @@ describe("shouldSkipScenario", () => {
     });
   });
 
+  describe("memory requirement", () => {
+    it("skips under small-model mode", () => {
+      const reason = shouldSkipScenario(
+        makeScenario({ memory: true }),
+        smallModelEnv,
+      );
+
+      expect(reason).toBe("requires memory (not in small-model mode)");
+    });
+
+    it("does not skip when not in small-model mode", () => {
+      expect(
+        shouldSkipScenario(makeScenario({ memory: true }), fullEnv),
+      ).toBeNull();
+    });
+  });
+
   describe("largeModel requirement", () => {
     it("skips under small-model mode", () => {
       const reason = shouldSkipScenario(

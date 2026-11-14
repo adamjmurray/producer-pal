@@ -43,12 +43,8 @@ export const LEAD_TRACK = 3;
 /** Clip slot the clip-writing context scenarios fill (and clear in setup). */
 export const LEAD_SLOT = `${LEAD_TRACK}/0`;
 
-/**
- * Memory entries are hidden from small models (`name`/`description` have
- * `smallModel: null`, and the `memory` scope + `delete` action are dropped from
- * their enums), so every memory scenario must SKIP rather than fail there.
- */
-export const REQUIRES_MEMORY: ScenarioRequirements = { params: ["name"] };
+/** Small-model mode has no memory layer, so memory scenarios skip there. */
+export const REQUIRES_MEMORY: ScenarioRequirements = { memory: true };
 
 /** A memory entry to seed before a scenario runs. */
 export interface SeedMemory {
