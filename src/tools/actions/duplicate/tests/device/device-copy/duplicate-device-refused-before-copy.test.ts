@@ -103,14 +103,14 @@ const CASES: RefusedCase[] = [
     toPath: "t1/d5",
     destination: () => [registerFixedChainRack(1, "midSide")],
     refusal:
-      'the copy of t0/d1 (id reverb) could not be moved to "t1/d5": "t1/d5" is past the end of a container holding 1 device',
+      't0/d1 (id reverb) not copied — "t1/d5" is past the end of a container holding 1 device',
   },
   {
     what: "an index past the end of a chain the path would make",
     toPath: "t1/d0/c9/d2",
     destination: () => [registerGrowingRack({ track: 1, existing: 1 })],
     refusal:
-      'the copy of t0/d1 (id reverb) could not be moved to "t1/d0/c9/d2": "t1/d0/c9/d2" is past the end of a container holding 0 devices',
+      't0/d1 (id reverb) not copied — "t1/d0/c9/d2" is past the end of a container holding 0 devices',
   },
   {
     what: "a chain an audio effect rack would make, for an instrument",
@@ -123,7 +123,7 @@ const CASES: RefusedCase[] = [
       return [rack];
     },
     refusal:
-      'the copy of t0/d1 (id reverb) could not be moved to "t1/d0/c+": chain t1/d0/c1 takes only audio effects; "Reverb" is an instrument',
+      't0/d1 (id reverb) not copied — chain t1/d0/c1 takes only audio effects; "Reverb" is an instrument',
     type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
   },
   {

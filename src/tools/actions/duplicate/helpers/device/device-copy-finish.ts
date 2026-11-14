@@ -35,7 +35,7 @@ export function checkDeviceCopyDestination(
   const refusal = checkMoveDestination(source, destination);
 
   if (refusal != null) {
-    throw moveFailure(refusal, destination, sourceLabel);
+    throw moveFailure(refusal, destination, sourceLabel, false);
   }
 }
 
@@ -62,7 +62,7 @@ export function moveDeviceCopy(
   const move = moveDeviceToPath(copy, moveTo, source, destination);
 
   if (move.outcome !== "moved") {
-    throw moveFailure(move, destination, sourceLabel);
+    throw moveFailure(move, destination, sourceLabel, true);
   }
 
   return move.created;
@@ -76,12 +76,14 @@ export function moveDeviceCopy(
  * @param move.madeChains - The chains it made first and left
  * @param destination - The path as the caller wrote it
  * @param sourceLabel - The source, named for errors
+ * @param copied - Whether a copy was made first; false for the check before it
  * @returns The error to throw
  */
 function moveFailure(
   { outcome, reason, madeChains }: DeviceMove,
   destination: string,
   sourceLabel: string,
+  copied: boolean,
 ): Error {
   if (outcome === "no-destination") {
     return new Error(
@@ -93,14 +95,13 @@ function moveFailure(
   }
 
   if (outcome === "refused") {
-    const refusal = `the copy of ${sourceLabel} could not be moved to "${destination}"`;
+    const moved = `the copy of ${sourceLabel} could not be moved to "${destination}"`;
+    const said = reason == null ? moved : `${moved}: ${reason}`;
+    // Refused before the copy, there is no copy to speak of.
+    const why = reason ?? `toPath "${destination}" can't take it`;
+    const unmade = `${sourceLabel} not copied — ${why}`;
 
-    return new Error(
-      withChainsLeft(
-        reason == null ? refusal : `${refusal}: ${reason}`,
-        madeChains,
-      ),
-    );
+    return new Error(withChainsLeft(copied ? said : unmade, madeChains));
   }
 
   return new Error(`${sourceLabel} not copied — ${reason}`);

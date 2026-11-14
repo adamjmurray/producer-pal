@@ -182,14 +182,15 @@ Part of [Skip entries, tool by tool](README.md).
   descriptions warn before the call instead.
 - **duplicate: a device copy's destination is checked before the copy.** A
   `toPath` that can't take the device is the target's skip before either route
-  (the remote script's, a temp track) writes anything, in the words the move
-  would use: no such track, rack or chain, a chain in a Drum Rack, a rack with
-  fixed chains that is full, a pad path on a rack with no pads, too many chains
-  to make, an index past the end, a place that takes only some kinds of device.
-  Nothing is copied, no chain is made, no temp track exists. What only Live's
-  own refusal shows (a second instrument in the chain) and a chain on a drum pad
-  that the write would make are not known beforehand, so those fall to the
-  cleanup below.
+  (the remote script's, a temp track) writes anything. It gives the reason the
+  move would give, after `not copied —` rather than
+  `the copy of … could not be moved`, since no copy exists: no such track, rack
+  or chain, a chain in a Drum Rack, a rack with fixed chains that is full, a pad
+  path on a rack with no pads, too many chains to make, an index past the end, a
+  place that takes only some kinds of device. Nothing is copied, no chain is
+  made, no temp track exists. What only Live's own refusal shows (a second
+  instrument in the chain) and a chain on a drum pad that the write would make
+  are not known beforehand, so those fall to the cleanup below.
 - **duplicate: a device copy that can't be placed.** With the remote script,
   Live copies a device right after the original. Nothing is moved or deleted
   until the device in that slot is checked to have the original's name and
