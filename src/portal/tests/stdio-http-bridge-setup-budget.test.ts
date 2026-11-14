@@ -7,6 +7,7 @@
 // even when the device's port accepts the connection and never answers.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
   mockClient,
@@ -16,18 +17,7 @@ import {
   mockTransport,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
-
-/**
- * A stand-in for a module with only the exports the code under test reads.
- * Typed `never` so it fits any module's `vi.mock` factory. A function
- * declaration, so it exists when the hoisted factories run.
- * @param exports - The exports to supply
- * @returns The same object
- */
-function partialModule(exports: object): never {
-  return exports as never;
-}
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 // Partial stand-ins for the SDK and the server factory; the objects live in the
 // helper module.

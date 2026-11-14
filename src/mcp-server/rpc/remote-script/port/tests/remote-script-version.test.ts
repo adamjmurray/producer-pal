@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import {
   MIN_REMOTE_SCRIPT_VERSION,
+  outdatedFields,
   outdatedScript,
   setRemoteScriptMinVersion,
   unknownRouteReason,
@@ -103,5 +104,33 @@ describe("unknownRouteReason", () => {
     ["a 200", 200, UNKNOWN],
   ])("leaves %s as an answer", (_name, status, body) => {
     expect(unknownRouteReason(status, body, "2.5.0")).toBeNull();
+  });
+});
+
+describe("outdatedFields", () => {
+  const reason = (manage: boolean): string =>
+    manage ? "update it with the tool" : "have the user update it";
+
+  it("is null when nothing is out of date", () => {
+    expect(outdatedFields(() => null)).toBeNull();
+  });
+
+  it("gives a device both wordings, and the portal the one with the tool", () => {
+    expect(outdatedFields(reason)).toStrictEqual({
+      outdated: "update it with the tool",
+      outdatedWithoutManage: "have the user update it",
+    });
+    expect(outdatedFields(reason, "portal")).toStrictEqual({
+      outdated: "update it with the tool",
+    });
+  });
+
+  it("repeats the wording when there is none for a caller without the tool", () => {
+    expect(
+      outdatedFields((manage) => (manage ? "out of date" : null)),
+    ).toStrictEqual({
+      outdated: "out of date",
+      outdatedWithoutManage: "out of date",
+    });
   });
 });

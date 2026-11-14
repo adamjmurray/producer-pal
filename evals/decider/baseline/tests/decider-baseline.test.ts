@@ -3,21 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type EvalScenario } from "#evals/scenarios/types.ts";
 import { runDeciderCompare } from "../../decider-compare.ts";
 import { type deciderJudge } from "../../decider-judge.ts";
-import { fakeAnswer, fakeQuestion } from "../../tests/decider-test-helpers.ts";
+import {
+  fakeAnswer,
+  fakeQuestion,
+  makeRunDir,
+} from "../../tests/decider-test-helpers.ts";
 
 type Judge = typeof deciderJudge;
 
@@ -84,8 +80,7 @@ describe("baseline comparison", () => {
 
   beforeEach(async () => {
     log.mockClear();
-    dir = await mkdtemp(join(tmpdir(), "decider-baseline-"));
-    await mkdir(join(dir, "run1"));
+    dir = await makeRunDir("decider-baseline-");
     // Decided by the decider in the run: no LLM verdict
     await write("a.json", {
       pass: true,

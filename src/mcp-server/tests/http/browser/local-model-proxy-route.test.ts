@@ -19,6 +19,7 @@ import {
   type HttpListeners,
   startHttpListeners,
 } from "../../../helpers/http/http-listeners.ts";
+import { readResponse } from "../../express-app-test-helpers.ts";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 
@@ -69,15 +70,11 @@ describe("/local-model-proxy", () => {
     options: { method?: string; body?: Buffer | string } = {},
   ): Promise<Sent> =>
     new Promise((resolve, reject) => {
-      open(headers, options, (res) => {
-        let text = "";
-
-        res.setEncoding("utf8");
-        res.on("data", (chunk: string) => (text += chunk));
-        res.on("end", () =>
-          resolve({ status: res.statusCode ?? 0, headers: res.headers, text }),
-        );
-      }).on("error", reject);
+      open(headers, options, (res) =>
+        readResponse(res, (status, text) =>
+          resolve({ status, headers: res.headers, text }),
+        ),
+      ).on("error", reject);
     });
 
   // Streaming tests: call `onResponse` with the live response of a GET to the

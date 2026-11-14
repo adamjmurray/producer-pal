@@ -38,7 +38,7 @@ import {
   mockTransport,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 // The mock objects live in the helper module; these factories only dereference
 // them when the mocked constructor is called, so there is no init-order hazard.

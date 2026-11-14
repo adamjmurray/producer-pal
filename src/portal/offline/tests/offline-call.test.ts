@@ -12,6 +12,7 @@ import {
   type OfflineCall,
   remoteHost,
 } from "../offline-call.ts";
+import { remoteSetupRefusal } from "../offline-responses.ts";
 import { SETUP_URL } from "../offline-setup-hints.ts";
 import { forwardedSetupTimeout } from "../setup-call-timeout.ts";
 import { responseText } from "./offline-add-producer-pal-test-helpers.ts";
@@ -37,6 +38,20 @@ describe("isSetupCall", () => {
     ["add-producer-pal", "ppal-read-live-set", true],
   ])("is false for %s on %s when offered is %s", (action, name, offered) => {
     expect(isSetupCall(name, { action }, offered)).toBe(false);
+  });
+});
+
+describe("remoteSetupRefusal", () => {
+  it.each([
+    ["install-producer-pal", "install"],
+    ["add-producer-pal", "add"],
+    ["update-producer-pal", "update"],
+    ["something-else", "set up"],
+    [undefined, "set up"],
+  ])("words %s as '%s'", (action, verb) => {
+    expect(
+      responseText(remoteSetupRefusal("other-mac:3350", action)),
+    ).toContain(`so it can't ${verb} Producer Pal there`);
   });
 });
 

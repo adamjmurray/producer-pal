@@ -26,6 +26,7 @@ import {
   updateWidget,
   type StoreResult,
 } from "./widget-store.ts";
+import { type WidgetFields } from "./widget-input.ts";
 import { requestBody } from "../../helpers/http/request-body.ts";
 import { rejectForeignOriginWrite } from "../../helpers/http/browser/request-origin.ts";
 
@@ -43,36 +44,15 @@ export function registerGenUiRoutes(app: Express): void {
 
   app.post(
     GEN_UI_WIDGETS_PATH,
-    async (req: Request, res: Response): Promise<void> => {
-      if (rejectWrite(req, res)) {
-        return;
-      }
-
-      const prepared = await prepareWidgetFields(requestBody(req));
-
-      if (prepared.ok) {
-        reply(res, createWidget(prepared.fields), 201);
-      } else {
-        res.status(400).json({ error: prepared.error });
-      }
-    },
+    widgetWriteHandler((_req, fields) => createWidget(fields), 201),
   );
 
   app.put(
     `${GEN_UI_WIDGETS_PATH}/:id`,
-    async (req: Request, res: Response): Promise<void> => {
-      if (rejectWrite(req, res)) {
-        return;
-      }
-
-      const prepared = await prepareWidgetFields(requestBody(req));
-
-      if (prepared.ok) {
-        reply(res, updateWidget(String(req.params.id), prepared.fields), 200);
-      } else {
-        res.status(400).json({ error: prepared.error });
-      }
-    },
+    widgetWriteHandler(
+      (req, fields) => updateWidget(String(req.params.id), fields),
+      200,
+    ),
   );
 
   app.delete(
@@ -125,6 +105,32 @@ function openEventStream(req: Request, res: Response): void {
  */
 function send(res: Response, event: GenUiEvent): void {
   res.write(`id: ${event.version}\ndata: ${JSON.stringify(event)}\n\n`);
+}
+
+/**
+ * A handler for a request that saves a widget's fields: refuses a cross-site
+ * write, resolves a clip reference in the fields, then saves them.
+ * @param save - Saves the prepared fields in the store
+ * @param okStatus - The status for success
+ * @returns The Express handler
+ */
+function widgetWriteHandler(
+  save: (req: Request, fields: WidgetFields) => StoreResult,
+  okStatus: number,
+): (req: Request, res: Response) => Promise<void> {
+  return async (req, res) => {
+    if (rejectWrite(req, res)) {
+      return;
+    }
+
+    const prepared = await prepareWidgetFields(requestBody(req));
+
+    if (prepared.ok) {
+      reply(res, save(req, prepared.fields), okStatus);
+    } else {
+      res.status(400).json({ error: prepared.error });
+    }
+  };
 }
 
 /**

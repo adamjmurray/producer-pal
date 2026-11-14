@@ -3,15 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { request } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { setNetworkAccessAllowed } from "../../../helpers/http/network-access-state.ts";
-import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
-
-interface Answer {
-  status: number;
-  body: string;
-}
+import {
+  sendRaw,
+  setupExpressAppServer,
+} from "../../express-app-test-helpers.ts";
 
 const MCP_PING = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" });
 const REBINDABLE_HOSTS = ["evil.example:3350", "mcp.example.com"];
@@ -31,38 +28,20 @@ describe("DNS rebinding guard on the Express app", () => {
     method: string,
     path: string,
     headers: Record<string, string>,
-  ): Promise<Answer> {
+  ): Promise<{ status: number; body: string }> {
     const body = method === "POST" ? MCP_PING : undefined;
-    const port = Number(new URL(appState.baseUrl).port);
 
-    return new Promise<Answer>((resolve, reject) => {
-      const req = request(
-        {
-          host: "127.0.0.1",
-          port,
-          path,
-          method,
-          headers: {
-            ...(body != null && {
-              "Content-Type": "application/json",
-              Accept: "application/json, text/event-stream",
-            }),
-            ...headers,
-          },
-        },
-        (res) => {
-          let text = "";
-
-          res.setEncoding("utf8");
-          res.on("data", (chunk: string) => (text += chunk));
-          res.on("end", () =>
-            resolve({ status: res.statusCode ?? 0, body: text }),
-          );
-        },
-      );
-
-      req.on("error", reject);
-      req.end(body);
+    return sendRaw(Number(new URL(appState.baseUrl).port), {
+      path,
+      method,
+      headers: {
+        ...(body != null && {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        }),
+        ...headers,
+      },
+      body,
     });
   }
 

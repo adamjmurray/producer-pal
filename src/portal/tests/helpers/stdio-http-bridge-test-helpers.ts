@@ -13,10 +13,10 @@
  * importing this from a test file that mocks the SDK is safe.
  */
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { expect, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, expect, vi, type Mock } from "vitest";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
-import { type BridgeOptions } from "../portal-settings.ts";
-import { StdioHttpBridge } from "../stdio-http-bridge.ts";
+import { type BridgeOptions } from "../../portal-settings.ts";
+import { StdioHttpBridge } from "../../stdio-http-bridge.ts";
 
 export const mockClient = {
   connect: vi.fn(),
@@ -244,4 +244,28 @@ export function expectSetupGuidance(response: unknown): void {
   expectBrandedErrorText(
     response as { content: Array<{ type: string; text: string }> },
   );
+}
+
+/**
+ * Before each test, reset the SDK stand-ins and quiet the console.
+ * @param connectFails - Whether the client's connect rejects
+ */
+export function useBridgeStandIns(connectFails = false): void {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockServer.connect.mockResolvedValue(undefined);
+    mockServer.sendToolListChanged.mockResolvedValue(undefined);
+
+    if (connectFails) {
+      mockClient.connect.mockRejectedValue(new Error("Connection failed"));
+    } else {
+      mockClient.connect.mockResolvedValue(undefined);
+    }
+
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 }

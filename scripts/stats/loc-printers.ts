@@ -220,9 +220,7 @@ export function printCliLangTable(langs: LangStats[]): void {
   const widths = [
     Math.max("Language".length, ...langs.map((l) => l.language.length)),
     Math.max("Files".length, fmt(totals.files).length),
-    Math.max("Blank".length, fmt(totals.blank).length),
-    Math.max("Comment".length, fmt(totals.comment).length),
-    Math.max("Code".length, fmt(totals.code).length),
+    ...lineCountWidths(totals),
   ];
 
   // Blank=2, Comment=3 are dim
@@ -336,6 +334,19 @@ function bold(n: number): string {
 }
 
 /**
+ * Compute column widths for the Blank, Comment, Code columns.
+ * @param totals - Totals row (has the widest numbers)
+ * @returns Array of 3 column widths
+ */
+function lineCountWidths(totals: CountStats): number[] {
+  return [
+    Math.max("Blank".length, fmt(totals.blank).length),
+    Math.max("Comment".length, fmt(totals.comment).length),
+    Math.max("Code".length, fmt(totals.code).length),
+  ];
+}
+
+/**
  * Compute column widths for Files, Funcs, Blank, Comment, Code.
  * @param totals - Totals row (has the widest numbers for most columns)
  * @param totalFuncs - Total function count
@@ -345,9 +356,7 @@ function numColWidths(totals: CountStats, totalFuncs: number): number[] {
   return [
     Math.max("Files".length, fmt(totals.files).length),
     Math.max("Funcs".length, fmt(totalFuncs).length),
-    Math.max("Blank".length, fmt(totals.blank).length),
-    Math.max("Comment".length, fmt(totals.comment).length),
-    Math.max("Code".length, fmt(totals.code).length),
+    ...lineCountWidths(totals),
   ];
 }
 

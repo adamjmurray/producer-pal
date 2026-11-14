@@ -6,7 +6,6 @@
 import { Agent, createServer } from "node:http";
 import express from "express";
 import { beforeEach, describe, expect, it } from "vitest";
-import { type HttpListeners } from "../../helpers/http/http-listeners.ts";
 import { isNetworkAccessAllowed } from "../../helpers/http/network-access-state.ts";
 import { useTempConfigDir } from "../../tests/config-dir-test-helpers.ts";
 import { withExpressApp } from "../../tests/express-app-test-helpers.ts";
@@ -22,9 +21,7 @@ import {
 describe("/network-access", () => {
   const configDir = useTempConfigDir();
   const server = useRouteServer();
-  const { failures, put } = server;
-  const listeners = (): HttpListeners => server.listeners();
-  const port = (): number => server.port();
+  const { failures, listeners, port, put } = server;
   const settings = (): Record<string, unknown> => savedSettings(configDir());
   const shown = shownOnDevice;
 

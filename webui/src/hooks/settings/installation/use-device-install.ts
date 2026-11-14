@@ -5,6 +5,11 @@
 
 import { useCallback, useState } from "preact/hooks";
 import {
+  type DeviceInstallProblem,
+  type DeviceInstallStatus as ServerDeviceInstallStatus,
+  type DeviceState,
+} from "#src/shared/max/device-install-status";
+import {
   getDeviceInstallActionUrl,
   getDeviceInstallUrl,
 } from "#webui/utils/mcp-url";
@@ -18,45 +23,15 @@ import {
   type UseInstallStatusReturn,
 } from "./helpers/use-install-status";
 
-/** How the User Library copy compares with the running device. */
-export type DeviceState =
-  | "not-installed"
-  | "same"
-  | "installed-older"
-  | "installed-newer"
-  | "different";
-
-/** Why the running device can't be copied. */
-export type DeviceInstallProblem =
-  | "unknown-source"
-  | "unreadable-source"
-  | "not-frozen"
-  | "no-user-library";
-
 /** What the server knows about the device's own installation, as `GET /device-install`. */
-export interface DeviceInstallStatus {
-  /** The running device's file, or null before it has said where it is. */
-  source: string | null;
-  /** Why it can't be installed, or null when it can. */
-  problem: DeviceInstallProblem | null;
-  /** Live's User Library, or null when the server couldn't find it. */
-  userLibrary: string | null;
-  /** Where the copy is, or would be. */
-  path: string | null;
-  /** Whether the running device is the User Library file itself. */
-  inUserLibrary: boolean;
-  /** The copy compared with the running device; null with a problem. */
-  state: DeviceState | null;
-  /** This device's version. */
-  version: string;
-  installedVersion: string | null;
-  /** Other Producer_Pal .amxd files in the User Library. */
-  otherCopies: string[];
+export interface DeviceInstallStatus extends ServerDeviceInstallStatus {
   /** Whether the running device can be swapped for the User Library copy. */
   swap: { allowed: boolean; reason: string | null };
   /** Each plug-in host wrapper's state. */
   pluginHost?: PluginHostWrapperState[];
 }
+
+export type { DeviceInstallProblem, DeviceState };
 
 /** What a finished install did, as the chat UI shows it. */
 export interface DeviceInstallDone {

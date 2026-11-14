@@ -122,6 +122,21 @@ afterEach(async () => {
   await resetDbCache().catch(() => {});
 });
 
+/**
+ * Drop the app's cached connection and open the database the way 2.5.0 does,
+ * with a plain version-1 open.
+ * @returns The raw version-1 connection
+ */
+async function reopenAs250(): Promise<IDBDatabase> {
+  await resetDbCache();
+
+  const old = await rawOpen(DB_NAME, 1);
+
+  expect(old.version).toBe(1);
+
+  return old;
+}
+
 describe("a fresh install", () => {
   it("passes on an open failure that isn't a version error", async () => {
     vi.spyOn(indexedDB, "open").mockImplementation(() => {
@@ -144,11 +159,8 @@ describe("a fresh install", () => {
 
   it("still opens with a plain version-1 open, as 2.5.0 does", async () => {
     await saveConversation(withImages("a", [PNG]));
-    await resetDbCache();
+    const old = await reopenAs250();
 
-    const old = await rawOpen(DB_NAME, 1);
-
-    expect(old.version).toBe(1);
     // What 2.5.0 would read: the record, with its image as a ref it ignores.
     expect(await rawGet(old, "conversations", "a")).toStrictEqual(
       expect.objectContaining({
@@ -201,11 +213,8 @@ describe("a version 1 database from 2.5.0", () => {
     expect(await imagesOf("a")).toStrictEqual([PNG]);
 
     // What 2.5.0 does still works.
-    await resetDbCache();
+    const old = await reopenAs250();
 
-    const old = await rawOpen(DB_NAME, 1);
-
-    expect(old.version).toBe(1);
     expect(await rawGet(old, "conversations", "a")).toStrictEqual(
       expect.objectContaining({ id: "a" }),
     );

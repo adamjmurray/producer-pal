@@ -283,6 +283,22 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     expect(routesAsked(fake)).toStrictEqual(["/ping", "/ping"]);
   });
 
+  it("shares one ping for the version between calls waiting on it", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    fake = await keptThenQuiet();
+
+    const calls = Promise.all([
+      remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
+      remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
+    ]);
+
+    await untilAsked(fake, 2);
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(await calls).toStrictEqual([OUTDATED_2_4_REPLY, OUTDATED_2_4_REPLY]);
+    expect(routesAsked(fake)).toStrictEqual(["/ping", "/ping"]);
+  });
+
   it("makes no ping for the version once the caller's time is used up", async () => {
     let clock = 0;
 

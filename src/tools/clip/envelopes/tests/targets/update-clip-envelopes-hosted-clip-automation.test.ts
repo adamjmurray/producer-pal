@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import { useFakeDate } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupMidiClipMock,
@@ -318,13 +319,7 @@ describe("updateClip - a hosted param's slot when the clips can't be checked", (
   });
 
   describe("at the request deadline", () => {
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+    useFakeDate();
 
     it("sends no lookup once the time is gone, and says which lines are left", async () => {
       const deadline = Date.now() + 1000;

@@ -90,6 +90,22 @@ describe("useNetworkAccess re-reading on focus", () => {
   }
 
   /**
+   * Focus the window, answer the read it starts with "on", and wait for the hook
+   * to show it.
+   * @param mounted - What `mount` returned
+   */
+  async function refocusAndTurnOn(
+    mounted: Awaited<ReturnType<typeof mount>>,
+  ): Promise<void> {
+    window.dispatchEvent(new Event("focus"));
+    mounted.later[0]?.resolve(jsonResponse({ allowNetwork: true }));
+
+    await waitForHookState(() => {
+      expect(mounted.result.current.allowNetwork).toBe(true);
+    });
+  }
+
+  /**
    * Make the page report `state` as its visibility, then say it changed.
    * @param state - "visible" or "hidden"
    */
@@ -99,14 +115,11 @@ describe("useNetworkAccess re-reading on focus", () => {
   }
 
   it("shows the server's new answer when the window regains focus", async () => {
-    const { result, later } = await mount(false);
+    const mounted = await mount(false);
 
-    window.dispatchEvent(new Event("focus"));
-    later[0]?.resolve(jsonResponse({ allowNetwork: true }));
+    await refocusAndTurnOn(mounted);
 
-    await waitForHookState(() => {
-      expect(result.current.allowNetwork).toBe(true);
-    });
+    expect(mounted.result.current.allowNetwork).toBe(true);
   });
 
   it("reads again when the page becomes visible, not when it is hidden", async () => {
@@ -164,17 +177,12 @@ describe("useNetworkAccess re-reading on focus", () => {
   });
 
   it("recovers from a failed first read", async () => {
-    const { result, later } = await mount(new Error("Failed to fetch"));
+    const mounted = await mount(new Error("Failed to fetch"));
 
-    expect(result.current.loadFailed).toBe(true);
+    expect(mounted.result.current.loadFailed).toBe(true);
 
-    window.dispatchEvent(new Event("focus"));
-    later[0]?.resolve(jsonResponse({ allowNetwork: true }));
-
-    await waitForHookState(() => {
-      expect(result.current.allowNetwork).toBe(true);
-    });
-    expect(result.current.loadFailed).toBe(false);
+    await refocusAndTurnOn(mounted);
+    expect(mounted.result.current.loadFailed).toBe(false);
   });
 
   it("uses the newest read when two overlap", async () => {

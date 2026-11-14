@@ -315,12 +315,12 @@ function costLine(judged: CompareEntry[]): string {
 }
 
 /**
- * Format a mean to two decimals.
+ * Format a number to two decimals.
  *
  * @param value - A number, or null
  * @returns Text like "2.33" or "n/a"
  */
-function fixed(value: number | null): string {
+export function fixed(value: number | null): string {
   return value == null ? "n/a" : value.toFixed(2);
 }
 
@@ -330,7 +330,7 @@ function fixed(value: number | null): string {
  * @param value - 0-100, or null
  * @returns Text like "87.5%" or "n/a"
  */
-function pct(value: number | null): string {
+export function pct(value: number | null): string {
   return value == null ? "n/a" : `${value.toFixed(1)}%`;
 }
 
@@ -363,6 +363,14 @@ function judgeCounts(entries: CompareEntry[]): string {
     counts.set(judgeName(e), (counts.get(judgeName(e)) ?? 0) + 1);
   }
 
+  return countsText(counts);
+}
+
+/**
+ * @param counts - How many results each name has
+ * @returns Text like "a (3), b (1)", most common first, or "none"
+ */
+function countsText(counts: Map<string, number>): string {
   const sorted = [...counts].toSorted((a, b) => b[1] - a[1]);
 
   return sorted.map(([name, n]) => `${name} (${n})`).join(", ") || "none";
@@ -384,9 +392,7 @@ function deciderCounts(entries: CompareEntry[]): string {
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
-  const sorted = [...counts].toSorted((a, b) => b[1] - a[1]);
-
-  return sorted.map(([name, n]) => `${name} (${n})`).join(", ") || "none";
+  return countsText(counts);
 }
 
 /**

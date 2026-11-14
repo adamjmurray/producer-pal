@@ -96,6 +96,17 @@ async function readNotes(id: string): Promise<ReadClipResult> {
   return parseToolResult<ReadClipResult>(result);
 }
 
+/**
+ * Expect a clip to have the D Dorian scale.
+ * @param id - The clip's id
+ */
+async function expectDDorian(id: string | null): Promise<void> {
+  const clip = await readClipFully(ctx.client!, { id });
+
+  expect(clip.scale).toBe("D Dorian");
+  expect(clip.scalePitches).toBe("D,E,F,G,A,B,C");
+}
+
 describe("ppal-clip-scale", () => {
   beforeEach(async () => {
     await setSongScale("C Major");
@@ -228,10 +239,7 @@ describe("ppal-clip-scale", () => {
 
       expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/s18`);
 
-      const moved = await readClipFully(ctx.client!, { id: data.id });
-
-      expect(moved.scale).toBe("D Dorian");
-      expect(moved.scalePitches).toBe("D,E,F,G,A,B,C");
+      await expectDDorian(data.id);
     });
 
     it("keeps the scale on an arrangement clip moved in the same call", async () => {
@@ -345,10 +353,7 @@ describe("ppal-clip-scale", () => {
       expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/s19`);
       expect(data.detail).toContain("re-created");
 
-      const moved = await readClipFully(ctx.client!, { id: data.id });
-
-      expect(moved.scale).toBe("D Dorian");
-      expect(moved.scalePitches).toBe("D,E,F,G,A,B,C");
+      await expectDDorian(data.id);
     });
 
     it("keeps a scale that is off when moved from the arrangement to a slot", async () => {

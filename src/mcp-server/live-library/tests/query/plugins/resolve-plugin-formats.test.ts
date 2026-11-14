@@ -138,6 +138,10 @@ describe("resolvePlugin by format", () => {
     addBundle("Acme", plist([["Acme: Echo", "aufx"]]));
     addBundle("AcmeAudio", plist([["Acme Audio: Echo", "aufx"]]));
     addBundle("SoloCo", plist([["Solo Co: Solo", "aufx"]]));
+    addBundle("ChorusA", plist([["Dup Co: Chorus", "aufx"]]));
+    addBundle("ChorusB", plist([["Dup Co: Chorus", "aufx"]]));
+    addBundle("Gainer", plist([["Gainer", "aufx"]]));
+    addBundle("ZedGainer", plist([["Zed: Gainer", "aufx"]]));
 
     appDir = join(dir, "Applications");
     const appex = join(appDir, "Synth.app/Contents/PlugIns/Synth.appex");
@@ -357,6 +361,19 @@ describe("resolvePlugin by format", () => {
           file: "SoloCo.component",
           category: "audiofx",
         });
+      });
+
+      it("counts a vendor with the same AU in two bundles once", async () => {
+        await expect(picked("Chorus", "Elsewhere")).resolves.toStrictEqual({
+          file: expect.stringMatching(/^Chorus[AB]\.component$/) as string,
+          category: "audiofx",
+        });
+      });
+
+      it("calls a bundle without a vendor unknown when the vendor can't pick", async () => {
+        await expect(picked("Gainer", "Elsewhere")).rejects.toThrow(
+          /^More than one AU plug-in is named "Gainer" \(vendors: (unknown, Zed|Zed, unknown)\)$/,
+        );
       });
 
       it("refuses when no vendor matches", async () => {

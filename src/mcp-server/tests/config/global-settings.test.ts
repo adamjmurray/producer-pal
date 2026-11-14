@@ -8,8 +8,10 @@ import { join } from "node:path";
 import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  readAllowNetwork,
   readGlobalSettings,
   updateGlobalSettings,
+  writeAllowNetwork,
 } from "../../helpers/config-store/global-settings-store.ts";
 import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { registerGlobalSettingsRoutes } from "../../routes/config/global-settings-route.ts";
@@ -124,6 +126,23 @@ describe("global settings store", () => {
       dismissedUpdateVersion: null,
       warnIfInstallIncomplete: true,
     });
+  });
+
+  it("saves the network setting beside the other keys", () => {
+    writeRawSettings('{"autoUpdateCheck": false}');
+
+    writeAllowNetwork(true);
+
+    expect(readAllowNetwork()).toBe(true);
+    expect(readGlobalSettings().autoUpdateCheck).toBe(false);
+  });
+
+  it("saves no network setting when the config dir is inert", () => {
+    delete process.env.PRODUCER_PAL_CONFIG_DIR;
+
+    writeAllowNetwork(true);
+
+    expect(readAllowNetwork()).toBe(false);
   });
 });
 

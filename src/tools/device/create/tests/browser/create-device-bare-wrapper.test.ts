@@ -98,6 +98,49 @@ function answerNode(item: Record<string, unknown> = WRAPPER_ITEM): void {
   });
 }
 
+/**
+ * @param params - The params to set on the new wrapper
+ * @param extra - Other call fields
+ * @returns What createDevice answers for a wrapper placed at t0/d+
+ */
+function createWrapper(
+  params: Array<{ name: string; value: string }>,
+  extra: Record<string, unknown> = {},
+): ReturnType<typeof createDevice> {
+  return createDevice({
+    deviceName: "PPal Plug-in Effect",
+    path: "t0/d+",
+    ...extra,
+    params,
+  });
+}
+
+/**
+ * Create a wrapper with "Cutoff" set, stalled on its wrapper's wait, and run
+ * `during` once that wait has started.
+ * @param during - Gets `timeOut` (fires the wait's timeout) and the pending call
+ */
+async function withWrapperWaitStalled(
+  during: (
+    timeOut: () => void,
+    pending: ReturnType<typeof createWrapper>,
+  ) => Promise<void>,
+): Promise<void> {
+  const callbacks: Array<() => void> = [];
+  const restore = installCapturingTask(callbacks);
+
+  installWrapper({ info: () => infoReply("Serum 2 FX") });
+
+  try {
+    const pending = createWrapper([{ name: "Cutoff", value: "1000" }]);
+
+    await vi.waitFor(() => expect(callbacks.length).toBeGreaterThan(0));
+    await during(() => callbacks.at(-1)?.(), pending);
+  } finally {
+    restore();
+  }
+}
+
 describe("createDevice - a Producer Pal wrapper made by its browser name", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -130,14 +173,10 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       const heard = installWrapper({ info: () => info });
 
       expect(
-        await createDevice({
-          deviceName: "PPal Plug-in Effect",
-          path: "t0/d+",
-          params: [
-            { name: "Cutoff", value: "1000" },
-            { name: "Automation 001", value: "0.5" },
-          ],
-        }),
+        await createWrapper([
+          { name: "Cutoff", value: "1000" },
+          { name: "Automation 001", value: "0.5" },
+        ]),
       ).toStrictEqual({
         id: "loaded-1",
         path: "t0/d1",
@@ -157,12 +196,7 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
   it("still names the device it created", async () => {
     installWrapper({ info: () => infoReply(null) });
 
-    await createDevice({
-      deviceName: "PPal Plug-in Effect",
-      path: "t0/d+",
-      name: "My Fx",
-      params: [{ name: "Cutoff", value: "1000" }],
-    });
+    await createWrapper([{ name: "Cutoff", value: "1000" }], { name: "My Fx" });
 
     expect(
       registerMockObject("loaded-1", {}).set,
@@ -180,11 +214,7 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
     });
 
     expect(
-      await createDevice({
-        deviceName: "PPal Plug-in Effect",
-        path: "t0/d+",
-        params: [{ name: "Cutoff", value: "1000" }],
-      }),
+      await createWrapper([{ name: "Cutoff", value: "1000" }]),
     ).toStrictEqual({
       id: "loaded-1",
       path: "t0/d1",
@@ -206,11 +236,8 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       },
     });
 
-    const result = await createDevice({
-      deviceName: "PPal Plug-in Effect",
-      path: "t0/d+",
+    const result = await createWrapper([{ name: "Cutoff", value: "1000" }], {
       name: "My Fx",
-      params: [{ name: "Cutoff", value: "1000" }],
     });
 
     expect(result).toStrictEqual({
@@ -221,20 +248,8 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
   });
 
   it("keeps the device when the wrapper's answer times out", async () => {
-    const callbacks: Array<() => void> = [];
-    const restore = installCapturingTask(callbacks);
-
-    installWrapper({ info: () => infoReply("Serum 2 FX") });
-
-    try {
-      const pending = createDevice({
-        deviceName: "PPal Plug-in Effect",
-        path: "t0/d+",
-        params: [{ name: "Cutoff", value: "1000" }],
-      });
-
-      await vi.waitFor(() => expect(callbacks.length).toBeGreaterThan(0));
-      callbacks.at(-1)?.();
+    await withWrapperWaitStalled(async (timeOut, pending) => {
+      timeOut();
 
       expect(await pending).toStrictEqual({
         id: "loaded-1",
@@ -247,9 +262,7 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
           },
         ],
       });
-    } finally {
-      restore();
-    }
+    });
   });
 
   it("waits for a wrapper that isn't up yet, then refuses by its answer", async () => {
@@ -258,11 +271,9 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       info: () => (++probes < 4 ? SILENT : infoReply(null)),
     });
 
-    const result = (await createDevice({
-      deviceName: "PPal Plug-in Effect",
-      path: "t0/d+",
-      params: [{ name: "Automation 001", value: "0.5" }],
-    })) as { params: unknown[] };
+    const result = (await createWrapper([
+      { name: "Automation 001", value: "0.5" },
+    ])) as { params: unknown[] };
 
     expect(probes).toBeGreaterThan(3);
     expect(result.params).toStrictEqual([
@@ -276,15 +287,13 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
     installWrapper({});
 
     expect(
-      await createDevice({
-        deviceName: "PPal Plug-in Effect",
-        path: "t0/d+",
-        name: "My Fx",
-        params: [
+      await createWrapper(
+        [
           { name: "Cutoff", value: "1000" },
           { name: "Automation 001", value: "0.5" },
         ],
-      }),
+        { name: "My Fx" },
+      ),
     ).toStrictEqual({
       id: "loaded-1",
       path: "t0/d1",
@@ -339,36 +348,18 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       },
     });
 
-    await createDevice({
-      deviceName: "PPal Plug-in Effect",
-      path: "t0/d+",
-      params: [{ name: "Cutoff", value: "1000" }],
-    });
+    await createWrapper([{ name: "Cutoff", value: "1000" }]);
 
     expect(deletedAt).toStrictEqual({ info: 1, write: 1 });
   });
 
   it("has removed the temp track already when the wrapper's write times out", async () => {
-    const callbacks: Array<() => void> = [];
-    const restore = installCapturingTask(callbacks);
-
-    installWrapper({ info: () => infoReply("Serum 2 FX") });
-
-    try {
-      const pending = createDevice({
-        deviceName: "PPal Plug-in Effect",
-        path: "t0/d+",
-        params: [{ name: "Cutoff", value: "1000" }],
-      });
-
-      await vi.waitFor(() => expect(callbacks.length).toBeGreaterThan(0));
+    await withWrapperWaitStalled(async (timeOut, pending) => {
       expect(tempTracksDeleted(), "gone while the write waits").toBe(1);
-      callbacks.at(-1)?.();
+      timeOut();
       await pending;
       expect(tempTracksDeleted(), "and still gone after").toBe(1);
-    } finally {
-      restore();
-    }
+    });
   });
 
   describe("a Max device that isn't a wrapper", () => {

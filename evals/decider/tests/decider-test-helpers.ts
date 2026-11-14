@@ -7,6 +7,9 @@
  * Test helpers for code that reads the decider API keys from the environment.
  */
 
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { vi } from "vitest";
 import {
   type DeciderJudgeResult,
@@ -72,4 +75,18 @@ export function fakeQuestion(
     text: id,
     probability,
   };
+}
+
+/**
+ * A fresh temp directory holding an empty `run1` folder, for result files.
+ *
+ * @param prefix - The temp directory's name prefix
+ * @returns The directory's path
+ */
+export async function makeRunDir(prefix: string): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), prefix));
+
+  await mkdir(join(dir, "run1"));
+
+  return dir;
 }

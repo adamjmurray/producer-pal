@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useCallback, useState } from "preact/hooks";
+import { type RemoteScriptStatus } from "#src/shared/max/remote-script-status";
 import {
   getRemoteScriptInstallUrl,
   getRemoteScriptUrl,
@@ -14,29 +15,7 @@ import {
   type UseInstallStatusReturn,
 } from "./helpers/use-install-status";
 
-/** What the server knows about the remote script, as `GET /remote-script`. */
-export interface RemoteScriptStatus {
-  /** Live's User Library, or null when the server couldn't find it. */
-  userLibrary: string | null;
-  installed: boolean;
-  installedVersion: string | null;
-  /** The installed files' build ID. */
-  installedBuild: string | null;
-  /** The version this build of Producer Pal ships. */
-  bundledVersion: string;
-  /** Whether Live currently has the script loaded as a control surface. */
-  running: boolean;
-  runningVersion: string | null;
-  /** The build ID Live loaded; null from a script too old to report one. */
-  runningBuild: string | null;
-  liveVersion: string | null;
-  /** The port another program answered on, when it isn't our script. */
-  otherOnPort: number | null;
-  /** Installed is older than this build (or unreadable). */
-  updateAvailable: boolean;
-  /** Installed is newer than this build, so installing downgrades it. */
-  installedNewer: boolean;
-}
+export type { RemoteScriptStatus };
 
 type StatusListener = (status: RemoteScriptStatus) => void;
 

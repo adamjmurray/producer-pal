@@ -5,7 +5,7 @@
 
 // The test file must `vi.mock` node-request-v8-protocol.ts for these to work.
 
-import { expect, vi } from "vitest";
+import { afterEach, beforeEach, expect, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
@@ -50,4 +50,15 @@ export async function expectVolumeRefused(
       detail: `envelope "volume": ${refusal}`,
     }),
   );
+}
+
+/** Fake the clock's Date for each test in the enclosing `describe`. */
+export function useFakeDate(): void {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 }

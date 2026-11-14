@@ -3,10 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { request } from "node:http";
 import { describe, expect, it } from "vitest";
 import { mcpRequests } from "#src/test/mocks/mock-max.ts";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { sendRaw, setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // A web page can send a POST with no body and no preflight (fetch with
 // mode "no-cors"), and the server read that as a tool call with no arguments.
@@ -25,26 +24,11 @@ describe("REST API Routes – browser origin", () => {
    * @returns The response status
    */
   function postWithHost(headers: Record<string, string>): Promise<number> {
-    const port = Number(new URL(appState.baseUrl).port);
-
-    return new Promise((resolve, reject) => {
-      const req = request(
-        {
-          host: "127.0.0.1",
-          port,
-          path: "/api/tools/ppal-connect",
-          method: "POST",
-          headers,
-        },
-        (res) => {
-          res.resume();
-          res.on("end", () => resolve(res.statusCode ?? 0));
-        },
-      );
-
-      req.on("error", reject);
-      req.end();
-    });
+    return sendRaw(Number(new URL(appState.baseUrl).port), {
+      path: "/api/tools/ppal-connect",
+      method: "POST",
+      headers,
+    }).then((answer) => answer.status);
   }
 
   it.each([

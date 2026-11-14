@@ -22,14 +22,12 @@ import {
   type HostedDevice,
   hasVst3,
   hostedPluginHelpers,
+  UNDO_SETTLE_MS,
 } from "../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
-
-// Live closes an undo step after about this long without a change.
-const UNDO_SETTLE_MS = 5000;
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
   requireRemoteScript();

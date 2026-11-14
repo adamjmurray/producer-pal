@@ -34,7 +34,7 @@ import {
   type LibraryTag,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
-import { countGroups } from "./list-tags.ts";
+import { topTags } from "./list-tags.ts";
 import { openLiveDb } from "./live-db.ts";
 import {
   COUNTED_FOR_TAG,
@@ -216,18 +216,8 @@ function leafTagCounts(
        WHERE kw.name IN (${placeholders})
          AND ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
        GROUP BY k.keyw_id`;
-  // One row past the page tells us whether anything was cut off; only then is
-  // the full count worth running (as in search).
-  const rows = db
-    .prepare(`${grouped} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
-    .all(...leaves, limit + 1) as unknown as CategoryRow[];
-  const tags = rows
-    .slice(0, limit)
-    .map((r) => ({ name: r.name, count: r.cnt }));
-  const more =
-    rows.length > limit ? countGroups(db, grouped, leaves) - limit : 0;
 
-  return { tags, ...(more > 0 && { more }) };
+  return topTags(db, grouped, leaves, limit);
 }
 
 /**

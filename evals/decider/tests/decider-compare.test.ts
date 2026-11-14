@@ -3,15 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  mkdtemp,
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type EvalScenario } from "#evals/scenarios/types.ts";
@@ -21,6 +13,7 @@ import {
   criteriaHash,
   writeSidecar,
 } from "../sidecar-judges/decider-sidecar.ts";
+import { makeRunDir } from "./decider-test-helpers.ts";
 
 describe("parseArgs --decider and --concurrency", () => {
   it("leaves both unset by default", () => {
@@ -211,8 +204,7 @@ describe("runDeciderCompare", () => {
 
   beforeEach(async () => {
     log.mockClear();
-    dir = await mkdtemp(join(tmpdir(), "decider-compare-"));
-    await mkdir(join(dir, "run1"));
+    dir = await makeRunDir("decider-compare-");
     await writeFile(
       join(dir, "run1", "a.json"),
       resultJson({ pass: true, issues: [] }),

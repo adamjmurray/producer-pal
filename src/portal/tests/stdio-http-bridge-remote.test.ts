@@ -6,8 +6,9 @@
 // A bridge pointed at another computer answers nothing from this machine: no
 // ping, no file lookups, no install or update copy.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
+import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
   mockClient,
@@ -17,18 +18,8 @@ import {
   mockTransport,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
-
-/**
- * A stand-in for a module with only the exports the code under test reads.
- * Typed `never` so it fits any module's `vi.mock` factory. A function
- * declaration, so it exists when the hoisted factories run.
- * @param exports - The exports to supply
- * @returns The same object
- */
-function partialModule(exports: object): never {
-  return exports as never;
-}
+  useBridgeStandIns,
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 // Partial stand-ins for the SDK and the server factory; the objects live in the
 // helper module.
@@ -136,17 +127,7 @@ async function call(
 }
 
 describe("StdioHttpBridge with a device on another computer", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockServer.sendToolListChanged.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  useBridgeStandIns();
 
   it("refuses update-producer-pal without even connecting", async () => {
     const { text, isError } = await call(
@@ -260,16 +241,7 @@ describe("StdioHttpBridge with a device on another computer", () => {
 });
 
 describe("StdioHttpBridge with a device URL it can't read", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockRejectedValue(new Error("Connection failed"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  useBridgeStandIns(true);
 
   // The first two parse without throwing, with no host.
   it.each([
@@ -311,16 +283,7 @@ describe("StdioHttpBridge with a device URL it can't read", () => {
 });
 
 describe("StdioHttpBridge with a device at another spelling of this machine", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockRejectedValue(new Error("Connection failed"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  useBridgeStandIns(true);
 
   it.each([
     "http://0.0.0.0:3350/mcp",

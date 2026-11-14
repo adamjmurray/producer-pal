@@ -49,16 +49,19 @@ function trackWithDevice(
 
 const READS_SLOT = "playing_slot_index";
 
+/** A Live 13 return track's playing slot, and whether it follows the arrangement. */
+const RETURN_SLOT_CASES: Array<[string, number, boolean]> = [
+  ["idle", -1, true],
+  ["playing a clip", 0, false],
+  ["stopped in Session", -2, false],
+];
+
 describe("followsArrangement", () => {
   beforeEach(() => {
     clearMockRegistry();
   });
 
-  it.each([
-    ["idle", -1, true],
-    ["playing a clip", 0, false],
-    ["stopped in Session", -2, false],
-  ])(
+  it.each(RETURN_SLOT_CASES)(
     "treats a Live 13 return track %s like a regular one",
     (_how, slot, expected) => {
       liveIs("13.0");
@@ -104,17 +107,16 @@ describe("owningTrackFollowsArrangement", () => {
     clearMockRegistry();
   });
 
-  it.each([
-    ["idle", -1, true],
-    ["playing a clip", 0, false],
-    ["stopped in Session", -2, false],
-  ])("follows a device's Live 13 return track %s", (_how, slot, expected) => {
-    liveIs("13.0");
+  it.each(RETURN_SLOT_CASES)(
+    "follows a device's Live 13 return track %s",
+    (_how, slot, expected) => {
+      liveIs("13.0");
 
-    const { device } = trackWithDevice(String(livePath.returnTrack(1)), slot);
+      const { device } = trackWithDevice(String(livePath.returnTrack(1)), slot);
 
-    expect(owningTrackFollowsArrangement(device)).toBe(expected);
-  });
+      expect(owningTrackFollowsArrangement(device)).toBe(expected);
+    },
+  );
 
   it("answers true for a Live 12 return track's device without asking the track", () => {
     liveIs("12.3");

@@ -53,6 +53,16 @@ function stubConfig(body: unknown) {
     );
 }
 
+/**
+ * @param init - The request's options
+ * @returns A response that never comes, and rejects once the request aborts
+ */
+function neverAnswers(init?: RequestInit): Promise<Response> {
+  return new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+}
+
 describe("callerSmallModelMode", () => {
   afterEach(async () => {
     vi.restoreAllMocks();
@@ -120,13 +130,8 @@ describe("callerSmallModelMode", () => {
   });
 
   it("is false when the device never answers", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      (_input, init) =>
-        new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () =>
-            reject(new Error("aborted")),
-          );
-        }),
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) =>
+      neverAnswers(init),
     );
 
     expect(await callerSmallModelMode(undefined, MCP_URL, 5)).toBe(false);
@@ -152,11 +157,7 @@ describe("callerSmallModelMode", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) =>
       isConfigRequest(input)
         ? Promise.resolve(Response.json({ smallModelMode: true }))
-        : new Promise<Response>((_resolve, reject) => {
-            init?.signal?.addEventListener("abort", () =>
-              reject(new Error("aborted")),
-            );
-          }),
+        : neverAnswers(init),
     );
 
     expect(await callerSmallModelMode(undefined, MCP_URL, 5)).toBe(true);

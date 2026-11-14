@@ -221,6 +221,14 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         );
       });
 
+      it("names the one bar when only a single tiled copy lands on itself", () => {
+        interpretNotation("C3 5|1 D3 6|1 @3-5=5-6");
+
+        expect(capturedWarnings()).toContainEqual(
+          expect.stringContaining("Skipping copy of bar 5 to itself"),
+        );
+      });
+
       it("returns no copies when all source bars result in skips", () => {
         // Copy bars 3-4 to range 3-4 (all are self-copies, should skip all)
         const result = interpretNotation("C3 3|1 D3 4|1 @3-4=3-4");

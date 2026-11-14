@@ -20,27 +20,19 @@ import {
   pluginHostSourceDir,
   readPluginHostSource,
 } from "#src/portal/setup/plugin-host/plugin-host-source.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
 import { resolveInstallLibraryOrExit } from "./helpers/install-library.ts";
+import { runInstallReport } from "./run-install-report.ts";
 import { describePluginHostInstall } from "./plugin-host-report.ts";
 
 const rootDir = join(import.meta.dirname, "../../..");
 
-try {
+await runInstallReport(async () => {
   const library = await resolveInstallLibraryOrExit();
-  const { lines, ok } = describePluginHostInstall(
+
+  return describePluginHostInstall(
     installPluginHostWrappers(
       library.path,
       readPluginHostSource(pluginHostSourceDir(rootDir)),
     ),
   );
-
-  for (const line of lines) {
-    console.log(line);
-  }
-
-  process.exitCode = ok ? 0 : 1;
-} catch (error) {
-  console.error(errorMessage(error));
-  process.exitCode = 1;
-}
+});

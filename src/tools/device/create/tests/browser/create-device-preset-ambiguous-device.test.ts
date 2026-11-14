@@ -8,8 +8,6 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   type BrowserItem,
   type BrowserItemResolution,
@@ -17,6 +15,7 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { createBrowserDevice } from "../../helpers/browser-devices.ts";
 import { createDevice } from "../../create-device.ts";
+import { mockLoadedBrowserDevice } from "./browser-device-test-helpers.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -93,20 +92,7 @@ const CALL = { device: "Tape", preset: "Add Oxide", path: "t0/d+" };
 
 describe("createDevice — a preset with a device name several devices have", () => {
   beforeEach(() => {
-    registerMockObject("loaded", { path: livePath.track(0).device(0) });
-    vi.mocked(createBrowserDevice).mockImplementation(
-      async (_item, _device, _path, options) => {
-        const created = {
-          device: LiveAPI.from("loaded"),
-          entry: { id: "loaded", path: "t0/d0" },
-          written: { container: () => null, path: "t0" },
-        };
-
-        options?.onPlaced?.(created);
-
-        return created;
-      },
-    );
+    mockLoadedBrowserDevice();
   });
 
   it("loads the one preset found under one of them", async () => {

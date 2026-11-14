@@ -182,6 +182,25 @@ describe("cross-track envelope loss", () => {
     });
   });
 
+  describe("a clip that can't say which track it is on", () => {
+    const unplaced = (): LiveAPI => {
+      registerMockObject("unplaced", {
+        path: "",
+        properties: { is_arrangement_clip: 0, has_envelopes: 1 },
+      });
+
+      return LiveAPI.from("id unplaced");
+    };
+
+    it("does not leave a track, so costs no envelopes and asks nothing", async () => {
+      const to = { kind: "regular", index: 1 } as const;
+
+      expect(leavesTrack(unplaced(), to)).toBe(false);
+      expect(await crossTrackEnvelopeLoss(unplaced(), to, CONTEXT)).toBeNull();
+      expect(requestNode).not.toHaveBeenCalled();
+    });
+  });
+
   describe("a return track clip", () => {
     it.each([
       ["another return track", { kind: "return", index: 0 }],

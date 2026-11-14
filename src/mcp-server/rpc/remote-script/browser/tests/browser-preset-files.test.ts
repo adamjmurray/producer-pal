@@ -23,7 +23,9 @@ import {
   findPresetFiles,
 } from "../../../../live-library/query/preset-files.ts";
 import {
+  drumKitFilesAt,
   duplicatePresetFiles,
+  listedPresetFiles,
   lookUpPresetFile,
 } from "../browser-preset-files.ts";
 import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
@@ -185,6 +187,17 @@ describe("lookUpPresetFile — a Drum Rack's presets", () => {
     ).toBeNull();
   });
 
+  it("finds no kits for a path with nothing in it", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([
+      instrumentRack("Kit.adg", "DrumGroupDevice"),
+    ]);
+
+    expect(
+      await drumKitFilesAt("instrument", [], DRUM_RACK, Date.now() + 60_000),
+    ).toStrictEqual([]);
+    expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+
   it("stops when the deadline passes while the files are read", async () => {
     const wrapped = instrumentRack("Kit.adg", "DrumGroupDevice");
     const realNow = Date.now.bind(Date);
@@ -202,5 +215,21 @@ describe("lookUpPresetFile — a Drum Rack's presets", () => {
     await expect(
       lookUpPresetFile("Kit", "kit", DRUM_RACK, realNow() + 30_000),
     ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+  });
+});
+
+describe("listedPresetFiles", () => {
+  it("takes no single file for the browser's matches when it listed none", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([PRESET]);
+
+    expect(
+      await listedPresetFiles(
+        "Add Oxide",
+        "add oxide",
+        [],
+        undefined,
+        Date.now() + 60_000,
+      ),
+    ).toBeNull();
   });
 });

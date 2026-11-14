@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { join } from "node:path";
+import { type DeviceState } from "#src/shared/max/device-install-status.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { libraryPathExists } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
@@ -16,22 +17,7 @@ const DEVICE_FOLDER = ["Presets", "MIDI Effects", "Max MIDI Effect"] as const;
 
 export const DEVICE_FILE_NAME = "Producer_Pal.amxd";
 
-/**
- * How the installed device compares with the bundled one.
- * - `not-installed`: nothing at the device path.
- * - `same`: identical bytes.
- * - `installed-older` / `installed-newer`: both name a version, installed is
- *   older / newer.
- * - `different`: the bytes differ and the versions can't order them: one or
- *   both name no version, both name the same one, or their tags can't be
- *   ordered (`-beta` vs `-rc1`).
- */
-export type DeviceState =
-  | "not-installed"
-  | "same"
-  | "installed-older"
-  | "installed-newer"
-  | "different";
+export type { DeviceState };
 
 export interface DeviceFileStatus {
   /** Where the device is installed, or would be */

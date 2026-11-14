@@ -22,6 +22,7 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { createBrowserDevice } from "../../helpers/browser-devices.ts";
 import { createDevice } from "../../create-device.ts";
+import { mockLoadedBrowserDevice } from "./browser-device-test-helpers.ts";
 
 /** What the remote script is told to say when it is too old. */
 const OUTDATED =
@@ -92,20 +93,7 @@ function presetLookups(): unknown[] {
 describe("createDevice — from a preset", () => {
   beforeEach(() => {
     answerLookups();
-    registerMockObject("loaded", { path: livePath.track(0).device(0) });
-    vi.mocked(createBrowserDevice).mockImplementation(
-      async (_item, _device, _path, options) => {
-        const created = {
-          device: LiveAPI.from("loaded"),
-          entry: { id: "loaded", path: "t0/d0" },
-          written: { container: () => null, path: "t0" },
-        };
-
-        options?.onPlaced?.(created);
-
-        return created;
-      },
-    );
+    mockLoadedBrowserDevice();
   });
 
   it("looks a name up among a native device's presets and loads it", async () => {

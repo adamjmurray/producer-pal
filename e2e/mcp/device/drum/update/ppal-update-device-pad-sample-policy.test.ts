@@ -84,6 +84,28 @@ async function padDevices(padName: string): Promise<DeviceInfo[]> {
 }
 
 /**
+ * Expect a pad's instrument to be of a type.
+ * @param padName - The pad's name
+ * @param type - Substring the instrument's type contains
+ */
+async function expectPadInstrument(
+  padName: string,
+  type: string,
+): Promise<void> {
+  expect((await padDevices(padName))[0]?.type).toContain(type);
+}
+
+/**
+ * Write a sample onto pAb1 with force, once a skip has warned about the pad,
+ * and expect the instrument's settings to be reported gone.
+ */
+async function forceAfterSkip(): Promise<void> {
+  const { detail } = await writeSample("pAb1", true);
+
+  expect(detail).toContain("settings are gone");
+}
+
+/**
  * The two halves of the policy for a pad whose instrument can't take a sample:
  * skipped with a warning by default, replaced with a Simpler under force.
  * @param pad - Pad note segment (e.g. "pAb1")
@@ -158,15 +180,11 @@ describe("force before any skip has warned about the pad", () => {
       "force:true ignored — nothing had warned about this yet. sample write SKIPPED on pad",
     );
     expect(ignored.warnings).toStrictEqual([]);
-    expect((await padDevices("Drum Sampler"))[0]?.type).toContain(
-      "Drum Sampler",
-    );
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
 
     // That skip warned about the pad, so force now replaces the instrument.
-    const { detail } = await writeSample("pAb1", true);
-
-    expect(detail).toContain("settings are gone");
-    expect((await padDevices("Drum Sampler"))[0]?.type).toContain("Simpler");
+    await forceAfterSkip();
+    await expectPadInstrument("Drum Sampler", "Simpler");
   });
 });
 
@@ -186,15 +204,11 @@ describe("a skip that no longer matches the pad", () => {
     const ignored = await writeSample("pAb1", true);
 
     expect(ignored.refusal).toContain(IGNORED);
-    expect((await padDevices("Drum Sampler"))[0]?.type).toContain(
-      "Drum Sampler",
-    );
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
 
     // That skip warned about the new instrument, so force now replaces it.
-    const { detail } = await writeSample("pAb1", true);
-
-    expect(detail).toContain("settings are gone");
-    expect((await padDevices("Drum Sampler"))[0]?.type).toContain("Simpler");
+    await forceAfterSkip();
+    await expectPadInstrument("Drum Sampler", "Simpler");
   });
 
   it("does not let two spellings of one pad in a call unlock each other", async () => {
@@ -208,14 +222,10 @@ describe("a skip that no longer matches the pad", () => {
     });
 
     expect(refusal).toContain(IGNORED);
-    expect((await padDevices("Drum Sampler"))[0]?.type).toContain(
-      "Drum Sampler",
-    );
+    await expectPadInstrument("Drum Sampler", "Drum Sampler");
 
     // The call warned, so force in the next call replaces the instrument.
-    const { detail } = await writeSample("pAb1", true);
-
-    expect(detail).toContain("settings are gone");
+    await forceAfterSkip();
   });
 });
 

@@ -55,6 +55,19 @@ vi.mock(
   }),
 );
 
+// Passes through; one test makes it report no wrappers.
+vi.mock(
+  import("#src/portal/setup/plugin-host/plugin-host-part.ts"),
+  async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+      ...actual,
+      installPluginHostParts: vi.fn(actual.installPluginHostParts),
+    };
+  },
+);
+
 // Names a copy to fail halfway.
 const fault = vi.hoisted(() => ({ copy: false, stat: false }));
 
@@ -248,6 +261,22 @@ describe("device-install routes", () => {
       expect(body.detail).toBe(
         "Installed the device. Plug-in host wrappers: PPal Plug-in Effect installed; PPal Plug-in Instrument installed.",
       );
+    });
+
+    it("answers with the plain install result when there are no wrappers", async () => {
+      const { library, installed, runFromDownloads } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      vi.mocked(installPluginHostParts).mockReturnValueOnce([]);
+
+      const res = await postInstall({ userLibrary: library });
+      const body = (await res.json()) as { detail: string };
+
+      expect(body).toStrictEqual(
+        expect.objectContaining({ outcome: "installed", path: installed }),
+      );
+      expect(body).not.toHaveProperty("pluginHost");
+      expect(body.detail).toBe("Installed the device.");
     });
 
     it("installs the device and reports a wrapper that can't be installed", async () => {

@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { VERSION } from "#src/shared/config.ts";
+import { type RemoteScriptStatus } from "#src/shared/max/remote-script-status.ts";
 import { isBehindBuild, isNewerVersion } from "#src/shared/version-check.ts";
 import { setRunningLiveMajor } from "../../live-library/live-db-path.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
@@ -19,6 +20,8 @@ import {
   installedRemoteScriptBuild,
 } from "./bundle/remote-script-build.ts";
 
+export type { RemoteScriptStatus };
+
 /** Matches the version line in version.py. */
 const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;
 
@@ -27,31 +30,6 @@ const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;
  * differs from every device build on purpose, so it is never offered an update.
  */
 const DEV_PROBE_FILE = "probe.py";
-
-/** What the chat UI needs to offer an install, an update, or nothing. */
-export interface RemoteScriptStatus {
-  /** Live's User Library, or null when we couldn't work it out. */
-  userLibrary: string | null;
-  installed: boolean;
-  installedVersion: string | null;
-  /** The installed files' build ID, or null when not installed. */
-  installedBuild: string | null;
-  bundledVersion: string;
-  running: boolean;
-  runningVersion: string | null;
-  /** The build ID Live loaded, or null when not running or too old to say. */
-  runningBuild: string | null;
-  liveVersion: string | null;
-  /** The port another program answered on, when it isn't our script. */
-  otherOnPort: number | null;
-  /**
-   * Installed is older than this build, a different build of the same version,
-   * or unreadable: offer an Update.
-   */
-  updateAvailable: boolean;
-  /** Installed is newer than this build: installing would downgrade it. */
-  installedNewer: boolean;
-}
 
 /**
  * Report whether the remote script is installed, running, and current.

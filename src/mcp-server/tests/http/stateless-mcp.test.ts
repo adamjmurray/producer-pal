@@ -15,6 +15,16 @@ import {
   type StatelessMcpServer,
 } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 
+const postPing = (
+  url: string,
+  headers: Record<string, string> = {},
+): Promise<Response> =>
+  fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+  });
+
 describe("startStatelessMcpServer", () => {
   let running: StatelessMcpServer | undefined;
 
@@ -78,11 +88,7 @@ describe("startStatelessMcpServer", () => {
         return server;
       });
 
-      const response = await fetch(running.url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
-      });
+      const response = await postPing(running.url);
 
       expect(response.status).toBe(500);
       expect(await response.json()).toStrictEqual(
@@ -92,6 +98,30 @@ describe("startStatelessMcpServer", () => {
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
       process.off("unhandledRejection", unhandled);
+    }
+  });
+
+  it("ends the response without a second status when serving fails after the reply started", async () => {
+    const handle = vi
+      .spyOn(StreamableHTTPServerTransport.prototype, "handleRequest")
+      .mockImplementation((_req, res) => {
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.write("partial");
+
+        return Promise.reject(new Error("failed mid-reply"));
+      });
+
+    try {
+      running = await startStatelessMcpServer(
+        () => new McpServer({ name: "test", version: "1.0.0" }),
+      );
+
+      const response = await postPing(running.url);
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("partial");
+    } finally {
+      handle.mockRestore();
     }
   });
 
@@ -117,13 +147,8 @@ describe("startStatelessMcpServer", () => {
         return server;
       });
 
-      const response = await fetch(running.url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-        },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      const response = await postPing(running.url, {
+        accept: "application/json, text/event-stream",
       });
 
       await response.text();

@@ -5,7 +5,6 @@
 
 import { Socket } from "node:net";
 import { describe, expect, it, vi } from "vitest";
-import { type HttpListeners } from "../../helpers/http/http-listeners.ts";
 import { isNetworkAccessAllowed } from "../../helpers/http/network-access-state.ts";
 import { useTempConfigDir } from "../../tests/config-dir-test-helpers.ts";
 import { mockMax } from "../../tests/express-app-test-helpers.ts";
@@ -22,9 +21,7 @@ import {
 describe("PUT /network-access lifecycle", () => {
   const configDir = useTempConfigDir();
   const server = useRouteServer();
-  const { failures, put } = server;
-  const listeners = (): HttpListeners => server.listeners();
-  const port = (): number => server.port();
+  const { failures, listeners, port, put } = server;
   const arrivedCount = (count: number): Promise<void> =>
     vi.waitFor(() => expect(server.arrived()).toBeGreaterThanOrEqual(count));
 

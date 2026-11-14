@@ -13,7 +13,7 @@ import {
   type DeciderJudgeResult,
 } from "../decider-judge.ts";
 import { type SkipCounts } from "../decider-results.ts";
-import { deciderName } from "../report/decider-report.ts";
+import { deciderName, fixed, pct } from "../report/decider-report.ts";
 import {
   VERDICTS,
   callSpeed,
@@ -306,24 +306,4 @@ function errorLines(leftOut: LeftOut[]): string[] {
         "Errors:",
         ...errors.map((e) => `- ${e.file} (${e.side}): ${e.reason}`),
       ];
-}
-
-/**
- * Format a number to two decimals.
- *
- * @param value - A number, or null
- * @returns Text like "0.81" or "n/a"
- */
-function fixed(value: number | null): string {
-  return value == null ? "n/a" : value.toFixed(2);
-}
-
-/**
- * Format a percentage.
- *
- * @param value - 0-100, or null
- * @returns Text like "87.5%" or "n/a"
- */
-function pct(value: number | null): string {
-  return value == null ? "n/a" : `${value.toFixed(1)}%`;
 }

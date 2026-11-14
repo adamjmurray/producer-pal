@@ -28,14 +28,12 @@ import {
   type HostedDevice,
   hasVst3,
   hostedPluginHelpers,
+  UNDO_SETTLE_MS,
 } from "../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
-
-// Live closes an undo step after about this long without a change.
-const UNDO_SETTLE_MS = 5000;
 
 interface EnvelopeEntry {
   parameter: string;
@@ -50,8 +48,13 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
 
     const ctx = setupMcpTestContext();
 
-    const { call, hostOnNewTrack, readDevice, duplicateTrack } =
-      hostedPluginHelpers(ctx);
+    const {
+      call,
+      hostOnNewTrack,
+      readDevice,
+      duplicateTrack,
+      readDeviceOnCopy,
+    } = hostedPluginHelpers(ctx);
 
     it("reads an instrument as the plug-in, with its own params", async () => {
       const { path } = await hostOnNewTrack("Serum 2");
@@ -145,10 +148,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
 
       expect(written?.value).toMatch(/^25%/);
 
-      const copy = await duplicateTrack(track);
-      const devicePath = `${copy}/${path.split("/").at(-1)}`;
       const [param] =
-        (await readDevice(devicePath, "Main Vol")).parameters ?? [];
+        (await readDeviceOnCopy(track, path, "Main Vol")).parameters ?? [];
 
       expect(param?.value).toMatch(/^25%/);
     });
@@ -299,8 +300,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         }
       }, 60_000);
 
-      it("keeps the slots on a duplicated track", async () => {
-        const { track, path } = await hostOnNewTrack("Serum 2");
+      /**
+       * Map Main Vol to automation slot 3.
+       * @param path - The device's path
+       */
+      async function mapMainVol(path: string): Promise<void> {
         const deviceId = (await readDevice(path)).id;
 
         await call("ppal-plugin-host", {
@@ -309,11 +313,14 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
           slot: 3,
           name: "Main Vol",
         });
+      }
 
-        const copy = await duplicateTrack(track);
-        const copyDevice = await readDevice(
-          `${copy}/${path.split("/").at(-1)}`,
-        );
+      it("keeps the slots on a duplicated track", async () => {
+        const { track, path } = await hostOnNewTrack("Serum 2");
+
+        await mapMainVol(path);
+
+        const copyDevice = await readDeviceOnCopy(track, path);
 
         expect(
           await call("ppal-plugin-host", {
@@ -329,26 +336,17 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
 
       it("keeps a mapped param's later value on a duplicated track", async () => {
         const { track, path } = await hostOnNewTrack("Serum 2");
-        const deviceId = (await readDevice(path)).id;
 
         // map sets the dial to Main Vol's current value; the write after it
         // leaves the dial behind, and the copy must not take the dial's value.
-        await call("ppal-plugin-host", {
-          deviceId,
-          action: "map",
-          slot: 3,
-          name: "Main Vol",
-        });
+        await mapMainVol(path);
         await call("ppal-update-device", {
           path,
           params: [{ name: "Main Vol", value: "37%" }],
         });
 
-        const copy = await duplicateTrack(track);
-        const devicePath = `${copy}/${path.split("/").at(-1)}`;
-
         const [param] =
-          (await readDevice(devicePath, "Main Vol")).parameters ?? [];
+          (await readDeviceOnCopy(track, path, "Main Vol")).parameters ?? [];
 
         expect(param?.value).toMatch(/^37%/);
       });

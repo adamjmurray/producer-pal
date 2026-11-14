@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   clipIgnoredParams,
   clipLandedNothing,
   clipReporterFor,
   ignoreClipParams,
+  journalEnvelopeLoss,
   moveClipReasons,
   newClipReasons,
   noteClipColor,
@@ -147,5 +148,16 @@ describe("clip-reasons", () => {
       "quantize",
       "firstStart",
     ]);
+  });
+
+  it("journals an envelope-loss note it is handed and keeps it for the entry", () => {
+    const reasons = newClipReasons();
+    const journal = vi.fn();
+
+    reasons.journal = journal;
+    journalEnvelopeLoss(reasons, "7", "device envelopes dropped");
+
+    expect(journal).toHaveBeenCalledWith("device envelopes dropped", undefined);
+    expect(reasons.envelopeLosses.get("7")).toBe("device envelopes dropped");
   });
 });

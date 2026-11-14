@@ -57,6 +57,13 @@ describe("NetworkAccessOption", () => {
     fireEvent.click(box());
   }
 
+  /** Wait for the box to turn off. */
+  async function untilBoxOff(): Promise<void> {
+    await waitForHookState(() => {
+      expect(box().checked).toBe(false);
+    });
+  }
+
   /**
    * Make the page look like it was opened at `host`.
    * @param host - Host and port of the page
@@ -225,9 +232,7 @@ describe("NetworkAccessOption", () => {
     serve(true, jsonResponse({ allowNetwork: false }));
     await renderAndClick();
 
-    await waitForHookState(() => {
-      expect(box().checked).toBe(false);
-    });
+    await untilBoxOff();
     expect(confirm).not.toHaveBeenCalled();
   });
 
@@ -268,9 +273,7 @@ describe("NetworkAccessOption", () => {
       serve(true, jsonResponse({ allowNetwork: false }));
       await renderAndClick();
 
-      await waitForHookState(() => {
-        expect(box().checked).toBe(false);
-      });
+      await untilBoxOff();
       expect(puts()).toStrictEqual([
         [expect.stringContaining("/network-access"), '{"allowNetwork":false}'],
       ]);

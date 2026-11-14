@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { request } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerMemoryCollectionRoutes } from "#src/mcp-server/routes/memory-collection-route.ts";
 import {
@@ -13,6 +12,7 @@ import {
   startMarkdownRouteServer,
   useTempConfigDir,
 } from "../config-dir-test-helpers.ts";
+import { sendRaw } from "../express-app-test-helpers.ts";
 
 // Register the temp-config-dir lifecycle so each request hits a fresh real dir
 // rather than the inert-under-Vitest path (env unset).
@@ -236,29 +236,17 @@ describe("memory-collection route", () => {
 
   it("still allows a same-origin write under a DNS-name Host (remote webui)", async () => {
     // Only the User Library install routes refuse a DNS-name Host.
-    const status = await new Promise<number>((resolve, reject) => {
-      const payload = JSON.stringify({ description: "hook", content: "x" });
-      const req = request(
-        {
-          host: "127.0.0.1",
-          port: Number(new URL(server.baseUrl).port),
-          path: "/memory/tunnel-write",
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(payload),
-            Host: "demo.trycloudflare.com",
-            Origin: "https://demo.trycloudflare.com",
-          },
-        },
-        (res) => {
-          res.resume();
-          res.on("end", () => resolve(res.statusCode ?? 0));
-        },
-      );
-
-      req.on("error", reject);
-      req.end(payload);
+    const payload = JSON.stringify({ description: "hook", content: "x" });
+    const { status } = await sendRaw(Number(new URL(server.baseUrl).port), {
+      path: "/memory/tunnel-write",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(payload),
+        Host: "demo.trycloudflare.com",
+        Origin: "https://demo.trycloudflare.com",
+      },
+      body: payload,
     });
 
     expect(status).toBe(200);

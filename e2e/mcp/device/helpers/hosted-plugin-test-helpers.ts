@@ -15,6 +15,9 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 
+/** Live closes an undo step after about this long without a change. */
+export const UNDO_SETTLE_MS = 5000;
+
 /** A duplicated wrapper restores its plug-in a moment after it appears. */
 const RESTORE_MS = 3000;
 
@@ -108,5 +111,28 @@ export function hostedPluginHelpers(ctx: McpTestContext) {
     return copy.path;
   }
 
-  return { call, hostOnNewTrack, readDevice, duplicateTrack };
+  /**
+   * Duplicate a track, then read the copy's counterpart of a device on it.
+   * @param track - Index of the track to duplicate
+   * @param path - The original device's path
+   * @param paramSearch - Name filter
+   * @returns The copy's device
+   */
+  async function readDeviceOnCopy(
+    track: number,
+    path: string,
+    paramSearch?: string,
+  ) {
+    const copy = await duplicateTrack(track);
+
+    return readDevice(`${copy}/${path.split("/").at(-1)}`, paramSearch);
+  }
+
+  return {
+    call,
+    hostOnNewTrack,
+    readDevice,
+    duplicateTrack,
+    readDeviceOnCopy,
+  };
 }

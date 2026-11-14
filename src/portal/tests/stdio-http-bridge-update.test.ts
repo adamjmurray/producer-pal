@@ -7,8 +7,9 @@
 // hint it adds to ppal-connect.
 
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SMALL_MODEL_MODE_CAPABILITY, VERSION } from "#src/shared/config.ts";
+import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
   mockClient,
@@ -18,18 +19,8 @@ import {
   mockTransport,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
-
-/**
- * A stand-in for a module with only the exports the code under test reads.
- * Typed `never` so it fits any module's `vi.mock` factory. A function
- * declaration, so it exists when the hoisted factories run.
- * @param exports - The exports to supply
- * @returns The same object
- */
-function partialModule(exports: object): never {
-  return exports as never;
-}
+  useBridgeStandIns,
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 // Partial stand-ins for the SDK and the server factory; the objects live in the
 // helper module.
@@ -138,21 +129,6 @@ function serverReports(...versions: string[]): void {
   mockClient.getServerVersion.mockReturnValue({
     name: "d",
     version: versions.at(-1),
-  });
-}
-
-/** Before each test, reset the SDK stand-ins and quiet the console. */
-function useBridgeStandIns(): void {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockServer.sendToolListChanged.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 }
 

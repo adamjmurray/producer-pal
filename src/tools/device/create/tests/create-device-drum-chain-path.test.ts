@@ -9,7 +9,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  lookupMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   LAYERED_CHAIN_NOTES,
   registerLayeredDrumRack,
@@ -120,5 +123,37 @@ describe("createDevice — drum chain path spelling", () => {
       { id: "device-in-chain-0", path: "t0/d1/pC1/c0/d0" },
       { id: "arp", path: "t0/d0" },
     ]);
+  });
+});
+
+// An index into a drum pad that already has its chain is judged by the chain
+// itself, not refused as if the path would make a new one.
+describe("createDevice — index into an existing drum pad", () => {
+  beforeEach(() => {
+    registerLayeredDrumRack({
+      // Pad D1 is chain 1, and it already holds one device.
+      chainProperties: (index) =>
+        index === 1 ? { devices: children("held") } : {},
+      chainMethods: (index) => ({
+        insert_device: () => ["id", `new-in-chain-${String(index)}`],
+      }),
+    });
+    registerMockObject("held", {
+      path: livePath.track(0).device(0).chain(1).device(0),
+    });
+    registerMockObject("new-in-chain-1", {
+      path: livePath.track(0).device(0).chain(1).device(1),
+    });
+  });
+
+  it("inserts after the pad's existing device", async () => {
+    expect(
+      await createDevice({ device: "Simpler", path: "t0/d0/pD1/d1" }),
+    ).toStrictEqual({ id: "new-in-chain-1", path: "t0/d0/pD1/d1" });
+    expect(lookupMockObject("chain-1")?.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Simpler",
+      1,
+    );
   });
 });

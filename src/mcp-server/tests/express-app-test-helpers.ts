@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type Server } from "node:http";
+import { type IncomingMessage, type Server, request } from "node:http";
 import { type AddressInfo } from "node:net";
 import express from "express";
 import Max from "max-api";
@@ -222,4 +222,56 @@ export function setupRestRoutesServer(options: {
   });
 
   return state;
+}
+
+/**
+ * Collect a response's body as text.
+ *
+ * @param res - The response
+ * @param done - Called with the status and body once the response ends
+ */
+export function readResponse(
+  res: IncomingMessage,
+  done: (status: number, text: string) => void,
+): void {
+  let text = "";
+
+  res.setEncoding("utf8");
+  res.on("data", (chunk: string) => (text += chunk));
+  res.on("end", () => done(res.statusCode ?? 0, text));
+}
+
+/**
+ * Send a request through node:http, which (unlike fetch) lets the test set Host
+ * and send a raw path.
+ *
+ * @param port - The port on 127.0.0.1
+ * @param options - Path, method, headers and body
+ * @param options.path - Raw request path
+ * @param options.method - HTTP method
+ * @param options.headers - Headers to send, Host included
+ * @param options.body - The request body, if any
+ * @returns The response status and raw body
+ */
+export function sendRaw(
+  port: number,
+  options: {
+    path: string;
+    method: string;
+    headers: Record<string, string | number>;
+    body?: string;
+  },
+): Promise<{ status: number; body: string }> {
+  const { path, method, headers, body } = options;
+
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: "127.0.0.1", port, path, method, headers },
+      (res) =>
+        readResponse(res, (status, text) => resolve({ status, body: text })),
+    );
+
+    req.on("error", reject);
+    req.end(body);
+  });
 }

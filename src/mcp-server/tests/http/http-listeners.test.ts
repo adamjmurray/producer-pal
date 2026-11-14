@@ -59,6 +59,30 @@ function failNth(nth: number, code: string): (a: RequestListener) => Server {
   };
 }
 
+/**
+ * Start listeners, then ask for network access when the next server to open
+ * fails with EACCES.
+ * @returns The listeners, after that failed switch
+ */
+async function openNetworkWhenNextServerFails(): Promise<HttpListeners> {
+  let armed = false;
+  const started = await startHttpListeners(app, {
+    port: 0,
+    create: (handler) => {
+      const server = armed ? failingServer("EACCES") : createServer(handler);
+
+      armed = false;
+
+      return server;
+    },
+  });
+
+  armed = true;
+  await started.setAllowNetwork(true);
+
+  return started;
+}
+
 async function listenHolder(host?: string): Promise<Server> {
   const holder = createServer(app);
 
@@ -372,23 +396,7 @@ describe("startHttpListeners", () => {
     });
 
     it("falls back to this computer only when opening fails", async () => {
-      let failNext = false;
-
-      listeners = await startHttpListeners(app, {
-        port: 0,
-        create: (handler) => {
-          const server = failNext
-            ? failingServer("EACCES")
-            : createServer(handler);
-
-          failNext = false;
-
-          return server;
-        },
-      });
-
-      failNext = true;
-      await listeners.setAllowNetwork(true);
+      listeners = await openNetworkWhenNextServerFails();
 
       expect(hosts(listeners)).toStrictEqual(LOOPBACK);
       expect(posted("Producer Pal failed to start: EACCES")).toBe(true);
@@ -468,23 +476,7 @@ describe("network access state for request guards", () => {
   });
 
   it("stays off when opening the network fails", async () => {
-    let failNext = false;
-
-    listeners = await startHttpListeners(app, {
-      port: 0,
-      create: (handler) => {
-        const server = failNext
-          ? failingServer("EACCES")
-          : createServer(handler);
-
-        failNext = false;
-
-        return server;
-      },
-    });
-
-    failNext = true;
-    await listeners.setAllowNetwork(true);
+    listeners = await openNetworkWhenNextServerFails();
 
     expect(isNetworkAccessAllowed()).toBe(false);
   });

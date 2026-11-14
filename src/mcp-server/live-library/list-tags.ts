@@ -21,6 +21,7 @@ import {
   clampLibraryLimit,
   DEFAULT_LIST_TAGS_LIMIT,
   type LibraryListTagsResult,
+  type LibraryTag,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
@@ -71,22 +72,12 @@ export async function listTags(
            JOIN files f ON f.file_id = k.file_id
            WHERE ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
            GROUP BY k.keyw_id`;
-      // One row past the page tells us whether anything was cut off; only then
-      // is the full tag count worth running (as in search).
-      const rows = db
-        .prepare(`${grouped} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
-        .all(limit + 1) as unknown as TagRow[];
-      const tags = rows
-        .slice(0, limit)
-        .map((r) => ({ name: r.name, count: r.cnt }));
-      const more =
-        rows.length > limit ? countGroups(db, grouped, []) - limit : 0;
+      const page = topTags(db, grouped, [], limit);
 
       return {
         dbAvailable: true,
         ...(stale && { stalenessNote: stale }),
-        tags,
-        ...(more > 0 && { more }),
+        ...page,
       };
     } finally {
       db.close();
@@ -101,6 +92,36 @@ export async function listTags(
 }
 
 /**
+ * The most-used tags a GROUP BY query returns, with how many it left out when
+ * the limit cut the list off.
+ *
+ * @param db - Open database handle
+ * @param groupedSql - Query giving `name` and `cnt` per group, without ORDER BY or LIMIT
+ * @param params - Values for the query's placeholders
+ * @param limit - Max tags to return
+ * @returns Tags sorted by count desc, and `more` when any were left out
+ */
+export function topTags(
+  db: DatabaseSync,
+  groupedSql: string,
+  params: Array<string | number>,
+  limit: number,
+): { tags: LibraryTag[]; more?: number } {
+  // One row past the page tells us whether anything was cut off; only then is
+  // the full count worth running (as in search).
+  const rows = db
+    .prepare(`${groupedSql} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
+    .all(...params, limit + 1) as unknown as TagRow[];
+  const tags = rows
+    .slice(0, limit)
+    .map((r) => ({ name: r.name, count: r.cnt }));
+  const more =
+    rows.length > limit ? countGroups(db, groupedSql, params) - limit : 0;
+
+  return { tags, ...(more > 0 && { more }) };
+}
+
+/**
  * Count the rows a GROUP BY query returns, so a list that hit its limit can say
  * how many it left out.
  *
@@ -109,7 +130,7 @@ export async function listTags(
  * @param params - Values for the query's placeholders
  * @returns Number of groups
  */
-export function countGroups(
+function countGroups(
   db: DatabaseSync,
   groupedSql: string,
   params: Array<string | number>,

@@ -6,7 +6,7 @@
 // update-clip's `envelopes` param, the one part of a clip write that goes out
 // to the Producer Pal remote script.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -14,6 +14,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
+import { useFakeDate } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupArrangementMidiClipMock,
@@ -429,13 +430,7 @@ describe("updateClip - envelopes", () => {
   });
 
   describe("at the request deadline", () => {
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+    useFakeDate();
 
     it("waits no longer than the time left, and sends nothing once it's gone", async () => {
       const deadline = Date.now() + 1000;
