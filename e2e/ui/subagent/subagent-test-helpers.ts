@@ -150,7 +150,9 @@ async function seedCustomProvider(page: Page): Promise<void> {
       JSON.stringify({
         apiKey: "stub-key",
         model: "stub-model",
-        baseUrl: "http://localhost/v1",
+        // Not a loopback host: the chat UI sends those through the local model
+        // proxy, so this route would never see the request.
+        baseUrl: "http://stub-model-server.test/v1",
         thinking: "Default",
       }),
     );

@@ -57,6 +57,7 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerNetworkAccessRoutes } from "./routes/config/network-access-route.ts";
+import { registerLocalModelProxyRoute } from "./helpers/http/browser/local-model-proxy-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
@@ -265,6 +266,10 @@ export function createExpressApp(): Express {
   // Localhost-only CORS by default; ENABLE_REMOTE_CORS widens it (see the
   // middleware for the reasoning).
   app.use(corsMiddleware);
+
+  // Before the JSON parser below: it streams the request body through itself,
+  // and a long chat history can pass the parser's 2 MB limit.
+  registerLocalModelProxyRoute(app);
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.

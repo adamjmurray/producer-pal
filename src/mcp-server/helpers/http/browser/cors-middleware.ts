@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Request, type Response, type NextFunction } from "express";
-import { isLocalOrigin } from "./request-origin.ts";
+import { isLocalOrigin, isViteDevOrigin } from "./request-origin.ts";
 
 /**
  * CORS middleware for the MCP server.
@@ -48,7 +48,13 @@ export function corsMiddleware(
     }
 
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "*");
+    // `*` doesn't cover Authorization. Only the dev server's page (another
+    // origin than the server) needs it: it sends the model server's key to the
+    // local model proxy. The built chat UI is same-origin and never preflights.
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      origin != null && isViteDevOrigin(origin) ? "*, Authorization" : "*",
+    );
 
     // Answer the preflight for an allowed origin.
     if (req.method === "OPTIONS") {

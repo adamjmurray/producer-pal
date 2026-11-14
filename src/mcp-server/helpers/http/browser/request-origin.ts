@@ -34,6 +34,35 @@ export function isLocalOrigin(origin: string): boolean {
   }
 }
 
+const VITE_DEV_PORT = "5173";
+
+/**
+ * Whether an Origin is the chat UI's Vite dev server (a loopback host on port
+ * 5173) in a dev build. Dev builds (`build:debug`, `dev:debug`) bake in
+ * ENABLE_LIVE_API=true, which a release build refuses, so it tells them apart.
+ * Read per call so a test can switch it.
+ *
+ * @param origin - Origin header value
+ * @returns true only in a dev build, for the dev server's origin
+ */
+export function isViteDevOrigin(origin: string): boolean {
+  if (process.env.ENABLE_LIVE_API !== "true") {
+    return false;
+  }
+
+  try {
+    const url = new URL(origin);
+
+    return (
+      url.protocol === "http:" &&
+      url.port === VITE_DEV_PORT &&
+      isLocalOrigin(origin)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Gate a browser write to a localhost-only endpoint. Same-origin and
  * non-browser (Origin-less) clients pass; a cross-origin browser gets a 403

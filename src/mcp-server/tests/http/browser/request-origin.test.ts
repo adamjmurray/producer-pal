@@ -4,10 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { type Request } from "express";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isLocalOrigin,
   isSameOriginRequest,
+  isViteDevOrigin,
   rejectCrossOriginWrite,
   rejectForeignOriginWrite,
   rejectRebindableOriginWrite,
@@ -282,5 +283,39 @@ describe("rejectRebindableOriginWrite", () => {
         "x",
       ),
     ).toBe(true);
+  });
+});
+
+describe("isViteDevOrigin", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://[::1]:5173",
+  ])("accepts %s in a dev build", (origin) => {
+    vi.stubEnv("ENABLE_LIVE_API", "true");
+
+    expect(isViteDevOrigin(origin)).toBe(true);
+  });
+
+  it.each([
+    ["another port", "http://localhost:9999"],
+    ["no port", "http://localhost"],
+    ["https", "https://localhost:5173"],
+    ["a non-loopback host", "http://192.168.1.5:5173"],
+    ["a lookalike host", "http://localhost.evil.com:5173"],
+    ["a null origin", "null"],
+    ["junk", "not a url"],
+  ])("refuses %s in a dev build", (_what, origin) => {
+    vi.stubEnv("ENABLE_LIVE_API", "true");
+
+    expect(isViteDevOrigin(origin)).toBe(false);
+  });
+
+  it("refuses the dev server's origin in a release build", () => {
+    expect(isViteDevOrigin("http://localhost:5173")).toBe(false);
   });
 });

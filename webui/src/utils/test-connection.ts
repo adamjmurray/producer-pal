@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LOCAL_MODEL_PROXY_ERROR_HEADER } from "#src/shared/config";
 import { type Provider } from "#webui/types/settings";
+import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
 import { getBaseUrl } from "#webui/utils/provider-url";
 
 export type TestConnectionResult =
@@ -110,13 +112,19 @@ export async function testConnection(
   const timeout = setTimeout(controller.abort.bind(controller), TIMEOUT_MS);
 
   try {
-    const response = await fetch(config.url, {
+    const send = proxyFetchFor(provider, baseUrl) ?? fetch;
+    const response = await send(config.url, {
       headers: config.headers,
       signal: controller.signal,
     });
 
     if (response.ok) {
       return { ok: true, message: "Connected" };
+    }
+
+    // The proxy refused, or couldn't reach the model server: say why.
+    if (response.headers.has(LOCAL_MODEL_PROXY_ERROR_HEADER)) {
+      return { ok: false, message: await proxyErrorMessage(response) };
     }
 
     if (response.status === 401 || response.status === 403) {
@@ -136,4 +144,19 @@ export async function testConnection(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function proxyErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: { message?: unknown } };
+    const message = body.error?.message;
+
+    if (typeof message === "string") {
+      return message;
+    }
+  } catch {
+    // Not the proxy's JSON: fall through to the status.
+  }
+
+  return `Error: ${response.status} ${response.statusText}`;
 }

@@ -68,6 +68,11 @@ address ("URL") from its documentation. Settings to use in step 3:
 - URL: the service's address, e.g. `https://api.groq.com/openai/v1` for Groq
 - Model: the model name, e.g. `llama-3.3-70b-versatile`
 
+A model server on this computer (a URL starting `http://localhost` or
+`http://127.0.0.1`) works too, even if it blocks web pages from connecting.
+Producer Pal passes the requests along, but only for a chat UI opened on this
+computer.
+
 ## 3. Connect
 
 <!--@include: ../_partials/chat-ui-connect.md-->

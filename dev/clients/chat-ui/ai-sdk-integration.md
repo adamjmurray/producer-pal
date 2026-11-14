@@ -24,6 +24,37 @@ All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Vercel AI
 Gateway, Ollama) go through this single code path via provider-specific model
 factories in `provider/provider-factories.ts`.
 
+**Local model proxy:** a model server on this computer may send no CORS headers
+(DwarfStar's `ds4-server`), so the browser can't call it. For the `custom`
+provider only, when the base URL's host is exactly `localhost`, `127.0.0.1` or
+`[::1]` and the page itself is served from one of those too,
+`chat/sdk/provider/local-model/local-model-proxy.ts` hands the provider (and the
+Test connection button) a `fetch` that calls `POST|GET /local-model-proxy` on
+the Producer Pal server, with the real URL in the `X-Local-Model-URL` header. LM
+Studio and Ollama send CORS headers and stay direct, as does any other URL. The
+server side is `src/mcp-server/helpers/http/browser/local-model-proxy-route.ts`:
+
+- Targets: a loopback host over http or https, no credentials, and a path ending
+  in `/models`, `/chat/completions`, `/completions`, `/responses` or `/messages`
+  (any prefix, any query). Never Producer Pal's own port, so the proxy can't
+  call its routes. Redirects are never followed (answered 502). The loopback
+  check lives in `src/shared/config.ts`, shared with the UI.
+- Callers: Producer Pal's own chat page only. The connection must be loopback
+  with a loopback `Host` and no proxy headers, and any `Origin` must be this
+  server's own origin. The Vite dev server's origin (loopback, port 5173) also
+  passes in a dev build (`ENABLE_LIVE_API=true`, which a release build refuses).
+  Any other page, even on localhost, and a chat UI opened over the LAN or a
+  tunnel, gets a 403 with an explanation. CORS lists `Authorization` in
+  Allow-Headers for that dev origin only; the built chat UI is same-origin and
+  never preflights.
+- Only `content-type`, `accept`, `authorization` and `content-length` go
+  upstream; never cookie, origin, host or referer.
+- The request body streams through (no size limit) and the response streams back
+  unbuffered, so SSE works. The upstream request is dropped when the browser
+  disconnects.
+- Its own errors carry `X-Producer-Pal-Proxy-Error` and an OpenAI-style
+  `{ error: { message } }` body, which the AI SDK and Test connection show.
+
 **Locked Settings:**
 
 Provider, model, thinking level, small-model mode, the resolved system

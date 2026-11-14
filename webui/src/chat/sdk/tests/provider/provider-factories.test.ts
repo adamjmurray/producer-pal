@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createProviderModel,
   transformAnthropicRequest,
@@ -144,6 +144,82 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("my-model");
+  });
+
+  // A local server may send no CORS headers, so a custom URL on this computer
+  // goes through the Producer Pal server. Nothing else does.
+  describe("local model proxy routing", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://localhost:3350",
+          hostname: "localhost",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const hasProxyFetch = (model: unknown): boolean =>
+      (
+        (model as Record<string, unknown>).config as {
+          fetch?: unknown;
+        }
+      ).fetch != null;
+
+    it("proxies a custom provider on this computer", () => {
+      const model = createProviderModel(
+        "custom",
+        "m",
+        "k",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      expect(hasProxyFetch(model)).toBe(true);
+    });
+
+    it("calls a loopback custom URL directly from a page over the LAN", () => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://192.168.1.20:3350",
+          hostname: "192.168.1.20",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+
+      const model = createProviderModel(
+        "custom",
+        "m",
+        "k",
+        "http://localhost:8000/v1",
+      );
+
+      expect(hasProxyFetch(model)).toBe(false);
+    });
+
+    it("calls a custom provider elsewhere directly", () => {
+      const model = createProviderModel("custom", "m", "k", "https://x.com/v1");
+
+      expect(hasProxyFetch(model)).toBe(false);
+    });
+
+    it("calls lmstudio and ollama directly, even on this computer", () => {
+      expect(
+        hasProxyFetch(
+          createProviderModel("lmstudio", "m", "k", "http://127.0.0.1:1234"),
+        ),
+      ).toBe(false);
+      expect(
+        hasProxyFetch(
+          createProviderModel("ollama", "m", "k", "http://127.0.0.1:11434"),
+        ),
+      ).toBe(false);
+    });
   });
 
   it("throws an actionable error for custom provider without a URL", () => {

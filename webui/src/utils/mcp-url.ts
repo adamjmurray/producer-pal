@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { DEFAULT_MCP_URL } from "#src/shared/config";
+import { DEFAULT_MCP_URL, LOCAL_MODEL_PROXY_PATH } from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
 
@@ -249,6 +249,15 @@ export function getSkillsPreviewUrl(
  */
 export function getSubagentBriefingUrl(mcpUrl?: string): string {
   return serverUrl("/subagent-briefing", mcpUrl);
+}
+
+/**
+ * Gets the local model proxy URL (forwards a chat UI request to a model server
+ * on this computer that sends no CORS headers).
+ * @returns {string} The local model proxy endpoint URL
+ */
+export function getLocalModelProxyUrl(): string {
+  return serverUrl(LOCAL_MODEL_PROXY_PATH);
 }
 
 /**

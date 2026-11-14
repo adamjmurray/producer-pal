@@ -450,3 +450,58 @@ export type ProducerPalConfigUpdate = Partial<
   /** A version string makes a running script look older than it; null clears it. */
   remoteScriptMinVersion?: string | null;
 };
+
+// The local model proxy: a browser can't call a model server on this computer
+// that sends no CORS headers (DwarfStar's ds4-server, for one), so the chat UI
+// asks the Node server to make the call.
+
+/** The proxy's route on the Producer Pal server. */
+export const LOCAL_MODEL_PROXY_PATH = "/local-model-proxy";
+
+// The target travels in a header, not the query string or path, so the model
+// server's own path and query pass through untouched. A custom header also
+// can't be sent by a plain cross-site form or image request.
+export const LOCAL_MODEL_URL_HEADER = "x-local-model-url";
+
+/** Set on a response the proxy itself made, to tell it from the model server's. */
+export const LOCAL_MODEL_PROXY_ERROR_HEADER = "x-producer-pal-proxy-error";
+
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * Parse a URL the proxy may forward to: http or https, no credentials, and a
+ * host of exactly `localhost`, `127.0.0.1` or `[::1]` (any port). URL parsing
+ * decides the host, so `http://127.0.0.1@evil.com` and
+ * `http://localhost.evil.com` are other hosts and refused.
+ *
+ * @param url - The URL to check
+ * @returns The parsed URL, or null when the proxy must not forward to it
+ */
+export function parseLocalModelUrl(url: string): URL | null {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return null;
+  }
+
+  const allowed =
+    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+    parsed.username === "" &&
+    parsed.password === "" &&
+    LOOPBACK_HOSTNAMES.has(parsed.hostname);
+
+  return allowed ? parsed : null;
+}
+
+/**
+ * Whether a URL names a server on this computer that the proxy may forward to.
+ * The chat UI uses this to decide when to go through the proxy.
+ *
+ * @param url - The URL to check
+ * @returns true when {@link parseLocalModelUrl} accepts it
+ */
+export function isLocalModelUrl(url: string): boolean {
+  return parseLocalModelUrl(url) != null;
+}

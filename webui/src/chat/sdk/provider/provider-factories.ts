@@ -29,6 +29,7 @@ import {
   rewritingFetch,
   type RewritingFetch,
 } from "#webui/chat/sdk/provider/rewriting-fetch";
+import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
@@ -112,6 +113,8 @@ export function createProviderModel(
         name: "custom",
         apiKey,
         baseURL: customBaseUrl,
+        // A local server may send no CORS headers; see proxyFetchFor.
+        fetch: proxyFetchFor("custom", customBaseUrl),
         // See lmstudio note: required for OpenAI-compatible servers to report
         // token usage in streaming responses.
         includeUsage: true,

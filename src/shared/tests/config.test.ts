@@ -14,7 +14,9 @@ import {
   SMALL_MODEL_MODE_HEADER,
   VERSION,
   isIpLiteralHost,
+  isLocalModelUrl,
   isLoopbackHost,
+  parseLocalModelUrl,
   PORTAL_VERSION_HEADER,
   resolveEnabledTools,
   resolvePortalVersion,
@@ -254,5 +256,50 @@ describe("isIpLiteralHost", () => {
   it("answers at once for a long run of colons", () => {
     expect(isIpLiteralHost(`[${":".repeat(100_000)}x]`)).toBe(false);
     expect(isIpLiteralHost(`[${":".repeat(100_000)}]`)).toBe(true);
+  });
+});
+
+describe("isLocalModelUrl", () => {
+  it.each([
+    "http://localhost/v1",
+    "http://localhost:8000/v1/models",
+    "http://LOCALHOST:8000",
+    "https://localhost:8443/v1",
+    "http://127.0.0.1:8000/v1",
+    "http://[::1]:8000/v1",
+    "  http://127.0.0.1:8000/v1  ",
+  ])("accepts %s", (url) => {
+    expect(isLocalModelUrl(url)).toBe(true);
+  });
+
+  it.each([
+    ["another host", "http://example.com:8000/v1"],
+    ["a LAN address", "http://192.168.1.5:8000/v1"],
+    ["another loopback address", "http://127.0.0.2:8000/v1"],
+    ["a localhost subdomain", "http://foo.localhost:8000/v1"],
+    ["localhost as a subdomain", "http://localhost.example.com/v1"],
+    ["localhost as a path", "http://example.com/localhost"],
+    ["userinfo naming another host", "http://127.0.0.1@evil.com/v1"],
+    ["userinfo on a loopback host", "http://user:pw@127.0.0.1:8000/v1"],
+    ["a trailing-dot name", "http://localhost./v1"],
+    ["another scheme", "ftp://localhost/v1"],
+    ["a file URL", "file://localhost/etc/passwd"],
+    ["no scheme", "localhost:8000/v1"],
+    ["junk", "not a url"],
+    ["nothing", ""],
+  ])("refuses %s", (_name, url) => {
+    expect(isLocalModelUrl(url)).toBe(false);
+  });
+});
+
+describe("parseLocalModelUrl", () => {
+  it("returns the parsed URL", () => {
+    expect(
+      parseLocalModelUrl("http://127.0.0.1:8000/v1/models?x=1")?.href,
+    ).toBe("http://127.0.0.1:8000/v1/models?x=1");
+  });
+
+  it("returns null for a refused URL", () => {
+    expect(parseLocalModelUrl("http://evil.com")).toBeNull();
   });
 });
