@@ -59,6 +59,18 @@ describe("findDuplicates", () => {
     );
   });
 
+  it("says how many groups the limit left out", async () => {
+    const result = await findDuplicates({ limit: 1 });
+
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0]?.count).toBe(3);
+    expect(result.more).toBe(1);
+  });
+
+  it("leaves `more` off when every group fits", async () => {
+    expect(await findDuplicates({ limit: 2 })).not.toHaveProperty("more");
+  });
+
   it("excludes invalid-format rows even when their hash matches (version insurance)", async () => {
     // subfolder_y.wav (212) carries group A's hash but an unreadable header.
     const result = await findDuplicates({});

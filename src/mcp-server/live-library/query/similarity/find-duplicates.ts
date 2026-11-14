@@ -121,7 +121,14 @@ function runFindDuplicates(
     analyzedOnly: true,
   });
 
-  return { ...base, groups, ...(note != null && { note }) };
+  const more = dupGroups.length - capped.length;
+
+  return {
+    ...base,
+    groups,
+    ...(more > 0 && { more }),
+    ...(note != null && { note }),
+  };
 }
 
 /**

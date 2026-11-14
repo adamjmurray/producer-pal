@@ -262,6 +262,8 @@ export interface LibraryDuplicateGroup {
 export interface LibraryFindDuplicatesResult {
   /** Duplicate groups, most-duplicated first (capped at `limit` groups). */
   groups: LibraryDuplicateGroup[];
+  /** How many groups the limit left out. Omitted when none were. */
+  more?: number;
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */

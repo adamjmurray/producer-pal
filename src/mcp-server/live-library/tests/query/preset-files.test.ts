@@ -224,6 +224,14 @@ function writeDb(): string {
       ADG,
       { place: 10, deviceType: 1, deviceId: DRUM_RACK },
     ],
+    // Stored decomposed, as macOS writes file names: E + combining acute.
+    [
+      28,
+      21,
+      "E\u0301CLAT Kit.adg",
+      ADG,
+      { place: 20, deviceType: 1, deviceId: DRUM_RACK },
+    ],
     // Meld: two racks and one preset in its folder.
     [50, 11, "Meld", FLDR],
     [
@@ -388,6 +396,26 @@ describe("findPresetFiles", () => {
 
   it("matches the whole name only", async () => {
     expect(await findPresetFiles({ name: "505" })).toStrictEqual([]);
+    expect(await findPresetFiles({ name: "505_kit" })).toStrictEqual([]);
+    expect(await findPresetFiles({ name: "505%" })).toStrictEqual([]);
+  });
+
+  // SQLite folds the case of ASCII letters only.
+  it("matches a non-ASCII letter in any case and either Unicode form", async () => {
+    const stored = [
+      {
+        name: "E\u0301CLAT Kit.adg",
+        path: "/Users/me/Drum Pack/Drums/E\u0301CLAT Kit.adg",
+      },
+    ];
+
+    expect(await findPresetFiles({ name: "\u00E9clat kit" })).toStrictEqual(
+      stored,
+    );
+    expect(await findPresetFiles({ name: "\u00C9CLAT KIT.adg" })).toStrictEqual(
+      stored,
+    );
+    expect(await findPresetFiles({ name: "eclat kit" })).toStrictEqual([]);
   });
 
   it("reads a colon in the name as the slash Live stores", async () => {

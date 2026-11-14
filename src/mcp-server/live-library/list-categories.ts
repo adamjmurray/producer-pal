@@ -209,13 +209,15 @@ function leafTagCounts(
   limit: number,
 ): { tags: LibraryTag[]; more?: number } {
   const placeholders = leaves.map(() => "?").join(",");
-  const grouped = `SELECT kw.name AS name, COUNT(*) AS cnt
+  // By name, not by tag: Live keeps one tag per category that has it, and a
+  // search filters by the name alone.
+  const grouped = `SELECT kw.name AS name, COUNT(DISTINCT k.file_id) AS cnt
        FROM keywords k
        JOIN files kw ON kw.file_id = k.keyw_id
        JOIN files f ON f.file_id = k.file_id
        WHERE kw.name IN (${placeholders})
          AND ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
-       GROUP BY k.keyw_id`;
+       GROUP BY kw.name`;
 
   return topTags(db, grouped, leaves, limit);
 }

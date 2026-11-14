@@ -51,6 +51,10 @@ const PRESET_TYPES = [
   ...fourCCsForKind("device-group"),
 ];
 
+/** The characters a LIKE pattern reads as more than themselves. */
+const LIKE_SPECIAL = "%_\\";
+const NAME_LIKE = String.raw`f.name LIKE ? ESCAPE '\'`;
+
 /**
  * Presets with exactly this name (any case, with or without the suffix) among
  * the files Live lists in its browser. For a Drum Rack, that includes every
@@ -77,20 +81,26 @@ export async function findPresetFiles(
  * @returns The matching files with their paths
  */
 function presetFilesIn(db: DatabaseSync, query: PresetFileQuery): PresetFile[] {
+  const stored = nameFromPathSegment(query.name);
+  const wanted = [stored, `${stored}.adv`, `${stored}.adg`];
+  // SQLite folds the case of ASCII letters only, so the query matches any
+  // character where the name has a non-ASCII one and the rows are checked below.
+  const patterns = [
+    ...new Set(
+      wanted.flatMap((name) => [
+        likePattern(name.normalize("NFC")),
+        likePattern(name.normalize("NFD")),
+      ]),
+    ),
+  ];
   const where = [
     `f.file_type IN (${PRESET_TYPES.map(() => "?").join(",")})`,
-    // NOCASE folds ASCII only: a non-ASCII letter matches in the case given.
-    "f.name COLLATE NOCASE IN (?, ?, ?)",
+    `(${patterns.map(() => NAME_LIKE).join(" OR ")})`,
     IN_A_PLACE,
     IN_LIBRARY_VIEWS,
   ];
-  const stored = nameFromPathSegment(query.name);
-  const params: Array<string | number> = [
-    ...PRESET_TYPES,
-    stored,
-    `${stored}.adv`,
-    `${stored}.adg`,
-  ];
+  const params: Array<string | number> = [...PRESET_TYPES, ...patterns];
+  const wantedNames = new Set(wanted.map(foldName));
 
   if (query.device != null) {
     const deviceClass = classOf(db, query.device);
@@ -121,7 +131,9 @@ function presetFilesIn(db: DatabaseSync, query: PresetFileQuery): PresetFile[] {
   const files = rows.flatMap(({ file_id, name }) => {
     const resolved = paths.get(file_id);
 
-    return resolved == null || resolved.truncated
+    return resolved == null ||
+      resolved.truncated ||
+      !wantedNames.has(foldName(name))
       ? []
       : [{ name, path: resolved.path }];
   });
@@ -156,6 +168,33 @@ function classOf(
   return (
     ownClassOf(db, name.trim(), kind) ?? folderClassOf(db, name.trim(), kind)
   );
+}
+
+/**
+ * @param name - A file name
+ * @returns The name with case and Unicode form folded away
+ */
+function foldName(name: string): string {
+  return name.normalize("NFC").toLowerCase();
+}
+
+/**
+ * @param name - A file name
+ * @returns A LIKE pattern for it (with `ESCAPE '\'`) that takes any character
+ *   in place of a non-ASCII one
+ */
+function likePattern(name: string): string {
+  let pattern = "";
+
+  for (const char of name) {
+    if (char > "\u007F") {
+      pattern += "_";
+    } else {
+      pattern += LIKE_SPECIAL.includes(char) ? `\\${char}` : char;
+    }
+  }
+
+  return pattern;
 }
 
 /**

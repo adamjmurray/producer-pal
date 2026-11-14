@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { fourCC } from "../library-filters.ts";
 import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listTags } from "../list-tags.ts";
 import {
@@ -95,6 +97,33 @@ describe("listTags", () => {
   it("leaves `more` off when every tag fits", async () => {
     expect(await listTags({ limit: 5 })).not.toHaveProperty("more");
     expect(await listTags()).not.toHaveProperty("more");
+  });
+});
+
+/**
+ * A second tag named Kick, on a file that has the first and one that doesn't.
+ * @param db - Writable fixture DB
+ */
+function addSecondKickTag(db: DatabaseSync): void {
+  db.prepare(
+    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (9050, 1, ?, 0, 'Kick')",
+  ).run(fourCC("keyw"));
+  db.exec(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (1001, 9050, 0), (1002, 9050, 0)",
+  );
+}
+
+// Live files a tag under each category that has it ("Percussion" under Drums
+// and under Grooves), and a search filters by the name alone.
+describe("listTags - two tags with one name", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, addSecondKickTag);
+
+  it("lists the name once, counting each file once", async () => {
+    const result = await listTags();
+
+    expect(result.tags.filter((tag) => tag.name === "Kick")).toStrictEqual([
+      { name: "Kick", count: 3 },
+    ]);
   });
 });
 

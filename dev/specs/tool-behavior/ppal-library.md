@@ -30,12 +30,17 @@ date. The refusal rules are in
   with a small local model at both values (pass rate, input tokens, whether it
   pages when cut off), not a large-model eval.
 - **A list that hit its limit says so, but can't be paged.** `list-plugins`,
-  `list-tags` and the `list-categories` drill-down carry `more` (how many were
-  left out) when the limit cut the list off, and no `nextOffset`. The answer to
-  `more` is a higher `limit` (up to 1000) or a filter. `more` is left off when
-  nothing was cut. It is exact: `list-plugins` counts its matches in memory; the
-  two tag lists read one row past the limit and run a `COUNT(*)` only if it
-  exists. The `list-categories` overview is not limited.
+  `list-tags`, the `list-categories` drill-down and `find-duplicates` (its
+  groups) carry `more` (how many were left out) when the limit cut the list off,
+  and no `nextOffset`. The answer to `more` is a higher `limit` (up to 1000) or
+  a filter. `more` is left off when nothing was cut. It is exact: `list-plugins`
+  and `find-duplicates` count in memory; the two tag lists read one row past the
+  limit and run a `COUNT(*)` only if it exists. The `list-categories` overview
+  is not limited.
+- **A tag name is listed once.** Live keeps a tag per category that has it
+  (`Percussion` under Drums and under Grooves), and a search filters by the name
+  alone. So `list-tags` and the `list-categories` drill-down list the name once,
+  counting each file that carries any of them once.
 - **A search that hit its limit says so, and the next page is one call away.**
   `offset` (default 0) skips that many matches. When more matched than the page
   holds, the result carries `more` (how many matches lie beyond this page) and
