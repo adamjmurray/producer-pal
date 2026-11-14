@@ -210,6 +210,10 @@ class _Handler(BaseHTTPRequestHandler):
             except ValueError as err:
                 self._send(400, {"error": "invalid JSON body: %s" % err})
                 return
+            except RecursionError:
+                # Not a ValueError: a body of many "[" nests past Python's limit.
+                self._send(400, {"error": "invalid JSON body: nested too deeply"})
+                return
             if not isinstance(body, dict):
                 self._send(400, {"error": "JSON body must be an object"})
                 return

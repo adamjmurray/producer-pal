@@ -3,8 +3,9 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""A POST with a bad Content-Length is answered with a 400, not dropped, and
-one declaring a body over the cap with a 413, before the body is read.
+"""A POST with a bad Content-Length or a too-deeply nested JSON body is answered
+with a 400, not dropped, and one declaring a body over the cap with a 413,
+before the body is read.
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -112,6 +113,13 @@ class ContentLengthTest(unittest.TestCase):
             payload,
             {"error": "request body too large: %d bytes, max %d" % (MAX_BODY_BYTES + 1, MAX_BODY_BYTES)},
         )
+
+    def test_deeply_nested_json_is_a_400(self):
+        body = b"[" * 200000
+        status, payload = self.post(str(len(body)).encode(), body)
+
+        self.assertEqual(status, 400)
+        self.assertEqual(payload, {"error": "invalid JSON body: nested too deeply"})
 
     def test_body_at_the_cap_is_read(self):
         body = b'{"a":"' + b"x" * (MAX_BODY_BYTES - 8) + b'"}'
