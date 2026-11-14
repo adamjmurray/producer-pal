@@ -26,7 +26,10 @@ import {
   warnRackRelativeDrumChainSpelling,
 } from "./path/device-drumpad-navigation.ts";
 import { liveApiAtDevicePath } from "./path/with-device-path-cache.ts";
-import { refuseFixedChains } from "./path/rack-chain-limit.ts";
+import {
+  refuseChainsPastLimit,
+  refuseFixedChains,
+} from "./path/rack-chain-limit.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -253,8 +256,10 @@ function autoCreateChains(
     );
   }
 
-  // A fixed-chain rack is refused before anything is made, whatever the index.
+  // A fixed-chain rack is refused before anything is made: when full, or when
+  // the path needs chains it can never hold.
   refuseFixedChains(device);
+  refuseChainsPastLimit(device, targetIndex + 1);
 
   // Limit how many chains can be auto-created
   const firstIndex = device.getChildCount("chains");

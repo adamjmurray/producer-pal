@@ -63,17 +63,51 @@ export function fullRackChainLimit(rack: LiveAPI): number | null {
 export function refuseFixedChains(rack: LiveAPI): void {
   const limit = fullRackChainLimit(rack);
 
-  if (limit == null) {
-    return;
+  if (limit != null) {
+    throw fixedChainsError(rack, limit, "can't take another");
   }
+}
 
+/**
+ * Refuse a path that needs more chains than a fixed-chain rack can hold, before
+ * any of them is made.
+ * @param rack - The rack device the chains would go into
+ * @param chainsNeeded - How many chains the rack must have for the path
+ * @throws Error naming the limit and the chains, when the rack can't reach that
+ */
+export function refuseChainsPastLimit(
+  rack: LiveAPI,
+  chainsNeeded: number,
+): void {
+  const limit = fixedChainLimit(rack);
+
+  if (limit != null && chainsNeeded > limit) {
+    throw fixedChainsError(
+      rack,
+      limit,
+      `can't take chain c${chainsNeeded - 1}`,
+    );
+  }
+}
+
+/**
+ * @param rack - The fixed-chain rack
+ * @param limit - Its chain limit
+ * @param consequence - What the rack can't do, ending the message
+ * @returns The refusal, naming the limit and the chains the rack has
+ */
+function fixedChainsError(
+  rack: LiveAPI,
+  limit: number,
+  consequence: string,
+): Error {
   const names = rack
     .getChildren("chains")
     .map((chain) => chain.getName())
     .filter((name) => name !== "")
     .join(", ");
 
-  throw new Error(
-    `${rack.getName()} (id ${rack.id}) has a fixed ${plural(limit, "chain")} (${names}), so it can't take another`,
+  return new Error(
+    `${rack.getName()} (id ${rack.id}) has a fixed ${plural(limit, "chain")} (${names}), so it ${consequence}`,
   );
 }

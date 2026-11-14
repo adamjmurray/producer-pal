@@ -26,9 +26,12 @@ import {
 } from "#src/tools/device/tests/helpers/fixed-chain-rack-fixtures.ts";
 import {
   fullRackChainLimit,
+  refuseChainsPastLimit,
   refuseFixedChains,
 } from "../path/rack-chain-limit.ts";
 import {
+  type DryWalk,
+  refuseChainAppend,
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "../chain-auto-creation.ts";
@@ -619,5 +622,98 @@ describe("rack chain limit", () => {
     rack.properties.max_num_chains = 4;
 
     expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBeNull();
+  });
+});
+
+describe("a path past a fixed-chain rack's limit", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  /**
+   * A Multiband Rack (limit 3) holding only Low and Mid.
+   * @returns The rack mock
+   */
+  function registerPartialMultiband(): RegisteredMockObject {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.chains = ["id", "chain-0", "id", "chain-1"];
+
+    return rack;
+  }
+
+  /**
+   * Walk a path to a chain, with or without making anything.
+   * @param path - Device path
+   * @param dry - Passed to the walk when checking only
+   * @returns The resolved container
+   */
+  function walk(path: string, dry?: DryWalk): LiveAPI {
+    const { root, segments } = requireDeviceContainer(parseObjectPath(path));
+
+    return resolveContainerWithAutoCreate(
+      root,
+      segments.filter(
+        (segment) =>
+          segment.kind !== "drum-pad" && segment.kind !== "device-by-type",
+      ),
+      path,
+      undefined,
+      dry,
+    );
+  }
+
+  it("is refused before any chain is made", () => {
+    const rack = registerPartialMultiband();
+
+    expect(() => walk("t0/d0/c5")).toThrow(
+      "Multiband Rack (id rack) has a fixed 3 chains (Low, Mid), so it can't take chain c5",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("is refused by the dry walk too, without noting a chain", () => {
+    registerPartialMultiband();
+
+    const dry: DryWalk = { makesChain: false, undetermined: false };
+
+    expect(() => walk("t0/d0/c3", dry)).toThrow("can't take chain c3");
+    expect(dry.makesChain).toBe(false);
+  });
+
+  it("still lets the dry walk note the one chain the rack has room for", () => {
+    registerPartialMultiband();
+
+    const dry: DryWalk = { makesChain: false, undetermined: false };
+
+    expect(() => walk("t0/d0/c2", dry)).not.toThrow();
+    expect(dry.makesChain).toBe(true);
+    expect(dry.newChain?.index).toBe(2);
+  });
+
+  it("lets c+ append the one chain the rack has room for", () => {
+    registerPartialMultiband();
+
+    expect(() => {
+      refuseChainAppend(LiveAPI.from(FIXED_RACK), "t0/d0/c+");
+    }).not.toThrow();
+  });
+
+  it("refuses c+ on a full rack", () => {
+    registerFixedChainRack(0, "multiband");
+
+    expect(() => {
+      refuseChainAppend(LiveAPI.from(FIXED_RACK), "t0/d0/c+");
+    }).toThrow("can't take another");
+  });
+
+  it("reaches no limit on a rack whose chains aren't fixed", () => {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.max_num_chains = 2147483647;
+
+    expect(() => {
+      refuseChainsPastLimit(LiveAPI.from(FIXED_RACK), 9);
+    }).not.toThrow();
   });
 });
