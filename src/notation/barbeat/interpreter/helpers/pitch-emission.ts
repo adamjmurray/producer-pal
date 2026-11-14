@@ -23,6 +23,20 @@ import {
   streamValueAt,
 } from "./value-streams.ts";
 
+// Far below any musical distance, far above float drift from summed steps.
+const BAR_LINE_EPSILON = 1e-9;
+
+/**
+ * The 0-based bar a time falls in. A time a hair under a bar line (float drift
+ * from summed repeat steps) counts as on it.
+ * @param time - Time from the clip start; may be negative
+ * @param barLength - Bar length, in the same unit
+ * @returns 0-based bar index
+ */
+function barIndexAt(time: number, barLength: number): number {
+  return Math.floor(time / barLength + BAR_LINE_EPSILON);
+}
+
 export interface RepeatPattern {
   start: number;
   times: number;
@@ -98,15 +112,12 @@ function expandRepeatPattern(
   let absoluteBeats = startBeats;
 
   for (let i = 0; i < times; i++) {
-    const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
-    // Floored modulo (not bare `%`): JS `%` is truncated, keeping the dividend's
-    // sign, so a negative absoluteBeats (a repeat landing before the clip start,
-    // e.g. `1|1-n/8x2`) would decompose into a {bar, beat} that no longer
-    // recomposes to the same time in emitPitchAtPosition — placing the note bars
-    // away from where it belongs. The grammar's borrowBars wraps sub-1 beats the
-    // same (floored) way; match it so the round-trip is exact.
-    const beat =
-      (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
+    // Bar and beat both come from one bar index, so they always recompose to
+    // the same time. Taking them separately (floor for the bar, modulo for the
+    // beat) let a sum just under a bar line become bar 1, beat 1.
+    const barIndex = barIndexAt(absoluteBeats, beatsPerBar);
+    const bar = barIndex + 1;
+    const beat = Math.max(0, absoluteBeats - barIndex * beatsPerBar) + 1;
 
     positions.push({ bar, beat });
     absoluteBeats +=
@@ -182,7 +193,7 @@ export function trackForBarCopy(
     timeSigDenominator != null
       ? beatsPerBar * (4 / timeSigDenominator)
       : beatsPerBar;
-  const actualBar = Math.floor(noteEvent.start_time / barDuration) + 1;
+  const actualBar = barIndexAt(noteEvent.start_time, barDuration) + 1;
   const barStartAbletonBeats = (actualBar - 1) * barDuration;
   let barNotes = notesByBar.get(actualBar);
 
@@ -193,7 +204,7 @@ export function trackForBarCopy(
 
   barNotes.push({
     ...noteEvent,
-    relativeTime: noteEvent.start_time - barStartAbletonBeats,
+    relativeTime: Math.max(0, noteEvent.start_time - barStartAbletonBeats),
     originalBar: actualBar,
   });
 }
