@@ -16,6 +16,11 @@ date. The refusal rules are in
   naming the entries by label (or position) and what to add. `find-similar` and
   `find-duplicates` are not searches in this sense: the seed or the whole
   library is what they ask for.
+- **`deviceKind` with `kind` left at `audio` searches every kind.** No audio
+  file has a device type, so the default would match nothing. The items report
+  their own `kind`. A `kind` other than `audio` is kept and both filters apply.
+  The same holds for each `searches` entry. `find-similar` and `find-duplicates`
+  keep `kind` as sent.
 - **`limit` is capped at 200 for `search`** (default 50). A larger value is
   clamped to 200 without a note. The other actions keep the 1000 cap
   (`list-tags` defaults to 200): they have no paging, so a long plug-in list

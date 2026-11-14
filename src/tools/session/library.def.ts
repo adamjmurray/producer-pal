@@ -125,7 +125,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     deviceKind: param(z.enum(LIBRARY_DEVICE_KIND_VALUES).optional(), {
       default:
-        "device classification filter (search + list-plugins; for list-plugins only instrument/audiofx apply)",
+        "device classification filter (search + list-plugins; for list-plugins only instrument/audiofx apply). On a search left at kind audio it searches every kind, since no audio file is a device",
       smallModel: null,
     }),
 

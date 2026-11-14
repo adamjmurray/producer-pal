@@ -155,12 +155,18 @@ export async function library(args: LibraryArgs = {}): Promise<LibraryResult> {
  * Run a structured search against Live's DB. Exported so the searches fan-out
  * can reuse the exact single-search path (filters, limit) per query.
  *
- * @param args - Tool arguments
+ * @param sent - Tool arguments
  * @returns The result, its items trimmed of what the request already says
  */
 export async function runSearch(
-  args: LibraryArgs,
+  sent: LibraryArgs,
 ): Promise<LibraryToolSearchResult> {
+  // No audio file has a device type, so with a deviceKind the schema's default
+  // kind would match nothing. Search every kind instead.
+  const args: LibraryArgs =
+    sent.deviceKind != null && sent.kind === "audio"
+      ? { ...sent, kind: undefined }
+      : sent;
   const limit = clampLibraryLimit(
     args.limit,
     DEFAULT_LIBRARY_LIMIT,

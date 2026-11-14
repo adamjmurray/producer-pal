@@ -322,3 +322,53 @@ describe("library tool — sort ordering", () => {
     expect(leaves(result)).toStrictEqual(["b.wav", "a.wav", "c.wav"]);
   });
 });
+
+// No audio file has a device type, so the default kind would match nothing.
+describe("library search by deviceKind", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    registerMockObject("live-app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.4" },
+    });
+  });
+
+  it("searches every kind when kind is left at audio", async () => {
+    mockSearchRoute([{ ...dbItem("Bass.adv", 0), kind: "preset" }]);
+
+    const result = await library({ deviceKind: "instrument", kind: "audio" });
+
+    const routeArgs = vi.mocked(protocolMock.requestNode).mock.calls[0]?.[1];
+
+    expect(routeArgs).toStrictEqual(
+      expect.objectContaining({ deviceKind: "instrument", kind: undefined }),
+    );
+    assertItems(result);
+    expect(result.items[0]).toHaveProperty("kind", "preset");
+  });
+
+  it("keeps a kind other than audio", async () => {
+    mockSearchRoute([]);
+
+    await library({ deviceKind: "instrument", kind: "preset" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ deviceKind: "instrument", kind: "preset" }),
+    );
+  });
+
+  it("does the same for a searches entry", async () => {
+    mockSearchRoute([]);
+
+    await library({
+      searches: [{ deviceKind: "audiofx", kind: "audio" }],
+    });
+
+    const routeArgs = vi.mocked(protocolMock.requestNode).mock.calls[0]?.[1];
+
+    expect(routeArgs).toStrictEqual(
+      expect.objectContaining({ deviceKind: "audiofx", kind: undefined }),
+    );
+  });
+});
