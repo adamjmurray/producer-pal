@@ -317,6 +317,46 @@ function expectDurations(notes: NoteEvent[], expected: number[]): void {
   expect(notes.map((note) => note.duration)).toStrictEqual(expected);
 }
 
+describe("note order after a timing line", () => {
+  const movedNotes = (): NoteEvent[] =>
+    createTestNotes([
+      { pitch: 60, start_time: 0, duration: 0.25 },
+      { pitch: 64, start_time: 0.5, duration: 0.25 },
+    ]);
+
+  it("gives legato() the order the notes are in now", () => {
+    const notes = movedNotes();
+
+    applyTransforms(notes, "C3: timing += 1\nduration = legato()", 4, 4);
+
+    // E3 (0.5) now comes first and reaches C3 (1). C3 is last and keeps its
+    // duration; before the fix it measured back to E3 and was deleted.
+    expect(
+      notes.map(({ pitch, start_time, duration }) => [
+        pitch,
+        start_time,
+        duration,
+      ]),
+    ).toStrictEqual([
+      [64, 0.5, 0.5],
+      [60, 1, 0.25],
+    ]);
+  });
+
+  it("counts note.index in the order the notes are in now", () => {
+    const notes = movedNotes();
+
+    applyTransforms(notes, "C3: timing += 1\nvelocity = 10 + note.index", 4, 4);
+
+    expect(notes.map(({ pitch, velocity }) => [pitch, velocity])).toStrictEqual(
+      [
+        [64, 10],
+        [60, 11],
+      ],
+    );
+  });
+});
+
 /**
  * Runs `duration = legato()` in 4/4 over two notes two beats apart (starts 0
  * and 2) inside a one-bar, 4-beat clip, and returns the resulting durations.

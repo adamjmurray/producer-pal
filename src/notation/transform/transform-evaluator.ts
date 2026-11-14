@@ -79,9 +79,7 @@ export function applyTransforms(
     clipDetail(reason);
   }
 
-  // Sort by start_time then pitch so note.index reflects musical order
-  // (Ableton's get_notes_extended returns notes sorted by pitch)
-  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
+  sortInMusicalOrder(notes);
 
   // Calculate the overall clip timeRange in musical beats
   const firstNote = notes[0] as NoteEvent;
@@ -134,6 +132,9 @@ export function applyTransforms(
       continue;
     }
 
+    // An earlier line may have moved notes, so put them back in order.
+    sortInMusicalOrder(notes);
+
     anySelected = true;
     failed =
       applyAssignmentToNotes(
@@ -154,6 +155,15 @@ export function applyTransforms(
     selected: anySelected,
     failed,
   });
+}
+
+/**
+ * Sort by start time then pitch, so note.index, next.* and legato() follow
+ * musical order (Live returns notes sorted by pitch).
+ * @param notes - Notes to sort in place
+ */
+function sortInMusicalOrder(notes: NoteEvent[]): void {
+  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
 }
 
 /**
