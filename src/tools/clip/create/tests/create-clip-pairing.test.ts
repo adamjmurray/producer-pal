@@ -43,7 +43,11 @@ describe("createClip - per-position timing params", () => {
   it("gives each position its own region start", async () => {
     const [first, second] = twoSessionSlots();
 
-    await createClip({ path: "t0/s0,t0/s1", start: "1|1,2|1" });
+    await createClip({
+      path: "t0/s0,t0/s1",
+      start: "1|1,2|1",
+      length: "2bar",
+    });
 
     expect(first.clip.set).toHaveBeenCalledWith("loop_start", 0);
     expect(second.clip.set).toHaveBeenCalledWith("loop_start", 4);

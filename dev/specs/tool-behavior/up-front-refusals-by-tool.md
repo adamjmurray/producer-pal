@@ -130,7 +130,10 @@ code; when it disagrees with a tool, the tool wins.
   some meters (`1bar-n/1` in 4/4) skips that clip (`createClip` names the length
   there even when the clip's transform can't be read either). `updateClip` also
   skips a clip whose `start` is at or past its looping loop end, sent without a
-  `length`: Live would keep the old region. All of these are checked before
+  `length`: Live would keep the old region. `createClip` skips a clip whose
+  `start` is at or past the clip's end the same way: with no `length` the clip
+  ends where its notes do (one bar when it has none), measured after the
+  transform, and Live would drop the start. All of these are checked before
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.

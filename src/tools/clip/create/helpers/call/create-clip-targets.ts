@@ -38,7 +38,10 @@ import {
 } from "../clip-transform.ts";
 import { type DestinationRef } from "../create-clip-destinations.ts";
 import { createClipBlocker } from "../create-clip-validation.ts";
-import { createdClipLength } from "../created-clip-result.ts";
+import {
+  createdClipLength,
+  startPastEndProblem,
+} from "../created-clip-result.ts";
 import { newClipScaleMask } from "../new-clip-scale-mask.ts";
 import {
   type ClipPosition,
@@ -202,6 +205,18 @@ function targetFor(
       }
     },
   );
+
+  // Measured once the transform has run: it can move the clip's end.
+  const skip = startPastEndProblem(
+    plan.timing.startBeats,
+    transform.clipLength,
+    plan.timing.timeSigNumerator,
+    plan.timing.timeSigDenominator,
+  );
+
+  if (skip != null) {
+    return { named, skip };
+  }
 
   return {
     named,

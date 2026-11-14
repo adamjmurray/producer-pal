@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  abletonBeatsToBarBeat,
+  abletonBeatsToDuration,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type TransformCounts } from "#src/notation/transform/transformed-count.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
@@ -115,6 +118,32 @@ export function firstStartProblem(
   }
 
   return firstStartBeats < end ? null : "past the clip's content end";
+}
+
+/**
+ * Why a clip can't start where `start` says, or null when it can. With no
+ * `length` the clip ends where its notes do, and Live drops a region start at
+ * or past that end.
+ * @param startBeats - The start sent, in beats, or null
+ * @param clipLength - Where the region ends, in beats
+ * @param timeSigNumerator - Clip time signature numerator
+ * @param timeSigDenominator - Clip time signature denominator
+ * @returns The reason, or null
+ */
+export function startPastEndProblem(
+  startBeats: number | null,
+  clipLength: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): string | null {
+  if (startBeats == null || startBeats < clipLength) {
+    return null;
+  }
+
+  const at = (beats: number): string =>
+    abletonBeatsToBarBeat(beats, timeSigNumerator, timeSigDenominator);
+
+  return `start "${at(startBeats)}" is not before the clip's end at ${at(clipLength)}: send a length too, or an earlier start`;
 }
 
 /**
