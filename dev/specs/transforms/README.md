@@ -235,6 +235,9 @@ velocity += 20 * square(n/2, 0, 0.75, sync)
 
 **Time range-based waveforms** ramp over the clip/time range duration:
 
+With no time selector the range is the clip's region — its start marker to its
+loop end (or end marker when unlooped) — not the span of the notes in it.
+
 - **ramp(start, end)**: linearly interpolates from start to end
   - At the beginning of the clip/range: outputs start value
   - At the end of the clip/range: reaches end value

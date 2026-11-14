@@ -81,13 +81,7 @@ export function applyTransforms(
 
   sortInMusicalOrder(notes);
 
-  // Calculate the overall clip timeRange in musical beats
-  const firstNote = notes[0] as NoteEvent;
-  const clipStartTime = firstNote.start_time * (timeSigDenominator / 4);
-  const lastNote = notes.at(-1) as NoteEvent;
-  const clipEndTime =
-    (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
-  const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
+  const clipTimeRange = clipSpan(notes, timeSigDenominator, clipContext);
 
   // Track which notes a MIDI transform selected, by object: note ops rebuild
   // the array, so indices don't survive them. What counts as changed or
@@ -478,4 +472,36 @@ export function tryParseTransform(
   checkTransformArgs(ast, timeSigNumerator ?? 4, timeSigDenominator, clipType);
 
   return ast;
+}
+
+/**
+ * The range an unscoped ramp()/curve() runs over: the clip's region, or the
+ * notes' own span when the caller gave no clip.
+ * @param notes - Notes in musical order, at least one
+ * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Optional clip-level context
+ * @returns The range in musical beats
+ */
+function clipSpan(
+  notes: NoteEvent[],
+  timeSigDenominator: number,
+  clipContext: ClipContext | undefined,
+): TimeRange {
+  if (clipContext) {
+    const start = clipContext.startMarker ?? 0;
+    const end = clipContext.clipEnd ?? clipContext.clipDuration;
+
+    if (end > start) {
+      return { start, end };
+    }
+  }
+
+  const beatScale = timeSigDenominator / 4;
+  const first = notes[0] as NoteEvent;
+  const last = notes.at(-1) as NoteEvent;
+
+  return {
+    start: first.start_time * beatScale,
+    end: (last.start_time + last.duration) * beatScale,
+  };
 }
