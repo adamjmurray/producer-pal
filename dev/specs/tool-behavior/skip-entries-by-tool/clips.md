@@ -57,9 +57,11 @@ Part of [Skip entries, tool by tool](README.md).
   entry.
 - **update-clip: a step sequencer clip takes no note work.** A Live 13 step
   sequencer clip is a MIDI clip whose steps the API can't read or write (its
-  notes calls reach a hidden list and change nothing visible). `notes`,
-  `preTransforms`, `transforms`, `quantize`/`quantizeGrid`/`quantizePitch`,
-  `duplicateLoop` and `code` are each ignored on it the way an audio clip's are:
+  notes calls reach a hidden list and change nothing visible: `add_new_notes`
+  returns ids and a read returns those notes, so a read-back can't catch it, but
+  they never play). `notes`, `preTransforms`, `transforms`,
+  `quantize`/`quantizeGrid`/`quantizePitch`, `duplicateLoop` and `code` are each
+  ignored on it the way an audio clip's are:
   `notes ignored: the clip is a step sequencer` on its entry, a skip when that
   was all the call asked, and nothing written to it. Every transform counts as a
   note transform, so the whole param is ignored, `gain` and `pitchShift` too.

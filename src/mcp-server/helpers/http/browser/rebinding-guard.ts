@@ -51,7 +51,9 @@ const REFUSED_MESSAGE =
  *
  * A browser is a request with `Origin` or `Sec-Fetch-Site`. Never decide on
  * `Sec-Fetch-Mode` (Node's fetch and Mistral send it) or on `X-Forwarded-*` /
- * `Cf-*` (a page can set those without a preflight).
+ * `Cf-*` (a page can set those without a preflight). The claude.ai, ChatGPT
+ * and Mistral connectors send neither `Origin` nor `Sec-Fetch-Site` (measured
+ * Nov 2026), so this test never blocks them.
  *
  * @param req - Express request
  * @param res - Express response (a 403 is written when refused)

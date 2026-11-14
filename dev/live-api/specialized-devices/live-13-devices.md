@@ -4,14 +4,14 @@ Probed on Live 13.0b25. Live 12 has none of these, so every spec here matches by
 `class_name` (a spec's `classNames`), which Live 12 never reports for them.
 `ppal-create-device` makes each one by name; no code is needed for that.
 
-| Device              | Create name        | `class_name`                      | Handling                                       |
-| ------------------- | ------------------ | --------------------------------- | ---------------------------------------------- |
-| Drum Synth          | `Drum Synth`       | `DrumSynth`                       | generic Device, 57 params; gated               |
-| Clipper             | `Clipper`          | `Clipper`                         | generic, 6 params, nothing to gate             |
-| Transient Shaper    | `Transient Shaper` | `TransientShaper`                 | generic, 8 params in Max (10 in Python); gated |
-| Mid-Side Rack       | `Mid-Side Rack`    | `AudioEffectMidSideGroupDevice`   | fixed-chain rack (see racks docs)              |
-| Multiband Rack      | `Multiband Rack`   | `AudioEffectMultibandGroupDevice` | fixed-chain rack                               |
-| Softube (5 devices) | see below          | `MxDeviceAudioEffect`             | hosted Max for Live, params read cleanly       |
+| Device              | Create name        | `class_name`                      | Handling                                 |
+| ------------------- | ------------------ | --------------------------------- | ---------------------------------------- |
+| Drum Synth          | `Drum Synth`       | `DrumSynth`                       | generic Device, 57 params; gated         |
+| Clipper             | `Clipper`          | `Clipper`                         | generic, 6 params, nothing to gate       |
+| Transient Shaper    | `Transient Shaper` | `TransientShaper`                 | generic, 8 params; gated                 |
+| Mid-Side Rack       | `Mid-Side Rack`    | `AudioEffectMidSideGroupDevice`   | fixed-chain rack (see racks docs)        |
+| Multiband Rack      | `Multiband Rack`   | `AudioEffectMultibandGroupDevice` | fixed-chain rack                         |
+| Softube (5 devices) | see below          | `MxDeviceAudioEffect`             | hosted Max for Live, params read cleanly |
 
 Fixed-chain racks read `max_num_chains` (2 and 3; ordinary racks read INT_MAX,
 Live 12 has no such property). A device read shows it as `maxChains`, and adding
@@ -21,7 +21,11 @@ Softube: FET Compressor, OPTO Compressor, BCA Compressor, BCA Equaliser, BCA
 Drive. A Max for Live pack, loaded through the browser, so it may not be
 installed.
 
-Clipper's params: Ceiling, Input, Output, Mode (Soft/Hard), Lift.
+Clipper's params: Ceiling, Input, Output, Mode (Soft/Hard), Lift. The Delta
+toggle in Live's release notes is not a parameter.
+
+Live's own `insert_device` takes only the unspaced `DrumSynth` and
+`TransientShaper`; our create names are the spaced ones.
 
 ## Drum Synth
 

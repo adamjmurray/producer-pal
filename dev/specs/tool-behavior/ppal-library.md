@@ -19,7 +19,11 @@ date. The refusal rules are in
 - **`limit` is capped at 200 for `search`** (default 50). A larger value is
   clamped to 200 without a note. The other actions keep the 1000 cap
   (`list-tags` defaults to 200): they have no paging, so a long plug-in list
-  must still fit.
+  must still fit. Whether the default should drop to 20–25 is open: a 50-item
+  search costs about 3k tokens, but GPT-6 Luna set its own `limit` on nearly
+  every call, so the default only matters to models that leave it out. Decide it
+  with a small local model at both values (pass rate, input tokens, whether it
+  pages when cut off), not a large-model eval.
 - **A list that hit its limit says so, but can't be paged.** `list-plugins`,
   `list-tags` and the `list-categories` drill-down carry `more` (how many were
   left out) when the limit cut the list off, and no `nextOffset`. The answer to

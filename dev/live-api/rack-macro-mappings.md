@@ -16,6 +16,11 @@ native class, and none of them, nor Live's own remote scripts, has a way to.
 `Song.View.mod_mapping_device` looks close, but it's the modulator devices' Map
 button: it waits for a user click and takes no macro index.
 
+Live 13 raises an "AlreadyRemoted" error when `live.remote~` or `live.modulate~`
+targets a parameter a macro already controls. Producer Pal uses neither object
+and can't create macro mappings, so it doesn't apply (checked by code search,
+not run on Live 13).
+
 ## `macros_mapped` (Python only)
 
 `RackDevice.macros_mapped` is a tuple of bools, one per macro (16 in Live 12, 32

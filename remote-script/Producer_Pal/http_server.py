@@ -176,7 +176,10 @@ class _Server(ThreadingHTTPServer):
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     # Seconds a socket read or write may stall. A connection that stops sending
-    # counts as busy, and each tick sleeps while anything is busy.
+    # counts as busy, and each tick sleeps while anything is busy. So a local
+    # client that connects and sends nothing slows every tick (about 20 ms) for
+    # up to this long. Accepted: it takes a local program to do it, and the fix
+    # needs two socket timeouts.
     timeout = 10
 
     def do_GET(self):

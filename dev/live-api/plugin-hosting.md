@@ -126,8 +126,8 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   same for all three.
 - **VST2.** Live's plug-in database has VST2 rows (`device:vst:instr:…?n=Kaivo`,
   path `…/VST/Kaivo.vst`), so VST2 resolves like VST3. A VST2 _shell_ plug-in
-  (several in one module, like Waves' WaveShell) is refused: `subname` can't
-  pick one.
+  (several in one module, like Waves' WaveShell) is refused because none was on
+  hand to test with, not because it is known to fail.
 - **AU.** The database has no AU rows: Live asks macOS for AUs. Candidates are
   the AUs Live's browser lists, which honors Live's "Use Audio Units v2"
   setting; if the remote script can't answer, there are none. The browser
@@ -485,9 +485,10 @@ together.
   values `automation`, to hosted params that a slot drives.
 - **Why 128**: each slot adds about 1.5 KB to the `.amxd` (18 KB gzipped for the
   whole wrapper) and under 1 ms to loading it: 128 slots loaded about 40 ms
-  slower than 32, and 1000 about 0.6 s slower. Slots can be added later, but
-  never renamed or removed: that would cut off automation saved in users' Sets.
-  Three digits leave room up to 999.
+  slower than 32, and 1000 about 0.6 s slower. Fewer slots save no CPU either:
+  16 empty wrappers cost about 4.5% of a core over Utility at 64 slots and
+  at 128. Slots can be added later, but never renamed or removed: that would cut
+  off automation saved in users' Sets. Three digits leave room up to 999.
 - Deleting the device and undoing re-reads it from its file, and crashed Live
   twice. Hotswapping the same `.amxd` over itself reloads it more safely,
   keeping the device id and plug-in state.
@@ -572,5 +573,14 @@ Live's browser must find the wrappers by name, so they go in the User Library:
 
 ## Not yet tested
 
-- Windows, and VST2 shell plug-ins.
+- Windows.
+- VST2 shell plug-ins. On a machine with Waves or another shell: try
+  `plug_vst <shell bundle>` then `subname <plug-in name>` (`printids` lists
+  what's inside); see what `currentplug` reads after a good and a bad `subname`,
+  so the wrapper can check the load; check that state survives a Set reload and
+  a track duplicate. If it works, remove the refusal.
+- Panel knobs with a real mouse. Synthetic drags don't work in Live, so only
+  arrow-key turns were tested. Open: a mouse drag (does the echo pull the knob
+  back?), an edit in the plug-in window moving the knob, and knobs during
+  automation playback.
 - Opening a shared Set without Max for Live.

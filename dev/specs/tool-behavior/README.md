@@ -232,6 +232,8 @@ shown:
 - Where the guard wouldn't fire, `force` does nothing either way.
 - Records live in device memory, so they last until used, replaced, or until the
   Live Set (and with it the device) reloads. A skip seen by any client counts.
+  Known limit: a record stays armed when the user says no, so a much later
+  `force` on the same target still goes through.
 
 This covers every guard that takes `force`: the pad sample swap in
 ppal-update-device and the clobber guard in ppal-context. A new guard must name

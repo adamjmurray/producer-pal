@@ -93,6 +93,14 @@ turn without a call. Haiku went 3/3, but every trial was right on its first
 write, so it never met a slip. Not kept: the result costs bytes on every write
 and corrected nothing. The Skill already names the convention.
 
+**Tool-side meter hints were dropped as no longer needed.** Two were weighed for
+non-4/4 bar|beat writes: a per-meter reminder of the beat unit on each write,
+and a detail naming an under- or over-filled bar (or that `n/1` isn't a bar).
+Once the basic notation tier taught other meters, qwen3.8-27b in small-model
+mode passed 11/12 on the four meter scenarios, so the hints would answer a
+mistake that no longer happens and add noise to correct writes. Only the "N
+notes shortened by the next note at the same pitch" detail shipped.
+
 ## Wording changes that did work
 
 Both null results above tried to change a **preference**. These two taught a

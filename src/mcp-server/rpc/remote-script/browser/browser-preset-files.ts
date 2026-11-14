@@ -271,7 +271,9 @@ async function keepFilesFor(
  * device preset (.adv) sits under its own device only. Each device folder lists
  * it once, and below that folder every match has the same path, which the
  * file's path ends with. The browser gives no file identity, so two matches at
- * one path, or at different paths, may be different files.
+ * one path, or at different paths, may be different files. Live's browser can
+ * also keep listing a deleted preset for a while: it then reports two matches
+ * and the load is refused as ambiguous, with nothing on disk to check against.
  * @param matches - The browser's matches
  * @param file - The library file's absolute path
  * @returns True when the file accounts for every match

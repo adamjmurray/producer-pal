@@ -177,3 +177,23 @@ direction, not a suite-wide number. The full suite agrees: run 29 (high) passed
 **Evals still send no effort by default,** so each model runs at its provider's
 default, the setting most users get. `--thinking` opts in per model. Compare a
 high-effort run only with another at the same effort.
+
+## Flint is not in the rotation
+
+Flint (`recursivesi/flint`, LM Studio) stays out because its thinking can't be
+turned down, and it only scores well at full length. LM Studio offers only `on`:
+`reasoning_effort`, `chat_template_kwargs.enable_thinking=false`, `/no_think`
+and `max_tokens` are all ignored, and the load dialog's "Reasoning Budget
+Message" is only the text shown when a budget runs out. With the 32,768 local
+output cap it passed 13/18 on the scenarios that had hit the old cap, at about
+4× qwen's time per trial and about 12× the thinking tokens. Revisit if LM Studio
+exposes a reasoning budget.
+
+## Qwen's empty turns came and went
+
+In September 2026 qwen3.8-27b (LM Studio) ended about 14% of its turns with no
+text and no tool call after ~500 reasoning tokens. That was about half its
+failures, and neither the output cap nor prompt size explained it. By 2 November
+it was gone, cause unknown (an LM Studio or template update, or our tool
+changes). If it comes back, the `reasoningText` and `finishReason` saved in the
+results are where to look.

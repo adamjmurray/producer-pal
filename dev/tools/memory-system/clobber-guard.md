@@ -44,3 +44,15 @@ guards an LLM discarding content it never meant to touch, not the user's
 editing. Automation that legitimately replaces a whole document through the tool
 (the e2e round-trip, the eval seed/restore) writes `""` first, which is never
 refused, then the new content.
+
+## What the guard does not do: check consent
+
+Whether the user agreed to a write stays with the skills. A tool can't see the
+conversation, so it can't tell. Two tool-side gates were rejected:
+
+- **A "user confirmed" param.** The model can simply assert it.
+- **Refusing every first write to a non-empty user-owned document.** `force`
+  would then ride on every write, which disarms the clobber guard.
+
+So a merged write that keeps every line, and a first write to an empty document,
+go through without a refusal by design.

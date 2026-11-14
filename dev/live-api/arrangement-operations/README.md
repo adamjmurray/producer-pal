@@ -98,7 +98,9 @@ the actual file content length. Use content boundary detection instead (see
 
 `Track.create_audio_clip(file, position)` and
 `TakeLane.create_audio_clip(file, start)` both exist, but neither takes a
-length. To create an audio clip with a specific arrangement length:
+length, and what `TakeLane.create_audio_clip` makes differs by version: the clip
+arrived warped, looping and 4 beats long on 12.3.8, but 0.14 beats long on
+12.4.6. To create an audio clip with a specific arrangement length:
 
 1. Create it in session view with
    `createAudioClipInSession(track, length, filePath)`

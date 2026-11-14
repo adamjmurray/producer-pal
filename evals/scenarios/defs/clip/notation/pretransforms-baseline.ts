@@ -33,6 +33,10 @@ import {
  * the model took. Encoded as a single classification so the post-449
  * comparison is a head-to-head between paths.
  *
+ * Known gap: a correct rewrite done as one merge-mode update-clip call (no
+ * preTransforms, no v0) lands in "unrecognized" and fails the check. Seen with
+ * qwen3.8-27b in small-model mode on `pretransforms-hat-fills-baseline`.
+ *
  * @param turns - All turn results
  * @param turn - Turn index that performed the rewrite
  * @returns Classification of the path taken
