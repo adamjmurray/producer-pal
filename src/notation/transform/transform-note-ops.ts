@@ -430,7 +430,8 @@ function mergeRuns(
     const note = sorted[i] as NoteEvent; // i < length, always present
     const gap = note.start_time - runEnd;
 
-    if (gap <= tolerance) {
+    // Epsilon: notes that touch on a triplet grid sit a float hair apart.
+    if (gap <= tolerance + GRID_EPSILON) {
       runEnd = Math.max(runEnd, note.start_time + note.duration); // extend the run
       run.push(note);
     } else {
