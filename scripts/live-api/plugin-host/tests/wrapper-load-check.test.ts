@@ -110,31 +110,77 @@ describe("wrapper load", () => {
     ).toThrow("loaded its first plug-in (Serum2.vst3) instead");
   });
 
-  it("retries by path, with the subname, when the subname missed", () => {
+  const VA = {
+    format: "VST3",
+    file: "Filterscape(x64)",
+    path: "C:/VST3/Filterscape(x64).vst3",
+    sub: "FilterscapeVA",
+    name: "FilterscapeVA",
+    siblings: ["Filterscape"],
+    synth: true,
+  };
+
+  it("tries the file, the name, each sibling, then the path", () => {
     const rig = rigThatLoads({
       "plug_vst3 Filterscape(x64)": "C74_VST3:/Filterscape(x64)",
       "plug C:/VST3/Filterscape(x64).vst3": "Filterscape(x64).vst3",
     });
 
-    const request = {
-      format: "VST3",
-      file: "Filterscape(x64)",
-      path: "C:/VST3/Filterscape(x64).vst3",
-      sub: "FilterscapeVA",
-      name: "FilterscapeVA",
-      synth: true,
-    };
-
-    expect(() => rig.load(request)).toThrow("loaded its first plug-in");
-    expect(rig.sent.map(([message]) => message)).toStrictEqual([
-      "unplug",
-      "plug_vst3",
-      "subname",
-      "unplug",
-      "plug",
-      "subname",
-      "unplug",
+    expect(() => rig.load(VA)).toThrow(
+      "loaded its first plug-in (Filterscape(x64).vst3) instead",
+    );
+    expect(rig.sent).toStrictEqual([
+      ["unplug"],
+      ["plug_vst3", "Filterscape(x64)"],
+      ["subname", "FilterscapeVA"],
+      ["unplug"],
+      ["plug_vst3", "FilterscapeVA"],
+      ["unplug"],
+      ["plug_vst3", "Filterscape"],
+      ["subname", "FilterscapeVA"],
+      ["unplug"],
+      ["plug", "C:/VST3/Filterscape(x64).vst3"],
+      ["subname", "FilterscapeVA"],
+      ["unplug"],
     ]);
+  });
+
+  it("loads by the plug-in's name when the file's name finds nothing", () => {
+    const rig = rigThatLoads({
+      "plug_vst3 FilterscapeVA": "C74_VST3:/FilterscapeVA 77",
+    });
+
+    expect(rig.load(VA)).toStrictEqual([
+      "FilterscapeVA",
+      { format: "VST3", file: "FilterscapeVA", path: VA.path, sub: null },
+    ]);
+  });
+
+  it("loads a sibling and picks the plug-in by subname", () => {
+    const rig = rigThatLoads({
+      "plug_vst3 Filterscape": "C74_VST3:/Filterscape 11",
+      "subname FilterscapeVA": "C74_VST3:/Filterscape 22",
+    });
+
+    expect(rig.load(VA)).toStrictEqual([
+      "FilterscapeVA",
+      {
+        format: "VST3",
+        file: "Filterscape",
+        path: VA.path,
+        sub: "FilterscapeVA",
+      },
+    ]);
+  });
+
+  it("refuses a sibling whose subname changed nothing", () => {
+    const rig = rigThatLoads({
+      "plug_vst3 Filterscape": "C74_VST3:/Filterscape 11",
+    });
+
+    expect(() => rig.load({ ...VA, path: undefined })).toThrow(
+      'the VST3 bundle "Filterscape" loaded its first plug-in (C74_VST3:/Filterscape 11) instead',
+    );
   });
 
   it("never tries a path for an AU", () => {

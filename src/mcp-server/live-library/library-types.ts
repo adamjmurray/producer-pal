@@ -399,6 +399,8 @@ export interface ResolvedPlugin {
   file: string;
   /** Whether other plug-ins live in the same bundle. */
   shared: boolean;
+  /** The other VST3 plug-ins in the same bundle, when there are any. */
+  siblings?: string[];
 }
 
 export interface ListPluginsResult {

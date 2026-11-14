@@ -186,6 +186,15 @@ function resolveDbPlugin(
     );
   }
 
+  const siblings = rows
+    .filter(
+      (row) =>
+        row !== match &&
+        row.path === match.path &&
+        deriveFormat(row.dev_identifier) === "VST3",
+    )
+    .map((row) => row.name);
+
   return {
     name: match.name,
     vendor: match.vendor,
@@ -193,6 +202,7 @@ function resolveDbPlugin(
     format,
     file: match.path,
     shared,
+    ...(format === "VST3" && siblings.length > 0 && { siblings }),
   };
 }
 

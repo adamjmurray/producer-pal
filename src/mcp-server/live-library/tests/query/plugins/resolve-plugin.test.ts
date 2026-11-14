@@ -126,6 +126,7 @@ describe("resolvePlugin", () => {
       format: "VST3",
       file: `${DIR}/VST3/Serum2.vst3`,
       shared: true,
+      siblings: ["Serum 2 FX"],
     });
   });
 

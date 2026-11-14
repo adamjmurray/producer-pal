@@ -163,26 +163,36 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   plug-ins in `Contents/Resources/moduleinfo.json` (Pro-Q 4 and Pianoteq 9
   don't), so it's skipped for single-plug-in files. The choice survives
   duplicate. Plug-ins in `~/Library/Audio/Plug-Ins/VST3` load too.
-- **Loading by path.** `vst~` finds a name only in the folders Max knows. On
-  Windows that misses VST2s in Live's custom VST folder (Max looks in
-  `C:\Program Files\VSTPlugins` and `Steinberg\VSTPlugins`) and a few VST3s Live
-  lists (Pianoteq 9, Serum 2; cause unknown, other folder-style bundles load).
-  So the load request also carries the file's full `path`, and when the name
-  loads nothing (or its `subname` misses) the wrapper sends `plug <path>`. That
-  reads back as the bare file name (`Aalto_x64.dll`, `Pianoteq 9.vst3`), with no
-  `C74_…:/` prefix. `plug_vst` and `plug_vst3` take no path. `subname` does
-  nothing after a path load of a file Max doesn't know, so a shared file loaded
-  that way (Serum 2 and Serum 2 FX) is refused. The fallback is untested on
-  macOS.
+- **What `vst~` knows a plug-in by** depends on when Max last scanned. Max keeps
+  one file per VST3 it has scanned (`Settings/VST3s/*.vst3info` in Max's
+  preferences folder; `VSTs` for VST2), and `plug_vst3 <x>` only finds an `x`
+  that has one. An older scan names them by file (`Diva(x64)`, `Serum2`) and
+  `currentplug` reads `C74_VST3:/Serum2`, with an id only after a `subname`. A
+  newer scan (Max 9.1; sending `vst~` `scan 1` runs one and replaces every older
+  entry) names them by plug-in, as Live's browser does (`Diva`, `Serum 2`,
+  `FilterscapeVA`), and `currentplug` always carries an id
+  (`C74_VST3:/Serum 2 1335155447`). It doesn't list every plug-in of a shared
+  file (`Serum 2` but not `Serum 2 FX`); `subname` picks the others. A plug-in
+  Max hasn't scanned is in neither: on one Windows machine that was two VST3s
+  and every VST2 in Live's custom VST folder, until a rescan found them all.
+- **So the wrapper tries, in order:** the file's name (with the `subname` for a
+  shared file); the plug-in's name; each other plug-in of the same file
+  (`siblings`) with the plug-in as its `subname`, which must change what is
+  loaded; then `plug <path>` with the file's full path. A load by path reads
+  back as the bare file name (`Aalto_x64.dll`, `Pianoteq 9.vst3`) with no
+  `C74_…:/` prefix, and `subname` does nothing after it, so a shared file that
+  only loads by path is refused. `plug_vst` and `plug_vst3` take no path.
+  Checked on Windows with both kinds of scan; on macOS only the file's name has
+  been seen to load.
 - **Coming back after a reload.** On Windows `vst~` doesn't bring the plug-in
   back from the stored state after a Set reload (it does after a duplicate), and
   nowhere can it bring back one loaded by path. So `vstname` also keeps the
-  `format`, `path` and `sub`, and when a state restore leaves nothing loaded the
-  wrapper loads the plug-in again (name, then path) and restores the state a
-  tick later: restored in the same tick as the load, the state is lost. It never
-  loads before the restore has had its chance, so it does nothing where `vst~`
-  brings the plug-in back itself. A Set saved before `format` was stored is left
-  alone.
+  `format`, `path` and `sub` (and as `file` whatever name the load used), and
+  when a state restore leaves nothing loaded the wrapper loads the plug-in again
+  (name, then path) and restores the state a tick later: restored in the same
+  tick as the load, the state is lost. It never loads before the restore has had
+  its chance, so it does nothing where `vst~` brings the plug-in back itself. A
+  Set saved before `format` was stored is left alone.
 - **Verify every load.** Loading by name goes wrong silently:
   `plug_vst3 "Serum 2 FX"` loads the AU, `plug_au Serum2` loads the VST3, a
   failed load keeps the old plug-in or loads nothing, and a wrong `subname`

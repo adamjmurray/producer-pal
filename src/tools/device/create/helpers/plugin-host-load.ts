@@ -37,7 +37,16 @@ export interface PluginLoadRequest {
    * Max can't search a bundle that has no moduleinfo.json.
    */
   sub?: string;
-  /** The plug-in's name, for the wrapper's messages. */
+  /**
+   * The other plug-ins in the same VST3 bundle. A newer Max scan knows a
+   * plug-in by its name, and not every one in a bundle: the wrapper then loads
+   * one of these and picks this plug-in by subname.
+   */
+  siblings?: string[];
+  /**
+   * The plug-in's name, as Live's browser shows it. Also what a newer Max scan
+   * knows it by, so the wrapper tries it when `file` finds nothing.
+   */
   name: string;
   /** Whether the plug-in is an instrument. */
   synth: boolean;
@@ -69,6 +78,7 @@ export async function resolvePluginPlan(name: string): Promise<PluginPlan> {
         path: plugin.file.replaceAll("\\", "/"),
       }),
       ...(plugin.format === "VST3" && plugin.shared && { sub: plugin.name }),
+      ...(plugin.siblings != null && { siblings: plugin.siblings }),
       name: plugin.name,
       synth: plugin.category === "instrument",
     },

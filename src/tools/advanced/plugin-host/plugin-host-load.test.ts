@@ -58,9 +58,19 @@ function resolvesTo(
   shared = true,
   format = "VST3",
 ): void {
+  const siblings = shared && format === "VST3" ? ["Serum 2"] : undefined;
+
   vi.mocked(protocolMock.requestNode).mockResolvedValue({
     success: true,
-    result: { name, vendor: "Xfer Records", category, format, file, shared },
+    result: {
+      name,
+      vendor: "Xfer Records",
+      category,
+      format,
+      file,
+      shared,
+      ...(siblings && { siblings }),
+    },
   });
 }
 
@@ -96,6 +106,7 @@ describe("ppal-plugin-host load", () => {
       file: "Serum2",
       path: "/Library/Audio/Plug-Ins/VST3/Serum2.vst3",
       sub: "Serum 2 FX",
+      siblings: ["Serum 2"],
       name: "Serum 2 FX",
       synth: false,
     });

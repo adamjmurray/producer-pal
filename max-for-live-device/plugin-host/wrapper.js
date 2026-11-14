@@ -253,11 +253,14 @@ const FORMATS = {
 // the bundle's first plug-in. So check what actually loaded.
 // "sub" picks a plug-in inside a VST3 bundle that holds several; it is sent
 // only then, because bundles without a moduleinfo.json can't be searched by
-// subname, and only VST3 has it. "name" is the plug-in's name, for messages.
-// "path" is the plug-in file's full path (VST3 and VST2 only), tried when the
-// name finds nothing: vst~ finds a name only in the folders Max knows, not in
-// Live's custom VST folder, and not every VST3 Live lists (seen on Windows).
-function load({ format, file, path, sub, name, synth }) {
+// subname, and only VST3 has it. "name" is the plug-in's name.
+//
+// What vst~ knows a VST3 or VST2 by depends on when Max last scanned: an older
+// scan lists the file's name ("Serum2"), a newer one the plug-in's ("Serum 2"),
+// and some plug-ins are in neither (not scanned, or in Live's custom VST
+// folder). So try the file, then the name, then a plug-in sharing the file
+// ("siblings") with the name as its subname, then the file's full "path".
+function load({ format, file, path, sub, name, siblings, synth }) {
   if (!file) throw new Error("load needs file");
 
   const kind = FORMATS[format ?? "VST3"];
@@ -266,32 +269,20 @@ function load({ format, file, path, sub, name, synth }) {
 
   const label = String(name ?? sub ?? file);
   const picked = !!sub && kind === FORMATS.VST3;
-  const attempt = (message, target, leaf) => {
-    outlet(0, "unplug");
-    outlet(0, message, target);
-    if (picked) outlet(0, "subname", String(sub));
-
-    const result = info();
-    const want = { kind, file: String(file), leaf, picked, label };
-
-    return { result, problem: loadProblem(want, !!synth, result) };
-  };
+  const tries = loadTries(kind, { file, path, sub: picked && sub, name, siblings });
 
   state.plugin = null;
   state.names = [];
-  state.info = {};
 
-  let tried = attempt(kind.message, String(file), null);
-  const loaded = tried.result.loaded;
-  const missed = !loaded || (picked && loaded === `${kind.prefix}${file}`);
-  const byPath = !!(missed && path && kind !== FORMATS.AU);
+  let result = null;
+  let problem = null;
+  let used = null;
 
-  if (byPath) {
-    state.info = {};
-    tried = attempt("plug", String(path), String(path).replace(/^.*\//, ""));
+  for (const attempt of tries) {
+    used = attempt;
+    ({ result, problem } = tryLoad(kind, attempt, label, !!synth));
+    if (!problem) break;
   }
-
-  const { result, problem } = tried;
 
   if (problem) {
     outlet(0, "unplug");
@@ -305,9 +296,9 @@ function load({ format, file, path, sub, name, synth }) {
   nameDevice(label);
   saveName(label, {
     format: Object.keys(FORMATS).find((key) => FORMATS[key] === kind),
-    file: String(file),
+    file: used.token,
     path: kind !== FORMATS.AU && path ? String(path) : null,
-    sub: picked ? String(sub) : null,
+    sub: used.sub,
   });
   showName(label);
   // A mapping stored before this load was for another plug-in, so there is
@@ -319,33 +310,84 @@ function load({ format, file, path, sub, name, synth }) {
   return { ...result, plugin: state.plugin };
 }
 
-// A good load reads "<prefix><file> <numeric id>" (the id can be missing right
-// after a load). With a VST3 subname, the id is missing when subname found
-// nothing. Without one, a bundle may read with or without the id.
-// A load by path reads as the bare file name ("Serum2.vst3"), which is "leaf";
-// after a subname it reads the usual way.
-function loadProblem({ kind, file, leaf, picked, label }, synth, result) {
+// Each try: the message and what it loads, the subname to send after it, and
+// "token", what currentplug then reads after the prefix. A load by path reads
+// as the bare file name ("Serum2.vst3"), which is "leaf". "changed": the
+// subname must move vst~ off the plug-in the first message loaded.
+function loadTries(kind, { file, path, sub, name, siblings }) {
+  const message = kind.message;
+  const token = String(file);
+  const tries = [{ message, target: token, token, sub: sub ? String(sub) : null }];
+
+  if (kind === FORMATS.AU) return tries;
+
+  if (name && String(name) !== token) {
+    tries.push({ message, target: String(name), token: String(name), sub: null });
+  }
+  for (const sibling of siblings ?? []) {
+    tries.push({
+      message,
+      target: String(sibling),
+      token: String(sibling),
+      sub: String(name),
+      changed: true,
+    });
+  }
+  if (path) {
+    tries.push({
+      message: "plug",
+      target: String(path),
+      token,
+      sub: sub ? String(sub) : null,
+      leaf: String(path).replace(/^.*\//, ""),
+    });
+  }
+
+  return tries;
+}
+
+function tryLoad(kind, attempt, label, synth) {
+  state.info = {};
+  outlet(0, "unplug");
+  outlet(0, attempt.message, attempt.target);
+
+  const before = attempt.changed ? info().loaded : null;
+
+  if (attempt.sub) outlet(0, "subname", attempt.sub);
+
+  const result = info();
+  const want = { kind, attempt, label, before };
+
+  return { result, problem: loadProblem(want, synth, result) };
+}
+
+// A good load reads "<prefix><token> <numeric id>" (the id can be missing right
+// after a load). With a VST3 subname on a file loaded by its own name, the id
+// is missing when subname found nothing. Without one, a bundle may read with
+// or without the id.
+function loadProblem({ kind, attempt, label, before }, synth, result) {
+  const { token, leaf, sub } = attempt;
   const loaded = result.loaded;
-  const prefix = `${kind.prefix}${file}`;
+  const prefix = `${kind.prefix}${token}`;
   const format = Object.keys(FORMATS).find((key) => FORMATS[key] === kind);
   const fail = (why) => `could not load "${label}": ${why}`;
 
-  if (!loaded) return fail(`nothing loaded from "${file}"`);
+  if (!loaded) return fail(`nothing loaded from "${token}"`);
 
   const bare = leaf != null && loaded === leaf;
 
   if (!bare && !loaded.startsWith(prefix)) {
-    return fail(`loaded ${loaded} instead of ${format} "${file}"`);
+    return fail(`loaded ${loaded} instead of ${format} "${token}"`);
   }
 
   const rest = bare ? "" : loaded.slice(prefix.length);
 
   if (rest !== "" && !/^ -?\d+$/.test(rest)) {
-    return fail(`loaded ${loaded} instead of ${format} "${file}"`);
+    return fail(`loaded ${loaded} instead of ${format} "${token}"`);
   }
-  if (picked && rest === "") {
+  if (sub && (rest === "" || loaded === before)) {
     return fail(
-      `the VST3 bundle "${file}" loaded its first plug-in (${loaded}) instead`,
+      `the VST3 bundle "${token}" loaded its first plug-in (${loaded}) instead`,
     );
   }
   if (result.numParams == null) return fail("no parameters");
