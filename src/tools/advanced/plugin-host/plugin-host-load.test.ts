@@ -94,6 +94,7 @@ describe("ppal-plugin-host load", () => {
       op: "load",
       format: "VST3",
       file: "Serum2",
+      path: "/Library/Audio/Plug-Ins/VST3/Serum2.vst3",
       sub: "Serum 2 FX",
       name: "Serum 2 FX",
       synth: false,
@@ -153,6 +154,7 @@ describe("ppal-plugin-host load", () => {
       op: "load",
       format: "VST3",
       file: "FabFilter Pro-Q 4",
+      path: "/Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 4.vst3",
       name: "Pro-Q 4",
       synth: false,
     });
@@ -211,7 +213,38 @@ describe("ppal-plugin-host load", () => {
       op: "load",
       format: "VST2",
       file: "Kaivo",
+      path: "/Library/Audio/Plug-Ins/VST/Kaivo.vst",
       name: "Kaivo",
+      synth: true,
+    });
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await pending;
+  });
+
+  it("loads a Windows VST2 without .dll, and sends its path with / separators", async () => {
+    useWrapper(INSTRUMENT);
+    resolvesTo(
+      "Aalto_x64",
+      "instrument",
+      "C:\\Program Files\\Common Files\\VST2\\Aalto_x64.dll",
+      false,
+      "VST",
+    );
+
+    const pending = pluginHost({
+      deviceId: "9",
+      action: "load",
+      plugin: "Aalto_x64",
+    });
+
+    await vi.waitFor(() => expect(globalThis.messnamed).toHaveBeenCalled());
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "load",
+      format: "VST2",
+      file: "Aalto_x64",
+      path: "C:/Program Files/Common Files/VST2/Aalto_x64.dll",
+      name: "Aalto_x64",
       synth: true,
     });
     plugin_host_response(sent().requestId, '{"success":true}');

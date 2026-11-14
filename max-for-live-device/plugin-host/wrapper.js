@@ -254,7 +254,10 @@ const FORMATS = {
 // "sub" picks a plug-in inside a VST3 bundle that holds several; it is sent
 // only then, because bundles without a moduleinfo.json can't be searched by
 // subname, and only VST3 has it. "name" is the plug-in's name, for messages.
-function load({ format, file, sub, name, synth }) {
+// "path" is the plug-in file's full path (VST3 and VST2 only), tried when the
+// name finds nothing: vst~ finds a name only in the folders Max knows, not in
+// Live's custom VST folder, and not every VST3 Live lists (seen on Windows).
+function load({ format, file, path, sub, name, synth }) {
   if (!file) throw new Error("load needs file");
 
   const kind = FORMATS[format ?? "VST3"];
@@ -263,23 +266,32 @@ function load({ format, file, sub, name, synth }) {
 
   const label = String(name ?? sub ?? file);
   const picked = !!sub && kind === FORMATS.VST3;
+  const attempt = (message, target, leaf) => {
+    outlet(0, "unplug");
+    outlet(0, message, target);
+    if (picked) outlet(0, "subname", String(sub));
+
+    const result = info();
+    const want = { kind, file: String(file), leaf, picked, label };
+
+    return { result, problem: loadProblem(want, !!synth, result) };
+  };
 
   state.plugin = null;
   state.names = [];
   state.info = {};
-  outlet(0, "unplug");
-  outlet(0, kind.message, String(file));
-  if (picked) outlet(0, "subname", String(sub));
 
-  const result = info();
-  const problem = loadProblem(
-    kind,
-    String(file),
-    picked,
-    label,
-    !!synth,
-    result,
-  );
+  let tried = attempt(kind.message, String(file), null);
+  const loaded = tried.result.loaded;
+  const missed = !loaded || (picked && loaded === `${kind.prefix}${file}`);
+  const byPath = !!(missed && path && kind !== FORMATS.AU);
+
+  if (byPath) {
+    state.info = {};
+    tried = attempt("plug", String(path), String(path).replace(/^.*\//, ""));
+  }
+
+  const { result, problem } = tried;
 
   if (problem) {
     outlet(0, "unplug");
@@ -291,7 +303,12 @@ function load({ format, file, sub, name, synth }) {
 
   state.plugin = label;
   nameDevice(label);
-  saveName(label, String(file));
+  saveName(label, {
+    format: Object.keys(FORMATS).find((key) => FORMATS[key] === kind),
+    file: String(file),
+    path: kind !== FORMATS.AU && path ? String(path) : null,
+    sub: picked ? String(sub) : null,
+  });
   showName(label);
   // A mapping stored before this load was for another plug-in, so there is
   // nothing left to wait for.
@@ -305,18 +322,23 @@ function load({ format, file, sub, name, synth }) {
 // A good load reads "<prefix><file> <numeric id>" (the id can be missing right
 // after a load). With a VST3 subname, the id is missing when subname found
 // nothing. Without one, a bundle may read with or without the id.
-function loadProblem(kind, file, picked, label, synth, result) {
+// A load by path reads as the bare file name ("Serum2.vst3"), which is "leaf";
+// after a subname it reads the usual way.
+function loadProblem({ kind, file, leaf, picked, label }, synth, result) {
   const loaded = result.loaded;
   const prefix = `${kind.prefix}${file}`;
   const format = Object.keys(FORMATS).find((key) => FORMATS[key] === kind);
   const fail = (why) => `could not load "${label}": ${why}`;
 
   if (!loaded) return fail(`nothing loaded from "${file}"`);
-  if (!loaded.startsWith(prefix)) {
+
+  const bare = leaf != null && loaded === leaf;
+
+  if (!bare && !loaded.startsWith(prefix)) {
     return fail(`loaded ${loaded} instead of ${format} "${file}"`);
   }
 
-  const rest = loaded.slice(prefix.length);
+  const rest = bare ? "" : loaded.slice(prefix.length);
 
   if (rest !== "" && !/^ -?\d+$/.test(rest)) {
     return fail(`loaded ${loaded} instead of ${format} "${file}"`);
@@ -540,12 +562,47 @@ function stateOf() {
 // (vststate has no cord to vst~, which can't read the parts).
 // Live restores vststate at load, on a duplicate, and on undo or redo.
 let storedListener = null;
+let nameListener = null;
 const RESTORE_SETTLE_MS = 3000;
 let restoredAt = 0;
 
 function loadbang() {
   makeRestorer();
   watchStored();
+}
+
+// On Windows vst~ doesn't bring the plug-in back from the stored state after
+// a Set reload, and nowhere can it bring back one loaded by path. So when a
+// restore leaves nothing loaded, load what vstname says and restore again.
+// Never before the restore has had its chance: where vst~ brings the plug-in
+// back itself (macOS), this must do nothing.
+let restoreTried = false;
+const restoreSoon = new Task(() => restoreStored());
+const replugCheck = new Task(() => {
+  // A tick later: a state restored in the tick the plug-in loads is lost.
+  if (restoreTried && replugStored()) restoreSoon.schedule(0);
+});
+
+// Returns whether it loaded one.
+function replugStored() {
+  if (loadedPlugin() != null) return false;
+
+  const stored = storedNameDict();
+  const kind = FORMATS[stored?.get("format")];
+  const send = (message, target) => {
+    outlet(0, message, String(target));
+    if (stored.get("sub")) outlet(0, "subname", String(stored.get("sub")));
+  };
+
+  // A Set saved before the format was stored has none: leave it alone.
+  if (!kind) return false;
+
+  send(kind.message, stored.get("file"));
+  if (loadedPlugin() == null && stored.get("path")) {
+    send("plug", stored.get("path"));
+  }
+
+  return loadedPlugin() != null;
 }
 
 function watchStored() {
@@ -555,6 +612,10 @@ function watchStored() {
 
   // An arrow, so `this` stays the script (it reaches the patcher).
   storedListener = new MaxobjListener(stored, () => onStoredChange());
+  // vstname may be restored after the state.
+  nameListener = new MaxobjListener(this.patcher.getnamed("vstname"), () =>
+    replugCheck.schedule(0),
+  );
 }
 
 function onStoredChange() {
@@ -565,6 +626,13 @@ function onStoredChange() {
 }
 
 function restoreStored() {
+  // Used up this tick: come back when the next one is made.
+  if (restorer == null) {
+    restoreSoon.schedule(0);
+
+    return;
+  }
+
   const stored = storedState();
 
   if (stored == null || stored === readState()) return;
@@ -580,6 +648,8 @@ function restoreStored() {
   } finally {
     busy--;
     restoredAt = Date.now();
+    restoreTried = true;
+    replugCheck.schedule(0);
   }
 }
 
@@ -1357,12 +1427,16 @@ function nameDevice(label) {
 
 // After a reload, vst~ knows only the file, so the name loaded with it is
 // saved with the Set. The device name can't hold it: it may be renamed.
-function saveName(name, file) {
+// "format", "path" and "sub" are what replugStored() loads it again with.
+function saveName(name, { format, file, path, sub }) {
   try {
     const dict = new Dict();
 
     dict.set("name", name);
     dict.set("file", file);
+    dict.set("format", format);
+    if (path) dict.set("path", path);
+    if (sub) dict.set("sub", sub);
     this.patcher.getnamed("vstname").message("dictionary", dict.name);
   } catch (error) {
     post(`ppal-plugin-host: could not save the plug-in name: ${error}\n`);
@@ -1402,11 +1476,15 @@ function showName(name) {
 
 // "<prefix><file> <id>", and the id can be missing right after a load. So
 // "Pro-Q 4" with no id reads like file "Pro-Q" with id 4: when the file this
-// device loaded fits either reading, it wins.
+// device loaded fits either reading, it wins. A plug-in loaded by path reads
+// as its bare file name ("Serum2.vst3").
 function loadedFile() {
-  const match = /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(loadedPlugin() ?? "");
+  const plug = loadedPlugin();
+  const match = /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(plug ?? "");
 
-  if (match == null) return null;
+  if (match == null) {
+    return plug == null ? null : plug.replace(/\.(vst3|vst|dll)$/i, "");
+  }
 
   const known = storedNameDict()?.get("file");
 

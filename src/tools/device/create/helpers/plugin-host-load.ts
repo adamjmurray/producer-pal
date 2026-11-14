@@ -28,6 +28,11 @@ export interface PluginLoadRequest {
    */
   file: string;
   /**
+   * The file's full path (VST3, VST2), which the wrapper tries when the name
+   * finds nothing: `vst~` only finds names in the folders Max knows.
+   */
+  path?: string;
+  /**
    * The plug-in inside a VST3 bundle that holds several. Left out otherwise:
    * Max can't search a bundle that has no moduleinfo.json.
    */
@@ -60,6 +65,9 @@ export async function resolvePluginPlan(name: string): Promise<PluginPlan> {
     request: {
       format: plugin.format === "VST" ? "VST2" : plugin.format,
       file: loadFile(plugin),
+      ...(plugin.format !== "AU" && {
+        path: plugin.file.replaceAll("\\", "/"),
+      }),
       ...(plugin.format === "VST3" && plugin.shared && { sub: plugin.name }),
       name: plugin.name,
       synth: plugin.category === "instrument",
@@ -203,5 +211,9 @@ function loadFile(plugin: ResolvedPlugin): string {
 
   const leaf = plugin.file.replace(/^.*[\\/]/, "");
 
-  return leaf.replace(plugin.format === "VST3" ? /\.vst3$/i : /\.vst$/i, "");
+  // A VST2 is a .vst bundle on macOS and a .dll on Windows.
+  return leaf.replace(
+    plugin.format === "VST3" ? /\.vst3$/i : /\.(vst|dll)$/i,
+    "",
+  );
 }

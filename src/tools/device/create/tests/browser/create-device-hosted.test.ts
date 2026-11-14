@@ -175,6 +175,7 @@ describe("createDevice hosted", () => {
         op: "load",
         format: "VST3",
         file: "Serum2",
+        path: "/Library/Audio/Plug-Ins/VST3/Serum2.vst3",
         sub: "Serum 2 FX",
         name: "Serum 2 FX",
         synth: false,
