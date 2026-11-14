@@ -1078,7 +1078,7 @@ function setParams(changes) {
         ? Number(change.index)
         : state.names.indexOf(String(change.name)) + 1;
 
-    if (index < 1 || index > state.names.length) {
+    if (!Number.isInteger(index) || index < 1 || index > state.names.length) {
       throw new Error(`no param ${change.name ?? change.index}`);
     }
 
