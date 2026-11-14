@@ -67,6 +67,7 @@ function processClipsForDuplication(
   if (withoutClips === true) {
     deleteSessionClips(newTrack);
     deleteArrangementClips(newTrack);
+    collectTakeLaneClips(newTrack, duplicatedClips);
   } else {
     collectSessionClips(newTrack, duplicatedClips);
     collectArrangementClips(newTrack, duplicatedClips);
@@ -100,6 +101,23 @@ function deleteArrangementClips(newTrack: LiveAPI): void {
 
   for (const clipId of arrangementClipIds) {
     newTrack.call("delete_clip", clipId);
+  }
+}
+
+/**
+ * Collect the clips on a track's take lanes, which Live copies with the track
+ * and nothing in the API deletes.
+ * @param newTrack - The track LiveAPI object
+ * @param keptClips - Array to append clip info to
+ */
+function collectTakeLaneClips(
+  newTrack: LiveAPI,
+  keptClips: MinimalClipInfo[],
+): void {
+  for (const lane of newTrack.getChildren("take_lanes")) {
+    for (const clip of lane.getChildren("arrangement_clips")) {
+      keptClips.push(getMinimalClipInfo(clip));
+    }
   }
 }
 
@@ -288,6 +306,16 @@ function makeTrackCopy(
       }
 
       clips.push(...processClipsForDuplication(copied, options.withoutClips));
+    }
+
+    // Without clips, the only ones left are those that couldn't be cleared.
+    if (options.withoutClips === true && clips.length > 0) {
+      const these = clips.length === 1 ? "clip is" : "clips are";
+
+      noteTarget(
+        notes,
+        `the track was made, but its ${clips.length} take-lane ${these} still there: Live only deletes those by hand`,
+      );
     }
   } catch (error) {
     noteTarget(
