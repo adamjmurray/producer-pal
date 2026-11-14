@@ -29,7 +29,8 @@ Part of [Skip entries, tool by tool](README.md).
   `{id, deletedPath}`, and the group has no detail when nothing else went with
   it. If the group wasn't deleted (refused or skipped), a track named with it is
   deleted like any other track. A track Live deleted before a throw is
-  `already changed: deleted the track`, and a group's adds what went with it:
+  `already changed: deleted the track`, and a group's adds what went with it,
+  clips included:
   `already changed: deleted the track, also deleted the track inside this group track: t2 (id b)`.
   Live silently ignores a delete of the only track in a group track (a group
   counts), so that target is skipped at its turn, just before the Live call
@@ -53,13 +54,19 @@ Part of [Skip entries, tool by tool](README.md).
   from before the call and its name (the path alone when it has none; no id,
   which is gone). A list stops at the first 10 clips and ends `, and N more`:
   `also deleted the 24 clips on this track: <10>, and 14 more`. An empty scene's
-  or track's entry is a plain `{id, deletedPath}`. Deleting a group track lists
-  only the tracks inside it
-  (`also deleted the N tracks inside this group track`), never their clips or
-  the group's own; a track named beside its group lists its own clips. A target
-  that is refused or skipped lists no clips. Names are read only for the clips
-  listed. If Live deletes it and then throws, the entry keeps the listing in
-  `<error>; already changed: deleted the scene, also deleted ...`
+  or track's entry is a plain `{id, deletedPath}`. Deleting a group track also
+  names the clips on the tracks inside it, nested groups included, after the
+  track list:
+  `also deleted the 3 tracks inside this group track: t13 (id 124), t14 (id 125), t15 (id 126); and the 12 clips on them: <10>, and 2 more`
+  (`the clip on them: ...` for one; `on it` when one track is listed). They are
+  in track order, each track's in the order a track delete lists them, and stop
+  at the first 10 across the whole group; the count is always the total. Only
+  the tracks the group's detail lists are counted: a track named beside its
+  group lists its own clips on its own entry, so no clip is said twice. A group
+  whose tracks hold no clips adds nothing, and a group's own slots hold none. A
+  target that is refused or skipped lists no clips. Names are read only for the
+  clips listed. If Live deletes it and then throws, the entry keeps the listing
+  in `<error>; already changed: deleted the scene, also deleted ...`
   (`deleted the track` for a track); if it survives, no clip is claimed. Live 12
   reads no return-track slot.
 - **delete: a skipped target's path can go stale.** Deleting shifts the siblings

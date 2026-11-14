@@ -26,6 +26,7 @@ import { type DeletePayload } from "./delete-targets.ts";
  * @param targets - The call's targets, in the order named
  * @returns Nothing for a call that deletes neither; no entry for a scene or
  *   track with no clips, or for a group track, which holds none of its own
+ *   (its detail names the clips on the tracks inside it)
  */
 export function clipDeletes(
   type: string,
@@ -74,8 +75,8 @@ function listScene(sceneIndex: number): ListedClip[] {
   return sceneClips(sceneIndex).map(({ clip, path }) => ({ path, clip }));
 }
 
-// A group track's slots only fire the tracks inside it, and the tracks inside
-// are said in the group's own detail.
+// A group track's slots only fire the tracks inside it. The tracks inside, and
+// the clips on them, are said in the group's own detail (group-deletes.ts).
 function trackDetail(track: LiveAPI): string | undefined {
   return isGroupTrack(track)
     ? undefined

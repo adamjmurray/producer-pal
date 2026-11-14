@@ -187,7 +187,10 @@ function deleteTarget(
   const address = step.planned;
   const alsoDeleted =
     clips.get(step.index) ??
-    alsoDeletedDetail(groups.unnamedInside.get(step.index) ?? []);
+    alsoDeletedDetail(
+      groups.unnamedInside.get(step.index) ?? [],
+      groups.insideClips.get(step.index),
+    );
   let { object } = data;
 
   if (groups.covered.has(step.index)) {

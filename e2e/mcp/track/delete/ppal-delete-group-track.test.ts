@@ -145,6 +145,30 @@ describe("ppal-delete of group tracks", () => {
     await expectGone(group, ...members);
   });
 
+  it("names the clips on the tracks that went with a group track", async () => {
+    const { group, members } = await copyParentWithTwoMembers();
+    const [added] = members as [TrackRef, TrackRef];
+
+    await call("ppal-create-clip", {
+      path: `${added.path}/s0,${added.path}[1|1]`,
+      notes: "C3 1|1",
+      name: "In Slot,On Timeline",
+    });
+
+    const deleted = parseToolResult<DeleteResult>(
+      await call("ppal-delete", { type: "track", id: group.id }),
+    );
+
+    expect(deleted.detail).toBe(
+      `also deleted the 2 tracks inside this group track: ${members
+        .map(({ id, path }) => `${path} (id ${id})`)
+        .join(", ")}; ` +
+        `and the 2 clips on them: ${added.path}/s0 "In Slot", ${added.path}[1|1] "On Timeline"`,
+    );
+
+    await expectGone(group, ...members);
+  });
+
   it("skips the only track in a group and names the group to delete", async () => {
     const { group, members } = await copyParent();
     const [member] = members as [TrackRef];
