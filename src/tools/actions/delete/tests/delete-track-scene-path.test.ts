@@ -136,6 +136,33 @@ describe("deleteObject by track and scene path", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("deletes the other tracks highest first when the main track is named between them", () => {
+    setupTrackMocks({
+      track_1: String(livePath.track(1)),
+      track_3: String(livePath.track(3)),
+    });
+    registerMockObject("main", {
+      path: livePath.masterTrack(),
+      type: "Track",
+    });
+
+    const result = deleteObject({ path: "t1, mt, t3", type: "track" });
+
+    expect(result).toStrictEqual([
+      { id: "track_1", deletedPath: "t1" },
+      {
+        path: "mt",
+        ok: false,
+        detail: "Live has no way to delete the main track mt (id main)",
+      },
+      { id: "track_3", deletedPath: "t3" },
+    ]);
+    expect(liveSet.call.mock.calls).toStrictEqual([
+      ["delete_track", 3],
+      ["delete_track", 1],
+    ]);
+  });
+
   it("says a take lane can't be deleted, by path or by id", () => {
     registerMockObject("lane_1", {
       path: livePath.track(0).takeLane(1),
