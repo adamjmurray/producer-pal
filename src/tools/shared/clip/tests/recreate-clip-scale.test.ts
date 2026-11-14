@@ -90,6 +90,7 @@ function onArrangement(losses: string[] = []): LiveAPI {
     undefined,
     undefined,
     losses,
+    {},
   );
 }
 

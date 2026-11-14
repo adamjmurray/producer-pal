@@ -24,6 +24,12 @@ import {
 import { arrangementSpan, keptSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
 import { resizeArrangementClip } from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
+import {
+  LIVE_SHORTENED_IT,
+  recreateSpanRoom,
+  type SpanRoom,
+  type SpanRoomContext,
+} from "#src/tools/clip/arrangement/helpers/recreate-span-room.ts";
 
 /**
  * Thrown when the clip was created but a later step — notes, properties, color
@@ -46,9 +52,6 @@ export class PartialRecreateError extends Error {
     this.partialClip = partialClip;
   }
 }
-
-/** Why a re-created clip came out shorter than its source. */
-const LIVE_SHORTENED_IT = "Live shortened the new clip";
 
 /** Why an audio clip with no sample can't be re-created. */
 const NO_SAMPLE_FILE =
@@ -80,6 +83,8 @@ interface RecreateTarget {
    * span, so there the copy is as long as the source's loop.
    */
   keepsSpan: boolean;
+  /** The room an audio copy grows into; a session slot needs none. */
+  room?: SpanRoom;
   createMidi: (length: number) => LiveAPI;
   createAudio: (filePath: string) => LiveAPI;
 }
@@ -90,8 +95,9 @@ interface RecreateTarget {
  *
  * An arrangement source keeps its span on the timeline, not its loop length. A
  * MIDI copy is created at that span; an audio copy is resized to it, since
- * `create_audio_clip` takes no length. A different length is reported in
- * `losses`.
+ * `create_audio_clip` takes no length. On a main lane the span is cleared
+ * first, so the copy overwrites what is there like a plain duplicate. A
+ * different length is reported in `losses`.
  *
  * Used for both take-lane directions, because `duplicate_clip_to_arrangement`
  * handles neither: a TakeLane has no duplicate API, and the Track-scoped one
@@ -104,6 +110,7 @@ interface RecreateTarget {
  * @param color - Color for the new clip
  * @param losses - Collects what the copy turned out to lose, on top of what
  *   {@link recreatedClipLosses} knew up front
+ * @param context - The call's silence file and lanes, for clearing a main lane
  * @returns The created clip
  */
 export function recreateClip(
@@ -113,9 +120,11 @@ export function recreateClip(
   name: string | undefined,
   color: string | undefined,
   losses: string[],
+  context: SpanRoomContext,
 ): LiveAPI {
   return recreateInto(sourceClip, name, color, losses, {
     keepsSpan: true,
+    room: recreateSpanRoom(destination, context, losses),
     createMidi: (length) =>
       createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
@@ -327,6 +336,7 @@ function recreateInto(
 
     // Live sizes a new audio clip to its sample, so it is resized to the span.
     if (span != null && !keptSpan(newClip, span)) {
+      target.room?.clearAhead(newClip, span);
       resizeArrangementClip({
         clip: newClip,
         spanBeats: span,
@@ -338,7 +348,7 @@ function recreateInto(
       newClip,
       span,
       meterOf(snapshot.properties),
-      LIVE_SHORTENED_IT,
+      target.room?.shortCause(newClip) ?? LIVE_SHORTENED_IT,
       losses,
     );
   } catch (error) {

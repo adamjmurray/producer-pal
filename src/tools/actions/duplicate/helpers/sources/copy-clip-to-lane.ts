@@ -22,6 +22,7 @@ import {
   recreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import { type SpanRoomContext } from "#src/tools/clip/arrangement/helpers/recreate-span-room.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   clearedBefore,
@@ -60,6 +61,8 @@ export interface LaneDestination {
   meter: CopyMeter;
   name: string | undefined;
   color: string | undefined;
+  /** The call's silence file and lanes, for clearing a main lane. */
+  context: SpanRoomContext;
 }
 
 /**
@@ -152,6 +155,7 @@ export interface LaneTarget extends LanePlace {
  * @param takeLaneName - Deprecated: name for a lane this call creates
  * @param meter - The song meter every position is spelled in
  * @param ledger - The call's arrangement lanes
+ * @param context - The call's silence file and lanes, for clearing a main lane
  * @returns The destination's entry in the result
  */
 export function runLaneCopy(
@@ -160,6 +164,7 @@ export function runLaneCopy(
   takeLaneName: string | undefined,
   meter: CopyMeter,
   ledger: LaneLedger,
+  context: SpanRoomContext,
 ): object {
   const { trackIndex, laneIndex, label, sourceClips, name, color } = target;
   const onLane = laneIndex != null;
@@ -204,6 +209,7 @@ export function runLaneCopy(
           meter,
           name,
           color,
+          context,
         },
         losses,
       );
@@ -269,12 +275,20 @@ function recreate(
   startBeats: number,
   losses: Set<string>,
 ): MinimalClipInfo | TargetSkip {
-  const { lane, label, kind, meter, name, color } = destination;
+  const { lane, label, kind, meter, name, color, context } = destination;
   const clipLosses = recreatedClipLosses(clip);
   let copy: LiveAPI;
 
   try {
-    copy = recreateClip(clip, lane, startBeats, name, color, clipLosses);
+    copy = recreateClip(
+      clip,
+      lane,
+      startBeats,
+      name,
+      color,
+      clipLosses,
+      context,
+    );
   } catch (error) {
     if (error instanceof PartialRecreateError) {
       return withLandedColor(error.partialClip, color, (said) =>

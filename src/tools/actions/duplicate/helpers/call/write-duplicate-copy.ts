@@ -285,6 +285,7 @@ function writeLane(
       run.takeLaneName,
       { songTimeSigNumerator: numerator, songTimeSigDenominator: denominator },
       run.ledger,
+      run.context,
     ),
     step,
   );

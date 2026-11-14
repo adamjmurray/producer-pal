@@ -219,6 +219,7 @@ async function recreateCopy(
       options.name,
       options.color,
       losses,
+      options.context,
     );
   } catch (error) {
     // A real clip is there, so it is reported — with what it cost. Calling it a

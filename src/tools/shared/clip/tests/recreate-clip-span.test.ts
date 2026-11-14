@@ -84,6 +84,7 @@ function recreate(): string[] {
     undefined,
     undefined,
     losses,
+    {},
   );
 
   return losses;

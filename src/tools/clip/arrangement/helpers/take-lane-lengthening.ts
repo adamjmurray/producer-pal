@@ -20,9 +20,7 @@ import {
 } from "./arrangement-length-changes.ts";
 import { noteLandedShort } from "./unlooped-lengthening.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-
-/** Why a take-lane clip stopped short of the length asked for. */
-const NEXT_CLIP_ON_LANE = "the next clip on the lane starts there";
+import { NEXT_CLIP_ON_LANE } from "./recreate-span-room.ts";
 
 interface LengthenTakeLaneClipArgs {
   clip: LiveAPI;

@@ -83,7 +83,15 @@ describe("recreating a Live 13 step sequencer clip", () => {
     const clip = LiveAPI.from("id src");
 
     expect(() =>
-      recreateClip(clip, LiveAPI.from("id track"), 0, undefined, undefined, []),
+      recreateClip(
+        clip,
+        LiveAPI.from("id track"),
+        0,
+        undefined,
+        undefined,
+        [],
+        {},
+      ),
     ).toThrow(STEP_SEQUENCER_NO_REBUILD);
     expect(() =>
       recreateClipInSlot(

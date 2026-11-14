@@ -11,7 +11,8 @@
  * Take lanes are append-only, so every test depends on setupMcpTestContext()
  * reopening the Live Set between tests to reset state (no `once`).
  *
- * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track.
+ * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track; t5 is an audio track
+ * with nothing on its arrangement.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/take-lanes/ppal-take-lanes-promote
@@ -26,7 +27,11 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import { callTool } from "../../clip/helpers/arrangement-clip-query-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import {
+  AUDIO_TRACK,
+  DRUM_LOOP_FILE,
+  EMPTY_MIDI_TRACK,
+} from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -88,7 +93,7 @@ describe("promoting a take-lane clip", () => {
       length: "1bar",
     });
 
-    const buried = await createClip({
+    await createClip({
       path: `t${EMPTY_MIDI_TRACK}[7|1]`,
       notes: "D3 1|1",
       length: "1bar",
@@ -104,16 +109,43 @@ describe("promoting a take-lane clip", () => {
         `overwrote the clip at t${EMPTY_MIDI_TRACK}[7|1]`,
     );
 
-    await sleep(100);
-    const mainClips = (await readTrackClips()).arrangementClips ?? [];
+    await expectOnlyCopyOnMainLane(EMPTY_MIDI_TRACK, promoted.data.id);
+  });
 
-    expect(mainClips.map((clip) => clip.id)).not.toContain(buried.id);
-    expect(mainClips).toStrictEqual([
-      expect.objectContaining({
-        id: promoted.data.id,
-        arrangementLength: "4bar",
+  // Live sizes a new audio clip to its sample and stops a growing clip at the
+  // next one, so the main lane is cleared ahead of the copy.
+  it("grows a looped audio take over the clips in its span", async () => {
+    const lane = `t${AUDIO_TRACK}/l0`;
+    const take = await createClip({
+      path: `${lane}[1|1]`,
+      sampleFile: DRUM_LOOP_FILE,
+    });
+
+    await callTool(ctx.client!, "ppal-update-clip", {
+      id: take.id,
+      looping: true,
+      arrangementLength: "4bar",
+    });
+
+    await createClip({
+      path: `t${AUDIO_TRACK}[7|1]`,
+      sampleFile: DRUM_LOOP_FILE,
+    });
+    const promoted = parseToolResultWithWarnings<DuplicateClipResult>(
+      await callTool(ctx.client!, "ppal-duplicate", {
+        type: "clip",
+        id: take.id,
+        toPath: `t${AUDIO_TRACK}[5|1]`,
       }),
-    ]);
+    );
+
+    expect(promoted.data.detail).toBe(
+      "promoted to the main lane by re-creating it " +
+        "(warp markers reset to the sample's defaults); " +
+        `overwrote the clip at t${AUDIO_TRACK}[7|1]`,
+    );
+
+    await expectOnlyCopyOnMainLane(AUDIO_TRACK, promoted.data.id);
   });
 });
 
@@ -151,14 +183,31 @@ async function promote(
 }
 
 /**
- * @returns The empty MIDI track's main-lane clips and take lanes
+ * Expect a 4-bar copy to be the only clip left on a track's main lane.
+ * @param track - The track the copy was promoted on
+ * @param copyId - The copy
  */
-async function readTrackClips(): Promise<TrackClips> {
+async function expectOnlyCopyOnMainLane(
+  track: number,
+  copyId: string,
+): Promise<void> {
+  await sleep(100);
+
+  expect((await readTrackClips(track)).arrangementClips).toStrictEqual([
+    expect.objectContaining({ id: copyId, arrangementLength: "4bar" }),
+  ]);
+}
+
+/**
+ * @param track - The track to read; the empty MIDI track by default
+ * @returns The track's main-lane clips and take lanes
+ */
+async function readTrackClips(track = EMPTY_MIDI_TRACK): Promise<TrackClips> {
   await sleep(100);
 
   return parseToolResult<TrackClips>(
     await callTool(ctx.client!, "ppal-read-track", {
-      path: `t${EMPTY_MIDI_TRACK}`,
+      path: `t${track}`,
       include: ["arrangement-clips"],
     }),
   );

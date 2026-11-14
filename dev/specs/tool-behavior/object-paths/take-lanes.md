@@ -46,18 +46,21 @@ take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
 (promote) by rebuilding the clip from its notes, or from its sample for audio;
 envelope automation is dropped, and a warped audio clip's markers reset. A copy
 keeps the source's arrangement length even when its loop is shorter (an audio
-copy is resized to it, since `create_audio_clip` takes no length); if Live stops
-it short, its entry reports the length it got. An `arrangementLength` resizes
-the copy afterward, exactly as `update-clip` would. A `duplicate` with
-`type: "track"` and a lane destination copies a whole lane the same way — clips
-only, so the devices, routing, mixer settings and session clips a new-track copy
-carries stay behind. Its source is a track (`t2`, its main lane) or a lane
-(`t2/l0`, or that lane's id); `t2/l+` names no source, and a lane can't copy
-onto itself. A lane source with a bare track destination (`t2`, its own track or
-another) promotes the whole lane onto that track's main lane, replacing the
-clips already at those positions; it makes no lane, so its entry reports the
-track's path with no `created`. A track source has no such destination — a bare
-`toPath` there is the new-track copy's, and is ignored.
+copy is resized to it, since `create_audio_clip` takes no length). Promoted to a
+main lane, the copy overwrites the clips in that span like any duplicate, and
+its entry names them. A lane can't be cleared, so there the copy stops at the
+next clip: `length is 2bar, not 4bar: the next clip on the lane starts there`.
+If Live stops it short for a reason of its own, the entry reports the length it
+got. An `arrangementLength` resizes the copy afterward, exactly as `update-clip`
+would. A `duplicate` with `type: "track"` and a lane destination copies a whole
+lane the same way — clips only, so the devices, routing, mixer settings and
+session clips a new-track copy carries stay behind. Its source is a track (`t2`,
+its main lane) or a lane (`t2/l0`, or that lane's id); `t2/l+` names no source,
+and a lane can't copy onto itself. A lane source with a bare track destination
+(`t2`, its own track or another) promotes the whole lane onto that track's main
+lane, replacing the clips already at those positions; it makes no lane, so its
+entry reports the track's path with no `created`. A track source has no such
+destination — a bare `toPath` there is the new-track copy's, and is ignored.
 
 **A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
 lane clip gets as close as Live allows — `update-clip` copies the content to the
