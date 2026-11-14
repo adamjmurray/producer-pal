@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { gainDbParam } from "#src/tools/shared/schema/gain-db-param.ts";
 import {
   splitEntries,
   unescapeCommas,
@@ -21,7 +22,7 @@ export const sendsInputSchema = z
   .array(
     z.object({
       return: z.coerce.string(),
-      gainDb: z.coerce.number().min(-70).max(0),
+      gainDb: gainDbParam(0),
     }),
   )
   .optional();

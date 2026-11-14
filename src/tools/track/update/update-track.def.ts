@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
+import { gainDbParam } from "#src/tools/shared/schema/gain-db-param.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
@@ -46,12 +47,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       default: "#RRGGBB, or comma-separated one per target",
       smallModel: "#RRGGBB",
     }),
-    gainDb: z.coerce
-      .number()
-      .min(-70)
-      .max(6)
-      .optional()
-      .describe("track gain in dB"),
+    gainDb: gainDbParam(6).optional().describe("track gain in dB"),
     pan: z.coerce
       .number()
       .min(-1)

@@ -10,6 +10,7 @@ import {
   sendsInputSchema,
 } from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
+import { gainDbParam } from "#src/tools/shared/schema/gain-db-param.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -123,7 +124,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       default: "#RRGGBB, or comma-separated one per target (chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
-    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
+    gainDb: param(gainDbParam(6).optional(), {
       default:
         "chain's own gain in dB (chains only; a pad path works unless the " +
         "pad has layers, which take a layer path like 't0/d0/pC1/c1')",

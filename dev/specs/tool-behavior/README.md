@@ -138,6 +138,8 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
     spells the root its own way (the Live Set's, and a clip's in update-clip and
     create-clip). Positions compare as beats, so `5|1.0` landing at `5|1` is
     silent.
+  - A fader at the bottom reads `"-inf"`, and a write takes it back: `gainDb` on
+    a track, a rack chain or a `sends` entry accepts `"-inf"` as -70.
   - State that governs what the call did still reports, since the caller may
     never have read it: `panningMode` when a pan param went in under split mode
     the call didn't name, and playback's `startTime`.
