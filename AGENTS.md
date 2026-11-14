@@ -294,11 +294,17 @@ E2E tests live in `e2e/mcp/` and drive a real Ableton Live. See
 **Always ask before running them** — they open a Live Set without saving the
 current one, which can destroy work in progress.
 
-**Always run a single file.** The full suite takes several minutes.
+**Always run a single file.** The full suite takes well over an hour.
 
 ```bash
 npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
+
+**Before a full run, have Live quit and reopened**, and make sure no other Live
+is running. Live leaks V8 heap on every Set load and crashes if one process goes
+through much more than a full run; a second Live takes the MCP port and every
+test times out. Check the first few files pass before leaving it running. See
+`e2e/mcp/README.md`.
 
 **A new track is not always empty.** Live applies the user's default track
 preset (User Library → `Defaults/Creating Tracks/`) to every track it creates,

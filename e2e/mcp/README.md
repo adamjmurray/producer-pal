@@ -23,6 +23,20 @@ npm run e2e:mcp
 npm run e2e:mcp:watch
 ```
 
+### Before a full run: restart Live
+
+Quit Live completely and reopen it (or leave it closed — the tests open it)
+before running the whole suite. Every Set load leaves about 0.8 MB on Live's V8
+heap that is never freed, and a full run loads a Set about 2,000 times. On a
+Live that has already been through a run, that ends in a V8 out-of-memory crash
+part-way through. See
+[performance.md](../../dev/live-api/performance.md#v8-heap-grows-per-set-load).
+
+Quit every other Live too. A second Live (another version, say) holds the MCP
+port, so the tests talk to the wrong one and every test times out.
+
+A single file doesn't need a restart.
+
 ### Code execution tests
 
 The `clip/ppal-code-exec.test.ts` suite exercises the sandboxed `code`
