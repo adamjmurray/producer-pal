@@ -470,8 +470,7 @@ function settlePlayback(
     // Clips fired after the first are subject to launch quantization, so
     // restart the transport to keep them in sync.
     if (fired.length > 1) {
-      liveSet.call("stop_playing");
-      call.landed("transport stopped");
+      stopTransport(liveSet, call.landed);
       liveSet.call("start_playing");
     }
 
