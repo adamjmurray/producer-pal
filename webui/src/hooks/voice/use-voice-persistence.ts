@@ -187,25 +187,27 @@ export function useVoicePersistence(
       return;
     }
 
-    void loadConversation(hashId).then((record) => {
-      if (!record) {
-        startNewConversation();
-
-        return;
-      }
-
-      if (record.sessionType !== "voice") {
-        if (onForeignRecord) {
-          onForeignRecord(record);
-        } else {
+    void loadConversation(hashId, { tolerateImageFailure: true }).then(
+      (record) => {
+        if (!record) {
           startNewConversation();
+
+          return;
         }
 
-        return;
-      }
+        if (record.sessionType !== "voice") {
+          if (onForeignRecord) {
+            onForeignRecord(record);
+          } else {
+            startNewConversation();
+          }
 
-      adoptRecord(record);
-    });
+          return;
+        }
+
+        adoptRecord(record);
+      },
+    );
   }, [refreshList, startNewConversation, onForeignRecord, adoptRecord]);
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
@@ -272,7 +274,9 @@ export function useVoicePersistence(
 
   const switchConversation = useCallback(
     async (id: string) => {
-      const record = await loadConversation(id);
+      const record = await loadConversation(id, {
+        tolerateImageFailure: true,
+      });
 
       if (!record) {
         startNewConversation();

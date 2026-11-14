@@ -121,7 +121,17 @@ export function getConversationDb(): Promise<IDBPDatabase> {
     return Promise.reject(retired);
   }
 
-  dbPromise ??= tryOpenDb();
+  if (dbPromise == null) {
+    const opening = tryOpenDb();
+
+    dbPromise = opening;
+    // A failed open isn't kept: the next call tries again.
+    opening.catch(() => {
+      if (dbPromise === opening) {
+        dbPromise = null;
+      }
+    });
+  }
 
   return dbPromise;
 }
@@ -185,6 +195,12 @@ export interface LoadConversationOptions {
    * resave them. Default true.
    */
   images?: boolean;
+  /**
+   * True opens the conversation with its text when its image bytes can't be
+   * read, leaving the images out, instead of rejecting. For callers that show
+   * the conversation. A later save keeps the images. Default false.
+   */
+  tolerateImageFailure?: boolean;
 }
 
 /**
@@ -204,7 +220,9 @@ export async function loadConversation(
   const normalized = raw ? normalizeLegacyRecord(raw) : undefined;
 
   return normalized && options.images !== false
-    ? await loadConversationImages(normalized)
+    ? await loadConversationImages(normalized, {
+        tolerateFailure: options.tolerateImageFailure,
+      })
     : normalized;
 }
 
@@ -410,11 +428,10 @@ export async function resetDbCache(): Promise<void> {
   resetDbRetired();
   await resetImageDbCache();
 
-  if (cached) {
-    const db = await cached;
+  // A failed open has nothing to close.
+  const db = await cached?.catch(() => null);
 
-    db.close();
-  }
+  db?.close();
 }
 
 // --- Helpers below main exports ---

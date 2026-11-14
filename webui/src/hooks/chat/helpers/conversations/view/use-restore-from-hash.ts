@@ -46,7 +46,9 @@ export function useRestoreFromHash({
         return;
       }
 
-      const record = await loadConversation(hashId);
+      const record = await loadConversation(hashId, {
+        tolerateImageFailure: true,
+      });
 
       if (seq !== view.current()) {
         return;

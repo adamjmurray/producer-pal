@@ -44,10 +44,20 @@ export function getImageDb(): Promise<IDBPDatabase> {
     return Promise.reject(retired);
   }
 
-  imageDbPromise ??= openTrackedDb(IMAGE_DB_NAME, IMAGE_DB_VERSION, (db) => {
-    db.createObjectStore(IMAGE_STORE);
-    db.createObjectStore(TOUCHED_STORE);
-  });
+  if (imageDbPromise == null) {
+    const opening = openTrackedDb(IMAGE_DB_NAME, IMAGE_DB_VERSION, (db) => {
+      db.createObjectStore(IMAGE_STORE);
+      db.createObjectStore(TOUCHED_STORE);
+    });
+
+    imageDbPromise = opening;
+    // A failed open isn't kept: the next call tries again.
+    opening.catch(() => {
+      if (imageDbPromise === opening) {
+        imageDbPromise = null;
+      }
+    });
+  }
 
   return imageDbPromise;
 }

@@ -23,6 +23,14 @@ const SPARED_MS = 60_000;
  */
 const knownRefs = new WeakMap<object, string>();
 
+/**
+ * Stored messages of conversations opened while their image bytes couldn't be
+ * read, by id. The opened copy has no such images, so a save would drop their
+ * refs and the next sweep would delete the bytes. {@link storeConversationImages}
+ * puts the refs back.
+ */
+const unreadImages = new Map<string, ChatMessage[]>();
+
 /** How an image sits in a stored record: its bytes live under `ref`. */
 interface StoredImage {
   mediaType: string;
@@ -32,6 +40,15 @@ interface StoredImage {
 /** Anything persisted with chat messages (a conversation record). */
 interface WithMessages {
   messages: ChatMessage[];
+}
+
+/** What {@link loadConversationImages} does when the bytes can't be read. */
+export interface LoadImagesOptions {
+  /**
+   * True opens the record without its stored images instead of throwing, for a
+   * caller that would rather show the text. Saving it later keeps the images.
+   */
+  tolerateFailure?: boolean;
 }
 
 /**
@@ -49,7 +66,7 @@ export async function storeConversationImages<T extends WithMessages>(
   record: T,
 ): Promise<T> {
   const inline = new Map<string, string>();
-  const stored = mapImages(record, (image) => {
+  const mapped = mapImages(record, (image) => {
     if (isStoredImage(image)) {
       return image;
     }
@@ -61,6 +78,7 @@ export async function storeConversationImages<T extends WithMessages>(
 
     return { mediaType: image.mediaType, ref };
   });
+  const stored = restoreUnreadImages(mapped);
 
   if (inline.size > 0) {
     await writeImages(inline);
@@ -71,12 +89,16 @@ export async function storeConversationImages<T extends WithMessages>(
 
 /**
  * Put a stored record's image bytes back. An image whose bytes are missing is
- * dropped: an empty one would fail the next model request.
+ * dropped: an empty one would fail the next model request. If the store can't
+ * be read at all, this throws, or with `tolerateFailure` drops every stored
+ * image the same way.
  * @param record - Record as read from the conversation store
+ * @param options - What to do when the bytes can't be read
  * @returns A copy with inline images
  */
 export async function loadConversationImages<T extends WithMessages>(
   record: T,
+  options: LoadImagesOptions = {},
 ): Promise<T> {
   const refs = conversationImageRefs([record]);
 
@@ -84,12 +106,27 @@ export async function loadConversationImages<T extends WithMessages>(
     return record;
   }
 
-  const db = await getImageDb();
-  const store = db.transaction(IMAGE_STORE).store;
-  const bytes = new Map<string, string | undefined>();
+  const id = (record as { id?: unknown }).id;
+  let bytes: Map<string, string | undefined>;
 
-  for (const ref of refs) {
-    bytes.set(ref, (await store.get(ref)) as string | undefined);
+  try {
+    bytes = await readImageBytes(refs);
+  } catch (error) {
+    if (!options.tolerateFailure) {
+      throw error;
+    }
+
+    console.error("Failed to read conversation images", error);
+
+    if (typeof id === "string") {
+      unreadImages.set(id, record.messages);
+    }
+
+    return mapImages(record, (image) => (isStoredImage(image) ? null : image));
+  }
+
+  if (typeof id === "string") {
+    unreadImages.delete(id);
   }
 
   return mapImages(record, (image) => {
@@ -109,6 +146,56 @@ export async function loadConversationImages<T extends WithMessages>(
 
     return inline;
   });
+}
+
+/**
+ * Read image bytes from the image database.
+ * @param refs - Refs to read
+ * @returns Bytes by ref; undefined where nothing is stored
+ */
+async function readImageBytes(
+  refs: Set<string>,
+): Promise<Map<string, string | undefined>> {
+  const db = await getImageDb();
+  const store = db.transaction(IMAGE_STORE).store;
+  const bytes = new Map<string, string | undefined>();
+
+  for (const ref of refs) {
+    bytes.set(ref, (await store.get(ref)) as string | undefined);
+  }
+
+  return bytes;
+}
+
+/**
+ * Put back the image refs a conversation lost when it was opened without its
+ * bytes. A message gets them back if it's still the same message (same role
+ * and text) and has no images of its own.
+ * @param record - Record about to be saved
+ * @returns The record, with those refs restored
+ */
+function restoreUnreadImages<T extends WithMessages>(record: T): T {
+  const id = (record as { id?: unknown }).id;
+  const original = typeof id === "string" ? unreadImages.get(id) : undefined;
+
+  if (original == null || !Array.isArray(record.messages)) {
+    return record;
+  }
+
+  const messages = record.messages.map((message, i) => {
+    const before = original.at(i) ?? null;
+    const refs = storedImagesOf(before).filter(isStoredImage);
+
+    return refs.length > 0 &&
+      storedImagesOf(message).length === 0 &&
+      before != null &&
+      message.role === before.role &&
+      message.content === before.content
+      ? { ...message, images: refs as unknown as ChatImage[] }
+      : message;
+  });
+
+  return { ...record, messages };
 }
 
 /**

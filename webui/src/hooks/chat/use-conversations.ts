@@ -276,7 +276,9 @@ export function useConversations({
   const switchConversation = useCallback(
     async (id: string) => {
       const seq = view.next();
-      const record = await loadConversation(id);
+      const record = await loadConversation(id, {
+        tolerateImageFailure: true,
+      });
 
       if (seq !== view.current()) {
         return;
