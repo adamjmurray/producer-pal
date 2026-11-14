@@ -67,7 +67,7 @@ describe("readAuComponents", () => {
   it("looks in the system's AU folders by default", () => {
     expect(auComponentDirs()).toStrictEqual([
       "/Library/Audio/Plug-Ins/Components",
-      expect.stringMatching(/Library\/Audio\/Plug-Ins\/Components$/),
+      expect.stringMatching(/Library[\\/]Audio[\\/]Plug-Ins[\\/]Components$/),
       "/System/Library/Components",
     ]);
   });
@@ -124,7 +124,7 @@ describe("readAppAuComponents", () => {
   it("looks in the system's app folders by default", () => {
     expect(auAppDirs()).toStrictEqual([
       "/Applications",
-      expect.stringMatching(/\/Applications$/),
+      expect.stringMatching(/[\\/]Applications$/),
     ]);
   });
 });

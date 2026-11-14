@@ -66,8 +66,8 @@ describe("loadJudgedResults", () => {
     });
 
     expect(items.map((i) => i.file).toSorted()).toStrictEqual([
-      join("run1", "new.json"),
-      join("run1", "undated.json"),
+      "run1/new.json",
+      "run1/undated.json",
     ]);
     expect(skipped.staleCriteria).toBe(1);
   });

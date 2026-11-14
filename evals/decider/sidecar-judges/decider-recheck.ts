@@ -123,7 +123,7 @@ export function parseRecheckArgs(argv: string[]): RecheckArgs {
   }
 
   // A run directory path carries its results directory with it.
-  const fromPath = runs.some((r) => r.includes("/"))
+  const fromPath = runs.some((r) => /[\\/]/.test(r))
     ? dirname(resolve(runs[0] as string))
     : undefined;
   const judges = flag("judges")

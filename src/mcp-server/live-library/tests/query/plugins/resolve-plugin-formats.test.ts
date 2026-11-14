@@ -10,7 +10,7 @@ import {
 } from "./plugin-db-fixture.ts";
 import { resolvePlugin } from "../../../query/plugins/resolve-plugin.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import {
   afterEach,
   beforeAll,
@@ -335,7 +335,7 @@ describe("resolvePlugin by format", () => {
 
         const { file, category } = await resolvePlugin({ name }, [auDir]);
 
-        return { file: file.split("/").pop(), category };
+        return { file: basename(file), category };
       }
 
       it("takes the bundle of the vendor the browser shows", async () => {

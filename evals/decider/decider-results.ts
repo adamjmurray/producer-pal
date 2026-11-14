@@ -113,7 +113,8 @@ export async function loadJudgedResults(
 
   for (const runId of runIds) {
     for (const name of await listJsonFiles(join(dir, runId))) {
-      const file = join(runId, name);
+      // A label and a key in the reports, so the same on every OS.
+      const file = `${runId}/${name}`;
       const result = await readResult(join(dir, file));
       const outcome = classify(
         result,

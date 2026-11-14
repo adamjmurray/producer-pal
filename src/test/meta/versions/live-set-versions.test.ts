@@ -118,7 +118,7 @@ function findLiveFiles(relDir: string): string[] {
       )
       // Live's own save backups: gitignored, and stamped by whatever Live saved.
       .filter((entry) => !entry.split(path.sep).includes("Backup"))
-      .map((entry) => path.join(relDir, entry))
+      .map((entry) => path.posix.join(relDir, entry.replaceAll("\\", "/")))
       .toSorted()
   );
 }

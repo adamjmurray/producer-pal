@@ -5,7 +5,7 @@
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import { WRAPPER_NAMES } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
@@ -113,7 +113,7 @@ describe("the embed plugin", () => {
     });
 
     expect(
-      watched.map((file) => file.split("/").pop() ?? "").toSorted(byName),
+      watched.map((file) => basename(file)).toSorted(byName),
     ).toStrictEqual(
       PLUGIN_HOST_WRAPPERS.map(({ fileName }) => fileName).toSorted(byName),
     );

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -95,9 +95,16 @@ describe("installPluginHostWrappers when the rename fails", () => {
 });
 
 describe("pluginHostStatus when the path can't be read", () => {
-  it("says differs when a file sits where a folder belongs", () => {
-    mkdirSync(join(library, "Presets"));
-    writeFileSync(join(library, "Presets/Audio Effects"), "not a folder");
+  // A folder at the wrapper's own path fails the read on every OS. (A file in
+  // place of a parent folder reads as missing on Windows.)
+  it("says differs when a folder sits where the wrapper belongs", () => {
+    mkdirSync(
+      join(
+        library,
+        "Presets/Audio Effects/Max Audio Effect/PPal Plug-in Effect.amxd",
+      ),
+      { recursive: true },
+    );
 
     expect(
       pluginHostStatus(library, fakeSource()).map((entry) => entry.state),
