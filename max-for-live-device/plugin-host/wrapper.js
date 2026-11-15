@@ -591,7 +591,7 @@ function adoptStored() {
   slotCache = null;
   // Don't push the dials into the plug-in here: a dial is synced only when
   // mapped, so its saved value can be older than the restored state.
-  showName(state.plugin ?? storedName() ?? loadedFile());
+  showName(pluginName());
 }
 
 function stateOf() {
@@ -881,6 +881,19 @@ const watchTask = new Task(function () {
 
 watchTask.schedule(1000);
 
+// The Live device's name. The user can rename it at any time, which shows or
+// hides the panel's name row. Like the transport, observed after load.
+const nameWatchTask = new Task(function () {
+  try {
+    nameWatcher = new LiveAPI(onDeviceName, "this_device");
+    nameWatcher.property = "name";
+  } catch (error) {
+    post(`ppal-plugin-host: could not watch the device name: ${error}\n`);
+  }
+});
+
+nameWatchTask.schedule(1000);
+
 // --- Automation slots ---
 // SLOT_COUNT live.dials are the parameters Live can automate. Each can drive
 // one plug-in param; the mapping is saved in the "vstslots" blob as JSON
@@ -1079,7 +1092,7 @@ const KNOB_COUNT = 16;
 // Echoes trail a drag by up to one speedlim interval; showing them would pull
 // the knob back under the mouse.
 const DRAG_HOLD_MS = 150;
-const NAME_CHARS = 24; // about two lines under a knob
+const NAME_CHARS = 16; // about two lines under a knob
 let knobPage = 0;
 let knobsShown = null; // the page and mapping the knobs last showed
 const turnedAt = {}; // knob -> when the user last turned it
@@ -1457,7 +1470,8 @@ function noMatch(samples, wanted) {
   return `nothing displays as "${wanted}"; it shows values like ${seen.join(", ")}`;
 }
 
-let nameShown = null; // the text last put in the name row
+let nameShown = null; // what the name row last showed
+let nameWatcher = null; // observes this device's name
 
 // vst~ restores the plug-in after a Set reload or duplicate, but not its name.
 // The device is named after the plug-in when it loads, and the Set keeps that.
@@ -1465,6 +1479,26 @@ let nameShown = null; // the text last put in the name row
 // reports, so a name the user typed over it doesn't pass for the plug-in.
 function nameDevice(label) {
   new LiveAPI("this_device").set("name", label);
+}
+
+// The device was renamed (also called once when observing starts).
+function onDeviceName(args) {
+  if (args[0] !== "name") return;
+
+  showName(pluginName());
+}
+
+function deviceName() {
+  try {
+    return String(new LiveAPI("this_device").get("name")[0]);
+  } catch {
+    return null; // unknown: the name row then shows
+  }
+}
+
+// The plug-in's name, from the load, else from what the Set kept.
+function pluginName() {
+  return state.plugin ?? storedName() ?? loadedFile();
 }
 
 // After a reload, vst~ knows only the file, so the name loaded with it is
@@ -1506,14 +1540,23 @@ function openeditor() {
   outlet(0, "open");
 }
 
-// The name row in the device panel; no name means no plug-in.
+// The name row in the device panel; no name means no plug-in. The device is
+// named after the plug-in on load, so the row only shows a name that differs
+// from the device's. "No plug-in loaded" always shows.
 function showName(name) {
-  const text = name || "No plug-in loaded";
+  const text = name ? String(name) : "No plug-in loaded";
+  const hidden = !!name && text === deviceName();
+  const shown = `${hidden ? "hidden" : "shown"} ${text}`;
 
-  if (text === nameShown) return;
+  if (shown === nameShown) return;
 
-  nameShown = text;
-  this.patcher.getnamed("pluginname")?.message("set", text);
+  const row = this.patcher.getnamed("pluginname");
+
+  if (row == null) return;
+
+  nameShown = shown;
+  row.message("set", text);
+  row.hidden = hidden ? 1 : 0;
 }
 
 // "<prefix><file> <id>", and the id can be missing right after a load. So

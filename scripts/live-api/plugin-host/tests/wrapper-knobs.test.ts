@@ -103,7 +103,7 @@ describe("wrapper panel knobs", () => {
     );
 
     expect(sentTo(rig, "knobname1")).toStrictEqual([
-      ["set", "Oscillator 1 Wavetable …"],
+      ["set", "Oscillator 1 Wa…"],
     ]);
   });
 

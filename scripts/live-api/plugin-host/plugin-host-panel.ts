@@ -10,13 +10,16 @@ type Rect = [x: number, y: number, width: number, height: number];
 // Keep KNOBS in step with KNOB_COUNT in wrapper.js
 const KNOBS = 16;
 const COLUMNS = 8;
-const CELL_WIDTH = 66;
-const CELL_HEIGHT = 70;
-const GRID_TOP = 24;
+const CELL_WIDTH = 46;
+const CELL_HEIGHT = 68;
+const GRID_TOP = 30;
 const LABEL_HEIGHT = 13;
 const KNOB_SIZE = 28;
 const NAME_HEIGHT = 24; // two lines
-const TAB_WIDTH = 42;
+const TAB_WIDTH = 26;
+const OPEN_WIDTH = 72;
+const TOP_HEIGHT = 16;
+const MARGIN = 4;
 // Knobs and tabs are Live parameters set to Hidden: Live neither stores nor
 // automates them, and they add no undo steps. Without parameter mode, live.tab
 // shows no tabs and live.dial ignores its range.
@@ -25,6 +28,13 @@ const HIDDEN = 2;
 const PATCH_X = 1300;
 const PATCH_Y = 20;
 const PREPEND_Y = PATCH_Y + 180;
+const OPEN_HELP = "Opens the plug-in's own window.";
+const TABS_TITLE = "Automation Slots";
+const TABS_HELP =
+  "Picks which 16 automation slots the knobs show. Each tab is named for its first slot.";
+const KNOB_TITLE = "Automation Slot";
+const KNOB_HELP =
+  "Shows and sets the plug-in parameter this slot automates. Inactive until Producer Pal assigns a parameter to the slot.";
 const PANEL_BOX =
   /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name)?\d+)$/;
 
@@ -39,8 +49,9 @@ export function isPanelBox(id: string): boolean {
 }
 
 /**
- * The device panel: the plug-in's name, an Open button, and a page of knobs
- * that mirror the automation slots, picked by tabs.
+ * The device panel: an Open button, the plug-in's name (shown by the wrapper
+ * only when it differs from the device's), tabs, and a page of knobs that
+ * mirror the automation slots.
  *
  * @param slots - Number of automation slots
  * @param nameWidth - Digits in a slot number
@@ -52,7 +63,7 @@ export function panelBoxes(slots: number, nameWidth: number): Json[] {
     `Auto ${String(n).padStart(nameWidth, "0")}`;
 
   return [
-    pluginName(),
+    pluginName(slots),
     openButton(),
     openPrepend(),
     pageTabs(slots),
@@ -93,12 +104,45 @@ export function panelLines(): Patchline[] {
   ];
 }
 
-function pluginName(): Json {
+// Between the button and the tabs. The wrapper hides it while the device is
+// named after the plug-in.
+function pluginName(slots: number): Json {
+  const left = MARGIN + OPEN_WIDTH + MARGIN;
+  const right = tabsLeft(slots) - MARGIN;
+
   return {
-    ...text("pluginname", "No plug-in loaded", [4, 4, 140, 16]),
+    ...text("pluginname", "No plug-in loaded", [
+      left,
+      MARGIN,
+      right - left,
+      TOP_HEIGHT,
+    ]),
+    ...help(
+      "Plug-in",
+      "The plug-in loaded in this device. Hidden while the device is named after it.",
+    ),
     textjustification: 0,
     fontsize: 10,
   };
+}
+
+function tabsLeft(slots: number): number {
+  return MARGIN + COLUMNS * CELL_WIDTH - pageCount(slots) * TAB_WIDTH;
+}
+
+function pageCount(slots: number): number {
+  return Math.ceil(slots / KNOBS);
+}
+
+// What Live's Info View shows for a control. Max keeps it as annotation_name
+// and annotation on the box, and for a parameter-enabled box also in its
+// valueof block as parameter_annotation_name and parameter_info.
+function help(title: string, info: string): Json {
+  return { annotation_name: title, annotation: info };
+}
+
+function parameterHelp(title: string, info: string): Json {
+  return { parameter_annotation_name: title, parameter_info: info };
 }
 
 // A button, not a Live parameter: no automation, no undo step.
@@ -112,8 +156,9 @@ function openButton(): Json {
     numoutlets: 2,
     outlettype: ["", ""],
     parameter_enable: 0,
-    ...placed([148, 4, 44, 16]),
-    text: "Open",
+    ...placed([MARGIN, MARGIN, OPEN_WIDTH, TOP_HEIGHT]),
+    ...help("Open Plug-in", OPEN_HELP),
+    text: "Open Plug-in",
   };
 }
 
@@ -123,11 +168,9 @@ function openPrepend(): Json {
 
 // Hidden, so the page isn't saved and adds no undo step.
 function pageTabs(slots: number): Json {
-  const pages = Math.ceil(slots / KNOBS);
-  const names = Array.from(
-    { length: pages },
-    (_, p) => `${p * KNOBS + 1}-${Math.min((p + 1) * KNOBS, slots)}`,
-  );
+  const pages = pageCount(slots);
+  // Each tab is named for its first slot.
+  const names = Array.from({ length: pages }, (_, p) => String(p * KNOBS + 1));
 
   return {
     id: "knobpage",
@@ -139,14 +182,11 @@ function pageTabs(slots: number): Json {
     numoutlets: 3,
     outlettype: ["", "", "float"],
     parameter_enable: 1,
-    ...placed([
-      4 + COLUMNS * CELL_WIDTH - pages * TAB_WIDTH,
-      4,
-      pages * TAB_WIDTH,
-      16,
-    ]),
+    ...placed([tabsLeft(slots), MARGIN, pages * TAB_WIDTH, TOP_HEIGHT]),
+    ...help(TABS_TITLE, TABS_HELP),
     saved_attribute_attributes: {
       valueof: {
+        ...parameterHelp(TABS_TITLE, TABS_HELP),
         parameter_longname: "knobpage",
         parameter_shortname: "knobpage",
         parameter_enum: names,
@@ -178,8 +218,10 @@ function knob(i: number): Json {
       KNOB_SIZE,
       KNOB_SIZE,
     ]),
+    ...help(KNOB_TITLE, KNOB_HELP),
     saved_attribute_attributes: {
       valueof: {
+        ...parameterHelp(KNOB_TITLE, KNOB_HELP),
         parameter_longname: `knob${i}`,
         parameter_shortname: `knob${i}`,
         parameter_mmin: 0,
@@ -234,7 +276,7 @@ function cell(i: number): { x: number; y: number } {
   const col = (i - 1) % COLUMNS;
   const row = Math.floor((i - 1) / COLUMNS);
 
-  return { x: 4 + col * CELL_WIDTH, y: GRID_TOP + row * CELL_HEIGHT };
+  return { x: MARGIN + col * CELL_WIDTH, y: GRID_TOP + row * CELL_HEIGHT };
 }
 
 function cellRect(i: number, top: number, height: number): Rect {

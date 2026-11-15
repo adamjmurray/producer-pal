@@ -117,7 +117,9 @@ describe("buildPluginHostDevice", () => {
         maxclass: "live.text",
         mode: 0,
         parameter_enable: 0,
-        text: "Open",
+        text: "Open Plug-in",
+        annotation_name: "Open Plug-in",
+        annotation: "Opens the plug-in's own window.",
         presentation: 1,
       }),
     );
@@ -155,22 +157,65 @@ describe("buildPluginHostDevice", () => {
     expect(valueof("knobpage")).toStrictEqual(
       expect.objectContaining({
         parameter_invisible: 2,
-        parameter_enum: [
-          "1-16",
-          "17-32",
-          "33-48",
-          "49-64",
-          "65-80",
-          "81-96",
-          "97-112",
-          "113-128",
-        ],
+        parameter_enum: ["1", "17", "33", "49", "65", "81", "97", "113"],
       }),
     );
     expect(cords).toContain("knob16>knobprep16");
     expect(cords).toContain("knobprep16>code");
     expect(cords).toContain("knobpage>knobpageprep");
     expect(cords).toContain("knobpageprep>code");
+  });
+
+  it("lays the panel out 376 px wide, the button first and the tabs last", () => {
+    const { box } = builtStale();
+    const rect = (id: string) => box(id)?.presentation_rect as number[];
+    const right = (id: string) => (rect(id)[0] ?? 0) + (rect(id)[2] ?? 0);
+
+    expect(rect("openeditor")).toStrictEqual([4, 4, 72, 16]);
+    expect(rect("knobpage")).toStrictEqual([164, 4, 208, 16]);
+    expect(rect("knob1")[0]).toBe(4 + (46 - 28) / 2);
+    expect(right("knobname8")).toBe(372);
+    expect(right("knobpage")).toBe(372);
+    // The name row fills the gap between the button and the tabs.
+    expect(rect("pluginname")).toStrictEqual([80, 4, 80, 16]);
+  });
+
+  it("gives every control Info View text, on the box and its parameter", () => {
+    const { box } = builtStale();
+    const valueof = (id: string) =>
+      (box(id)?.saved_attribute_attributes as { valueof: unknown } | undefined)
+        ?.valueof;
+
+    expect(box("knobpage")).toStrictEqual(
+      expect.objectContaining({
+        annotation_name: "Automation Slots",
+        annotation:
+          "Picks which 16 automation slots the knobs show. Each tab is named for its first slot.",
+      }),
+    );
+    expect(valueof("knobpage")).toStrictEqual(
+      expect.objectContaining({
+        parameter_annotation_name: "Automation Slots",
+        parameter_info: box("knobpage")?.annotation,
+      }),
+    );
+
+    for (const i of [1, 16]) {
+      expect(box(`knob${i}`)).toStrictEqual(
+        expect.objectContaining({ annotation_name: "Automation Slot" }),
+      );
+      expect(valueof(`knob${i}`)).toStrictEqual(
+        expect.objectContaining({
+          parameter_annotation_name: "Automation Slot",
+          parameter_info: box("knob1")?.annotation,
+        }),
+      );
+    }
+
+    expect(box("knob1")?.annotation).toMatch(/Producer Pal assigns/);
+    expect(box("pluginname")?.annotation_name).toBe("Plug-in");
+    // The button isn't a parameter, so it has no parameter block.
+    expect(box("openeditor")).not.toHaveProperty("saved_attribute_attributes");
   });
 
   it("keeps the panel inside Live's 169 px device height", () => {

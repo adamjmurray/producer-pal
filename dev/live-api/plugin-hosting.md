@@ -72,17 +72,32 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 
 `plugin-host-panel.ts` builds it; neither `vst~` nor the slot dials are in it.
 
-- **Name row**: the `pluginname` comment ("No plug-in loaded" until a plug-in is
-  there), set after a load, a failed load, and once the Set's restore has run,
-  from the same sources as `info`'s `plugin`.
-- **Open** (`openeditor`, a `live.text` button with `parameter_enable` 0, so no
-  automation and no undo step; it must stay in button mode, `mode` 0, since the
-  default is a toggle). A press sends `bang` through `prepend openeditor` to the
-  code box, which sends `open` to `vst~` (`wclose` closes the window).
+- **Layout**: 376 px wide. The top row is the Open button at the left, the name
+  row, and the tabs at the right; below it, 2 rows of 8 knob cells, each 46 px
+  wide.
+- **Open** (`openeditor`, a `live.text` button reading "Open Plug-in", with
+  `parameter_enable` 0, so no automation and no undo step; it must stay in
+  button mode, `mode` 0, since the default is a toggle). A press sends `bang`
+  through `prepend openeditor` to the code box, which sends `open` to `vst~`
+  (`wclose` closes the window).
+- **Name row**: the `pluginname` comment, between the button and the tabs. The
+  wrapper names its Live device after the plug-in on load, so the row only shows
+  a name that differs from the device's (the user renamed it), and hides itself
+  (the box's `hidden`) otherwise. "No plug-in loaded" always shows. It is set
+  after a load, a failed load, and once the Set's restore has run, from the same
+  sources as `info`'s `plugin`, and again when `this_device`'s `name` changes:
+  the wrapper observes it with a `LiveAPI` callback, created after load like the
+  transport observer.
+- **Tabs**: `knobpage`, one tab per page of 16 slots, each named for its first
+  slot ("1", "17", … "113").
+- **Info View**: every control carries a title and text for Live's Info View:
+  `annotation_name` and `annotation` on the box, and for the parameter-enabled
+  tabs and knobs also `parameter_annotation_name` and `parameter_info` in the
+  saved `valueof` block (Max writes both). The text is static.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
-  by the `knobpage` `live.tab`. Each has a `knoblabel` ("Auto 003") and a
-  `knobname` (the mapped param, cut to about two lines, or "—"). A knob for an
-  unmapped slot is inactive (`active 0`) and reads 0.
+  by the tabs. Each has a `knoblabel` ("Auto 003") and a `knobname` (the mapped
+  param, cut to about two lines, or "—"). A knob for an unmapped slot is
+  inactive (`active 0`) and reads 0.
   - Knobs and tabs are Live parameters set to Hidden (`parameter_invisible` 2):
     Live neither stores nor automates them, they add no undo steps, and Live's
     parameter list stays Device On plus the slots. Without parameter mode,
@@ -541,13 +556,13 @@ fields Max expects (such as `searchpath`) crashes Live on load**, inside
 (`scripts/live-api/plugin-host/build-plugin-host.ts`). It puts `wrapper.js` into
 each `v8.codebox` and regenerates the 128 automation dials, their
 `prepend slot N` boxes and cords, the `vstslots` pattr, the slot list, the name
-comment, the Open button with its prepend and cords, and takes `vst~` out of the
-panel. It leaves every other box, and the `project` block, alone. Edit
-`wrapper.js` and the generated boxes through the script; edit the rest of the
-patch in Max, then run the script so the files match what a rebuild gives. A
-test fails while a device is out of date with `wrapper.js`. After editing the
-code inside Max's code box instead, `npm run plugin-host:build -- --extract`
-copies it back into `wrapper.js` first.
+comment, the Open button with its prepend and cords, the tabs and knobs, and
+takes `vst~` out of the panel. It leaves every other box, and the `project`
+block, alone. Edit `wrapper.js` and the generated boxes through the script; edit
+the rest of the patch in Max, then run the script so the files match what a
+rebuild gives. A test fails while a device is out of date with `wrapper.js`.
+After editing the code inside Max's code box instead,
+`npm run plugin-host:build -- --extract` copies it back into `wrapper.js` first.
 
 ### Installing the devices
 

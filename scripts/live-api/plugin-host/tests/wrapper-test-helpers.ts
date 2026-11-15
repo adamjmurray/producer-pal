@@ -28,6 +28,12 @@ export interface Rig {
   dials: Record<string, number>;
   /** Messages sent to the slot dials and the panel's knobs, as [box, ...args] */
   sent: unknown[][];
+  /** The Live device's name, as `this_device` reports it (null: unreadable) */
+  device: { name: string | null };
+  /** The panel's name row: its text and hidden flag */
+  nameRow: { text: string | null; hidden: number | null };
+  /** LiveAPI objects made with a callback, to observe a property */
+  observers: { callback: unknown; path: unknown; api: { property: unknown } }[];
 }
 
 /**
@@ -47,14 +53,19 @@ export function loadWrapper(
   const prepends: unknown[][] = [];
   const dials: Record<string, number> = {};
   const sent: unknown[][] = [];
+  const device: { name: string | null } = { name: "Plug" };
+  const nameRow: Rig["nameRow"] = { text: null, hidden: null };
   const recorder = (name: string) => ({
     message: (...args: unknown[]) => sent.push([name, ...args]),
   });
+  const observers: Rig["observers"] = [];
   let cancels = 0;
   let lastParsed = "";
 
   class Task {
     interval = 0;
+    constructor(readonly fn?: () => void) {}
+
     schedule(): void {}
     repeat(): void {}
     cancel(): void {
@@ -72,6 +83,14 @@ export function loadWrapper(
     }
   }
   const objects: Record<string, unknown> = {
+    pluginname: {
+      message: (_set: string, text: string) => {
+        nameRow.text = text;
+      },
+      set hidden(value: number) {
+        nameRow.hidden = value;
+      },
+    },
     vststate: {
       getvalueof: () =>
         stored.state == null ? 0 : { stringify: () => stored.state },
@@ -95,8 +114,21 @@ export function loadWrapper(
     MaxobjListener: class {},
     LiveAPI: class {
       id = "1";
+      property: unknown;
+      constructor(callback?: unknown, path?: unknown) {
+        if (typeof callback === "function") {
+          observers.push({ callback, path, api: this });
+        }
+      }
+
       getcount = () => 0;
-      get = () => 0;
+      get = () => {
+        if (device.name == null) {
+          throw new Error("not ready");
+        }
+
+        return [device.name];
+      };
     },
     post: () => {},
     outlet,
@@ -127,5 +159,8 @@ export function loadWrapper(
     prepends,
     dials,
     sent,
+    device,
+    nameRow,
+    observers,
   };
 }

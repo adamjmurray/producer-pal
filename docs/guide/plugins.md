@@ -36,8 +36,9 @@ so you can set all its parameters".
   refused, with the values it does show.
 - **Automation:** the AI can automate hosted parameters on clips. See
   [Automation](#automation) below.
-- **Plug-in window:** the wrapper shows the plug-in's name and an **Open**
-  button that opens the plug-in's own window.
+- **Plug-in window:** the wrapper has an **Open Plug-in** button that opens the
+  plug-in's own window. If you rename the device, the wrapper also shows the
+  plug-in's name next to the button.
 - **Saving:** the plug-in's settings save with your Set, and a duplicated track
   or device keeps them.
 - **Racks:** a hosted plug-in can go inside a rack chain.
