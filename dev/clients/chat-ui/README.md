@@ -255,9 +255,10 @@ read the queue **synchronously** mid-stream. The notable behaviors live in the
 - **Drain-and-coalesce:** after a successful turn, `drainQueue()` returns all
   queued messages, which are joined with blank lines into a **single** next user
   turn (the first message's overrides apply to the merged turn).
-- **Stop clears, failure keeps:** `stopResponse`/`clearConversation` call
-  `clearQueue`; a _failed_ turn deliberately leaves the queue intact so the
-  messages stay visible and flush on the next successful send.
+- **Stop and failure keep, leaving clears:** a stopped or _failed_ turn leaves
+  the queue intact so the messages stay visible and flush on the next successful
+  send. Only `clearConversation` (switching or clearing the conversation) calls
+  `clearQueue`.
 
 A fork (edit/retry) does **not** drain or clear the queue — the queued messages
 are the user's words and flush on the next normal send.

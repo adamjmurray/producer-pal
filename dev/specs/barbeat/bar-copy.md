@@ -62,7 +62,8 @@ Bar copy reads notes from the **copy buffer** (notes previously emitted at time
 positions) and creates new note events at the destination bar(s):
 
 - **Copies from copy buffer**: Uses notes stored in the parser's `notesByBar`
-  map (not from Ableton Live)
+  map. `update-clip` puts the clip's existing notes in it first, so a bar
+  already in the clip can be copied
 - **Time shift**: Notes are shifted to destination bar(s) with correct time
   offsets
 - **Creates new events**: Adds copied note events to the output (doesn't modify
@@ -83,7 +84,8 @@ the destination range:
     gets bar 1 only)
 - **Self-copy prevention**: Skips copying when source bar equals destination bar
   - Example: `@1-10=5-6` skips bars 5 and 6 when tiling reaches them
-  - Warning issued for each skipped self-copy
+  - One warning per copy names the skipped bars
+    (`Skipping copy of bars 5-6 to themselves`)
 - **Source truncation**: When destination is smaller than source
   - Example: `@3-4=1-5` only copies bars 1-2 (destination has room for 2 bars)
 

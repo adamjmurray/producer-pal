@@ -292,8 +292,7 @@ The parser warns about incomplete or inefficient notation:
 - Time positions with no pitches
 - State changes after pitches but before time positions (wasted state)
 
-The interpreter also warns (without throwing) on out-of-range values, matching
-the transforms and code-exec paths:
+The interpreter also warns (without throwing) on out-of-range values:
 
 - Velocity / velocity-range / probability outside their valid range are
   **clamped + warned** (velocity to 0–127, probability to 0.0–1.0)

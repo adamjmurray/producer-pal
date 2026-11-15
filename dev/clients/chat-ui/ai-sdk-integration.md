@@ -124,12 +124,12 @@ streams (paid; needs your keys) to check or refresh a fixture; `--max-output`
 caps the answer and `--prompt` swaps the prompt. OpenRouter's raw stream is
 covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
 
-What the tests pin down: only Anthropic and OpenRouter→Claude reasoning is sent
-back on a later turn. Gemini thought summaries, OpenAI reasoning summaries and
-local models' thinking are display-only. The SDK keeps them within a turn, then
-earlier turns go back as plain text and tool calls. For Gemini 3 the SDK adds a
-`skip_thought_signature_validator` signature to those earlier calls and logs an
-AI SDK warning.
+What the tests pin down: Anthropic, OpenRouter→Claude and direct Gemini
+reasoning is sent back on a later turn. Gemini's thought summaries and
+signatures go only to the Gemini model that made them (`reasoning-replay.ts`,
+`build-model-messages.ts`), and not through the gateway. OpenAI reasoning
+summaries and local models' thinking are display-only: the SDK keeps them within
+a turn, then earlier turns go back as plain text and tool calls.
 
 **Response Model Tracking:**
 

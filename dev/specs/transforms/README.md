@@ -32,7 +32,7 @@ floor(value) // round down to integer
 ceil(value) // round up to integer
 abs(value) // absolute value
 clamp(value, min, max) // clamp value to [min, max] range
-wrap(value, min, max) // wrap value into [min, max] range (modular arithmetic)
+wrap(value, min, max) // wrap an integer into [min, max] (modular arithmetic); a fraction can land up to 1 past max
 reflect(value, min, max) // reflect/bounce value within [min, max] range
 min(a, b, ...) // minimum of 2+ values
 max(a, b, ...) // maximum of 2+ values

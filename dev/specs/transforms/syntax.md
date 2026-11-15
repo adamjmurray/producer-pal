@@ -153,7 +153,8 @@
     (`note.index`, `note.count`, `next.*`, `legato()`, `seq()`) — they are
     defined over the selected set, which `where()` itself determines, so they
     are unavailable while selecting; the `clip.*`/`audio.*` namespaces as bare
-    variables; and `where()` on a note-count op (`ratchet`/`merge`/`split`).
+    variables; and `where()` on a note-count op
+    (`ratchet`/`merge`/`split`/`repeat`).
   - **Float tolerance**: all six comparisons carry `SELECTOR_EPSILON` (1e-9, the
     same tolerance the pitch/time selectors use), so ULP-level drift in a
     note-op-generated `note.start`/`note.duration` can't drop a note that names

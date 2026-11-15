@@ -44,7 +44,8 @@ How the tool answers depends on what is wrong:
   - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
     and `path` beside `paths`, whatever the values: a param and its alias are
     never sent together. Same for create-device's `deviceName` and its `device`
-    alias.
+    alias. Not `ppal-select`: its `trackId`, `sceneId`, `clipId` and `deviceId`
+    are each a target of their own, so `id` beside one selects both.
 
   One wording, built by `refuseNamedTwice`:
   `<param> names the <noun> on its own - don't send <params> with it`, listing

@@ -90,6 +90,6 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 - **Tool behavior**:
   - `create-clip`: A v0 has no earlier match to delete and is dropped — no v0
     note reaches Live
-  - `update-clip`: Deletes by interpreting `<existing-notation> <new-notation>`
-    as one combined string, so a v0 in the new notation removes the matching
+  - `update-clip`: The clip's existing notes sit ahead of the new notation's (as
+    notes, never as text), so a v0 in the new notation removes the matching
     existing note during that pass (it does not consume v0 notes from output)
