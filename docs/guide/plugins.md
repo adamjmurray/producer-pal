@@ -29,8 +29,8 @@ so you can set all its parameters".
 ## What Works
 
 - **Formats:** VST3, AU and VST2 instruments and effects. When a plug-in is
-  installed in several formats, Producer Pal uses VST3, then AU, then VST2. A
-  hosted plug-in can't be loaded in another format.
+  installed in several formats, Producer Pal uses VST3, then AU, then VST2. Ask
+  for a format by name to load that one instead.
 - **Every parameter**, read and set in the plug-in's own units, by number or by
   the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows is
   refused, with the values it does show.
@@ -61,7 +61,7 @@ so you can set all its parameters".
   presets, is only in the plug-in's own window.
 - **Not supported:** AUv3 plug-ins, VST2 shell plug-ins (such as Waves'
   WaveShell), and AU MIDI effects.
-- **Tested on macOS only** so far.
+- **Tested on macOS and Windows.**
 - **Undo** reverts the plug-in's whole previous state at once, not one parameter
   at a time.
 
