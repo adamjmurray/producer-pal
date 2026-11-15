@@ -1,12 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import {
-  setupArrangementClipPath,
-  setupMockProperties,
-} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { resizesLikeLiveClip } from "#src/test/mocks/registry/mock-clip-resize.ts";
+import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
@@ -26,7 +25,8 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupMockProperties(sourceClip, {
+    // On the clip itself, so the resize below can move its end.
+    Object.assign(sourceClip.properties, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       is_audio_clip: 0,
@@ -41,6 +41,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       muted: 0,
       playing_status: 1,
     });
+    resizesLikeLiveClip(sourceClip);
 
     const result = await updateClip({
       id: "789",

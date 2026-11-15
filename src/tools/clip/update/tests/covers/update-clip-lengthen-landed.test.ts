@@ -81,6 +81,7 @@ describe("a resize in place", () => {
 
   it("keeps the clip's entry, with the lengthening, when a later step throws", async () => {
     setUpLane([{ id: "100", start: 0, length: 16 }]);
+    resizesLikeLiveClip(lookupMockObject("100") as RegisteredMockObject);
     envelopesThrowFor("100");
 
     const result = await updateClip({
@@ -101,6 +102,8 @@ describe("a resize in place", () => {
       { id: "100", start: 0, length: 16 },
       { id: "101", start: 20, length: 8 },
     ]);
+    resizesLikeLiveClip(lookupMockObject("100") as RegisteredMockObject);
+    resizesLikeLiveClip(lookupMockObject("101") as RegisteredMockObject);
     envelopesThrowFor("100");
 
     const result = (await updateClip({
@@ -119,6 +122,8 @@ describe("a resize in place", () => {
       { id: "100", start: 0, length: 16 },
       { id: "101", start: 20, length: 8 },
     ]);
+    resizesLikeLiveClip(lookupMockObject("100") as RegisteredMockObject);
+    resizesLikeLiveClip(lookupMockObject("101") as RegisteredMockObject);
 
     const result = (await updateClip({
       id: "101,100",

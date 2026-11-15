@@ -87,6 +87,17 @@ export function handleUnloopedLengthening({
     // Clearing leaves nothing to stop it, so this is Live refusing the span.
     const landed = (clip.getProperty("end_time") as number) - clipStartTime;
 
+    // A clip that didn't grow isn't reported as resized, as with audio.
+    if (landed <= currentArrangementLength + SAME_TIME_EPSILON) {
+      refuseClipWork(
+        reasons,
+        clip.id,
+        `arrangementLength unchanged: ${LIVE_STOPPED_IT}`,
+      );
+
+      return [];
+    }
+
     if (landed < arrangementLengthBeats - SAME_TIME_EPSILON) {
       noteLandedShort(reasons, clip.id, landed, LIVE_STOPPED_IT);
     }

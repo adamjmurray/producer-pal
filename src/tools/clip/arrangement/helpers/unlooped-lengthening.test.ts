@@ -191,6 +191,24 @@ describe("handleUnloopedLengthening", () => {
       );
     });
 
+    it("reports no resize when the clip didn't grow at all", () => {
+      const { result } = run({
+        props: { end_marker: 4, loop_start: 0, end_time: 12 },
+        isAudioClip: false,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 4,
+        currentEndTime: 12,
+        clipStartMarker: 0,
+      });
+
+      expect(result).toStrictEqual([]);
+      expect(clipReason()).toBe(
+        "arrangementLength unchanged: Live stopped the clip there",
+      );
+      expect(reasons.refused.has("clip-1")).toBe(true);
+      expect(reasons.landed.has("clip-1")).toBe(false);
+    });
+
     it("says nothing when it reached the full length", () => {
       run({
         props: { end_marker: 4, loop_start: 0, end_time: 24 },
