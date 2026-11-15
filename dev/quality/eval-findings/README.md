@@ -11,12 +11,13 @@ not doing a day of work and doing it twice.
 
 ## Parts
 
-| File                                             | What's in it                                                               |
-| ------------------------------------------------ | -------------------------------------------------------------------------- |
-| [recorded-runs.md](recorded-runs.md)             | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
-| [scenario-results/](scenario-results/README.md)  | Every failure of each recorded run, and what moved between runs            |
-| [wording-changes.md](wording-changes.md)         | Skill wording changes that did and did not work, and where a fragment sits |
-| [decider-comparisons.md](decider-comparisons.md) | Decision models compared as the first eval judge (`--decider`)             |
+| File                                                 | What's in it                                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| [recorded-runs.md](recorded-runs.md)                 | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
+| [scenario-results/](scenario-results/README.md)      | Every failure of each recorded run, and what moved between runs            |
+| [wording-changes.md](wording-changes.md)             | Skill wording changes that did and did not work, and where a fragment sits |
+| [decider-comparisons.md](decider-comparisons.md)     | Decision models compared as the first eval judge (`--decider`)             |
+| [transport-comparisons.md](transport-comparisons.md) | One model reached two ways: Luna through Codex and through the OpenAI API  |
 
 ## Scenarios that are red on purpose
 
