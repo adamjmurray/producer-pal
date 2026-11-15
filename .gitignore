@@ -2,7 +2,8 @@
 Icon?
 .amxd_devpath
 .env
-.claude
+.claude/*
+!.claude/skills
 *.bak
 node_modules
 knowledge-base

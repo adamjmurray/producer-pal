@@ -284,6 +284,15 @@ the `producer-pal` npm package. For local testing before publishing to npm:
 }
 ```
 
+## Coding Agent Skills
+
+Skills for coding agents working on this repo live in `.agents/skills/`.
+`.claude/skills` is a symlink to it, because Claude Code only reads its own
+folder.
+
+On Windows, Git checks the symlink out as a plain text file unless Developer
+Mode is on and `core.symlinks` is `true`, and Claude Code then finds no skills.
+
 ## Git Hooks (Optional)
 
 `.githooks/pre-push` guards pushes to `dev` so every commit gets its own CI
