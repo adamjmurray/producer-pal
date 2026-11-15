@@ -11,13 +11,16 @@
  * Run with: npm run e2e:mcp -- ppal-read-device-nested-racks
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers.ts";
-import { RACKS_TEST_PATH } from "../e2e-test-set.ts";
+import {
+  parseToolResult,
+  setupMcpTestContext,
+} from "../../mcp-test-helpers.ts";
+import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
   type DeviceInfo,
   KIT,
   readKitPads,
-} from "./helpers/racks-test-helpers.ts";
+} from "../helpers/racks-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
 

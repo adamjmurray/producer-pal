@@ -123,6 +123,15 @@ describe("readDevice of a Simpler with the remote script", () => {
     expect(requestNode).not.toHaveBeenCalled();
   });
 
+  it("lists the pitch bend ranges on the first page only", async () => {
+    remoteScriptReads(bend(12, 24));
+
+    expect(
+      bendParams(await readDevice({ id: "simpler-1", paramOffset: 1 })),
+    ).toStrictEqual([]);
+    expect(requestNode).not.toHaveBeenCalled();
+  });
+
   it("lists only the params a search matches, and doesn't ask when none does", async () => {
     remoteScriptReads(bend(12, 24));
 

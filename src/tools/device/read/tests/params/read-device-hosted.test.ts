@@ -214,8 +214,62 @@ describe("readOneDevice on a plug-in host wrapper", () => {
     expect(result.parameters).toHaveLength(200);
     expect(result.paramCount).toBe(543);
     expect(result.detail).toBe(
-      "listing the first 200 params; narrow with paramSearch",
+      "listing params 1-200 of 543; pass paramOffset: 200 for more, or narrow with paramSearch",
     );
+  });
+
+  it("asks the plug-in for the page at paramOffset, with any search, and names the next", () => {
+    registerMaxDevice();
+    const heard = installWrapper({
+      info: () => info("Serum 2"),
+      params: () => paramsOf(200, 706),
+    });
+
+    const result = readOneDevice({
+      path: "t0/d0",
+      paramSearch: "osc",
+      paramOffset: 200,
+    });
+
+    expect(heard.find((request) => request.op === "params")).toStrictEqual({
+      deviceId: "device-123",
+      op: "params",
+      search: "osc",
+      offset: 200,
+      limit: 200,
+    });
+    expect(result.paramCount).toBe(706);
+    expect(result.detail).toBe(
+      "listing params 201-400 of 706; pass paramOffset: 400 for more, or narrow with paramSearch",
+    );
+  });
+
+  it("says a plug-in's last page has no more", () => {
+    registerMaxDevice();
+    installWrapper({
+      info: () => info("Serum 2"),
+      params: () => paramsOf(106, 706),
+    });
+
+    const result = readOneDevice({ path: "t0/d0", paramOffset: 600 });
+
+    expect(result.parameters).toHaveLength(106);
+    expect(result.paramCount).toBe(706);
+    expect(result.detail).toBe("listing params 601-706 of 706");
+  });
+
+  it("says when the offset is past a plug-in's last param", () => {
+    registerMaxDevice();
+    installWrapper({
+      info: () => info("Serum 2"),
+      params: () => paramsOf(0, 706),
+    });
+
+    const result = readOneDevice({ path: "t0/d0", paramOffset: 800 });
+
+    expect(result.parameters).toStrictEqual([]);
+    expect(result.paramCount).toBe(706);
+    expect(result.detail).toBe("paramOffset 800 is past the last param (706)");
   });
 
   it("says when the plug-in's params can't be read", () => {

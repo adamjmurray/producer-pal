@@ -138,11 +138,12 @@ export function parseHostedParamId(id: string): number | null {
 }
 
 /**
- * Read the first params of a hosted plug-in, never more than a read lists.
+ * Read a page of a hosted plug-in's params, never more than a read lists.
  * @param device - The wrapper device
  * @param includeValues - Whether to add each param's value as the plug-in
  *   displays it
  * @param search - Case-insensitive name filter
+ * @param offset - Matches to skip before the page
  * @returns The params and how many matched, or null when the plug-in can't be
  *   read
  */
@@ -150,10 +151,12 @@ export function readHostedParams(
   device: LiveAPI,
   includeValues: boolean,
   search?: string,
+  offset = 0,
 ): HostedParams | null {
   const needle = search?.trim();
   const reply = probePluginHost(device.id, "params", {
     ...(needle && { search: needle }),
+    ...(offset > 0 && { offset }),
     limit: MAX_READ_PARAMS,
   });
 

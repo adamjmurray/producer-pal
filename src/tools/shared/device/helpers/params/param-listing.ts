@@ -16,20 +16,23 @@ import {
 } from "../../specialized/specialized-device-registry.ts";
 import { readDeviceParameters } from "../device-reading.ts";
 import { shareOptionLists } from "./param-option-lists.ts";
-import { noteParamsCapped } from "./param-read-cap.ts";
+import { noteParamsPaged } from "./param-read-cap.ts";
 
 /**
  * Append DeviceParameters and specialized pseudo-params to a device info object.
+ * The pseudo-params come on the first page only.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
  * @param includeValues - Whether to include current param values
  * @param paramSearch - Optional case-insensitive name filter
+ * @param paramOffset - Matches to skip before the page
  */
 export function appendParameters(
   device: LiveAPI,
   deviceInfo: Record<string, unknown>,
   includeValues: boolean,
   paramSearch: string | undefined,
+  paramOffset = 0,
 ): void {
   // `automation` is only read with values, and the track is checked once here
   // rather than once per param.
@@ -38,6 +41,7 @@ export function appendParameters(
   const { parameters, total } = readDeviceParameters(device, {
     includeValues,
     search: paramSearch,
+    offset: paramOffset,
     showAutomation,
     hideMacrosAbove: macrosToHide(deviceInfo),
   });
@@ -46,14 +50,21 @@ export function appendParameters(
     noteAutomationUnknown(deviceInfo);
   }
 
-  const pseudoParams = readSpecializedParams(device, paramSearch);
+  const pseudoParams =
+    paramOffset === 0 ? readSpecializedParams(device, paramSearch) : [];
   const merged = [...pseudoParams, ...parameters];
 
   // Mark mode-gated params inactive where Live leaves them active (e.g. a
   // synced LFO's free-running Hz rate). Only meaningful with values, since
   // `state` is value-level.
   if (includeValues) {
-    applySpecializedInactiveStates(device, merged, Boolean(paramSearch));
+    // Off the first page the rules' controllers may be missing from the list,
+    // as after a search.
+    applySpecializedInactiveStates(
+      device,
+      merged,
+      Boolean(paramSearch) || paramOffset > 0,
+    );
 
     // Before `parameters`, so a reader meets the lists first.
     const optionLists = shareOptionLists(merged);
@@ -64,7 +75,7 @@ export function appendParameters(
   }
 
   deviceInfo.parameters = merged;
-  noteParamsCapped(deviceInfo, total);
+  noteParamsPaged(deviceInfo, total, paramOffset);
 }
 
 /**
@@ -90,14 +101,21 @@ function macrosToHide(deviceInfo: Record<string, unknown>): number | undefined {
  * @param deviceInfo - Device info object to mutate
  * @param includeValues - Whether to include current param values
  * @param paramSearch - Optional case-insensitive name filter
+ * @param paramOffset - Matches to skip before the page
  */
 export function appendHostedParameters(
   device: LiveAPI,
   deviceInfo: Record<string, unknown>,
   includeValues: boolean,
   paramSearch: string | undefined,
+  paramOffset = 0,
 ): void {
-  const hostedParams = readHostedParams(device, includeValues, paramSearch);
+  const hostedParams = readHostedParams(
+    device,
+    includeValues,
+    paramSearch,
+    paramOffset,
+  );
 
   if (hostedParams == null) {
     deviceInfo.parameters = [];
@@ -112,5 +130,5 @@ export function appendHostedParameters(
     includeValues,
     deviceInfo,
   );
-  noteParamsCapped(deviceInfo, hostedParams.total);
+  noteParamsPaged(deviceInfo, hostedParams.total, paramOffset);
 }

@@ -116,8 +116,19 @@ Adds parameter names, macro variation info, and A/B Compare state. A
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
 
 A read lists at most 200 `parameters` per device, cutting before it reads any
-values. When more matched, the device gets `paramCount` (how many matched) and a
-`detail` saying to narrow with `paramSearch`. There is no paging.
+values. `paramOffset` skips that many matches (after any `paramSearch`) and,
+like a search, turns params on by itself when above 0. It has no list form: with
+several targets it applies to each. When more matched than the page shows, or
+the read is a later page, the device gets `paramCount` (how many matched) and a
+`detail` naming the slice:
+`listing params 201-400 of 706; pass paramOffset: 400 for more, or narrow with paramSearch`.
+The last page drops the "for more" part (`listing params 601-706 of 706`), and
+an offset at or past the end lists nothing and says
+`paramOffset 800 is past the last param (706)`. A read that fits on the first
+page has neither field. Specialized pseudo-params (and a Simpler's bend ranges)
+come on the first page only, and `paramCount` counts only the device's own
+params. A hosted plug-in is paged the same way, by the wrapper's `params` op
+(`offset`, `limit`).
 
 ### Hosted plug-ins
 

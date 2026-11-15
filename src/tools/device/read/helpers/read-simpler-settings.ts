@@ -27,18 +27,20 @@ interface ReadSimpler {
  * @param deadline - The request deadline from ToolContext, if any
  * @param paramSearch - The read's param name filter, which the added params
  *   answer to like any other
+ * @param paramOffset - The read's page; the added params are on the first only
  */
 export async function addSimplerSettings(
   results: unknown[],
   deadline: number | null | undefined,
   paramSearch?: string,
+  paramOffset = 0,
 ): Promise<void> {
   const simplers = findInReadResult(results, isReadSimpler);
   const shown = (name: string): boolean =>
     !paramSearch ||
     name.toLowerCase().includes(paramSearch.toLowerCase().trim());
 
-  if (simplers.length === 0 || !SETTING_NAMES.some(shown)) {
+  if (paramOffset > 0 || simplers.length === 0 || !SETTING_NAMES.some(shown)) {
     return;
   }
 

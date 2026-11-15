@@ -60,6 +60,7 @@ interface ReadDeviceArgs {
   include?: string[];
   maxDepth?: number;
   paramSearch?: string;
+  paramOffset?: number;
 }
 
 /**
@@ -95,7 +96,12 @@ export async function readDevice(
     (await addCcControlBasics(results, context.deadline));
 
   if (!stalled) {
-    await addSimplerSettings(results, context.deadline, args.paramSearch);
+    await addSimplerSettings(
+      results,
+      context.deadline,
+      args.paramSearch,
+      args.paramOffset,
+    );
   }
 
   return result;
@@ -110,6 +116,7 @@ export async function readDevice(
  * @param args.include - Array of data to include in the response
  * @param args.maxDepth - Device tree depth for chains/drum-pads
  * @param args.paramSearch - Filter parameters by substring match on name
+ * @param args.paramOffset - Matches to skip before the page of parameters
  * @param args.targetNames - The names the id and path were sent under
  * @param context - Internal context object (supplies the active notation)
  * @returns Device, chain, or drum pad information
@@ -123,6 +130,7 @@ export function readOneDevice(
     include = [],
     maxDepth = 0,
     paramSearch,
+    paramOffset,
   }: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
@@ -144,9 +152,12 @@ export function readOneDevice(
     includeAll || include.includes("drum-pads") || include.includes("chains");
   const includeDrumMap = includeAll || include.includes("drum-map");
   const includeParamValues = includeAll || include.includes("param-values");
-  // A search names the params to show, so it needs them on.
+  // A search or a page past the first names the params to show, so it needs
+  // them on.
   const includeParams =
-    includeParamValues || include.includes("params") || isSearch(paramSearch);
+    includeParamValues ||
+    include.includes("params") ||
+    namesParams(paramSearch, paramOffset);
   const includeSample = includeAll || include.includes("sample");
   const includeOptions = includeAll || include.includes("options");
   const includeActions = includeAll || include.includes("actions");
@@ -167,6 +178,7 @@ export function readOneDevice(
     chainsHidden: chainsForDrumMap,
     maxDepth: drumMapReadDepth(maxDepth, includeDrumMap, chainsForDrumMap),
     paramSearch,
+    paramOffset,
   };
 
   const result = readDeviceTarget(deviceId, path, readOptions, targetNames);
@@ -352,11 +364,16 @@ function readChainObject(
 }
 
 /**
- * Whether a param search names anything. A blank one is ignored by the filter,
- * so it must not switch the params on either.
+ * Whether a call names params to show. A blank search is ignored by the
+ * filter, so it must not switch the params on either, and an offset of 0 asks
+ * for nothing.
  * @param paramSearch - The search as sent
- * @returns True when there is something to search for
+ * @param paramOffset - The offset as sent
+ * @returns True when there is a search or an offset to apply
  */
-function isSearch(paramSearch: string | undefined): boolean {
-  return (paramSearch?.trim() ?? "") !== "";
+function namesParams(
+  paramSearch: string | undefined,
+  paramOffset: number | undefined,
+): boolean {
+  return (paramSearch?.trim() ?? "") !== "" || (paramOffset ?? 0) > 0;
 }

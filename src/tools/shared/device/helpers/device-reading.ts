@@ -47,6 +47,8 @@ export interface ProcessChainsOptions {
 export interface ReadDeviceParametersOptions {
   includeValues?: boolean;
   search?: string;
+  /** Matches to skip before the page. */
+  offset?: number;
   /** False when the device's track plays from Session; no `automation` flags. */
   showAutomation?: boolean;
   /** Leave out the macros beyond this number (a rack with nothing mapped). */
@@ -455,7 +457,7 @@ export function readABCompare(device: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Read a device's parameters, at most `MAX_READ_PARAMS` of them
+ * Read a page of a device's parameters, at most `MAX_READ_PARAMS` of them
  * @param device - LiveAPI device object
  * @param options - Reading options
  * @returns The parameter info objects, and how many parameters matched
@@ -467,6 +469,7 @@ export function readDeviceParameters(
   const {
     includeValues = false,
     search,
+    offset = 0,
     showAutomation = true,
     hideMacrosAbove,
   } = options;
@@ -491,7 +494,7 @@ export function readDeviceParameters(
   // Cut before the values are read: reading them is the cost.
   const total = parameters.length;
 
-  parameters = parameters.slice(0, MAX_READ_PARAMS);
+  parameters = parameters.slice(offset, offset + MAX_READ_PARAMS);
 
   if (!includeValues) {
     return { parameters: parameters.map(readParameterBasic), total };

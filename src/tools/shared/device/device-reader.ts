@@ -48,6 +48,8 @@ export interface ReadDeviceOptions {
   includeOptions?: boolean;
   includeActions?: boolean;
   paramSearch?: string;
+  /** Matches to skip before the page of params. */
+  paramOffset?: number;
   depth?: number;
   maxDepth?: number;
   parentPath?: string | null;
@@ -322,6 +324,7 @@ export function readDevice(
     includeOptions = false,
     includeActions = false,
     paramSearch,
+    paramOffset,
     depth = 0,
     maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
@@ -394,6 +397,7 @@ export function readDevice(
     includeOptions,
     includeActions,
     paramSearch,
+    paramOffset,
   });
 
   return deviceInfo;
@@ -443,6 +447,7 @@ interface DeviceDetailOptions {
   includeOptions: boolean;
   includeActions: boolean;
   paramSearch: string | undefined;
+  paramOffset: number | undefined;
 }
 
 /**
@@ -467,7 +472,13 @@ function appendDeviceDetails(
 
     // A wrapper with no plug-in has no params to list; its `detail` says why.
     if (opts.hosted == null || opts.hosted.label != null) {
-      append(device, deviceInfo, opts.includeParamValues, opts.paramSearch);
+      append(
+        device,
+        deviceInfo,
+        opts.includeParamValues,
+        opts.paramSearch,
+        opts.paramOffset,
+      );
     }
   }
 

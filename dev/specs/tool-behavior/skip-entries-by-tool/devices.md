@@ -109,6 +109,17 @@ Part of [Skip entries, tool by tool](README.md).
   mappings lists all 16 until the remote script says which are mapped, then only
   the visible ones and the hidden ones still mapped (`hiddenMapped`). A write
   can still name any macro.
+- **read-device lists 200 params a page; `paramOffset` pages.** A device lists
+  at most 200 matches (after `paramSearch`), from `paramOffset` (default 0;
+  above 0 it turns params on, and with several targets it applies to each). When
+  the page isn't the whole match list, the entry has `paramCount` (how many
+  matched) and a `detail`:
+  `listing params 201-400 of 706; pass paramOffset: 400 for more, or narrow with paramSearch`,
+  or `listing params 601-706 of 706` on the last page. An offset at or past the
+  end lists nothing and says `paramOffset 800 is past the last param (706)`. A
+  read that fits on the first page says neither. Specialized pseudo-params and a
+  Simpler's bend ranges come on the first page only. A hosted plug-in pages the
+  same way.
 
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
