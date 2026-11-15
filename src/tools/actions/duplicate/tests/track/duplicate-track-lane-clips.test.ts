@@ -12,13 +12,17 @@ import {
   registerDuplicatedTrackSlots,
   registerMockObject,
   registerPendingMockObject,
+  type RegisteredMockObject,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 /**
  * Register a source track and its copy, whose take lanes hold the given clips.
  * @param laneClipIds - One list of clip ids per take lane on the copy
+ * @returns The copy, whose clips a test can add to
  */
-function registerCopyWithLaneClips(laneClipIds: string[][]): void {
+function registerCopyWithLaneClips(
+  laneClipIds: string[][],
+): RegisteredMockObject {
   registerMockObject("track1", { path: livePath.track(0) });
   registerMockObject("live_set", {
     path: livePath.liveSet,
@@ -45,6 +49,8 @@ function registerCopyWithLaneClips(laneClipIds: string[][]): void {
       });
     }
   }
+
+  return newTrack;
 }
 
 // Live copies a track's take lanes with it, and nothing in the API deletes a
@@ -104,5 +110,41 @@ describe("duplicate - a track copy withoutClips and its take-lane clips", () => 
       path: "t1",
       clips: [],
     });
+  });
+});
+
+describe("duplicate - a plain track copy and its take-lane clips", () => {
+  it("lists them in clips, with no detail, since nothing was left behind", async () => {
+    registerCopyWithLaneClips([["laneClip0"], ["laneClip1"]]);
+
+    const result = await duplicate({ type: "track", id: "track1" });
+
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/1",
+      path: "t1",
+      clips: [
+        { id: "laneClip0", path: "t1/l0[1|1]" },
+        { id: "laneClip1", path: "t1/l1[1|1]" },
+      ],
+    });
+  });
+
+  it("lists them after the track's session and arrangement clips", async () => {
+    const copy = registerCopyWithLaneClips([["laneClip0"]]);
+
+    registerPendingMockObject("mainClip", {
+      path: `${livePath.track(1)} arrangement_clips 0`,
+      properties: { is_arrangement_clip: 1, start_time: 8 },
+    });
+    copy.properties.arrangement_clips = children("mainClip");
+
+    const result = (await duplicate({ type: "track", id: "track1" })) as {
+      clips: { id: string }[];
+    };
+
+    expect(result.clips.map(({ id }) => id)).toStrictEqual([
+      "mainClip",
+      "laneClip0",
+    ]);
   });
 });

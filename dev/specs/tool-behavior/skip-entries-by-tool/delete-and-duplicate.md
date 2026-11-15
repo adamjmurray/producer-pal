@@ -136,9 +136,11 @@ Part of [Skip entries, tool by tool](README.md).
   `the 2 return-track clips (rt0/s3, rt1/s3) were not copied: the arrangement has no return-track clips`.
   A scene with only return-track clips has nothing to copy: its `detail` is
   `the scene has no clips on regular tracks, and ...`.
-- **duplicate: a track copy `withoutClips` keeps its take-lane clips.** Live
-  copies a track's take lanes with it, and the API can't delete a take-lane
-  clip. So those stay in the copy's `clips`, and its `detail` says
+- **duplicate: a track copy lists every clip it holds, take-lane clips
+  included** (`t5/l0[1|1]`), after its session and arrangement clips. A copy
+  `withoutClips` keeps its take-lane clips: Live copies a track's take lanes
+  with it, and the API can't delete a take-lane clip. So those stay in the
+  copy's `clips`, and its `detail` says
   `the track was made, but its 2 take-lane clips are still there: Live only deletes those by hand`.
 - **duplicate: Live fails partway.** A copy that landed keeps its normal entry
   (`id`, where it is now) plus a `detail` of what landed and what didn't: a

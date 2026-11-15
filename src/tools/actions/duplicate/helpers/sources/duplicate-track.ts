@@ -67,11 +67,14 @@ function processClipsForDuplication(
   if (withoutClips === true) {
     deleteSessionClips(newTrack);
     deleteArrangementClips(newTrack);
-    collectTakeLaneClips(newTrack, duplicatedClips);
   } else {
     collectSessionClips(newTrack, duplicatedClips);
     collectArrangementClips(newTrack, duplicatedClips);
   }
+
+  // Live copies take lanes with the track, and nothing in the API deletes
+  // their clips, so the copy holds them either way.
+  collectTakeLaneClips(newTrack, duplicatedClips);
 
   return duplicatedClips;
 }
@@ -105,8 +108,7 @@ function deleteArrangementClips(newTrack: LiveAPI): void {
 }
 
 /**
- * Collect the clips on a track's take lanes, which Live copies with the track
- * and nothing in the API deletes.
+ * Collect the clips on a track's take lanes.
  * @param newTrack - The track LiveAPI object
  * @param keptClips - Array to append clip info to
  */
