@@ -499,6 +499,7 @@ describe("lookUpBrowserDevice", () => {
 
         expect(queriesAsked(fake)).toStrictEqual([
           { type: "plugin", recursive: "false", path: "Audio Damage" },
+          { type: "plugin", q: "dazzle" },
         ]);
       });
 
@@ -513,9 +514,43 @@ describe("lookUpBrowserDevice", () => {
         ).toStrictEqual({
           available: true,
           error:
-            'invalid device "Plug-Ins/AU/Xfer Records/Serum 2 FX": no native device, plug-in, or Max for Live device has that name',
+            'invalid device "Plug-Ins/AU/Xfer Records/Serum 2 FX": no plug-in is at that path; Live lists it at "Plug-Ins/VST3/Xfer Records/Serum 2 FX"',
           notFound: true,
         });
+      });
+
+      it("names the path in that format when the vendor folder is wrong", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/AU/Serum/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          error:
+            'invalid device "Plug-Ins/AU/Serum/Serum 2 FX": no plug-in is at that path; Live lists it at "Plug-Ins/AUv2/Xfer Records/Serum 2 FX"',
+          notFound: true,
+        });
+      });
+
+      it("keeps the plain refusal when the search for it fails", async () => {
+        const name = "Plug-Ins/VST3/Serum/Serum 2 FX";
+        const plain = {
+          available: true,
+          error: `invalid device "${name}": no native device, plug-in, or Max for Live device has that name`,
+          notFound: true,
+        };
+
+        for (const status of [500, 504]) {
+          fake = await startFakeRemoteScript((request) =>
+            request.query.q == null
+              ? listing({ plugin: installed }, request)
+              : { status, body: { error: "boom" } },
+          );
+
+          expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual(
+            plain,
+          );
+
+          await fake.close();
+        }
       });
 
       it("leaves a path under another section alone", async () => {
@@ -576,7 +611,7 @@ describe("lookUpBrowserDevice", () => {
     it("refuses a folder, a missing folder, or nothing after the section", async () => {
       for (const deviceName of [
         "Plug-Ins/VST3/FabFilter",
-        "Plug-Ins/VST4/Pro-Q 4",
+        "Plug-Ins/VST4/Nothing",
         "Plug-Ins/ ",
       ]) {
         expect(await lookUpIn({ plugin }, deviceName)).toStrictEqual({

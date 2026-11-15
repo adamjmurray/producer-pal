@@ -14,12 +14,22 @@ import {
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { pathSegment } from "../../../live-library/reconstruct-path.ts";
 import {
-  type RemoteScriptAnswer,
   type RemoteScriptReply,
   remoteScriptRequest,
   replyError,
   unavailableReply,
 } from "../remote-script-client.ts";
+import {
+  type Candidate,
+  type ListedItem,
+  SECTIONS,
+  type Section,
+  candidateList,
+  ambiguity,
+  listedItems,
+  pooledCandidates,
+  searchFailed,
+} from "./browser-candidates.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 import {
   pluginFolderFormat,
@@ -33,42 +43,11 @@ const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
 /** The format folders as Live spells them, which need no listing to reach. */
 const LIVE_FORMAT_FOLDERS = new Set(["VST3", "VST", "AUv2"]);
 
-/** Browser sections, as the remote script's `type` and as Live labels them. */
-export const SECTIONS = [
-  { type: "plugin", label: "Plug-Ins" },
-  { type: "mfl-device", label: "Max for Live" },
-  { type: "instrument", label: "Instruments" },
-  { type: "audio-effect", label: "Audio Effects" },
-  { type: "midi-effect", label: "MIDI Effects" },
-] as const;
-
-export type Section = (typeof SECTIONS)[number];
-
 /** Browser names that are really filenames. */
 const FILE_SUFFIX = /\.(?:amxd|adg|adv)$/;
 
 /** Rack and preset files, which `preset` can load by absolute path. */
 export const PRESET_FILE = /\.(?:adv|adg)$/i;
-
-/** How many candidates an ambiguity error names. */
-const MAX_LISTED = 10;
-
-export interface ListedItem {
-  name: string;
-  path: string;
-  /** Only a one-level listing says */
-  loadable?: boolean;
-}
-
-export interface Candidate extends ListedItem {
-  section: Section;
-}
-
-/** A file on disk, which is its own spelling. */
-export interface FileCandidate {
-  name: string;
-  path: string;
-}
 
 /**
  * Find the one browser item a device name refers to. `<section>/<path>`, e.g.
@@ -92,17 +71,29 @@ export async function lookUpBrowserDevice(
 
   const rest = await withFormatFolder(deviceName, prefixed, endsAt);
 
-  return typeof rest !== "string"
-    ? rest
-    : await findAtPath(
+  if (typeof rest !== "string") {
+    return rest;
+  }
+
+  const resolution = await findAtPath(
+    deviceName,
+    { section: prefixed.section, rest },
+    {
+      missing: () => nothingNamed(deviceName),
+      shared: (items) => sharedDevicePath(deviceName, items),
+    },
+    endsAt,
+  );
+
+  return prefixed.section.type === "plugin" && "notFound" in resolution
+    ? await pluginElsewhere(
         deviceName,
-        { section: prefixed.section, rest },
-        {
-          missing: () => nothingNamed(deviceName),
-          shared: (items) => sharedDevicePath(deviceName, items),
-        },
+        prefixed.section,
+        rest,
+        resolution,
         endsAt,
-      );
+      )
+    : resolution;
 }
 
 /**
@@ -283,6 +274,56 @@ async function withFormatFolder(
 }
 
 /**
+ * Say where a plug-in is when its path was wrong (the vendor folder, usually).
+ * @param name - The name the call used
+ * @param section - The Plug-Ins section
+ * @param rest - The path under it, format folder as Live's
+ * @param missing - The plain not-found, kept when the search can't help
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns A not-found naming the plug-in's paths, in the asked format when
+ *   it has that one, else `missing`
+ */
+async function pluginElsewhere(
+  name: string,
+  section: Section,
+  rest: string,
+  missing: BrowserItemResolution,
+  endsAt: number,
+): Promise<BrowserItemResolution> {
+  const segments = pathSegments(rest);
+  const key = normalizedName(segments.at(-1) ?? "");
+  let reply: RemoteScriptReply;
+
+  // Only a hint: a search that fails or runs out of time leaves the not-found.
+  try {
+    reply = await listBrowser({ type: section.type, q: key }, endsAt);
+  } catch {
+    return missing;
+  }
+
+  if (!reply.available || reply.status !== 200) {
+    return missing;
+  }
+
+  const named = listedItems(reply)
+    .filter((item) => normalizedName(item.name) === key)
+    .map((item) => ({ ...item, section }));
+  const format = pluginFolderFormat(segments[0]);
+  const inFormat = named.filter(
+    (item) => pluginFolderFormat(item.path.split("/")[0]) === format,
+  );
+  const elsewhere = inFormat.length > 0 ? inFormat : named;
+
+  return elsewhere.length === 0
+    ? missing
+    : {
+        available: true,
+        error: `invalid device "${name}": no plug-in is at that path; Live lists it at ${candidateList(elsewhere)}`,
+        notFound: true,
+      };
+}
+
+/**
  * The refusal for a device path that two items share. Only a rack or preset
  * file has a way forward: `preset` takes a file's absolute path.
  * @param deviceName - The name the call used
@@ -313,57 +354,6 @@ function nameMatches(candidates: Candidate[], key: string): Candidate[] {
 }
 
 /**
- * The items a listing reply holds.
- * @param reply - A 200 from /list
- * @returns Its items that carry a name and a path
- */
-export function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
-  const items = reply.body.items;
-
-  return Array.isArray(items)
-    ? items.filter(
-        (item): item is ListedItem =>
-          typeof item?.name === "string" && typeof item?.path === "string",
-      )
-    : [];
-}
-
-/**
- * Pool what each section's search listed, tagged with its section.
- * @param name - The name the call used, for a failed search's error
- * @param searched - Each search's section and reply
- * @param skipNotFound - Pass over a 404 instead of failing on it
- * @returns The candidates, or the first failure
- */
-export function pooledCandidates(
-  name: string,
-  searched: Array<{ section: Section; reply: RemoteScriptReply }>,
-  skipNotFound = false,
-): Candidate[] | BrowserItemResolution {
-  const candidates: Candidate[] = [];
-
-  for (const { section, reply } of searched) {
-    if (!reply.available) {
-      return unavailableReply(reply);
-    }
-
-    if (reply.status === 404 && skipNotFound) {
-      continue;
-    }
-
-    if (reply.status !== 200) {
-      return searchFailed(name, reply);
-    }
-
-    candidates.push(
-      ...listedItems(reply).map((item) => ({ ...item, section })),
-    );
-  }
-
-  return candidates;
-}
-
-/**
  * A name compared the way the remote script compares it: trimmed, any case,
  * accents composed, in path form, and without a filename suffix.
  * @param name - A browser name or the name the call used
@@ -389,64 +379,6 @@ function spelledName(name: string): string {
  */
 export function found(match: Candidate): BrowserItemResolution {
   return { available: true, item: browserItem(match) };
-}
-
-/**
- * The resolution for a search the remote script answered with an error.
- * @param name - The name the call used
- * @param reply - The failed reply
- * @returns The error
- */
-export function searchFailed(
-  name: string,
-  reply: RemoteScriptAnswer,
-): BrowserItemResolution {
-  return {
-    available: true,
-    error: `could not search Live's browser for "${name}": ${replyError(reply)}`,
-  };
-}
-
-/**
- * The error for a name more than one thing has, each spelled so it can be sent
- * straight back as the arg.
- * @param param - The arg the name came in, and what it names
- * @param param.name - The arg, e.g. "deviceName"
- * @param param.noun - What it names, plural
- * @param value - The name the call used
- * @param matches - What it matched
- * @returns The message
- */
-export function ambiguity(
-  { name, noun }: { name: string; noun: string },
-  value: string,
-  matches: Array<Candidate | FileCandidate>,
-): string {
-  return `${name} "${value}" matches ${matches.length} ${noun}; pass one of these as ${name}: ${candidateList(matches)}`;
-}
-
-/**
- * Candidates, each spelled so it can be sent straight back, capped at a few.
- * @param matches - The candidates
- * @returns The list, saying how many more there are past the cap
- */
-export function candidateList(
-  matches: Array<Candidate | FileCandidate>,
-): string {
-  const listed = matches
-    .slice(0, MAX_LISTED)
-    .map((match) =>
-      "section" in match
-        ? `"${match.section.label}/${match.path}"`
-        : `"${match.path}"`,
-    )
-    .join(", ");
-  const more =
-    matches.length > MAX_LISTED
-      ? `, and ${matches.length - MAX_LISTED} more`
-      : "";
-
-  return `${listed}${more}`;
 }
 
 // --- Helpers below main export ---

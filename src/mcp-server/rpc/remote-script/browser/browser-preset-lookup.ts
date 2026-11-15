@@ -22,12 +22,14 @@ import {
   SECTIONS,
   type Section,
   candidateList,
+  pooledCandidates,
+} from "./browser-candidates.ts";
+import {
   findAtPath,
   found,
   listBrowser,
   normalizedName,
   pathSegments,
-  pooledCandidates,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
 import {

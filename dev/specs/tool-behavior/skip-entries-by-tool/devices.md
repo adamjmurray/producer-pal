@@ -128,11 +128,14 @@ Part of [Skip entries, tool by tool](README.md).
   segment is `VST3`, `AU` (or Live's own `AUv2`) or `VST` (or `VST2`), in any
   case; `VST` is VST2, as `list-plugins` says. Anything else names no format. A
   native load finds the plug-in at that path (one more listing, only when the
-  segment isn't Live's own folder name); a format that isn't installed is the
-  usual "no native device, plug-in, or Max for Live device has that name". A
-  plug-in's entry has `format` (`VST3`, `AU` or `VST`, `list-plugins`' words),
-  the format that loaded, and no other device has it; an entry kept after a
-  later step fails has it too.
+  segment isn't Live's own folder name); a plug-in that isn't at that path (a
+  wrong vendor folder, a format it isn't installed in) is refused with
+  `invalid device "<path>": no plug-in is at that path; Live lists it at "<its paths>"`,
+  its paths in the asked format when it has that one. A name no plug-in has, or
+  a search for it that fails, leaves the usual "no native device, plug-in, or
+  Max for Live device has that name". A plug-in's entry has `format` (`VST3`,
+  `AU` or `VST`, `list-plugins`' words), the format that loaded, and no other
+  device has it; an entry kept after a later step fails has it too.
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,

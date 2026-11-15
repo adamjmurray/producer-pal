@@ -23,12 +23,8 @@ import {
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { browserNamedPackPath } from "../../../live-library/query/pack-folder-names.ts";
-import {
-  type Candidate,
-  PRESET_FILE,
-  ambiguity,
-  normalizedName,
-} from "./browser-device-lookup.ts";
+import { type Candidate, ambiguity } from "./browser-candidates.ts";
+import { PRESET_FILE, normalizedName } from "./browser-device-lookup.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 

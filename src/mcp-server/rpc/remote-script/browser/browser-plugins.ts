@@ -9,7 +9,8 @@
  * `list-plugins` merges the two (see live-library/query/plugins/merge-browser-plugins.ts).
  */
 
-import { listBrowser, listedItems } from "./browser-device-lookup.ts";
+import { listedItems } from "./browser-candidates.ts";
+import { listBrowser } from "./browser-device-lookup.ts";
 import { type PluginFormat } from "../../../live-library/library-types.ts";
 import { pluginFolderFormat } from "./plugin-folder-format.ts";
 

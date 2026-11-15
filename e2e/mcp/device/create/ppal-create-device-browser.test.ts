@@ -488,9 +488,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
         expect(isToolError(result)).toBe(true);
         expect(getToolErrorMessage(result)).toContain(
-          hosted
-            ? `Live lists it at "${pathFor(plugin!, "VST3")}"`
-            : "no native device, plug-in, or Max for Live device has that name",
+          `Live lists it at "${pathFor(plugin!, "VST3")}"`,
         );
       });
 
@@ -501,7 +499,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         expect(getToolErrorMessage(result)).toMatch(
           hosted
             ? /No VST2 plug-in named /
-            : /no native device, plug-in, or Max for Live device has that name/,
+            : /no plug-in is at that path; Live lists it at /,
         );
       });
     });
