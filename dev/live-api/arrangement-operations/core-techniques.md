@@ -120,15 +120,17 @@ Files: `stamp-automation.ts`, `content-segments.ts` (under
 
 ## File Content Boundary Detection
 
-To determine how much actual audio content a file contains (in the warped beat
-grid):
+Where a warped clip's file ends, in the clip's own beats, comes from the clip's
+`warp_markers`: the file's length in seconds (`sample_length` / `sample_rate`)
+read off the two markers around it (`warpedFileEndBeats`).
 
-1. Create a session clip with minimal `loop_end` (1 beat) — avoids extending
-   `end_marker` past the file boundary
-2. Read `sessionClip.getProperty("end_marker")` — this stays at the file's
-   natural content length because `createAudioClipInSession` sets `loop_end` but
-   not `end_marker`
-3. Use the result for boundary checks
+Don't measure it on another clip of the same file. A fresh clip has the file's
+saved warp, so once the clip's markers have been moved (a new Seg. BPM, say) the
+two disagree, and the clip stops short of its audio or runs past it.
+
+When the markers or the sample rate can't be read, the old measure is the
+fallback: a session scratch clip made with `loop_end` 1, whose `end_marker`
+stays at the file's own length.
 
 This enables three-way logic for unlooped warped audio lengthening:
 
@@ -136,4 +138,5 @@ This enables three-way logic for unlooped warped audio lengthening:
 - **Cap**: some hidden content, but not enough for the full target
 - **Proceed**: sufficient content for the full target
 
-Files: `unlooped-lengthening.ts` (`handleUnloopedLengthening`)
+Files: `warped-file-end.ts` (`warpedFileEndBeats`), `unlooped-lengthening.ts`
+(`handleUnloopedLengthening`)

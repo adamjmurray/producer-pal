@@ -110,6 +110,8 @@ interface WarpedOpts {
   currentArrangementLength: number;
   arrangementLengthBeats: number;
   currentEndTime?: number;
+  /** The clip's own warp markers and file, when the test gives it any. */
+  markerProps?: Record<string, unknown>;
 }
 
 /**
@@ -124,6 +126,7 @@ function warped(o: WarpedOpts) {
       end_marker: o.end_marker,
       loop_start: 0,
       file_path: "x.wav",
+      ...o.markerProps,
     },
     isAudioClip: true,
     clipStartMarker: o.clipStartMarker,
@@ -357,6 +360,54 @@ describe("handleUnloopedLengthening", () => {
 
       expect(set).toHaveBeenCalledWith("loop_end", 16);
       expect(set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+    });
+  });
+
+  describe("warped unlooped audio with its own warp markers", () => {
+    // A 4.8 s file the clip stretches over 16 beats. A fresh clip of the same
+    // file would say 8, which is what the scratch clip reports here.
+    const markerProps = {
+      sample_length: 211680,
+      sample_rate: 44100,
+      warp_markers: JSON.stringify({
+        warp_markers: [
+          { sample_time: 0, beat_time: 0 },
+          { sample_time: 4.8, beat_time: 16 },
+          { sample_time: 4.81875, beat_time: 16.03125 },
+        ],
+      }),
+    };
+
+    it("measures the file end on the clip's markers, not a fresh clip's", () => {
+      const { result, set, spy } = warped({
+        end_marker: 5,
+        clipStartMarker: 0,
+        fileContentBoundary: 8,
+        currentArrangementLength: 5,
+        arrangementLengthBeats: 12,
+        markerProps,
+      });
+
+      expect(set).toHaveBeenCalledWith("loop_end", 12);
+      expect(result).toStrictEqual([{ id: "clip-1" }]);
+      expect(clipReason()).toBe("");
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("stops at the file end the clip's markers give", () => {
+      const { set } = warped({
+        end_marker: 5,
+        clipStartMarker: 0,
+        fileContentBoundary: 8,
+        currentArrangementLength: 5,
+        arrangementLengthBeats: 100,
+        markerProps,
+      });
+
+      expect(set).toHaveBeenCalledWith("loop_end", 16);
+      expect(clipReason()).toBe(
+        `arrangementLength landed at 4bar: ${NO_MORE_CONTENT}`,
+      );
     });
   });
 

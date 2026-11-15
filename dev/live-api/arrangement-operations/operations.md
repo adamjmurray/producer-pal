@@ -52,8 +52,8 @@ and manual clamping is required.
 
 Algorithm:
 
-1. **Boundary detection**: create session clip with `loop_end=1`, read
-   `end_marker` for file content boundary, delete session clip
+1. **Boundary detection**: read the file end off the clip's own warp markers (a
+   session scratch clip only when they can't be read)
 2. **Three-way check**:
    - **Skip**: `totalContentFromStart <= currentArrangementLength` (no
      additional file content). Warn, return source clip unchanged.

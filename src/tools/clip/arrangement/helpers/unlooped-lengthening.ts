@@ -17,6 +17,7 @@ import {
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { type ClipIdResult } from "./arrangement-length-changes.ts";
 import { audioClipSampleSeconds } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { warpedFileEndBeats } from "#src/tools/clip/helpers/warped-file-end.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** Why a clip that should have grown stopped short, with nothing in its way. */
@@ -148,8 +149,8 @@ export function handleUnloopedLengthening({
 
 /**
  * Lengthen a warped unlooped audio clip by setting loop_end (in content beats).
- * Unlike unwarped clips, Ableton does NOT auto-clamp loop_end at the file boundary
- * for warped clips, so we detect the boundary via a session clip and clamp manually.
+ * Live doesn't stop a warped clip's loop_end at the end of the file, so the
+ * file end is worked out here and the target capped to it.
  * @param clip - The warped audio clip
  * @param track - Track containing the clip
  * @param arrangementLengthBeats - Target arrangement length in beats
@@ -168,25 +169,8 @@ function lengthenWarpedUnloopedAudio(
   clearTo: (spanBeats: number) => void,
   reasons: ClipReasons,
 ): boolean {
-  const filePath = clip.getProperty("file_path") as string;
-
-  // Create session clip with minimal loop_end (1) to detect file content boundary
-  // without extending end_marker past the actual file content
-  const reportScratch = (message: string): void =>
-    noteClipReason(reasons, clip.id, message);
-  const session = createAudioClipInSession(track, 1, filePath, reportScratch);
-
-  // end_marker on the session clip stays at the file's natural content length
-  // in the warped beat grid (createAudioClipInSession sets loop_end but not end_marker)
-  let fileContentBoundary: number;
-
-  // Removed even if the read throws: the scratch clip would otherwise stay,
-  // and its scene with it.
-  try {
-    fileContentBoundary = session.clip.getProperty("end_marker") as number;
-  } finally {
-    removeSessionClip(session, reportScratch);
-  }
+  const fileContentBoundary =
+    warpedFileEndBeats(clip) ?? scratchClipFileEnd(clip, track, reasons);
 
   const totalContentFromStart = fileContentBoundary - clipStartMarker;
 
@@ -224,6 +208,34 @@ function lengthenWarpedUnloopedAudio(
   }
 
   return true;
+}
+
+/**
+ * Where the file ends on a fresh clip of it, for a clip whose own warp markers
+ * can't be read. Right only while the clip still has the file's saved warp.
+ * @param clip - The warped audio clip
+ * @param track - Track containing the clip
+ * @param reasons - What each clip has to say beyond its result
+ * @returns The beat the file ends on
+ */
+function scratchClipFileEnd(
+  clip: LiveAPI,
+  track: LiveAPI,
+  reasons: ClipReasons,
+): number {
+  const filePath = clip.getProperty("file_path") as string;
+  const reportScratch = (message: string): void =>
+    noteClipReason(reasons, clip.id, message);
+  // loop_end 1 keeps the scratch clip's end_marker at the file's own length.
+  const session = createAudioClipInSession(track, 1, filePath, reportScratch);
+
+  // Removed even if the read throws: the scratch clip would otherwise stay,
+  // and its scene with it.
+  try {
+    return session.clip.getProperty("end_marker") as number;
+  } finally {
+    removeSessionClip(session, reportScratch);
+  }
 }
 
 /**
