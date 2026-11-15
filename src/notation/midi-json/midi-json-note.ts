@@ -126,6 +126,13 @@ export interface ValidateNoteOptions {
    * play, and Live rejects velocity 0.
    */
   allowVelocityZero?: boolean;
+  /**
+   * Drop a note whose pitch is outside 0-127 instead of clamping it: a clamped
+   * pitch is a note nobody wrote. On for MIDI JSON, whose drops are warned. Off
+   * by default: user code's invalid notes are dropped without a word, and a
+   * clamped note there is at least heard.
+   */
+  skipPitchOutOfRange?: boolean;
 }
 
 /**
@@ -190,10 +197,13 @@ export function validateAndSanitizeNote(
   // A marker names a note that already exists, so an out-of-range pitch names
   // nothing — clamping it into 0-127 would delete a note the caller never
   // mentioned. Rounding is still fine: p:127.4 means 127.
-  if (isDeleteMarker && !isValidMidi(Math.round(n.pitch))) {
+  if (
+    (isDeleteMarker || options.skipPitchOutOfRange === true) &&
+    !isValidMidi(Math.round(n.pitch))
+  ) {
     return {
       valid: false,
-      reason: `delete marker pitch ${n.pitch} is outside 0-127`,
+      reason: `${isDeleteMarker ? "delete marker " : ""}pitch ${n.pitch} is outside 0-127`,
     };
   }
 

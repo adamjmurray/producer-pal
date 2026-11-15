@@ -136,7 +136,9 @@ roots, slash bass, and chord qualities (`7♯9` = `7#9`):
   models write it unprompted, so the parser tolerates it while the guidance
   stays on one spelling (ADR-0018).
 - **octave marks** `'` (up) / `,` (down), stackable — shift from the register
-  default, or from an absolute octave when both are present (`C3'` = C4).
+  default, or from an absolute octave when both are present (`C3'` = C4). A note
+  the marks push out of MIDI range is warn-skipped like an absolute one; a chord
+  symbol skips only its notes that land out of range.
 - **duration** `/N` — absolute note value (§ Durations). At most one.
 - **dynamic** `!` accent / `?` soft. Omit = normal. At most one.
 

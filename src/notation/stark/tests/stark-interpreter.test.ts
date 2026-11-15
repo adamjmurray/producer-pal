@@ -224,6 +224,26 @@ describe("stark interpreter — absolute octaves on note tokens", () => {
     );
   });
 
+  it("warn-skips a relative note its octave marks push out of range", () => {
+    const notes = interpretNotation("melody: C'''''' D");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([62]);
+    expect(notes[0]?.start_time).toBe(1);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(`note "C''''''" is out of MIDI range`),
+    );
+  });
+
+  it("warn-skips the notes of a chord symbol that land out of range", () => {
+    // Chords sit at C2 (48): six octaves up puts E at 124 and G#, B past 127.
+    const notes = interpretNotation("chords: E''''''");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([124]);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(`chord "E''''''" has 2 notes out of MIDI range`),
+    );
+  });
+
   it("re-spells the octave marks that pushed a note out of range", () => {
     const notes = interpretNotation("melody: C-2, D3");
 

@@ -24,6 +24,7 @@ import {
   drumHeaderPitch,
   noteLabel,
   notePitch,
+  playableChordPitches,
 } from "#src/notation/stark/helpers/stark-interpreter-pitch.ts";
 import {
   type BarMarkerItem,
@@ -307,7 +308,7 @@ function processChordItem(
 
   const velocity = velocityFor(item.dynamic);
 
-  for (const pitch of pitches) {
+  for (const pitch of playableChordPitches(pitches, item)) {
     notes.push({
       pitch,
       start_time: time,

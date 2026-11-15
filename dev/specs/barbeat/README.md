@@ -297,7 +297,7 @@ The interpreter also warns (without throwing) on out-of-range values:
 - Velocity / velocity-range / probability outside their valid range are
   **clamped + warned** (velocity to 0–127, probability to 0.0–1.0)
 - An out-of-range pitch is **skipped + warned** (the note is dropped, not
-  clamped)
+  clamped), as in MIDI JSON and Stark
 
 These are console warnings, not errors - parsing completes successfully.
 

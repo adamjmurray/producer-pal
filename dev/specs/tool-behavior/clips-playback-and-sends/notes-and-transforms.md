@@ -112,6 +112,10 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
   `note.index`, ...) skip them. Merges, transform-only updates and `code`
   rewrites write them back as they were. A transform-only update on a clip of
   only muted notes is ignored, and says so.
+- **A note whose pitch is outside 0-127 is skipped with a warning** in every
+  notation (bar|beat, MIDI JSON, Stark notes and chord symbols). It is never
+  clamped: a clamped pitch is a note nobody wrote. A transform is not a
+  notation: its `pitch` result is clamped to 0-127, like its other values.
 - **A note written at a muted note's pitch and start replaces it**: the model
   asked for a note there. A delete marker aimed at one is a no-op, since the
   note doesn't exist to it. A transform that moves a note there replaces it too,

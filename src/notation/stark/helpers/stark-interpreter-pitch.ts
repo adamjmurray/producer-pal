@@ -9,7 +9,8 @@
  */
 
 import { assertDefined } from "#src/shared/error-message.ts";
-import { clampMidi } from "#src/shared/pitch.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
+import { isValidMidi } from "#src/shared/pitch.ts";
 
 /** A pitched token's spelling, as the grammar produces it. */
 export interface StarkPitchSpelling {
@@ -38,8 +39,7 @@ const NATURAL_PC: Readonly<Record<string, number>> = {
  * the line's register default.
  * @param note - The token's spelling
  * @param registerDefault - MIDI pitch a bare `C` maps to on this line
- * @returns MIDI pitch, or null when an absolute octave lands out of range
- *   (register-relative pitches clamp instead)
+ * @returns MIDI pitch, or null when it lands out of range
  */
 export function notePitch(
   note: StarkPitchSpelling,
@@ -54,11 +54,12 @@ export function notePitch(
     );
   }
 
-  return clampMidi(
+  const midi =
     registerDefault +
-      pitchOffset(note.letter, note.accidental) +
-      note.octaveShift * 12,
-  );
+    pitchOffset(note.letter, note.accidental) +
+    note.octaveShift * 12;
+
+  return isValidMidi(midi) ? midi : null;
 }
 
 /**
@@ -87,16 +88,12 @@ export function drumHeaderPitch(noteName: string): number | null {
 }
 
 /**
- * Re-spell a token for a warning message (only absolute-octave tokens can land
- * out of range, so the octave is always present in practice).
+ * Re-spell a token for a warning message.
  * @param note - The token's spelling
  * @returns The token as written
  */
 export function noteLabel(note: StarkPitchSpelling): string {
-  const marks =
-    note.octaveShift >= 0
-      ? "'".repeat(note.octaveShift)
-      : ",".repeat(-note.octaveShift);
+  const marks = octaveMarks(note.octaveShift);
 
   return `${note.letter}${note.accidental ?? ""}${note.octave ?? ""}${marks}`;
 }
@@ -130,4 +127,44 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
   }
 
   return base;
+}
+
+/**
+ * The pitches of a chord symbol Live can play. The rest are skipped with a
+ * warning, like a single note: clamping one would add a note nobody wrote.
+ * @param pitches - The chord's pitches, in or out of range
+ * @param chord - The symbol as parsed, to name it
+ * @param chord.root - Root pitch-class name
+ * @param chord.quality - Quality as written
+ * @param chord.bass - Slash-bass name, or null
+ * @param chord.octaveShift - Whole-chord octave displacement
+ * @returns The pitches in 0-127
+ */
+export function playableChordPitches(
+  pitches: number[],
+  chord: {
+    root: string;
+    quality: string;
+    bass: string | null;
+    octaveShift: number;
+  },
+): number[] {
+  const playable = pitches.filter((pitch) => isValidMidi(pitch));
+  const skipped = pitches.length - playable.length;
+
+  if (skipped > 0) {
+    const slash = chord.bass == null ? "" : `/${chord.bass}`;
+    const label = `${chord.root}${chord.quality}${slash}${octaveMarks(chord.octaveShift)}`;
+
+    emitWarning(
+      `Stark: chord "${label}" has ${skipped} note${skipped === 1 ? "" : "s"} out of MIDI range — skipping`,
+    );
+  }
+
+  return playable;
+}
+
+// The octave marks for a shift, as written: `'` up, `,` down.
+function octaveMarks(shift: number): string {
+  return shift >= 0 ? "'".repeat(shift) : ",".repeat(-shift);
 }

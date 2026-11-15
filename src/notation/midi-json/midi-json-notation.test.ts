@@ -178,6 +178,18 @@ describe("v:0 deletes", () => {
     expect(interpretMidiJson("[{p:60,t:0,d:1,v:1/3}]")[0]?.velocity).toBe(1);
   });
 
+  // A clamped pitch is a note nobody wrote: skipped instead, as in bar|beat.
+  it("warns and skips a note whose pitch is outside 0-127", () => {
+    const result = interpretMidiJson(
+      "[{p:130,t:0,d:1,v:100},{p:-1,t:1,d:1,v:100},{p:60,t:2,d:1,v:100}]",
+    );
+
+    expect(result.map((note) => note.pitch)).toStrictEqual([60]);
+    expect(emitWarning).toHaveBeenCalledWith(
+      expect.stringContaining("pitch 130 is outside 0-127"),
+    );
+  });
+
   it("warns and ignores a marker whose pitch is outside 0-127", () => {
     // Clamping the marker into range would delete a note at 127 (or 0) that the
     // caller never named.

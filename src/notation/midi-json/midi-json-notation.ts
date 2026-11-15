@@ -82,6 +82,7 @@ export function interpretMidiJson(
   for (const raw of parsed) {
     const validated = validateAndSanitizeNote(normalizeMidiJsonNote(raw), {
       allowVelocityZero: true,
+      skipPitchOutOfRange: true,
     });
 
     if (validated.valid) {
