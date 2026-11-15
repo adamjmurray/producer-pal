@@ -19,11 +19,20 @@ import { withThoughtSignature } from "./streaming/gemini-thought-signatures";
 import { type ChatImage, type ChatMessage } from "./types";
 
 /**
- * Placeholder result for a tool call the user stopped before it returned.
+ * Placeholder result for a tool call the user stopped before it returned. Stop
+ * only stops waiting: a call already sent may still land, so it doesn't say
+ * the call was canceled.
  * Used both to keep the model conversation valid (every tool-call needs a
  * matching tool-result or providers 400) and to render a sensible UI state.
  */
 export const CANCELED_TOOL_RESULT_TEXT =
+  "Stopped by the user before this tool returned; it may still have run.";
+
+/**
+ * What CANCELED_TOOL_RESULT_TEXT said before, which saved chats still hold. It
+ * told the model the call was canceled, though Stop only stops waiting for it.
+ */
+export const OLD_CANCELED_TOOL_RESULT_TEXT =
   "Canceled by the user before this tool finished.";
 
 /**

@@ -738,7 +738,9 @@ describe("ChatSdkClient", () => {
       expect(assistantMsg.toolCalls).toHaveLength(1);
       expect(assistantMsg.toolResults).toHaveLength(1);
       expect(assistantMsg.toolResults![0]!.id).toBe("tc1");
-      expect(assistantMsg.toolResults![0]!.result).toContain("Canceled");
+      expect(assistantMsg.toolResults![0]!.result).toContain(
+        "Stopped by the user",
+      );
       expect(assistantMsg.toolResults![0]!.isError).toBe(false);
     });
   });

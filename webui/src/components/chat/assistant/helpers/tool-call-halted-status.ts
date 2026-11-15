@@ -6,6 +6,7 @@
 import {
   CANCELED_TOOL_RESULT_TEXT,
   FAILED_TOOL_RESULT_TEXT,
+  OLD_CANCELED_TOOL_RESULT_TEXT,
 } from "#webui/chat/sdk/build-model-messages";
 
 /**
@@ -22,7 +23,10 @@ export function haltedToolStatus(result: string | null): string | null {
 
   const text = unwrapToolResultText(result);
 
-  if (text === CANCELED_TOOL_RESULT_TEXT) {
+  if (
+    text === CANCELED_TOOL_RESULT_TEXT ||
+    text === OLD_CANCELED_TOOL_RESULT_TEXT
+  ) {
     return "stopped";
   }
 
