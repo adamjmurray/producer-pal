@@ -248,6 +248,11 @@ and installs with a dev switch:
 - `npm run install:plugin-host` - copy the plug-in hosting wrappers from
   `max-for-live-device/plugin-host/` into the User Library (replaces any that
   differ)
+- `npm run install:mcpb` - put `claude-desktop-extension/Producer_Pal.mcpb`
+  (from `npm run build`) into Claude Desktop, replacing an installed copy in
+  place; restart Claude Desktop to load it
+- `npm run install:all` - all four installs above, stopping at the first that
+  fails
 - `npm run install:status` - show what's installed (including the plug-in
   hosting wrappers), plus other `.amxd` copies
 - `npm run uninstall` - remove the device, remote script and plug-in hosting

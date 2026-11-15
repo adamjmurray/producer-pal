@@ -108,6 +108,8 @@
     "ui:build:gen": "node scripts/npm/build-gen-ui-for-tests.ts",
     "ui:test": "npm run ui:build && npm run ui:build:gen && playwright test -c config/playwright.ui.config.ts",
     "ui:test:dev": "npm run ui:build && npm run ui:build:gen && playwright test -c config/playwright.ui.config.ts --ui",
+    "install:all": "npm run install:device && npm run install:remote-script && npm run install:plugin-host && npm run install:mcpb",
+    "install:mcpb": "node scripts/live-api/install/install-mcpb.ts",
     "install:remote-script": "node --env-file-if-exists=.env scripts/live-api/install-remote-script.ts",
     "install:device": "node --env-file-if-exists=.env scripts/live-api/install/install-device.ts",
     "install:plugin-host": "node --env-file-if-exists=.env scripts/live-api/install/install-plugin-host.ts",
