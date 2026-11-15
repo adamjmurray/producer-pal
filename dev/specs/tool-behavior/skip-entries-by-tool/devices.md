@@ -146,8 +146,12 @@ Part of [Skip entries, tool by tool](README.md).
   placed like any browser device (same path, misfit and chain rules), then told
   to load the plug-in; the target only counts as created once that worked, then
   takes its `name` and `params` (routed to the plug-in as update-device's are).
-  A plug-in that won't load, or that doesn't answer in time, deletes the wrapper
-  again and skips the target with the reason
+  Its entry has `hosted: true` and `paramCount`, the total a read-device of it
+  pages through (the wrapper hides some of the plug-in's own params), from the
+  moment the plug-in loads, so an entry kept after a later step fails has them
+  too. A wrapper that gives no count leaves `paramCount` out without failing the
+  target. A plug-in that won't load, or that doesn't answer in time, deletes the
+  wrapper again and skips the target with the reason
   (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
   that can't be deleted stays: the entry keeps its `id` and `path`, and the
   detail says so.

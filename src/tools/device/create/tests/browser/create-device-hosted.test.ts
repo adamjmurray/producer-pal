@@ -127,6 +127,7 @@ function wrapperLoads(load?: WrapperMessage): WrapperMessage[] {
   return installWrapper({
     info: () => infoReply("Serum 2 FX"),
     load: () => load ?? { success: true, plugin: "Serum 2 FX" },
+    params: () => ({ success: true, params: [], total: 543 }),
     write: (request) => ({
       success: true,
       params: (request.params as unknown[]).map((_p, i) => ({
@@ -163,7 +164,12 @@ describe("createDevice hosted", () => {
         hosted: true,
         path: "t0/d+",
       }),
-    ).toStrictEqual({ id: "loaded-1", path: "t0/d1" });
+    ).toStrictEqual({
+      id: "loaded-1",
+      path: "t0/d1",
+      hosted: true,
+      paramCount: 543,
+    });
     expect(requestNode).toHaveBeenCalledWith(
       REMOTE_SCRIPT_ROUTES.resolve,
       expect.objectContaining({ name: "PPal Plug-in Effect" }),
@@ -181,6 +187,61 @@ describe("createDevice hosted", () => {
         synth: false,
       },
     ]);
+  });
+
+  it("asks the wrapper for a zero-size page to count the params", async () => {
+    const heard = wrapperLoads();
+
+    await createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" });
+
+    expect(heard.filter((request) => request.op === "params")).toStrictEqual([
+      { deviceId: "loaded-1", op: "params", limit: 0 },
+    ]);
+  });
+
+  it.each([
+    ["fails the count", { success: false, error: "no answer" }],
+    ["answers with no total", { success: true, params: [] }],
+  ])(
+    "still succeeds, without a count, when the wrapper %s",
+    async (_, reply) => {
+      installWrapper({
+        info: () => infoReply("Serum 2 FX"),
+        load: () => ({ success: true }),
+        params: () => reply,
+      });
+
+      expect(
+        await createDevice({
+          device: "Serum 2 FX",
+          hosted: true,
+          path: "t0/d+",
+        }),
+      ).toStrictEqual({ id: "loaded-1", path: "t0/d1", hosted: true });
+      expect(track.methods.delete_device).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps hosted and the count on the entry when a later step throws", async () => {
+    wrapperLoads();
+    lookupSet("loaded-1").mockImplementation(() => {
+      throw new Error("Live said no");
+    });
+
+    expect(
+      await createDevice({
+        device: "Serum 2 FX",
+        hosted: true,
+        path: "t0/d+",
+        name: "My Fx",
+      }),
+    ).toStrictEqual({
+      id: "loaded-1",
+      path: "t0/d1",
+      hosted: true,
+      paramCount: 543,
+      detail: "Live said no; already changed: device created",
+    });
   });
 
   it("uses the instrument wrapper for an instrument", async () => {
@@ -258,6 +319,7 @@ describe("createDevice hosted", () => {
     ).toStrictEqual({
       id: "loaded-1",
       path: "t0/d1",
+      hosted: true,
       params: [
         {
           name: "Filter 1 Freq",
@@ -505,7 +567,7 @@ describe("createDevice hosted", () => {
       },
       // The mock's delete_device removes nothing, so the first wrapper still
       // holds d1.
-      { id: "loaded-2", path: "t0/d2" },
+      { id: "loaded-2", path: "t0/d2", hosted: true },
     ]);
   });
 

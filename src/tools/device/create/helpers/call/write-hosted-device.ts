@@ -10,6 +10,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { getDeviceInsertionPoint } from "#src/tools/device/update/helpers/wrap/wrapped-rack.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
+import { countHostedParams } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
@@ -53,7 +54,21 @@ export async function createHostedDevice(
     throw failedHostedLoad(failure, created, step);
   }
 
-  return await placeCreatedDevice(created, step);
+  // Before placing, so an entry kept by a later failure says it too. A count
+  // the wrapper doesn't give never fails a plug-in that loaded.
+  const paramCount = countHostedParams(created.device.id);
+
+  return await placeCreatedDevice(
+    {
+      ...created,
+      entry: {
+        ...created.entry,
+        hosted: true,
+        ...(paramCount != null && { paramCount }),
+      },
+    },
+    step,
+  );
 }
 
 // --- Helpers below main export ---

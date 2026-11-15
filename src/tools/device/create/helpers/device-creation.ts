@@ -48,6 +48,10 @@ export interface CreateDeviceResult {
   path?: string;
   /** The rack chains the path had to make first ("c2-c3"), when it made any */
   created?: string;
+  /** True when a plug-in was loaded into a wrapper */
+  hosted?: true;
+  /** How many params a read of the hosted plug-in lists, when the wrapper said */
+  paramCount?: number;
   params?: ParamResult[];
   /** What didn't finish after the device landed */
   detail?: string;

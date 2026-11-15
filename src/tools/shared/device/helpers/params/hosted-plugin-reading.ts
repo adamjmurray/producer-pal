@@ -178,6 +178,20 @@ export function readHostedParams(
 }
 
 /**
+ * How many params a read matches for a hosted plug-in: the wrapper hides some,
+ * so this is not the plug-in's own count.
+ * @param deviceId - Live id of the wrapper device
+ * @returns The count, or null when the wrapper gives none
+ */
+export function countHostedParams(deviceId: string): number | null {
+  // A zero-size page: only the total is wanted.
+  const reply = probePluginHost(deviceId, "params", { limit: 0 });
+  const total = reply?.success === true ? reply.total : null;
+
+  return typeof total === "number" && Number.isFinite(total) ? total : null;
+}
+
+/**
  * @param reply - The wrapper's reply about itself
  * @returns The name of the plug-in saved in a wrapper that has none loaded
  */

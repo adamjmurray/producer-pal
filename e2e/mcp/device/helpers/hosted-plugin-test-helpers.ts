@@ -38,6 +38,7 @@ export interface HostedDevice {
   path: string;
   type: string;
   hosted?: boolean;
+  paramCount?: number;
   name?: string;
   detail?: string;
   parameters?: { id: string; name: string; value?: string }[];
@@ -65,21 +66,35 @@ export function hostedPluginHelpers(ctx: McpTestContext) {
    * Host a plug-in at the end of a new MIDI track.
    * @param deviceName - The plug-in's name in Live's browser
    * @param extra - More create-device args
-   * @returns The track index and the device's path
+   * @returns The track index, the device's path and the create entry's count
    */
   async function hostOnNewTrack(
     deviceName: string,
     extra: Record<string, unknown> = {},
-  ): Promise<{ track: number; path: string }> {
+  ): Promise<{
+    track: number;
+    path: string;
+    hosted?: boolean;
+    paramCount?: number;
+  }> {
     const track = await createMidiTrack(ctx.client!);
-    const created = await call<{ path: string }>("ppal-create-device", {
+    const created = await call<{
+      path: string;
+      hosted?: boolean;
+      paramCount?: number;
+    }>("ppal-create-device", {
       deviceName,
       hosted: true,
       path: `t${track}/d+`,
       ...extra,
     });
 
-    return { track, path: created.path };
+    return {
+      track,
+      path: created.path,
+      hosted: created.hosted,
+      paramCount: created.paramCount,
+    };
   }
 
   /**

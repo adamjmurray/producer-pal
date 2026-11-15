@@ -71,6 +71,19 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
       });
     });
 
+    it("says it is hosted, with the param count a read lists", async () => {
+      const { path, hosted, paramCount } = await hostOnNewTrack("Serum 2");
+      const read = await call<HostedDevice>("ppal-read-device", {
+        path,
+        include: ["params"],
+      });
+
+      expect(hosted).toBe(true);
+      expect(paramCount).toBeGreaterThan(0);
+      // A read that pages gives the total as its own `paramCount`.
+      expect(paramCount).toBe(read.paramCount ?? read.parameters?.length);
+    });
+
     it("treats a paramSearch of * as plain text, never listing MIDI stand-ins", async () => {
       const { path } = await hostOnNewTrack("Serum 2");
       const device = await readDevice(path, "*");
