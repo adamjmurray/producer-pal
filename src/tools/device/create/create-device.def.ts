@@ -22,7 +22,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     // drops any tool argument named `device` before the call reaches us.
     deviceName: param(z.string().optional(), {
       default:
-        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit this and preset to list available devices',
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; a plug-in installed in several formats loads VST3, else AU, else VST2, and "Plug-Ins/AU/<vendor>/<name>" picks one; omit this and preset to list available devices',
       smallModel:
         'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
     }),

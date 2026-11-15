@@ -132,6 +132,7 @@ describe("lookUpBrowserDevice", () => {
         type: "plugin",
         path: "VST3/Valhalla/ValhallaReverb",
         name: "ValhallaReverb",
+        format: "VST3",
       },
     });
   });
@@ -167,7 +168,12 @@ describe("lookUpBrowserDevice", () => {
 
     expect(await lookUpIn({ plugin }, "Pro-Q 4")).toStrictEqual({
       available: true,
-      item: { type: "plugin", path: "VST3/FabFilter/Pro-Q 4", name: "Pro-Q 4" },
+      item: {
+        type: "plugin",
+        path: "VST3/FabFilter/Pro-Q 4",
+        name: "Pro-Q 4",
+        format: "VST3",
+      },
     });
   });
 
@@ -180,6 +186,7 @@ describe("lookUpBrowserDevice", () => {
         type: "plugin",
         path: "AUv2/FabFilter/Pro-L 2",
         name: "Pro-L 2",
+        format: "AU",
       },
     });
   });
@@ -192,7 +199,12 @@ describe("lookUpBrowserDevice", () => {
       error:
         'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
       candidates: [
-        { type: "plugin", path: "VST3/Acme/Echo", name: "Echo" },
+        {
+          type: "plugin",
+          path: "VST3/Acme/Echo",
+          name: "Echo",
+          format: "VST3",
+        },
         { type: "audio-effect", path: "Echo", name: "Echo" },
       ],
     });
@@ -395,11 +407,158 @@ describe("lookUpBrowserDevice", () => {
           type: "plugin",
           path: "VST/FabFilter/Pro-Q 4",
           name: "Pro-Q 4",
+          format: "VST",
         },
       });
       expect(queriesAsked(fake)).toStrictEqual([
         { type: "plugin", recursive: "false", path: "VST/FabFilter" },
       ]);
+    });
+
+    describe("naming the format", () => {
+      const installed = [
+        "VST3/Xfer Records/Serum 2 FX",
+        "AUv2/Xfer Records/Serum 2 FX",
+        "VST/Serum 2 FX",
+      ];
+      const au = {
+        available: true,
+        item: {
+          type: "plugin",
+          path: "AUv2/Xfer Records/Serum 2 FX",
+          name: "Serum 2 FX",
+          format: "AU",
+        },
+      };
+
+      it("reaches Live's AUv2 folder as AU, in any case", async () => {
+        for (const spelled of ["AU", "au", "AUv2", "auv2"]) {
+          expect(
+            await lookUpIn(
+              { plugin: installed },
+              `Plug-Ins/${spelled}/Xfer Records/Serum 2 FX`,
+            ),
+          ).toStrictEqual(au);
+
+          await fake?.close();
+        }
+      });
+
+      it("lists the top folders only for a spelling Live doesn't use", async () => {
+        await lookUpIn(
+          { plugin: installed },
+          "Plug-Ins/AU/Xfer Records/Serum 2 FX",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false" },
+          { type: "plugin", recursive: "false", path: "AUv2/Xfer Records" },
+        ]);
+
+        await fake?.close();
+        await lookUpIn(
+          { plugin: installed },
+          "Plug-Ins/AUv2/Xfer Records/Serum 2 FX",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false", path: "AUv2/Xfer Records" },
+        ]);
+      });
+
+      it("loads the VST2, which has no vendor folder, by its folder", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/VST/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          item: {
+            type: "plugin",
+            path: "VST/Serum 2 FX",
+            name: "Serum 2 FX",
+            format: "VST",
+          },
+        });
+      });
+
+      it("reads VST2 as the VST folder", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/VST2/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          item: {
+            type: "plugin",
+            path: "VST/Serum 2 FX",
+            name: "Serum 2 FX",
+            format: "VST",
+          },
+        });
+      });
+
+      it("doesn't read a vendor that starts with AU as the format", async () => {
+        await lookUpIn({ plugin: installed }, "Plug-Ins/Audio Damage/Dazzle");
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false", path: "Audio Damage" },
+        ]);
+      });
+
+      it("refuses a format that isn't installed", async () => {
+        const onlyVst3 = ["VST3/Xfer Records/Serum 2 FX"];
+
+        expect(
+          await lookUpIn(
+            { plugin: onlyVst3 },
+            "Plug-Ins/AU/Xfer Records/Serum 2 FX",
+          ),
+        ).toStrictEqual({
+          available: true,
+          error:
+            'invalid device "Plug-Ins/AU/Xfer Records/Serum 2 FX": no native device, plug-in, or Max for Live device has that name',
+          notFound: true,
+        });
+      });
+
+      it("leaves a path under another section alone", async () => {
+        await lookUpIn(
+          { "audio-effect": ["AU/Reverb"] },
+          "Audio Effects/AU/Reverb",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "audio-effect", recursive: "false", path: "AU" },
+        ]);
+      });
+
+      it("fails the way any listing does when the top folders can't be listed", async () => {
+        fake = await startFakeRemoteScript(() => ({
+          status: 500,
+          body: { error: "boom" },
+        }));
+
+        const name = "Plug-Ins/AU/Xfer Records/Serum 2 FX";
+
+        expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual({
+          available: true,
+          error: `could not search Live's browser for "${name}": boom`,
+        });
+
+        await fake.close();
+        fake = await startFakeRemoteScript(() => ({
+          status: 504,
+          body: { error: "the request expired before Live ran it" },
+        }));
+
+        await expect(lookUpBrowserDevice(name, inAMinute())).rejects.toThrow(
+          "the request expired before Live ran it",
+        );
+
+        await fake.close();
+        fake = undefined;
+
+        expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual({
+          available: false,
+        });
+      });
     });
 
     it("reads the section and name in any case", async () => {

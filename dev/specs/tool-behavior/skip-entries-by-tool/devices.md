@@ -121,6 +121,18 @@ Part of [Skip entries, tool by tool](README.md).
   Simpler's bend ranges come on the first page only. A hosted plug-in pages the
   same way.
 
+- **create-device loads a plug-in of a chosen format by browser path.** A bare
+  name installed in several formats loads as VST3, else AU, else VST2. A name
+  spelled `Plug-Ins/<format>/<vendor>/<name>` (VST2 has no vendor folder:
+  `Plug-Ins/VST/<name>`) loads only that format, never another. The format
+  segment is `VST3`, `AU` (or Live's own `AUv2`) or `VST` (or `VST2`), in any
+  case; `VST` is VST2, as `list-plugins` says. Anything else names no format. A
+  native load finds the plug-in at that path (one more listing, only when the
+  segment isn't Live's own folder name); a format that isn't installed is the
+  usual "no native device, plug-in, or Max for Live device has that name". A
+  plug-in's entry has `format` (`VST3`, `AU` or `VST`, `list-plugins`' words),
+  the format that loaded, and no other device has it; an entry kept after a
+  later step fails has it too.
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,
@@ -137,21 +149,33 @@ Part of [Skip entries, tool by tool](README.md).
   `Live lists "<plug-in>" but its plug-in database doesn't have it yet. Restart Live, then try again.`;
   the plain `No plug-in named "<name>"` is for a name in neither. A database
   that can't be read fails only VST3 and VST2 names: an AU still resolves. A
-  name installed in several formats loads as VST3, else AU, else VST2. Several
-  plug-ins of that name in the chosen format, a VST2 shell plug-in, an AU that
-  is neither an instrument nor an audio effect, an AUv3, and a plug-in whose
-  kind can't be told, are refused the same way. An AU counts only if Live's
-  browser lists it; with the remote script unanswering there are none. `hosted`
-  with `preset`, or with no `device`, is refused. The wrapper is loaded and
-  placed like any browser device (same path, misfit and chain rules), then told
-  to load the plug-in; the target only counts as created once that worked, then
-  takes its `name` and `params` (routed to the plug-in as update-device's are).
-  Its entry has `hosted: true` and `paramCount`, the total a read-device of it
-  pages through (the wrapper hides some of the plug-in's own params), from the
-  moment the plug-in loads, so an entry kept after a later step fails has them
-  too. A wrapper that gives no count leaves `paramCount` out without failing the
-  target. A plug-in that won't load, or that doesn't answer in time, deletes the
-  wrapper again and skips the target with the reason
+  name installed in several formats loads as VST3, else AU, else VST2. The path
+  spelling above works here per entry: the format comes from its first segment
+  and the plug-in name from its last (a `:` in a segment stands for `/` in a
+  name), and Live's browser must list the plug-in there, as a native load needs:
+  under another vendor folder it is refused with
+  `No <format> plug-in at "<path>"; Live lists it at "<its path>"` (not checked
+  when the remote script isn't answering, which fails the hosting anyway). Only
+  that format is tried: a miss reads `No <AU|VST3|VST2> plug-in named "<name>"`
+  (with the same restart and similar-names help, for that format), and a format
+  other than VST3, AU or VST is refused with
+  `Unknown plug-in format "<segment>" in "<path>": use VST3, AU or VST (VST2)`.
+  A path into another section (`Max for Live/...`) is a plain not-found. The
+  entry's `format` is the one that loaded, from the moment the plug-in loads
+  (beside `hosted`). Several plug-ins of that name in the chosen format, a VST2
+  shell plug-in, an AU that is neither an instrument nor an audio effect, an
+  AUv3, and a plug-in whose kind can't be told, are refused the same way. An AU
+  counts only if Live's browser lists it; with the remote script unanswering
+  there are none. `hosted` with `preset`, or with no `device`, is refused. The
+  wrapper is loaded and placed like any browser device (same path, misfit and
+  chain rules), then told to load the plug-in; the target only counts as created
+  once that worked, then takes its `name` and `params` (routed to the plug-in as
+  update-device's are). Its entry has `hosted: true` and `paramCount`, the total
+  a read-device of it pages through (the wrapper hides some of the plug-in's own
+  params), from the moment the plug-in loads, so an entry kept after a later
+  step fails has them too. A wrapper that gives no count leaves `paramCount` out
+  without failing the target. A plug-in that won't load, or that doesn't answer
+  in time, deletes the wrapper again and skips the target with the reason
   (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
   that can't be deleted stays: the entry keeps its `id` and `path`, and the
   detail says so.

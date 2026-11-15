@@ -168,6 +168,7 @@ describe("createDevice hosted", () => {
       id: "loaded-1",
       path: "t0/d1",
       hosted: true,
+      format: "VST3",
       paramCount: 543,
     });
     expect(requestNode).toHaveBeenCalledWith(
@@ -217,7 +218,12 @@ describe("createDevice hosted", () => {
           hosted: true,
           path: "t0/d+",
         }),
-      ).toStrictEqual({ id: "loaded-1", path: "t0/d1", hosted: true });
+      ).toStrictEqual({
+        id: "loaded-1",
+        path: "t0/d1",
+        hosted: true,
+        format: "VST3",
+      });
       expect(track.methods.delete_device).not.toHaveBeenCalled();
     },
   );
@@ -239,9 +245,78 @@ describe("createDevice hosted", () => {
       id: "loaded-1",
       path: "t0/d1",
       hosted: true,
+      format: "VST3",
       paramCount: 543,
       detail: "Live said no; already changed: device created",
     });
+  });
+
+  it("passes a browser path to the lookup as it is, and reports the format that loaded", async () => {
+    answerNode({ plugin: { ...SERUM_FX, format: "AU" } });
+    const heard = wrapperLoads();
+    const name = "Plug-Ins/AU/Xfer Records/Serum 2 FX";
+
+    expect(
+      await createDevice({ device: name, hosted: true, path: "t0/d+" }),
+    ).toStrictEqual(expect.objectContaining({ hosted: true, format: "AU" }));
+    expect(requestNode).toHaveBeenCalledWith("library.resolvePlugin", {
+      name,
+      liveVersion: "12.4",
+    });
+    expect(
+      heard.find((request) => request.op === "load"),
+      "the wrapper loads it as an AU",
+    ).toStrictEqual(expect.objectContaining({ format: "AU" }));
+  });
+
+  it("reports a VST2 as VST, as list-plugins names it", async () => {
+    answerNode({ plugin: { ...SERUM_FX, format: "VST", shared: false } });
+    const heard = wrapperLoads();
+
+    expect(
+      await createDevice({
+        device: "Plug-Ins/VST/Serum 2 FX",
+        hosted: true,
+        path: "t0/d+",
+      }),
+    ).toStrictEqual(expect.objectContaining({ format: "VST" }));
+    expect(
+      heard.find((request) => request.op === "load"),
+      "the wrapper's own word for it is VST2",
+    ).toStrictEqual(expect.objectContaining({ format: "VST2" }));
+  });
+
+  it("looks up each name of a list, a path and a bare name apart", async () => {
+    wrapperLoads();
+
+    await createDevice({
+      device: "Plug-Ins/AU/Xfer Records/Serum 2 FX,Serum 2 FX",
+      hosted: true,
+      path: "t0/d+,t0/d+",
+    });
+
+    expect(
+      vi
+        .mocked(requestNode)
+        .mock.calls.filter(([route]) => route === "library.resolvePlugin")
+        .map(([, args]) => (args as { name: string }).name),
+    ).toStrictEqual(["Plug-Ins/AU/Xfer Records/Serum 2 FX", "Serum 2 FX"]);
+  });
+
+  it("changes nothing when the format has no plug-in by that name", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: false,
+      error: 'No AU plug-in named "Serum 2 FX"',
+    });
+
+    await expect(
+      createDevice({
+        device: "Plug-Ins/AU/Xfer Records/Serum 2 FX",
+        hosted: true,
+        path: "t0/d+",
+      }),
+    ).rejects.toThrow('No AU plug-in named "Serum 2 FX"');
+    expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
   });
 
   it("uses the instrument wrapper for an instrument", async () => {
@@ -320,6 +395,7 @@ describe("createDevice hosted", () => {
       id: "loaded-1",
       path: "t0/d1",
       hosted: true,
+      format: "VST3",
       params: [
         {
           name: "Filter 1 Freq",
@@ -567,7 +643,7 @@ describe("createDevice hosted", () => {
       },
       // The mock's delete_device removes nothing, so the first wrapper still
       // holds d1.
-      { id: "loaded-2", path: "t0/d2", hosted: true },
+      { id: "loaded-2", path: "t0/d2", hosted: true, format: "VST3" },
     ]);
   });
 

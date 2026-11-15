@@ -26,3 +26,21 @@ export function pluginFolderFormat(
   // Live 12 names it "AUv2". Any "AU…" matches, in case a later one differs.
   return name.startsWith("au") ? "AU" : null;
 }
+
+/**
+ * The format a typed path segment names. Stricter than a Live folder: a vendor
+ * like "Audio Damage" must not read as AU. `VST2` is `VST`.
+ * @param segment - The first segment under `Plug-Ins/`
+ * @returns The format, or null when the segment names none
+ */
+export function pluginPathFormat(
+  segment: string | undefined,
+): PluginFormat | null {
+  const name = segment?.trim().toLowerCase() ?? "";
+
+  if (name === "vst2") {
+    return "VST";
+  }
+
+  return /^(?:vst3?|au(?:v\d)?)$/.test(name) ? pluginFolderFormat(name) : null;
+}

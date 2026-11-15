@@ -256,7 +256,10 @@ async function loadAndMove(
 
       const placed: CreatedDevice = {
         device,
-        entry: createdDeviceEntry(device.id, device, target),
+        entry: {
+          ...createdDeviceEntry(device.id, device, target),
+          ...(item.format != null && { format: item.format }),
+        },
         written: writtenContainer(target),
       };
 

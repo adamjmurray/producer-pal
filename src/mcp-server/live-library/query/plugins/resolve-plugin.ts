@@ -6,9 +6,10 @@
 /**
  * Turn a plug-in name as Live's browser shows it ("Serum 2 FX") into what the
  * plug-in host loads. A name installed in several formats resolves in the order
- * VST3, AU, VST2. VST3 and VST2 come from Live's plug-in database; AUs come
- * from Live's browser, because the database has none. An AU still resolves when
- * the database can't be read. Read-only.
+ * VST3, AU, VST2; a browser path ("Plug-Ins/AU/Xfer Records/Serum 2 FX") loads
+ * only the format it names. VST3 and VST2 come from Live's plug-in database;
+ * AUs come from Live's browser, because the database has none. An AU still
+ * resolves when the database can't be read. Read-only.
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -16,13 +17,15 @@ import {
   type BrowserPlugin,
   listBrowserPlugins,
 } from "../../../rpc/remote-script/browser/browser-plugins.ts";
-import { type ResolvedPlugin } from "../../library-types.ts";
+import { type PluginFormat, type ResolvedPlugin } from "../../library-types.ts";
 import {
   deriveCategory,
   deriveFormat,
   selectPluginDb,
 } from "../../list-plugins.ts";
 import { openLiveDb } from "../../live-db.ts";
+import { pathSegment } from "../../reconstruct-path.ts";
+import { parsePluginPath } from "./plugin-path.ts";
 import { resolveAuPlugin } from "./resolve-au-plugin.ts";
 import { samePluginName } from "./same-plugin-name.ts";
 
@@ -43,7 +46,8 @@ const MAX_SUGGESTIONS = 5;
  * Find the installed plug-in with this name.
  *
  * @param args - The request
- * @param args.name - Plug-in name; case does not matter
+ * @param args.name - Plug-in name, or `Plug-Ins/<format>/<vendor>/<name>` to
+ *   pick a format; case does not matter
  * @param auDirs - Folders to read AU bundles from (the system's by default)
  * @param appDirs - Folders to read apps' AUv3 plug-ins from (the system's by default)
  * @returns The plug-in's name, vendor, category, format and bundle path
@@ -55,14 +59,27 @@ export async function resolvePlugin(
   auDirs?: string[],
   appDirs?: string[],
 ): Promise<ResolvedPlugin> {
-  const wanted = name?.trim() ?? "";
+  const asked = name?.trim() ?? "";
 
-  if (wanted === "") {
+  if (asked === "") {
     throw new Error("A plug-in name is required");
   }
 
+  const { name: wanted, format, vendor } = parsePluginPath(asked);
+  // A path must be one Live's browser lists, as a native load needs. With the
+  // remote script unanswering nothing is checked: hosting fails on that next.
+  const listed = format == null ? null : await listBrowserPlugins();
+
   const { rows, failure } = await readPluginRows();
-  const vst3 = resolveDbPlugin(rows, wanted, "VST3");
+
+  if (format != null && listed != null) {
+    requireListedPath(listed, rows, { asked, wanted, format, vendor });
+  }
+
+  // A pinned format never falls through to another one.
+  const allows = (candidate: PluginFormat): boolean =>
+    format == null || format === candidate;
+  const vst3 = allows("VST3") ? resolveDbPlugin(rows, wanted, "VST3") : null;
 
   if (vst3 != null) {
     return vst3;
@@ -70,27 +87,30 @@ export async function resolvePlugin(
 
   // The browser is only asked once VST3 has missed, and the AU bundles only
   // when it lists an AU of that name. An unanswering remote script means no AUs.
-  const browserPlugins = (await listBrowserPlugins()) ?? [];
-  const au = await resolveAuPlugin(
-    browserPlugins.filter(
-      (item) => item.format === "AU" && samePluginName(item.name, wanted),
-    ),
-    wanted,
-    auDirs,
-    appDirs,
-  );
-  const found = au ?? resolveDbPlugin(rows, wanted, "VST");
+  const browserPlugins = listed ?? (await listBrowserPlugins()) ?? [];
+  const au = allows("AU")
+    ? await resolveAuPlugin(
+        browserPlugins.filter(
+          (item) => item.format === "AU" && samePluginName(item.name, wanted),
+        ),
+        wanted,
+        auDirs,
+        appDirs,
+      )
+    : null;
+  const found =
+    au ?? (allows("VST") ? resolveDbPlugin(rows, wanted, "VST") : null);
 
   if (found != null) {
     return found;
   }
 
   // Only VST2 and VST3 need the database, so only they fail without it.
-  if (failure != null) {
+  if (failure != null && format !== "AU") {
     throw new Error(failure);
   }
 
-  throw new Error(notFoundMessage(rows, browserPlugins, wanted));
+  throw new Error(notFoundMessage(rows, browserPlugins, wanted, format));
 }
 
 /**
@@ -214,16 +234,21 @@ function resolveDbPlugin(
  * @param rows - Every enabled plug-in
  * @param browserPlugins - The plug-ins Live's browser lists
  * @param wanted - The name asked for
+ * @param format - The format it was asked for in, when it named one
  * @returns The error message
  */
 function notFoundMessage(
   rows: PluginModuleRow[],
   browserPlugins: BrowserPlugin[],
   wanted: string,
+  format: PluginFormat | undefined,
 ): string {
+  const inFormat = (candidate: PluginFormat | null): boolean =>
+    format == null || candidate === format;
   const unscanned = browserPlugins.find(
     (item) =>
       (item.format === "VST3" || item.format === "VST") &&
+      inFormat(item.format) &&
       samePluginName(item.name, wanted),
   );
 
@@ -235,20 +260,81 @@ function notFoundMessage(
   const names = [
     ...rows
       .filter((row) => {
-        const format = deriveFormat(row.dev_identifier);
+        const rowFormat = deriveFormat(row.dev_identifier);
 
-        return (format === "VST3" || format === "VST") && row.path != null;
+        return (
+          (rowFormat === "VST3" || rowFormat === "VST") &&
+          inFormat(rowFormat) &&
+          row.path != null
+        );
       })
       .map((row) => row.name),
     ...browserPlugins
-      .filter((item) => item.format === "AU")
+      .filter((item) => item.format === "AU" && inFormat("AU"))
       .map((item) => item.name),
   ];
+  const label = format == null ? "" : `${formatLabel(format)} `;
   const similar = [
     ...new Set(names.filter((item) => item.toLowerCase().includes(lower))),
   ].slice(0, MAX_SUGGESTIONS);
 
   return similar.length > 0
-    ? `No plug-in named "${wanted}". Similar plug-ins: ${similar.join(", ")}`
-    : `No plug-in named "${wanted}"`;
+    ? `No ${label}plug-in named "${wanted}". Similar plug-ins: ${similar.join(", ")}`
+    : `No ${label}plug-in named "${wanted}"`;
+}
+
+/**
+ * Refuse a path Live's browser doesn't list.
+ * @param listed - The plug-ins Live's browser lists
+ * @param rows - Every enabled plug-in
+ * @param path - The path asked for
+ * @param path.asked - As the call spelled it
+ * @param path.wanted - Its plug-in name
+ * @param path.format - Its format
+ * @param path.vendor - Its vendor folder, or null for none
+ * @throws When nothing is listed there, naming where the plug-in is if it is
+ *   listed under another vendor
+ */
+function requireListedPath(
+  listed: BrowserPlugin[],
+  rows: PluginModuleRow[],
+  path: {
+    asked: string;
+    wanted: string;
+    format: PluginFormat;
+    vendor?: string | null;
+  },
+): void {
+  const named = listed.filter(
+    (item) =>
+      item.format === path.format && samePluginName(item.name, path.wanted),
+  );
+
+  if (
+    named.some((item) => samePluginName(item.vendor ?? "", path.vendor ?? ""))
+  ) {
+    return;
+  }
+
+  const [elsewhere] = named;
+
+  if (elsewhere == null) {
+    throw new Error(notFoundMessage(rows, listed, path.wanted, path.format));
+  }
+
+  const folders = [path.format, elsewhere.vendor, elsewhere.name]
+    .filter((part) => part != null)
+    .map(pathSegment);
+
+  throw new Error(
+    `No ${formatLabel(path.format)} plug-in at "${path.asked}"; Live lists it at "Plug-Ins/${folders.join("/")}"`,
+  );
+}
+
+/**
+ * @param format - A plug-in format
+ * @returns What errors call it
+ */
+function formatLabel(format: PluginFormat): string {
+  return format === "VST" ? "VST2" : format;
 }

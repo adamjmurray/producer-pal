@@ -3,10 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { pathSegment } from "../../reconstruct-path.ts";
+
 /**
  * @param a - A plug-in name
  * @param b - Another
- * @returns Whether they are the same name, ignoring case and outer spaces
+ * @returns Whether they are the same name, ignoring case and outer spaces;
+ *   a "/" in a name may be written ":", as a browser path writes it
  */
 export function samePluginName(a: string, b: string): boolean {
   return fold(a) === fold(b);
@@ -17,5 +20,5 @@ export function samePluginName(a: string, b: string): boolean {
  * @returns The name in the form names are compared in
  */
 function fold(name: string): string {
-  return name.normalize("NFC").trim().toLowerCase();
+  return pathSegment(name.normalize("NFC").trim().toLowerCase());
 }

@@ -59,7 +59,8 @@ code; when it disagrees with a tool, the tool wins.
   device name Live doesn't have, and a path list spelled through its own
   inserts. A path that parses but names no place (`t9/d+`, a scene) skips only
   its own target. With `hosted`, it also refuses before Live 12.4, the oldest
-  Live hosting supports, and a plug-in name or wrapper it can't find.
+  Live hosting supports, and a plug-in name or wrapper it can't find, or a
+  `Plug-Ins/<format>/...` name whose format isn't VST3, AU or VST.
 - **`createTrack` and `createScene` refuse a `path` entry they can't read**
   before anything is made, as well as a list with a hole, lists of different
   lengths, `count` with a path list, and a track or scene past the cap.

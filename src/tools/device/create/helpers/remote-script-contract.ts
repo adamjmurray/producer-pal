@@ -7,6 +7,7 @@
 // loading a device or preset from Live's browser, and copying a device. Route
 // names, answers, timeouts.
 
+import { type PluginFormat } from "#src/mcp-server/live-library/library-types.ts";
 import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 
 /** The Node routes V8 calls to reach the remote script. */
@@ -67,6 +68,8 @@ export interface BrowserItem {
   /** Where it sits under that type's browser section; for a file, its absolute path */
   path: string;
   name: string;
+  /** For a plug-in: the format its browser folder holds */
+  format?: PluginFormat;
 }
 
 /** Where a device's presets sit in Live's browser. */

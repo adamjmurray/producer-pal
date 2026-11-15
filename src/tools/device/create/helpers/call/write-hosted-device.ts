@@ -64,6 +64,7 @@ export async function createHostedDevice(
       entry: {
         ...created.entry,
         hosted: true,
+        format: plan.hosted.plugin.format,
         ...(paramCount != null && { paramCount }),
       },
     },

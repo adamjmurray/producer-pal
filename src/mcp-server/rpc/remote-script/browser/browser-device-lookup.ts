@@ -21,11 +21,17 @@ import {
   unavailableReply,
 } from "../remote-script-client.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
-import { pluginFolderFormat } from "./plugin-folder-format.ts";
+import {
+  pluginFolderFormat,
+  pluginPathFormat,
+} from "./plugin-folder-format.ts";
 import { type PluginFormat } from "../../../live-library/library-types.ts";
 
 /** Which format a name loads when a plug-in has several, best first. */
 const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
+
+/** The format folders as Live spells them, which need no listing to reach. */
+const LIVE_FORMAT_FOLDERS = new Set(["VST3", "VST", "AUv2"]);
 
 /** Browser sections, as the remote script's `type` and as Live labels them. */
 export const SECTIONS = [
@@ -80,11 +86,17 @@ export async function lookUpBrowserDevice(
   const wanted = deviceName.trim();
   const prefixed = sectionPrefixed(wanted);
 
-  return prefixed == null
-    ? await searchSections(deviceName, wanted, endsAt)
+  if (prefixed == null) {
+    return await searchSections(deviceName, wanted, endsAt);
+  }
+
+  const rest = await withFormatFolder(deviceName, prefixed, endsAt);
+
+  return typeof rest !== "string"
+    ? rest
     : await findAtPath(
         deviceName,
-        prefixed,
+        { section: prefixed.section, rest },
         {
           missing: () => nothingNamed(deviceName),
           shared: (items) => sharedDevicePath(deviceName, items),
@@ -218,6 +230,56 @@ export async function findAtPath(
   }
 
   return items[0] == null ? missing() : found({ ...items[0], section });
+}
+
+/**
+ * A plug-in path's format folder, as Live spells it. The format matches by
+ * kind, so `AU` and `au` both reach Live's `AUv2` folder. Live's own
+ * spellings need no listing.
+ * @param name - The name the call used
+ * @param prefixed - The section and the path under it
+ * @param prefixed.section - The section the path starts with
+ * @param prefixed.rest - Everything after the section
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The path under the section with the real folder, or the failure
+ */
+async function withFormatFolder(
+  name: string,
+  { section, rest }: { section: Section; rest: string },
+  endsAt: number,
+): Promise<string | BrowserItemResolution> {
+  const [folder, ...more] = pathSegments(rest);
+  const format = pluginPathFormat(folder);
+
+  if (
+    section.type !== "plugin" ||
+    folder == null ||
+    more.length === 0 ||
+    format == null ||
+    LIVE_FORMAT_FOLDERS.has(folder)
+  ) {
+    return rest;
+  }
+
+  const reply = await listBrowser(
+    { type: section.type, recursive: "false" },
+    endsAt,
+  );
+
+  if (!reply.available) {
+    return unavailableReply(reply);
+  }
+
+  // The top folders always exist, so a 404 here is as odd as any other failure.
+  if (reply.status !== 200) {
+    return searchFailed(name, reply);
+  }
+
+  const real = listedItems(reply).find(
+    (item) => pluginFolderFormat(item.name) === format,
+  );
+
+  return [real?.name ?? folder, ...more].join("/");
 }
 
 /**
@@ -508,5 +570,15 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
  * @returns It as the load route takes it
  */
 function browserItem(match: Candidate): BrowserItem {
-  return { type: match.section.type, path: match.path, name: match.name };
+  const format =
+    match.section.type === "plugin"
+      ? pluginFolderFormat(match.path.split("/")[0])
+      : null;
+
+  return {
+    type: match.section.type,
+    path: match.path,
+    name: match.name,
+    ...(format != null && { format }),
+  };
 }

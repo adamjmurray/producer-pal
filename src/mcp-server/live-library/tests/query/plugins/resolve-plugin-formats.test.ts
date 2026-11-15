@@ -9,6 +9,7 @@ import {
   useTempDir,
 } from "./plugin-db-fixture.ts";
 import { resolvePlugin } from "../../../query/plugins/resolve-plugin.ts";
+import { type BrowserPlugin } from "../../../../rpc/remote-script/browser/browser-plugins.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import {
@@ -61,7 +62,24 @@ const SEEDS: PluginSeed[] = [
   ["Shell One", "Waves", 1, "device:vst:audiofx:5", `${DIR}/VST/WaveShell.vst`],
   ["Shell Two", "Waves", 1, "device:vst:audiofx:6", `${DIR}/VST/WaveShell.vst`],
   ["Unsure", "Nobody", 1, "device:vst:", `${DIR}/VST/Unsure.vst`],
+  ["Phase/Flip", "Slash Co", 1, "device:vst3:audiofx:9", `${DIR}/VST3/PF.vst3`],
+  ["Mix: Bus", "Colon Co", 1, "device:vst3:audiofx:10", `${DIR}/VST3/MB.vst3`],
 ];
+
+/**
+ * A VST3 or VST2 in the browser's list.
+ * @param name - Its name
+ * @param vendor - Its vendor folder (a VST2 has none)
+ * @param format - Its format
+ * @returns The item
+ */
+function vst(
+  name: string,
+  vendor: string | null,
+  format: "VST3" | "VST" = "VST3",
+): BrowserPlugin {
+  return { name, vendor, format };
+}
 
 /** An AU in the browser's list. */
 function au(name: string, vendor: string | null = "Apple") {
@@ -169,7 +187,7 @@ describe("resolvePlugin by format", () => {
   /**
    * @param listed - What Live's browser lists
    */
-  function browserLists(...listed: ReturnType<typeof au>[]): void {
+  function browserLists(...listed: BrowserPlugin[]): void {
     vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(listed);
   }
 
@@ -449,6 +467,186 @@ describe("resolvePlugin by format", () => {
         file: `${DIR}/VST/Kaivo.vst`,
         shared: false,
       });
+    });
+  });
+
+  describe("a browser path naming the format", () => {
+    it("loads only that format, though a better one is installed", async () => {
+      browserLists(au("Everywhere", "Vst3 Co"), vst("Everywhere", "Vst3 Co"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Vst3 Co/Everywhere" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "AU" }));
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Vst3 Co/Everywhere" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "VST3" }));
+    });
+
+    it("loads a VST2 from a path with no vendor folder", async () => {
+      browserLists(au("Kaivo", "Madrona Labs"), vst("Kaivo", null, "VST"));
+
+      await expect(
+        resolvePlugin({ name: "plug-ins/vst/Kaivo" }, [auDir]),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({
+          format: "VST",
+          file: `${DIR}/VST/Kaivo.vst`,
+        }),
+      );
+    });
+
+    it("reads Live's AUv2 folder as AU", async () => {
+      browserLists(au("Everywhere", "Vst3 Co"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AUv2/Vst3 Co/Everywhere" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "AU" }));
+    });
+
+    it("writes a '/' in the plug-in's name as ':'", async () => {
+      browserLists(vst("Phase/Flip", "Slash Co"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Slash Co/Phase:Flip" }),
+      ).resolves.toStrictEqual(expect.objectContaining({ name: "Phase/Flip" }));
+    });
+
+    it("keeps a ':' that is in the plug-in's name", async () => {
+      browserLists(vst("Mix: Bus", "Colon Co"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Colon Co/Mix: Bus" }),
+      ).resolves.toStrictEqual(expect.objectContaining({ name: "Mix: Bus" }));
+    });
+
+    it("reads VST2 as VST", async () => {
+      browserLists(vst("Kaivo", null, "VST"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST2/Kaivo" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "VST" }));
+    });
+
+    it("doesn't read a vendor that starts with AU as the format", async () => {
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/Audio Damage/Dazzle" }),
+      ).rejects.toThrow('Unknown plug-in format "Audio Damage"');
+    });
+
+    it("needs the vendor folder Live lists it under", async () => {
+      browserLists(
+        vst("Everywhere", "Vst3 Co"),
+        vst("Kaivo", null, "VST"),
+        au("Kaivo", "Madrona Labs"),
+      );
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Wrong Co/Everywhere" }),
+      ).rejects.toThrow(
+        'No VST3 plug-in at "Plug-Ins/VST3/Wrong Co/Everywhere"; Live lists it at "Plug-Ins/VST3/Vst3 Co/Everywhere"',
+      );
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Everywhere" }),
+      ).rejects.toThrow('Live lists it at "Plug-Ins/VST3/Vst3 Co/Everywhere"');
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST/Madrona Labs/Kaivo" }),
+      ).rejects.toThrow(
+        'No VST2 plug-in at "Plug-Ins/VST/Madrona Labs/Kaivo"; Live lists it at "Plug-Ins/VST/Kaivo"',
+      );
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Apple/Kaivo" }, [auDir]),
+      ).rejects.toThrow('Live lists it at "Plug-Ins/AU/Madrona Labs/Kaivo"');
+      await expect(
+        resolvePlugin({ name: "plug-ins/vst3/vst3 co/everywhere" }),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "VST3" }));
+    });
+
+    it("checks no folder when Live's browser doesn't answer", async () => {
+      vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(null);
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Wrong Co/Everywhere" }),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "VST3" }));
+    });
+
+    it("never falls through to another format", async () => {
+      browserLists(au("Kaivo", "Madrona Labs"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Madrona Labs/Kaivo" }, [auDir]),
+      ).rejects.toThrow('No VST3 plug-in named "Kaivo"');
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST/Vst3 Co/Everywhere" }, [auDir]),
+      ).rejects.toThrow('No VST2 plug-in named "Everywhere"');
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Old Co/Oldie" }, [auDir]),
+      ).rejects.toThrow('No AU plug-in named "Oldie"');
+    });
+
+    it("offers similar names from that format only", async () => {
+      browserLists(au("Kaivo", "Madrona Labs"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Nobody/Kai" }, [auDir]),
+      ).rejects.toThrow('No AU plug-in named "Kai". Similar plug-ins: Kaivo');
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Nobody/Kai" }, [auDir]),
+      ).rejects.toThrow('No VST3 plug-in named "Kai"');
+    });
+
+    it("says a VST3 isn't in the database yet only when asked for that format", async () => {
+      vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+        { name: "Fresh", vendor: "New Co", format: "VST3" },
+      ]);
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/New Co/Fresh" }),
+      ).rejects.toThrow("doesn't have it yet");
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/New Co/Fresh" }),
+      ).rejects.toThrow('No AU plug-in named "Fresh"');
+    });
+
+    it("needs the database for a VST3 or VST2 only", async () => {
+      vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(null);
+      browserLists(au("AUDelay"));
+
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Apple/AUDelay" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "AU" }));
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/AU/Apple/Nothing" }, [auDir]),
+      ).rejects.toThrow('No AU plug-in named "Nothing"');
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Apple/Nothing" }, [auDir]),
+      ).rejects.toThrow('No VST3 plug-in named "Nothing"');
+      browserLists(vst("Everywhere", "Vst3 Co"));
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/VST3/Vst3 Co/Everywhere" }, [auDir]),
+      ).rejects.toThrow("Can't read Live's plug-in database");
+    });
+
+    it("refuses a format it doesn't know, or a path with no name", async () => {
+      await expect(
+        resolvePlugin({ name: "Plug-Ins/CLAP/Acme/Verb" }),
+      ).rejects.toThrow(
+        'Unknown plug-in format "CLAP" in "Plug-Ins/CLAP/Acme/Verb": use VST3, AU or VST (VST2)',
+      );
+      await expect(resolvePlugin({ name: "Plug-Ins/Verb" })).rejects.toThrow(
+        'Unknown plug-in format "Verb"',
+      );
+      await expect(resolvePlugin({ name: "Plug-Ins/" })).rejects.toThrow(
+        'Unknown plug-in format ""',
+      );
+      await expect(resolvePlugin({ name: "Plug-Ins/VST3" })).rejects.toThrow(
+        'No plug-in name in "Plug-Ins/VST3"',
+      );
+    });
+
+    it("treats a path into another section as an ordinary name", async () => {
+      await expect(
+        resolvePlugin({ name: "Max for Live/Everywhere" }),
+      ).rejects.toThrow('No plug-in named "Max for Live/Everywhere"');
     });
   });
 

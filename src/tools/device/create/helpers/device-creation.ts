@@ -9,6 +9,7 @@
 
 import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
+import { type PluginFormat } from "#src/mcp-server/live-library/library-types.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { type SettledParams } from "#src/tools/device/update/helpers/call/simpler-pitch-bend.ts";
@@ -50,6 +51,8 @@ export interface CreateDeviceResult {
   created?: string;
   /** True when a plug-in was loaded into a wrapper */
   hosted?: true;
+  /** For a plug-in, the format that loaded (as ppal-library list-plugins names it) */
+  format?: PluginFormat;
   /** How many params a read of the hosted plug-in lists, when the wrapper said */
   paramCount?: number;
   params?: ParamResult[];
