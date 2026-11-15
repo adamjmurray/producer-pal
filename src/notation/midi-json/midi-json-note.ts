@@ -25,7 +25,7 @@ export interface CodeNote {
   start: number; // musical beats from clip start
   duration: number; // musical beats
   velocity: number; // 1-127 (0 only as MIDI JSON's delete marker, see validateAndSanitizeNote)
-  velocityDeviation: number; // 0-127
+  velocityDeviation: number; // -127 to 127
   probability: number; // 0.0-1.0
 }
 
@@ -205,7 +205,10 @@ export function validateAndSanitizeNote(
     velocity: isDeleteMarker
       ? 0
       : Math.max(1, Math.min(127, Math.round(velocity))),
-    velocityDeviation: clampMidi(Math.round(Number(n.velocityDeviation) || 0)),
+    velocityDeviation: Math.max(
+      -127,
+      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
+    ),
     probability: Math.max(0, Math.min(1, probability)),
   };
 

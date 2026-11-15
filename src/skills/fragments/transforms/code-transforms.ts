@@ -31,7 +31,7 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 - \`start\`: musical beats from clip start
 - \`duration\`: musical beats (default: 1)
 - \`velocity\`: 1-127 (default: 100)
-- \`velocityDeviation\`: 0-127 (default: 0)
+- \`velocityDeviation\`: -127 to 127 (default: 0)
 - \`probability\`: 0-1 (default: 1)
 
 **Context properties:**

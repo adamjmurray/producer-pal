@@ -76,7 +76,7 @@ grammar AST to return an array of note events:
     duration: number, // Duration in Ableton beats (float)
     velocity: number, // Base velocity (0-127)
     probability: number, // Note probability (0.0-1.0)
-    velocity_deviation: number, // Velocity randomization range (0-127)
+    velocity_deviation: number, // Velocity randomization range (-127 to 127)
   },
   // ... more note events
 ];
