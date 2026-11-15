@@ -184,10 +184,17 @@ describe("Transform Parser - shorthand", () => {
       ]);
     });
 
-    it("swaps reversed bounds (v120-80)", () => {
+    it("keeps the order of a descending range (v120-80 → deviation -40)", () => {
       expect(parseAssignments("v120-80")).toStrictEqual([
-        assignment({ parameter: "velocity", expression: 80 }),
-        assignment({ parameter: "deviation", expression: 40 }),
+        assignment({ parameter: "velocity", expression: 120 }),
+        assignment({ parameter: "deviation", expression: -40 }),
+      ]);
+    });
+
+    it("clamps each bound before the deviation of a descending range", () => {
+      expect(parseAssignments("v200-90")).toStrictEqual([
+        assignment({ parameter: "velocity", expression: 127 }),
+        assignment({ parameter: "deviation", expression: -37 }),
       ]);
     });
 
@@ -205,12 +212,11 @@ describe("Transform Parser - shorthand", () => {
       ]);
     });
 
-    it("rejects a 0 lower bound (v0 is the delete sentinel, not a range floor)", () => {
+    it("rejects a 0 on either side (v0 is the delete sentinel, not a range bound)", () => {
       // Mirrors the barbeat grammar guard: base velocity 0 is the delete
-      // sentinel, so a range with a 0 lower bound would silently delete notes.
-      // The single `min === 0` check covers both orderings and equal bounds.
+      // sentinel, so `v0-N` would silently delete notes and `vN-0` is invalid.
       const v0Error =
-        /velocity ranges must start at 1 or higher — v0 is the delete sentinel/;
+        /both ends of a velocity range must be 1 or higher — v0 is the delete sentinel/;
 
       expect(() => parseAssignments("v0-100")).toThrow(v0Error);
       expect(() => parseAssignments("v100-0")).toThrow(v0Error);

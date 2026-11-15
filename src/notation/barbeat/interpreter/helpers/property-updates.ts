@@ -28,8 +28,8 @@ export function processVelocityUpdate(
   const velocity = clampVelocity(element.velocity as number, "velocity");
 
   state.currentVelocity = velocity;
-  state.currentVelocityMin = null;
-  state.currentVelocityMax = null;
+  state.currentVelocityStart = null;
+  state.currentVelocityEnd = null;
   clearValueStream(state, "velocity");
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
@@ -48,23 +48,23 @@ export function processVelocityRangeUpdate(
   state: InterpreterState,
 ): void {
   // The dispatcher only routes here when both bounds are present.
-  const velocityMin = clampVelocity(
-    element.velocityMin as number,
-    "velocity range min",
+  const velocityStart = clampVelocity(
+    element.velocityStart as number,
+    "velocity range start",
   );
-  const velocityMax = clampVelocity(
-    element.velocityMax as number,
-    "velocity range max",
+  const velocityEnd = clampVelocity(
+    element.velocityEnd as number,
+    "velocity range end",
   );
 
-  state.currentVelocityMin = velocityMin;
-  state.currentVelocityMax = velocityMax;
+  state.currentVelocityStart = velocityStart;
+  state.currentVelocityEnd = velocityEnd;
   state.currentVelocity = null;
   clearValueStream(state, "velocity");
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = velocityMin;
-    pitchState.velocityDeviation = velocityMax - velocityMin;
+    pitchState.velocity = velocityStart;
+    pitchState.velocityDeviation = velocityEnd - velocityStart;
   });
 }
 

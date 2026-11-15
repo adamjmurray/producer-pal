@@ -67,6 +67,18 @@ describe("round-trip: serialize → parse → interpret", () => {
     ] as NoteEvent[]);
   });
 
+  it("round-trips a descending velocity range (negative deviation)", () => {
+    expectRoundTrip([
+      createNote({ velocity: 100, velocity_deviation: -20 }),
+      createNote({
+        pitch: 62,
+        start_time: 1,
+        velocity: 60,
+        velocity_deviation: -59,
+      }),
+    ] as NoteEvent[]);
+  });
+
   it("round-trips duration changes", () => {
     expectRoundTrip([
       createNote({ duration: 0.5 }),

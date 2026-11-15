@@ -122,19 +122,19 @@ describe("BarBeatScript Parser - basic tests", () => {
 
     it("accepts valid velocity ranges", () => {
       expect(parser.parse("v80-120 C3 v1-127 D3")).toStrictEqual([
-        { velocityMin: 80, velocityMax: 120 },
+        { velocityStart: 80, velocityEnd: 120 },
         { pitch: 60 },
-        { velocityMin: 1, velocityMax: 127 },
+        { velocityStart: 1, velocityEnd: 127 },
         { pitch: 62 },
       ]);
     });
 
-    it("rejects velocity ranges with a 0 lower bound (v0 is the delete sentinel)", () => {
-      // `vA-B` desugars to base velocity = min(start,end); base velocity 0 is the
-      // delete sentinel, so a 0 lower bound would silently delete every note.
-      // The single `min === 0` guard covers both orderings and equal bounds.
+    it("rejects velocity ranges with a 0 on either side (v0 is the delete sentinel)", () => {
+      // Base velocity 0 is the delete sentinel, so `v0-N` would silently delete
+      // every note, and `vN-0` has no valid meaning. One guard covers both
+      // orderings and equal bounds.
       const v0Error =
-        /velocity ranges must start at 1 or higher — v0 is the delete sentinel/;
+        /both ends of a velocity range must be 1 or higher — v0 is the delete sentinel/;
 
       expect(() => parser.parse("v0-100 C3")).toThrow(v0Error);
       expect(() => parser.parse("v100-0 C3")).toThrow(v0Error);
@@ -152,11 +152,11 @@ describe("BarBeatScript Parser - basic tests", () => {
 
     it("parses out-of-range velocity ranges (range enforced in interpreter)", () => {
       expect(parser.parse("v128-130 C3")).toStrictEqual([
-        { velocityMin: 128, velocityMax: 130 },
+        { velocityStart: 128, velocityEnd: 130 },
         { pitch: 60 },
       ]);
       expect(parser.parse("v1-128 C3")).toStrictEqual([
-        { velocityMin: 1, velocityMax: 128 },
+        { velocityStart: 1, velocityEnd: 128 },
         { pitch: 60 },
       ]);
     });

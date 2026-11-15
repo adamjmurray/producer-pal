@@ -123,11 +123,11 @@ function assertReRandomizingSnare(): EvalAssertion {
         throw new Error(`expected a vA-B velocity range: ${text}`);
       }
 
-      const min = Number(range[1]);
-      const max = Number(range[2]);
+      const start = Number(range[1]);
+      const end = Number(range[2]);
 
-      if (min >= max) {
-        throw new Error(`velocity range v${min}-${max} spans nothing`);
+      if (start === end) {
+        throw new Error(`velocity range v${start}-${end} spans nothing`);
       }
 
       return true;

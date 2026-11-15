@@ -117,6 +117,38 @@ describe("readOneClip", () => {
     });
   });
 
+  it("spells a negative deviation as a descending velocity range", () => {
+    setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: [
+        {
+          ...createTestNote({ startTime: 0 }),
+          note_id: 1,
+          velocity_deviation: -20,
+        },
+      ],
+      clipProps: {
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        loop_start: 0,
+        loop_end: 4,
+        end_marker: 4,
+      },
+    });
+
+    const result = readOneClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["notes"],
+    });
+
+    expect(result.notes).toBe("v100-80 n/4 C3 1|1");
+  });
+
   it("omits name when empty string", () => {
     setupMidiClipMock({
       trackIndex: 0,

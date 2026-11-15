@@ -165,7 +165,7 @@ describe("BarBeatScript Parser - parser features", () => {
         { duration: 1 / 16 },
         { probability: 1.0 },
         { pitch: 36 },
-        { velocityMin: 80, velocityMax: 100 },
+        { velocityStart: 80, velocityEnd: 100 },
         { probability: 0.8 },
         { pitch: 42 },
         { bar: 1, beat: 1.5 },

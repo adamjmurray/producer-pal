@@ -75,6 +75,23 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     ]);
   });
 
+  it("keeps the order of a descending velocity range as a negative deviation", () => {
+    const result = interpretNotation("v100-80 C3 v127-1 D3 1|1");
+
+    expect(result).toStrictEqual([
+      createNote({ velocity: 100, velocity_deviation: -20 }),
+      createNote({ pitch: 62, velocity: 127, velocity_deviation: -126 }),
+    ]);
+  });
+
+  it("clamps each bound before the deviation of a descending range", () => {
+    const result = interpretNotation("v200-90 C3 1|1");
+
+    expect(result).toStrictEqual([
+      createNote({ velocity: 127, velocity_deviation: -37 }),
+    ]);
+  });
+
   it("handles mixed velocity and velocity range", () => {
     const result = interpretNotation("v100 C3 v80-120 D3 v90 E3 1|1");
 
@@ -377,13 +394,14 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     ]);
   });
 
-  it("rejects a velocity range starting at 0 (v0 is the delete sentinel)", () => {
-    // `vA-B` desugars to base velocity = min(start,end); a base velocity of 0 is
-    // the delete sentinel, so a 0 lower bound would silently delete every note.
-    // Rejected at parse time rather than silently dropping notes.
-    expect(() => interpretNotation("v0-50 C3 v50-100 D3 1|1")).toThrow(
-      /velocity ranges must start at 1 or higher — v0 is the delete sentinel/,
-    );
+  it("rejects a velocity range with a 0 on either side (v0 is the delete sentinel)", () => {
+    // A base velocity of 0 is the delete sentinel, so `v0-N` would silently
+    // delete every note. Rejected at parse time rather than dropping notes.
+    const v0Error =
+      /both ends of a velocity range must be 1 or higher — v0 is the delete sentinel/;
+
+    expect(() => interpretNotation("v0-50 C3 v50-100 D3 1|1")).toThrow(v0Error);
+    expect(() => interpretNotation("v80-0 C3 1|1")).toThrow(v0Error);
   });
 
   it("preserves all v0 notes for deletion logic", () => {

@@ -299,9 +299,9 @@ export function buildPitchState(
   let velocity: number;
   let velocityDeviation: number;
 
-  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
-    velocity = state.currentVelocityMin;
-    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
+  if (state.currentVelocityStart != null && state.currentVelocityEnd != null) {
+    velocity = state.currentVelocityStart;
+    velocityDeviation = state.currentVelocityEnd - state.currentVelocityStart;
   } else {
     velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
     velocityDeviation = DEFAULT_VELOCITY_DEVIATION;

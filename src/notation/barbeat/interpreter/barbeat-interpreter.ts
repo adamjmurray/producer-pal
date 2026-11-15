@@ -62,7 +62,7 @@ interface InterpretOptions {
    * Notes already in the clip, placed before the string's own: bar copy can
    * copy them and `v0` can delete them, and new notes still start from the
    * defaults. The survivors come back as the same objects, so fields bar|beat
-   * can't spell (release velocity, a downward velocity range) are kept.
+   * can't spell (mute, release velocity) are kept.
    */
   existingNotes?: NoteEvent[];
 }
@@ -127,8 +127,8 @@ function processStreamElement(
       // Defensive today (applyStreamOverrides always wins while a stream is
       // active), but it stops a stale range from leaking if that ever changes.
       state.currentVelocity = null;
-      state.currentVelocityMin = null;
-      state.currentVelocityMax = null;
+      state.currentVelocityStart = null;
+      state.currentVelocityEnd = null;
       break;
     case "duration":
       state.currentDurationStream = buildDurationStream(
@@ -301,8 +301,8 @@ function processElementInLoop(
   } else if (element.velocity !== undefined) {
     processVelocityUpdate(element, state);
   } else if (
-    element.velocityMin !== undefined &&
-    element.velocityMax !== undefined
+    element.velocityStart !== undefined &&
+    element.velocityEnd !== undefined
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
@@ -346,8 +346,8 @@ export function interpretNotation(
     currentVelocity: DEFAULT_VELOCITY,
     currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
     currentProbability: DEFAULT_PROBABILITY,
-    currentVelocityMin: null,
-    currentVelocityMax: null,
+    currentVelocityStart: null,
+    currentVelocityEnd: null,
     currentPitches: [],
     currentPitchStreams: [],
     pitchStreamCursor: 0,

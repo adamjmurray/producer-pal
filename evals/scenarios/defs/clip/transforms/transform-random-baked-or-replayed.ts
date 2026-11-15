@@ -106,7 +106,7 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
         return `only ${hats.length} hat note(s)`;
       }
 
-      return hats.every((n) => (n.velocity_deviation ?? 0) > 0)
+      return hats.every((n) => (n.velocity_deviation ?? 0) !== 0)
         ? null
         : "hats have no velocity_deviation — their velocities are fixed, not re-rolled each playback";
     }),

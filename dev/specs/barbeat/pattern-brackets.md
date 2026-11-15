@@ -223,7 +223,7 @@ n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4
 A bracket parses to a single element carrying its parameter kind and the ordered
 value list: `{ stream: { param, values } }`, discriminated by `param`. For
 `"pitch"` each value is a chord (a length-1 array for a bare pitch);
-`"velocity"` values are `{ velocity }` or `{ velocityMin, velocityMax }`,
+`"velocity"` values are `{ velocity }` or `{ velocityStart, velocityEnd }`,
 `"duration"` values are `{ duration, bars? }`, and `"probability"` values are
 `{ probability }`. The interpreter holds the pitch voices as
 `state.currentPitchStreams` (a `PitchState[][][]` — a list of voices, each a

@@ -276,7 +276,8 @@ number of copies, matching interpret-time expansion, so the collapse is lossless
 
 Three buckets: soft (`?` / `x`) 60–80, normal (bare / `X`) ~100–110, accent (`!`
 / `^`) 115–127. Velocity is randomized within the bucket on interpret;
-round-trip preserves the bucket, not the exact value.
+round-trip preserves the bucket, not the exact value. Stark carries no velocity
+deviation (positive or negative), so bar|beat's `vA-B` ranges do not exist here.
 
 ---
 

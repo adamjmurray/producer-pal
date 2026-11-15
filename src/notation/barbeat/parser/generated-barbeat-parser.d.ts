@@ -44,10 +44,10 @@ export interface StreamPitch {
   pitch: number;
 }
 
-/** A velocity stream value: a single velocity or an auto-ordered range */
+/** A velocity stream value: a single velocity or a start-end range */
 export type StreamVelocity =
   | { velocity: number }
-  | { velocityMin: number; velocityMax: number };
+  | { velocityStart: number; velocityEnd: number };
 
 /**
  * A duration stream value: a whole-note fraction (`duration`) plus an optional
@@ -78,8 +78,8 @@ export type PatternStream =
 /** AST element produced by the parser */
 export interface ASTElement {
   velocity?: number;
-  velocityMin?: number;
-  velocityMax?: number;
+  velocityStart?: number;
+  velocityEnd?: number;
   duration?: number;
   /** Meter-aware bar component of an inline `Nbar` / `Nbar+nA/B` duration */
   bars?: number;

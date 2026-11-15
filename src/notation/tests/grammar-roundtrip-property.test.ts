@@ -63,7 +63,7 @@ const ROUTER_NOTATIONS: ReadonlyArray<{ notation: Notation; label: string }> = [
 // Starts/durations sit on a TWELFTH grid, which spans both the sixteenth grid
 // (1/4 = 3/12) and tuplets/off-grid (1/12, 1/6, 1/3) — so the fixpoint exercises
 // the tuplet and off-grid serializer paths, not just the easy 16th cases. Notes
-// also carry a velocity range (v±N) and a sub-1 probability (pN) about half the
+// also carry a velocity range (vA-B, ascending or descending) and a sub-1 probability (pN) about half the
 // time — the "hard math" the earlier generator skipped entirely. No v0 (a
 // deletion marker, not a round-trippable note).
 function randomNotes(rng: () => number): NoteEvent[] {
@@ -82,11 +82,12 @@ function randomNotes(rng: () => number): NoteEvent[] {
       velocity: randomInt(rng, 1, 127),
     };
 
-    // Exercise the velocity-deviation (v±N) and probability (pN) paths the
-    // sixteenth-only generator never reached. Deviation is an integer; the
-    // probability grid (0.05 steps) round-trips cleanly (verified).
+    // Exercise the velocity-deviation (vA-B) and probability (pN) paths the
+    // sixteenth-only generator never reached. Deviation is an integer, negative
+    // for a descending range; the probability grid (0.05 steps) round-trips
+    // cleanly (verified).
     if (rng() < 0.5) {
-      note.velocity_deviation = randomInt(rng, 0, 40);
+      note.velocity_deviation = randomInt(rng, -40, 40);
     }
 
     if (rng() < 0.5) {

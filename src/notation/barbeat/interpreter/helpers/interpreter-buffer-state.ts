@@ -29,8 +29,8 @@ export interface InterpreterState {
   currentVelocity: number | null;
   currentDuration: number;
   currentProbability?: number;
-  currentVelocityMin?: number | null;
-  currentVelocityMax?: number | null;
+  currentVelocityStart?: number | null;
+  currentVelocityEnd?: number | null;
   currentPitches: PitchState[];
   /**
    * Active pitch "voices" within the current group (pattern brackets): a list of

@@ -433,6 +433,16 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 5 });
   });
 
+  it("writes a descending velocity range as a negative deviation", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", notes: "v100-80 C3 1|1" });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [createNote({ velocity: 100, velocity_deviation: -20 })],
+    });
+  });
+
   it("should throw error for invalid time signature format", async () => {
     setupMidiClipMock(mocks.clip123);
 

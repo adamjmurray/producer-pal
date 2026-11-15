@@ -385,27 +385,27 @@ shorthand "shorthand assignment"
   / "v" operator:shorthandAddOp value:unsignedInt {
       return shorthandAdditive("velocity", operator, value);
     }
-  / "v" min:unsignedInt "-" max:unsignedInt {
+  / "v" start:unsignedInt "-" end:unsignedInt {
       // Velocity range = humanized random velocity, matching the bar|beat notes
       // layer's `vA-B`. Desugar to two ordinary assignments (base velocity +
       // velocity_deviation), mirroring the barbeat interpreter's mapping: clamp
-      // each bound to 0-127, order-independent, deviation = high - low. Must be
-      // tried before plain `vN` (which would match `v80` and strand `-120`).
-      // Kept in lockstep by velocity-range-parity.test.ts (Peggy cannot import
-      // the barbeat helper).
+      // each bound to 0-127, order kept, velocity = start, deviation = end -
+      // start (negative when descending). Must be tried before plain `vN`
+      // (which would match `v80` and strand `-120`). Kept in lockstep by
+      // velocity-range-parity.test.ts (Peggy cannot import the barbeat helper).
       //
-      // Reject a 0 lower bound (covers `v0-N` / `vN-0` / `v0-0` via the single
-      // `min === 0` check): base velocity 0 is the delete sentinel, so the range
-      // would silently delete every note it touches. Byte-for-byte mirror of the
-      // barbeat-grammar.peggy `velocity` rule's guard.
-      if (Math.min(min, max) === 0) {
-        throw new Error(`"${text()}" is invalid: velocity ranges must start at 1 or higher — v0 is the delete sentinel, not a range floor. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
+      // Reject a 0 on either side (covers `v0-N` / `vN-0` / `v0-0` via the
+      // single `Math.min(...) === 0` check): base velocity 0 is the delete
+      // sentinel, so the range would silently delete every note it touches.
+      // Byte-for-byte mirror of the barbeat-grammar.peggy `velocity` rule's guard.
+      if (Math.min(start, end) === 0) {
+        throw new Error(`"${text()}" is invalid: both ends of a velocity range must be 1 or higher — v0 is the delete sentinel, not a range bound. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
       }
-      const lo = Math.max(0, Math.min(127, Math.min(min, max)));
-      const hi = Math.max(0, Math.min(127, Math.max(min, max)));
+      const from = Math.max(0, Math.min(127, start));
+      const to = Math.max(0, Math.min(127, end));
       return [
-        { parameter: "velocity", operator: "set", expression: lo },
-        { parameter: "deviation", operator: "set", expression: hi - lo },
+        { parameter: "velocity", operator: "set", expression: from },
+        { parameter: "deviation", operator: "set", expression: to - from },
       ];
     }
   / "v" value:unsignedInt {

@@ -33,6 +33,17 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       ]);
     });
 
+    it("captures a descending velocity range stream value as a negative deviation", () => {
+      const result = interpretNotation("[v100-80 v90] C3 1|1x2@n/4");
+
+      expect(
+        result.map((n) => [n.velocity, n.velocity_deviation]),
+      ).toStrictEqual([
+        [100, -20],
+        [90, 0],
+      ]);
+    });
+
     it("does not leak a prior velocity range into stream-driven notes", () => {
       // A velocity stream supersedes an earlier scalar/range (here v40-80): every
       // streamed note takes the stream's own velocity + deviation, and the range

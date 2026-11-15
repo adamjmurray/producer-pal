@@ -23,7 +23,7 @@ import { clampProbability, clampVelocity } from "./value-clamping.ts";
 /**
  * Resolve a velocity stream's raw AST values into emit-ready velocity values.
  * A single `v80` becomes `{velocity, deviation: 0}`; a range `v40-80` becomes
- * `{velocity: min, deviation: max - min}` — the same clamp + deviation logic
+ * `{velocity: start, deviation: end - start}` — the same clamp + deviation logic
  * `buildPitchState` applies to a scalar velocity, so a streamed velocity is
  * indistinguishable from a captured one at emission.
  * @param values - Raw velocity stream values from the parser
@@ -33,11 +33,11 @@ export function buildVelocityStream(
   values: StreamVelocity[],
 ): StreamVelocityValue[] {
   return values.map((value) => {
-    if ("velocityMin" in value) {
-      const min = clampVelocity(value.velocityMin, "velocity range min");
-      const max = clampVelocity(value.velocityMax, "velocity range max");
+    if ("velocityStart" in value) {
+      const start = clampVelocity(value.velocityStart, "velocity range start");
+      const end = clampVelocity(value.velocityEnd, "velocity range end");
 
-      return { velocity: min, velocityDeviation: max - min };
+      return { velocity: start, velocityDeviation: end - start };
     }
 
     return {

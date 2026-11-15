@@ -121,8 +121,9 @@ describe("note-updates", () => {
   });
 
   describe("handleNoteUpdates keeps what the call didn't touch", () => {
-    // A muted note with a release velocity and a downward velocity range:
-    // three things bar|beat can't spell.
+    // A muted note with a release velocity: two things bar|beat can't spell.
+    // The downward velocity range is spellable (v100-80) but still must survive
+    // untouched.
     const MUTED = {
       ...rawNote(60, 0, 1),
       mute: 1,

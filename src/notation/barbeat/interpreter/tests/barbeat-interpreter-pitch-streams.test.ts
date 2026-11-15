@@ -321,7 +321,7 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
       ]);
     });
 
-    it("captures a velocity range as min + deviation for every value", () => {
+    it("captures a velocity range as start + deviation for every value", () => {
       const result = interpretNotation("v40-80 [C3 E3] 1|1x2@n/4");
 
       expect(

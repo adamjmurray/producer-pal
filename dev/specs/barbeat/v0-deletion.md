@@ -20,10 +20,9 @@ When a `v0` note is encountered during interpretation:
    to the interpreter as `existingNotes`, which sit ahead of the string's own
    notes. So a `v0` in the new notation deletes a matching existing note, and
    bar copy can copy existing bars. The existing notes are never re-spelled as
-   text, so what bar|beat can't write (mute, release velocity, a downward
-   velocity range) survives, and new notes start from the defaults.
-   `create-clip` has no existing notes to match, so any `v0` simply deletes
-   nothing and is stripped
+   text, so what bar|beat can't write (mute, release velocity) survives, and new
+   notes start from the defaults. `create-clip` has no existing notes to match,
+   so any `v0` simply deletes nothing and is stripped
 
 ## Examples
 
