@@ -95,7 +95,8 @@ the script answered on, without pinging it again, until a call finds nothing or
 another program there, then looks again; a busy Live that is slow to answer a
 ping doesn't lose it. So a program that takes over a kept port can get one
 request before it is found out: a reply that isn't a JSON object gives it away,
-and an error reply is checked with a ping. One that answers every request with a
+and an error reply is checked with a ping, which waits no longer than the call
+has left (none left counts as the script). One that answers every request with a
 JSON object and no error isn't noticed until the next ping.
 `PPAL_REMOTE_SCRIPT_PORT` overrides all of it.
 

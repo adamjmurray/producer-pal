@@ -169,7 +169,11 @@ export async function remoteScriptRequest(
     fixedPort == null ? Date.now() - started : 0,
   );
   const fromScript = async (answer: RemoteScriptAnswer): Promise<boolean> =>
-    answer.status < 400 || (await stillOurs(target));
+    answer.status < 400 ||
+    (await stillOurs(
+      target,
+      expiresInMs == null ? null : expiresInMs - (Date.now() - started),
+    ));
 
   if (!reply.available) {
     // Nothing listening, or another program by now: Live may have restarted
@@ -451,12 +455,24 @@ function sendWithin(
  * Whether the script is still what answers on a kept port. An error reply
  * could come from another program that took the port since its last ping, and
  * it would get every later request too. A ping too slow to answer counts as
- * the script: Live is busy, not gone.
+ * the script: Live is busy, not gone. So does no time left to ping: the caller's
+ * deadline is not ours to overrun, and the next call checks again.
  * @param port - The port to ask
+ * @param leftMs - How much of the caller's time is left, or null for no limit
  * @returns False when another program, or nothing, answers there
  */
-async function stillOurs(port: number): Promise<boolean> {
-  const { kind } = await pingPort(port);
+async function stillOurs(
+  port: number,
+  leftMs: number | null,
+): Promise<boolean> {
+  if (leftMs != null && leftMs <= 0) {
+    return true;
+  }
+
+  const { kind } = await pingPort(
+    port,
+    leftMs == null ? PING_TIMEOUT_MS : Math.min(PING_TIMEOUT_MS, leftMs),
+  );
 
   return kind === "ours" || kind === "slow";
 }

@@ -470,5 +470,88 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
       );
       expect(fake.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
     });
+
+    /**
+     * A script on a kept port whose second `/list` takes `tookMs` by the
+     * mocked clock and answers with an error. Pings after the first go
+     * unanswered, so a ping shows in the requests and waits out its timeout.
+     * @param tookMs - How long the second `/list` takes
+     * @param status - The error status it answers with
+     * @returns The stand-in, with the port already found by a first call
+     */
+    async function errorsAfterTime(
+      tookMs: number,
+      status: number,
+    ): Promise<FakeRemoteScript> {
+      clock = 0;
+      vi.spyOn(Date, "now").mockImplementation(() => clock);
+
+      let pings = 0;
+      let lists = 0;
+      const fake = await standIn((request) => {
+        if (request.route === "/ping") {
+          pings += 1;
+
+          return pings === 1 ? OURS : null;
+        }
+
+        lists += 1;
+
+        if (lists === 1) {
+          return { body: { ok: true } };
+        }
+
+        clock += tookMs;
+
+        return { status, body: { error: "took too long" } };
+      });
+
+      ports.preferred = fake.port;
+      await remoteScriptRequest({ route: "/list" });
+
+      return fake;
+    }
+
+    it("doesn't ping after an error reply when the deadline has passed", async () => {
+      const fake = await errorsAfterTime(1000, 504);
+
+      const reply = await remoteScriptRequest({
+        route: "/list",
+        expiresInMs: 1000,
+      });
+
+      // Slow already counts as ours, so no time left means ours too.
+      expect(reply).toStrictEqual({
+        available: true,
+        status: 504,
+        body: { error: "took too long" },
+      });
+      expect(fake.requests.map((r) => r.route)).toStrictEqual([
+        "/ping",
+        "/list",
+        "/list",
+      ]);
+    });
+
+    it("waits no longer for that ping than the caller has left", async () => {
+      const fake = await errorsAfterTime(1000, 400);
+
+      // The ping's wait is 500ms, not the usual second: 500ms of timers ends it.
+      const reply = await callUntilItTimesOut(fake, [0, 500], () =>
+        remoteScriptRequest({ route: "/list", expiresInMs: 1500 }),
+      );
+
+      expect(reply).toStrictEqual({
+        available: true,
+        status: 400,
+        body: { error: "took too long" },
+      });
+      expect(fake.requests.map((r) => r.route)).toStrictEqual([
+        "/ping",
+        "/list",
+        "/list",
+        "/ping",
+      ]);
+    });
   });
 });
