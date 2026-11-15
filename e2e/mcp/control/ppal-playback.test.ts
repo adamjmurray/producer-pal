@@ -475,10 +475,13 @@ describe("ppal-playback", () => {
       id: `${clip1},${clip2}`,
     });
 
-    expect(two.clip).toHaveLength(2);
+    // Both sit on one track, which plays one clip: the last one named.
     expect(two.clip).toStrictEqual([
-      expect.objectContaining({ id: clip1 }),
-      expect.objectContaining({ id: clip2 }),
+      {
+        id: clip1,
+        detail: `overwritten later in this call by t${EMPTY_MIDI_TRACK}/s1`,
+      },
+      { id: clip2, path: `t${EMPTY_MIDI_TRACK}/s1` },
     ]);
 
     await playback({ action: "stop-all-session-clips" });

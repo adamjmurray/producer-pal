@@ -24,7 +24,10 @@ import {
   isReturnSlotPosition,
   type ReturnSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
-import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import {
+  type Cover,
+  type Target,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 /** A clip slot the action acts on. */
 export interface SlotPayload {
@@ -77,6 +80,16 @@ export function sessionClipTargets(
       return position == null ? { named, skip } : slotTarget(named, position);
     }),
   ];
+}
+
+/**
+ * What playing a slot goes over: its whole track, which plays one clip at a
+ * time. So a later slot fired on the same track replaces an earlier one.
+ * @param path - The slot's path ("t0/s1")
+ * @returns The cover, named after the slot
+ */
+export function trackPlayCover(path: string): Cover {
+  return { lane: path.split("/")[0] as string, from: 0, to: 1, as: path };
 }
 
 // --- Helpers below main exports ---

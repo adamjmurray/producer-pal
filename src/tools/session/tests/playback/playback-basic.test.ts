@@ -573,9 +573,9 @@ describe("transport", () => {
       path: livePath.track(0).clipSlot(1).clip(),
     });
     const byId = registerClipSlot(0, 1);
-    const bySlots = registerClipSlot(0, 0);
+    const bySlots = registerClipSlot(1, 0);
 
-    playback({ action: "play-session-clips", id: "clip1", slots: "0/0" });
+    playback({ action: "play-session-clips", id: "clip1", slots: "1/0" });
 
     expect(byId.call).toHaveBeenCalledWith("fire");
     expect(bySlots.call).toHaveBeenCalledWith("fire");

@@ -25,6 +25,12 @@ Part of [Skip entries, tool by tool](README.md).
   twice fires once, by its last mention; the earlier one is
   `{id | path, detail}`. Slots the deadline never reached are skips. A lone skip
   throws.
+- **play-session-clips fires one slot per track**, the last one named on it: a
+  track plays one clip at a time. An earlier slot on the same track isn't fired,
+  and its entry is `{id | path, detail}` with
+  `overwritten later in this call by t0/s1`. A later slot that is skipped (an
+  empty one, say) replaces nothing. A group track's slot and the slots of the
+  tracks inside it are not weighed against each other.
 - **play-session-clips skips an empty slot** as
   `{path, ok: false, detail: "no clip to play"}`, with no `id`, and never fires
   it: Live answers a fired empty slot by stopping whatever its track is playing.

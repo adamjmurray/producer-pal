@@ -156,6 +156,44 @@ describe("playback clip entries", () => {
     ]);
   });
 
+  // A track plays one clip, so the last slot named on it is the one playing.
+  it("fires only the last of two slots on one track", () => {
+    const first = mockClipInSlot("clip1", 0, 0);
+    const second = mockClipInSlot("clip2", 0, 1);
+    const other = mockClipInSlot("clip3", 1, 0);
+
+    const result = playback({
+      action: "play-session-clips",
+      path: "t0/s0,t1/s0,t0/s1",
+    });
+
+    expect(first.call).not.toHaveBeenCalledWith("fire");
+    expect(second.call).toHaveBeenCalledWith("fire");
+    expect(other.call).toHaveBeenCalledWith("fire");
+    expect(result.clip).toStrictEqual([
+      { path: "t0/s0", detail: "overwritten later in this call by t0/s1" },
+      { id: "clip3", path: "t1/s0" },
+      { id: "clip2", path: "t0/s1" },
+    ]);
+  });
+
+  it("fires the earlier slot when the later one on its track has no clip", () => {
+    const first = mockClipInSlot("clip1", 0, 0);
+
+    registerClipSlot(0, 1, false);
+
+    const result = playback({
+      action: "play-session-clips",
+      path: "t0/s0,t0/s1",
+    });
+
+    expect(first.call).toHaveBeenCalledWith("fire");
+    expect(result.clip).toStrictEqual([
+      { id: "clip1", path: "t0/s0" },
+      { path: "t0/s1", ok: false, detail: "no clip to play" },
+    ]);
+  });
+
   it("tries a track again for its next slot when a stop threw", () => {
     mockClipInSlot("clip1", 0, 0);
     mockClipInSlot("clip2", 0, 1);

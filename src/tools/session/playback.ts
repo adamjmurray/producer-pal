@@ -52,6 +52,7 @@ import { resolvePlaybackTarget } from "./helpers/playback/playback-target.ts";
 import {
   type ClipSlotEntry,
   type SlotPayload,
+  trackPlayCover,
 } from "./helpers/playback/session-clip-targets.ts";
 
 interface PlaybackArgs {
@@ -275,11 +276,15 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
     return call.clips;
   }
 
-  return call.clips.map((target) =>
-    target.skip == null && playsNothing(target.data.slot)
+  return call.clips.map((target) => {
+    if (target.skip != null) {
+      return target;
+    }
+
+    return playsNothing(target.data.slot)
       ? { named: target.named, skip: "no clip to play" }
-      : target,
-  );
+      : { ...target, covers: [trackPlayCover(target.data.path)] };
+  });
 }
 
 /**
@@ -389,6 +394,7 @@ function writeClip(
     if (action === PLAY_SESSION_CLIPS) {
       slot.call("fire");
       step.call.landed(CLIPS_FIRED);
+      step.coverLanded();
     } else {
       stopTrackOnce(
         LiveAPI.from(livePath.returnTrack(position.returnIndex)),
@@ -413,6 +419,7 @@ function writeClip(
 
     slot.call("fire");
     step.call.landed(CLIPS_FIRED);
+    step.coverLanded();
   } else {
     const track = LiveAPI.from(livePath.track(position.trackIndex));
 
