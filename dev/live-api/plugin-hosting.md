@@ -619,7 +619,6 @@ Live's browser must find the wrappers by name, so they go in the User Library:
 
 ## Not yet tested
 
-- Windows.
 - VST2 shell plug-ins. On a machine with Waves or another shell: try
   `plug_vst <shell bundle>` then `subname <plug-in name>` (`printids` lists
   what's inside); see what `currentplug` reads after a good and a bad `subname`,
