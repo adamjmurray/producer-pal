@@ -67,6 +67,10 @@ the order; a clash is not refused, because the order is deterministic.
 Return tracks and rack return chains share one resolver. Chains have no path
 form.
 
+A rack return chain can have no name. A read calls it `Return <n>`, so a write
+takes that label too, matched whole and only when nothing above matched: a chain
+really named `Return 1` wins.
+
 `sends` is the one published way to set a send, on a track (update-track) and on
 a chain or pad (update-device). `sendGainDb` + `sendReturn` is deprecated: still
 honored, not published, and a call using it carries the deprecation warning,
