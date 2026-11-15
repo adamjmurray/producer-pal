@@ -36,6 +36,7 @@ import {
   pluginPathFormat,
 } from "./plugin-folder-format.ts";
 import { type PluginFormat } from "../../../live-library/library-types.ts";
+import { distinctMakers } from "../../../live-library/query/plugins/same-vendor.ts";
 
 /** Which format a name loads when a plug-in has several, best first. */
 const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
@@ -308,10 +309,14 @@ async function pluginElsewhere(
   const named = listedItems(reply)
     .filter((item) => normalizedName(item.name) === key)
     .map((item) => ({ ...item, section }));
-  const format = pluginFolderFormat(segments[0]);
-  const inFormat = named.filter(
-    (item) => pluginFolderFormat(item.path.split("/")[0]) === format,
-  );
+  // The typed folder may be a vendor ("Audio Damage"), not a format.
+  const format = pluginPathFormat(segments[0]);
+  const inFormat =
+    format == null
+      ? []
+      : named.filter(
+          (item) => pluginFolderFormat(item.path.split("/")[0]) === format,
+        );
   const elsewhere = inFormat.length > 0 ? inFormat : named;
 
   return elsewhere.length === 0
@@ -452,14 +457,15 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
     return rank == null ? [] : [{ match, rank }];
   });
   const ranks = new Set(ranked.map(({ rank }) => rank));
-  // Two makers can share a plug-in name. A VST sits in no maker's folder.
-  const makers = new Set(
+  // Two makers can share a plug-in name. A VST sits in no maker's folder, and
+  // one maker's folders can be spelled a little differently per format.
+  const makers = distinctMakers(
     matches.flatMap(({ path }) => path.split("/").slice(1, -1).join("/") || []),
   );
 
   if (
     names.size !== 1 ||
-    makers.size > 1 ||
+    makers.length > 1 ||
     ranked.length !== matches.length ||
     ranks.size !== matches.length
   ) {

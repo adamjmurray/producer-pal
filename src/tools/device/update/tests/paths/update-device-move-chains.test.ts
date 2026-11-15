@@ -16,7 +16,11 @@ import {
   registerGrowingRack,
   registerMoveSourceAndRackTrack,
 } from "../../../tests/helpers/growing-rack-fixtures.ts";
-import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  lookupMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -162,6 +166,29 @@ describe("updateDevice - a toPath refused before anything is made", () => {
       /^not moved to "t1\/d0\/c\+": chain t1\/d0\/c1 takes only audio effects; ".*" is an instrument$/,
     );
     expect(rack.call).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses an instrument for a rack's return chain", () => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMoveSourceAndRackTrack();
+
+    const rack = registerGrowingRack({ track: 1, existing: 1 });
+    const returnChain = registerMockObject("rc0", {
+      path: livePath.track(1).device(0).returnChain(0),
+      type: "Chain",
+      properties: { devices: [] },
+    });
+
+    rack.properties.return_chains = ["id", "rc0"];
+    lookupMockObject("src-0")!.properties.type =
+      LIVE_API_DEVICE_TYPE_INSTRUMENT;
+
+    expect(() => updateDevice({ id: "src-0", toPath: "t1/d0/rc0/d+" })).toThrow(
+      /^not moved to "t1\/d0\/rc0\/d\+": return chain t1\/d0\/rc0 \(id rc0\) takes only audio effects; ".*" is an instrument$/,
+    );
+    expect(returnChain.call).not.toHaveBeenCalled();
     expect(liveSet.call).not.toHaveBeenCalled();
   });
 

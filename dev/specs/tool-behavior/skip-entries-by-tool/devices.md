@@ -122,8 +122,13 @@ Part of [Skip entries, tool by tool](README.md).
   same way.
 
 - **create-device loads a plug-in of a chosen format by browser path.** A bare
-  name installed in several formats loads as VST3, else AU, else VST2. A name
-  spelled `Plug-Ins/<format>/<vendor>/<name>` (VST2 has no vendor folder:
+  name installed in several formats loads as VST3, else AU, else VST2; a native
+  load refuses a VST3 and an AU of two makers as ambiguous, listing each path to
+  pass instead. Vendor folders name one maker when they match loosely: case
+  aside, one is the other followed by a non-alphanumeric boundary (`Acme` and
+  `Acme Audio`, `u-he` and `u-he.com`; not `Acme` and `Acmetone`). A VST2 sits
+  in no maker's folder, so it pairs with either. A name spelled
+  `Plug-Ins/<format>/<vendor>/<name>` (VST2 has no vendor folder:
   `Plug-Ins/VST/<name>`) loads only that format, never another. The format
   segment is `VST3`, `AU` (or Live's own `AUv2`) or `VST` (or `VST2`), in any
   case; `VST` is VST2, as `list-plugins` says. Anything else names no format. A
@@ -167,21 +172,25 @@ Part of [Skip entries, tool by tool](README.md).
   entry's `format` is the one that loaded, from the moment the plug-in loads
   (beside `hosted`). Several plug-ins of that name in the chosen format, a VST2
   shell plug-in, an AU that is neither an instrument nor an audio effect, an
-  AUv3, and a plug-in whose kind can't be told, are refused the same way. An AU
-  counts only if Live's browser lists it; with the remote script unanswering
-  there are none. `hosted` with `preset`, or with no `device`, is refused. The
-  wrapper is loaded and placed like any browser device (same path, misfit and
-  chain rules), then told to load the plug-in; the target only counts as created
-  once that worked, then takes its `name` and `params` (routed to the plug-in as
-  update-device's are). Its entry has `hosted: true` and `paramCount`, the total
-  a read-device of it pages through (the wrapper hides some of the plug-in's own
-  params), from the moment the plug-in loads, so an entry kept after a later
-  step fails has them too. A wrapper that gives no count leaves `paramCount` out
-  without failing the target. A plug-in that won't load, or that doesn't answer
-  in time, deletes the wrapper again and skips the target with the reason
-  (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
-  that can't be deleted stays: the entry keeps its `id` and `path`, and the
-  detail says so.
+  AUv3, and a plug-in whose kind can't be told, are refused the same way. A
+  path's vendor folder picks among same-name plug-ins of its format: the vendor
+  that is exactly that (case aside) when there is one, else those that match
+  loosely (the rule above) the database's or the AU bundle's spelling. A vendor
+  that matches none picks nothing, so the usual refusal for a bare name follows.
+  An AU counts only if Live's browser lists it; with the remote script
+  unanswering there are none. `hosted` with `preset`, or with no `device`, is
+  refused. The wrapper is loaded and placed like any browser device (same path,
+  misfit and chain rules), then told to load the plug-in; the target only counts
+  as created once that worked, then takes its `name` and `params` (routed to the
+  plug-in as update-device's are). Its entry has `hosted: true` and
+  `paramCount`, the total a read-device of it pages through (the wrapper hides
+  some of the plug-in's own params), from the moment the plug-in loads, so an
+  entry kept after a later step fails has them too. A wrapper that gives no
+  count leaves `paramCount` out without failing the target. A plug-in that won't
+  load, or that doesn't answer in time, deletes the wrapper again and skips the
+  target with the reason (`could not load "<plug-in>": ...`), leaving the other
+  paths alone. A wrapper that can't be deleted stays: the entry keeps its `id`
+  and `path`, and the detail says so.
 - **A path that would add a chain to a rack with fixed chains is that path's
   skip.** create-device's `c+` or `c<n>` past the last chain, and a `toPath` of
   update-device that names one, fail the one target with the rack's limit and
@@ -205,16 +214,19 @@ Part of [Skip entries, tool by tool](README.md).
   effect rack (MIDI effects only): for a chain the path would make, before it is
   made, naming the chain by path with no id
   (`chain t0/d0/c2 takes only audio effects; ...`); for one already there, once
-  Live has turned the insert down. A plug-in's kind shows once it is loaded, so
-  it is refused then, or `"X" may not be an audio effect` (`a MIDI effect` for a
-  MIDI effect rack's chain) when its kind can't be read. update-device's
-  `toPath` move names the same reasons, in the same words, when Live drops a
-  move onto such a place (checked once Live has refused it), with the move's
-  usual skip or error shape. A device that is in the Set keeps its normal entry
-  (`id`, `path`) when a later step threw (a name Live refused), plus a `detail`
-  saying why and what landed: `<error>; already changed: device created`. A
-  browser load's temp track that can't be deleted doesn't fail the load: the
-  entry keeps `id` and `path`, plus
+  Live has turned the insert down. A rack's return chain takes audio effects
+  only, whatever its rack takes, so a device of a known kind that isn't one is
+  refused before Live is asked or a temp track is made
+  (`return chain t0/d0/rc0 (id 12) takes only audio effects; ...`), as a move or
+  copy's `toPath` is. A plug-in's kind shows once it is loaded, so it is refused
+  then, or `"X" may not be an audio effect` (`a MIDI effect` for a MIDI effect
+  rack's chain) when its kind can't be read. update-device's `toPath` move names
+  the same reasons, in the same words, when Live drops a move onto such a place
+  (checked once Live has refused it), with the move's usual skip or error shape.
+  A device that is in the Set keeps its normal entry (`id`, `path`) when a later
+  step threw (a name Live refused), plus a `detail` saying why and what landed:
+  `<error>; already changed: device created`. A browser load's temp track that
+  can't be deleted doesn't fail the load: the entry keeps `id` and `path`, plus
   `the device was created, but the temporary track at <path> couldn't be deleted: <why>`.
   If the load itself failed, that goes on the end of its error. A track
   selection that won't go back is not reported. Entries name each device where

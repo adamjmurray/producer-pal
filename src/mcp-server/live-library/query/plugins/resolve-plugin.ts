@@ -28,6 +28,7 @@ import { pathSegment } from "../../reconstruct-path.ts";
 import { parsePluginPath } from "./plugin-path.ts";
 import { resolveAuPlugin } from "./resolve-au-plugin.ts";
 import { samePluginName } from "./same-plugin-name.ts";
+import { vendorMatches } from "./same-vendor.ts";
 
 export interface ResolvePluginArgs {
   name?: string;
@@ -79,7 +80,9 @@ export async function resolvePlugin(
   // A pinned format never falls through to another one.
   const allows = (candidate: PluginFormat): boolean =>
     format == null || format === candidate;
-  const vst3 = allows("VST3") ? resolveDbPlugin(rows, wanted, "VST3") : null;
+  const vst3 = allows("VST3")
+    ? resolveDbPlugin(rows, wanted, "VST3", vendor)
+    : null;
 
   if (vst3 != null) {
     return vst3;
@@ -90,8 +93,11 @@ export async function resolvePlugin(
   const browserPlugins = listed ?? (await listBrowserPlugins()) ?? [];
   const au = allows("AU")
     ? await resolveAuPlugin(
-        browserPlugins.filter(
-          (item) => item.format === "AU" && samePluginName(item.name, wanted),
+        withVendor(
+          browserPlugins.filter(
+            (item) => item.format === "AU" && samePluginName(item.name, wanted),
+          ),
+          vendor,
         ),
         wanted,
         auDirs,
@@ -99,7 +105,7 @@ export async function resolvePlugin(
       )
     : null;
   const found =
-    au ?? (allows("VST") ? resolveDbPlugin(rows, wanted, "VST") : null);
+    au ?? (allows("VST") ? resolveDbPlugin(rows, wanted, "VST", vendor) : null);
 
   if (found != null) {
     return found;
@@ -161,6 +167,8 @@ async function readPluginRows(): Promise<{
  * @param rows - Every enabled plug-in
  * @param wanted - The name asked for
  * @param format - VST3 or VST (VST2)
+ * @param vendor - The vendor folder the path named, to choose between plug-ins
+ *   of one name
  * @returns The match, or null when none has this name in this format
  * @throws When several do, its kind is unknown, or it is a VST2 shell plug-in
  */
@@ -168,13 +176,17 @@ function resolveDbPlugin(
   rows: PluginModuleRow[],
   wanted: string,
   format: "VST3" | "VST",
+  vendor?: string | null,
 ): ResolvedPlugin | null {
   const label = format === "VST" ? "VST2" : format;
-  const named = rows.filter(
-    (row) =>
-      deriveFormat(row.dev_identifier) === format &&
-      row.path != null &&
-      samePluginName(row.name, wanted),
+  const named = withVendor(
+    rows.filter(
+      (row) =>
+        deriveFormat(row.dev_identifier) === format &&
+        row.path != null &&
+        samePluginName(row.name, wanted),
+    ),
+    vendor,
   );
   const [match] = named;
 
@@ -329,6 +341,25 @@ function requireListedPath(
   throw new Error(
     `No ${formatLabel(path.format)} plug-in at "${path.asked}"; Live lists it at "Plug-Ins/${folders.join("/")}"`,
   );
+}
+
+/**
+ * Narrow same-name plug-ins to the vendor a path named: the exact vendor when
+ * there is one, else the loosely matching ones. A vendor spelled too
+ * differently to match anything narrows nothing, so a path that loads still
+ * loads.
+ * @param named - Plug-ins of one name and format
+ * @param vendor - The vendor folder the path named, if it did
+ * @returns The ones from that vendor, else all of them
+ */
+function withVendor<T extends { vendor: string | null }>(
+  named: T[],
+  vendor: string | null | undefined,
+): T[] {
+  const chosen =
+    vendor == null ? [] : vendorMatches(named, vendor, (item) => item.vendor);
+
+  return chosen.length > 0 ? chosen : named;
 }
 
 /**

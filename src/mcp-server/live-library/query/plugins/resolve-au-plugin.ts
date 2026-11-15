@@ -20,6 +20,11 @@ import {
   readAuComponents,
 } from "./read-au-components.ts";
 import { samePluginName } from "./same-plugin-name.ts";
+import {
+  exactVendorMatches,
+  foldVendor,
+  looseVendorMatches,
+} from "./same-vendor.ts";
 
 /** Apple's AU types for the two kinds we can host. */
 const AU_CATEGORIES: Record<string, PluginCategory> = {
@@ -120,8 +125,7 @@ function pickComponent(
   vendor: string | null,
   wanted: string,
 ): AuComponent | undefined {
-  const browserVendor = fold(vendor);
-  const exact = components.find((item) => fold(item.vendor) === browserVendor);
+  const [exact] = exactVendorMatches(components, vendor, vendorOf);
 
   if (exact != null || components.length === 0) {
     return exact;
@@ -131,9 +135,7 @@ function pickComponent(
     return components[0];
   }
 
-  const loose = components.filter((item) =>
-    looselyMatches(browserVendor, fold(item.vendor)),
-  );
+  const loose = looseVendorMatches(components, vendor, vendorOf);
 
   if (distinctVendors(loose).length === 1) {
     return loose[0];
@@ -148,12 +150,8 @@ function pickComponent(
   );
 }
 
-/**
- * @param vendor - A vendor name
- * @returns The name in the form vendors are compared in; undefined for none
- */
-function fold(vendor: string | null | undefined): string | undefined {
-  return vendor?.trim().toLowerCase();
+function vendorOf(component: AuComponent): string | null {
+  return component.vendor;
 }
 
 /**
@@ -164,7 +162,7 @@ function distinctVendors(components: AuComponent[]): AuComponent[] {
   const seen = new Set<string | undefined>();
 
   return components.filter((item) => {
-    const key = fold(item.vendor);
+    const key = foldVendor(item.vendor);
 
     if (seen.has(key)) {
       return false;
@@ -174,24 +172,4 @@ function distinctVendors(components: AuComponent[]): AuComponent[] {
 
     return true;
   });
-}
-
-/**
- * @param a - A folded vendor name
- * @param b - Another
- * @returns Whether one starts with the other at a word boundary: "acme audio"
- *   and "acme" do, "acme" and "acmetone" don't
- */
-function looselyMatches(a: string | undefined, b: string | undefined): boolean {
-  if (a == null || b == null || a === "" || b === "") {
-    return false;
-  }
-
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-
-  return (
-    long.startsWith(short) &&
-    (long.length === short.length ||
-      /^[^\p{L}\p{N}]/u.test(long.slice(short.length)))
-  );
 }

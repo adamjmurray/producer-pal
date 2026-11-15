@@ -84,21 +84,21 @@ export function loadedDeviceKind(device: LiveAPI): DeviceKind | null {
 }
 
 /**
- * Why a track won't take a device, for a track that takes only audio effects.
- * Cheap enough to ask before every insert: a chain isn't asked, since that
- * takes building its rack.
+ * Why a track or return chain won't take a device, for a place that takes only
+ * audio effects. Cheap enough to ask before every insert: any other chain isn't
+ * asked, since that takes building its rack.
  * @param deviceName - The device as the call named it
  * @param kind - The device's kind, or null when it isn't known
  * @param container - The track or chain it is headed for
- * @returns The reason, or null when the container takes it, is a chain, or the
- *   kind is unknown
+ * @returns The reason, or null when the container takes it, is a chain whose
+ *   rack decides, or the kind is unknown
  */
 export function trackMisfitReason(
   deviceName: string,
   kind: DeviceKind | null,
   container: LiveAPI,
 ): string | null {
-  return kind == null || isChain(container)
+  return kind == null || (isChain(container) && !isReturnChain(container))
     ? null
     : misfitReason(deviceName, kind, container);
 }
@@ -179,6 +179,10 @@ function isChain(container: LiveAPI): boolean {
   return CHAIN_TAIL.test(container.path);
 }
 
+function isReturnChain(container: LiveAPI): boolean {
+  return RETURN_CHAIN_TAIL.test(container.path);
+}
+
 // What a track takes only, or null when it takes every kind.
 function trackRestriction(container: LiveAPI): Restriction | null {
   const { category } = container;
@@ -204,7 +208,7 @@ function trackRestriction(container: LiveAPI): Restriction | null {
 // Only an audio or MIDI effect rack limits its chains; the others take all.
 // A return chain takes audio effects only: Live refuses anything else there.
 function chainRestriction(chain: LiveAPI): Restriction | null {
-  if (RETURN_CHAIN_TAIL.test(chain.path)) {
+  if (isReturnChain(chain)) {
     return { place: "return chain", only: AUDIO_EFFECT };
   }
 

@@ -198,4 +198,56 @@ describe("createDevice — a device the place can't take", () => {
       ).rejects.toThrow(/^could not insert "Operator" at end in path/);
     });
   });
+  describe("in a rack's return chain", () => {
+    /**
+     * Register track 0 with a Drum Rack holding one return chain whose insert
+     * would work.
+     * @returns The return chain mock
+     */
+    function registerReturnChain(): RegisteredMockObject {
+      registerMockObject("t0", { path: livePath.track(0), type: "Track" });
+      registerMockObject("rack", {
+        path: livePath.track(0).device(0),
+        type: "RackDevice",
+        properties: {
+          type: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          return_chains: children("rc0"),
+        },
+      });
+      registerMockObject("made", {
+        path: livePath.track(0).device(0).returnChain(0).device(0),
+      });
+
+      return registerMockObject("rc0", {
+        path: livePath.track(0).device(0).returnChain(0),
+        type: "Chain",
+        properties: { devices: [] },
+        methods: { insert_device: () => ["id", "made"] },
+      });
+    }
+
+    it.each([
+      ["Operator", "an instrument"],
+      ["Arpeggiator", "a MIDI effect"],
+    ])("refuses %s without asking Live", async (device, what) => {
+      const chain = registerReturnChain();
+
+      await expect(
+        createDevice({ path: "t0/d0/rc0/d+", device }),
+      ).rejects.toThrow(
+        `return chain t0/d0/rc0 (id rc0) takes only audio effects; "${device}" is ${what}`,
+      );
+      expect(chain.call).not.toHaveBeenCalled();
+    });
+
+    it("takes an audio effect", async () => {
+      const chain = registerReturnChain();
+
+      await createDevice({ path: "t0/d0/rc0/d+", device: "Compressor" });
+
+      expect(chain.call).toHaveBeenCalledWith("insert_device", "Compressor");
+    });
+  });
 });

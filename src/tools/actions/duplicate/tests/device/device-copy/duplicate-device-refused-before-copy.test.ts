@@ -155,6 +155,24 @@ const CASES: RefusedCase[] = [
       'return track rt0 (id return0) takes only audio effects; "Reverb" is a MIDI effect',
     type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
   },
+  {
+    what: "a rack's return chain, for an instrument",
+    toPath: "t1/d0/rc0/d+",
+    destination: () => [
+      registerMockObject("rack", {
+        path: livePath.track(1).device(0),
+        properties: { type: 1, return_chains: children("rc0") },
+      }),
+      registerMockObject("rc0", {
+        path: livePath.track(1).device(0).returnChain(0),
+        type: "Chain",
+        properties: { devices: children() },
+      }),
+    ],
+    refusal:
+      'return chain t1/d0/rc0 (id rc0) takes only audio effects; "Reverb" is an instrument',
+    type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  },
 ];
 
 describe("duplicate device - a destination that can't take the copy", () => {

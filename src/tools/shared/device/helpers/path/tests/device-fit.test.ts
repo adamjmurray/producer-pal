@@ -9,6 +9,7 @@ import {
   browserItemKind,
   misfitReason,
   nativeDeviceKind,
+  trackMisfitReason,
 } from "../device-fit.ts";
 
 describe("the kind of a device", () => {
@@ -70,5 +71,32 @@ describe("a rack's return chain", () => {
     expect(misfitReason(name, kind, returnChainOf(1))).toBe(
       `return chain t0/d0/rc0 (id return-chain) takes only audio effects; "${name}" is ${what}`,
     );
+  });
+
+  // The cheap check made before every insert reads a return chain's own path,
+  // but not a chain's rack.
+  it("is refused up front, without reading its rack", () => {
+    expect(trackMisfitReason("Operator", "instrument", returnChainOf(4))).toBe(
+      'return chain t0/d0/rc0 (id return-chain) takes only audio effects; "Operator" is an instrument',
+    );
+    expect(trackMisfitReason("Reverb", "audio-effect", returnChainOf(4))).toBe(
+      null,
+    );
+    expect(trackMisfitReason("Operator", null, returnChainOf(4))).toBeNull();
+  });
+
+  it("is the only chain the up-front check asks about", () => {
+    registerMockObject("chain", {
+      path: `${RACK} chains 0`,
+      type: "Chain",
+    });
+
+    expect(
+      trackMisfitReason(
+        "Operator",
+        "instrument",
+        LiveAPI.from(`${RACK} chains 0`),
+      ),
+    ).toBeNull();
   });
 });

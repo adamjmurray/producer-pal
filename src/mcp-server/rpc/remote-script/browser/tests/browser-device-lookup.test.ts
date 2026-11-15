@@ -229,6 +229,30 @@ describe("lookUpBrowserDevice", () => {
     );
   });
 
+  it.each([
+    ["Acme Audio", "Acme"],
+    ["ACME", "Acme"],
+  ])(
+    "loads the VST3 when one maker's folders are spelled apart: %s, %s",
+    async (vst3Maker, auMaker) => {
+      const plugin = [`VST3/${vst3Maker}/Limiter`, `AUv2/${auMaker}/Limiter`];
+
+      expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+        "item.path",
+        `VST3/${vst3Maker}/Limiter`,
+      );
+    },
+  );
+
+  it("still refuses makers whose names only start alike", async () => {
+    const plugin = ["VST3/Acmetone/Limiter", "AUv2/Acme/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 2 devices"),
+    );
+  });
+
   it("refuses two copies of a plug-in in one format, or in no format", async () => {
     const twoVst3 = { plugin: ["VST3/A/Pro-Q 4", "VST3/B/Pro-Q 4"] };
 
@@ -501,6 +525,17 @@ describe("lookUpBrowserDevice", () => {
           { type: "plugin", recursive: "false", path: "Audio Damage" },
           { type: "plugin", q: "dazzle" },
         ]);
+      });
+
+      it("lists every format's copy when the first folder is a vendor", async () => {
+        const both = ["VST3/Audio Damage/Dazzle", "AUv2/Audio Damage/Dazzle"];
+
+        expect(
+          await lookUpIn({ plugin: both }, "Plug-Ins/Audio Damage/Dazzle"),
+        ).toHaveProperty(
+          "error",
+          'invalid device "Plug-Ins/Audio Damage/Dazzle": no plug-in is at that path; Live lists it at "Plug-Ins/VST3/Audio Damage/Dazzle", "Plug-Ins/AUv2/Audio Damage/Dazzle"',
+        );
       });
 
       it("refuses a format that isn't installed", async () => {
