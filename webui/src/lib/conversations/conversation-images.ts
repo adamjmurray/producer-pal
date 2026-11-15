@@ -32,6 +32,12 @@ const knownRefs = new WeakMap<object, string>();
 const unreadImages = new Map<string, ChatMessage[]>();
 
 /**
+ * Refs a sweep must keep although no stored record uses them, with how many
+ * pins hold each. See {@link pinConversationImages}.
+ */
+const pinnedRefs = new Map<string, number>();
+
+/**
  * How an image sits in a stored record: its bytes live under `ref`. A stored
  * message lists these in `imageRefs` and has no `images` key. The chat UI
  * released before the image database reads `images` as inline bytes and would
@@ -61,6 +67,8 @@ export interface LoadImagesOptions {
   /**
    * True opens the record without its stored images instead of throwing, for a
    * caller that would rather show the text. Saving it later keeps the images.
+   * Also marks the caller as the one showing the record: a successful read
+   * then ends that guard, which no other load does.
    */
   tolerateFailure?: boolean;
 }
@@ -154,7 +162,10 @@ export async function loadConversationImages<T extends WithMessages>(
     return withInlineImages(record, new Map());
   }
 
-  if (typeof id === "string") {
+  // Only a load that hands the copy to the UI ends the guard. Any other full
+  // read (export, undo snapshot) is a separate copy: the stripped one is still
+  // open and its next save still needs the refs put back.
+  if (options.tolerateFailure && typeof id === "string") {
     unreadImages.delete(id);
   }
 
@@ -220,6 +231,41 @@ function restoreUnreadImages<T extends WithMessages>(record: T): T {
 }
 
 /**
+ * Keep a stored record's images through sweeps after the record itself is
+ * deleted, for an undo that will write it back with its refs. The record must
+ * come from a load that skipped the bytes. Only this tab's sweeps honor it.
+ * @param record - Record as read from the conversation store, refs intact
+ * @returns Release function, safe to call more than once
+ */
+export function pinConversationImages(record: WithMessages): () => void {
+  const refs = [...conversationImageRefs([record])];
+
+  for (const ref of refs) {
+    pinnedRefs.set(ref, (pinnedRefs.get(ref) ?? 0) + 1);
+  }
+
+  let released = false;
+
+  return () => {
+    if (released) {
+      return;
+    }
+
+    released = true;
+
+    for (const ref of refs) {
+      const count = (pinnedRefs.get(ref) ?? 1) - 1;
+
+      if (count > 0) {
+        pinnedRefs.set(ref, count);
+      } else {
+        pinnedRefs.delete(ref);
+      }
+    }
+  };
+}
+
+/**
  * Delete the images no remaining record uses and no save touched lately. Run
  * it after the transaction that removed or rewrote records, with the records
  * that transaction left. A save in another tab may add a reference after
@@ -232,6 +278,11 @@ export async function sweepConversationImages(
 ): Promise<void> {
   try {
     const inUse = conversationImageRefs(records);
+
+    for (const ref of pinnedRefs.keys()) {
+      inUse.add(ref);
+    }
+
     const db = await getImageDb();
     const tx = db.transaction([IMAGE_STORE, TOUCHED_STORE], "readwrite");
     const images = tx.objectStore(IMAGE_STORE);

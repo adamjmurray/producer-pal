@@ -25,6 +25,7 @@ import {
   loadConversationImages,
   storeConversationImages,
 } from "#webui/lib/conversations/conversation-images";
+import { exportConversation } from "#webui/lib/conversation-transfer";
 import { failImageDbOpens } from "#webui/test-utils/conversation-image-test-helpers";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import { deleteIndexedDb } from "#webui/test-utils/indexeddb-test-helpers";
@@ -202,7 +203,25 @@ describe("a failed image database open", () => {
     expect(reloaded?.messages[0]?.images).toBeUndefined();
   });
 
-  it("stops putting images back once the conversation is read in full", async () => {
+  it("keeps putting images back after a full read that isn't the open copy", async () => {
+    const loaded = await openWithoutImages();
+
+    // An export reads its own copy; the open conversation still has no images.
+    await exportConversation("a");
+    await loadConversation("a");
+    await saveConversation({
+      ...loaded,
+      messages: [...loaded.messages, { role: "user", content: "more" }],
+    });
+    await ageImages();
+    await deleteConversation("other");
+
+    const reloaded = await loadConversation("a");
+
+    expect(reloaded?.messages[0]?.images).toStrictEqual([PNG]);
+  });
+
+  it("stops putting images back once the conversation is opened in full", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     await saveConversation(withImage("a"));
     await resetImageDbCache();
@@ -212,8 +231,10 @@ describe("a failed image database open", () => {
     await loadConversation("a", { tolerateImageFailure: true });
     spy.mockRestore();
 
-    // Read properly, then the user removes the image.
-    const full = (await loadConversation("a")) as ConversationRecord;
+    // Opened again with the images, then the user removes one.
+    const full = (await loadConversation("a", {
+      tolerateImageFailure: true,
+    })) as ConversationRecord;
 
     expect(full.messages[0]?.images).toStrictEqual([PNG]);
     await saveConversation({
