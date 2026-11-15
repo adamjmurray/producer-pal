@@ -366,6 +366,55 @@ describe("toJsonResult", () => {
     });
   });
 
+  describe("a turn the server refused for overflowing its context", () => {
+    const overflow =
+      "input length (300021 tokens) exceeds the model's maximum context length (131072 tokens) (HTTP 400 http://localhost:11434/v1/chat/completions)";
+    const twoTurns = {
+      ...makeResult().scenario,
+      messages: ["Connect to Ableton", "Make a clip"],
+    };
+
+    it("is a fail on the last turn, with the error kept", () => {
+      const result = convert({
+        turns: [makeTurn({ assistantResponse: "" })],
+        error: overflow,
+        assertions: [],
+      });
+
+      expect(result.result).toBe("fail");
+      expect(result.error).toBe(overflow);
+    });
+
+    it("is a fail when it cut the run short", () => {
+      const result = convert({
+        scenario: twoTurns,
+        turns: [makeTurn({ assistantResponse: "" })],
+        error: overflow,
+        assertions: [],
+      });
+
+      expect(result.result).toBe("fail");
+      expect(result.error).toBe(overflow);
+    });
+
+    it.each([
+      ["an outage", "Cannot connect to API: connect ECONNREFUSED"],
+      ["a bad key", "Incorrect API key provided (HTTP 401 http://x/v1)"],
+      ["a rate limit", "Too many requests (HTTP 429 http://x/v1)"],
+    ])("leaves %s an error", (_label, error) => {
+      const result = convert({
+        scenario: twoTurns,
+        turns: [makeTurn({ assistantResponse: "" })],
+        error,
+        infraError: true,
+        assertions: [],
+      });
+
+      expect(result.result).toBe("error");
+      expect(result.error).toBe(error);
+    });
+  });
+
   it("grades a turn that ended in a transport error as an error", () => {
     const result = convert({
       turns: [makeTurn({ assistantResponse: "" })],

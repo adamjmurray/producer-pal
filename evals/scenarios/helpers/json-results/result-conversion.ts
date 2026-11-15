@@ -15,6 +15,7 @@ import {
   type EvalTurnResult,
 } from "../../types.ts";
 import { isStepBudgetStop } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
+import { isContextOverflow } from "#evals/scenarios/run-scenario/context-overflow.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { buildJudge } from "./judge-record.ts";
@@ -223,7 +224,8 @@ function buildEfficiency(
  * already failed the run). Calling
  * any of them a fail turns an outage into a wall of convincing-looking zeros,
  * and `--resume` would keep it. A turn the step budget stopped is the model
- * looping, so it stays a fail.
+ * looping, and one the server refused for overflowing its context is the
+ * model's doing, so both stay a fail.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
@@ -258,7 +260,7 @@ function isInfrastructureError(result: EvalScenarioResult): boolean {
     result.turns.length === 0 ||
     result.infraError === true ||
     isProviderRefusal(error) ||
-    (cutShort && !isStepBudgetStop(error))
+    (cutShort && !isStepBudgetStop(error) && !isContextOverflow(error))
   );
 }
 

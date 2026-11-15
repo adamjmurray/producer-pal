@@ -11,7 +11,10 @@ import { styleText } from "node:util";
 import { formatScenarioHeader, orange } from "#evals/chat/shared/formatting.ts";
 import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
-import { fetchLocalModelInfo } from "./run-scenario/local-model/local-model-info.ts";
+import {
+  fetchLocalModelInfo,
+  type LocalModelInfo,
+} from "./run-scenario/local-model/local-model-info.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { type StatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
@@ -166,10 +169,7 @@ export async function runScenario(
     );
 
     const totalDurationMs = Date.now() - startTime;
-    const localModel =
-      provider === "local"
-        ? await fetchLocalModelInfo(effectiveModel)
-        : undefined;
+    const localModel = await localModelFor(provider, model);
 
     return {
       scenario,
@@ -183,6 +183,9 @@ export async function runScenario(
       ...(localModel && { localModel }),
     };
   } catch (error) {
+    // An errored run still records the build it ran on.
+    const localModel = await localModelFor(provider, model);
+
     return {
       scenario,
       configProfileId: options.envLabel,
@@ -192,6 +195,7 @@ export async function runScenario(
       assertions: [],
       totalDurationMs: Date.now() - startTime,
       error: errorMessage(error),
+      ...(localModel && { localModel }),
       ...(error instanceof TurnTransportError && { infraError: true }),
     };
   } finally {
@@ -215,6 +219,29 @@ export async function runScenario(
     }
 
     await resetAfterScenario(proxy, liveSetPath);
+  }
+}
+
+/**
+ * The local model build a run used. Never throws: the server may be the very
+ * thing that failed, and this must not mask the run's own error.
+ *
+ * @param provider - LLM provider being used
+ * @param model - Model the run asked for, if any
+ * @returns Build details, or undefined for a non-local run or when unavailable
+ */
+async function localModelFor(
+  provider: EvalProvider,
+  model: string | undefined,
+): Promise<LocalModelInfo | undefined> {
+  if (provider !== "local") {
+    return undefined;
+  }
+
+  try {
+    return await fetchLocalModelInfo(model ?? getDefaultModel(provider));
+  } catch {
+    return undefined;
   }
 }
 

@@ -14,6 +14,7 @@ import {
   type EvalTurnResult,
 } from "../types.ts";
 import {
+  ContextOverflowError,
   runCorrectnessAssertion,
   runMessageTurns,
   TurnTransportError,
@@ -136,6 +137,33 @@ describe("runMessageTurns", () => {
       expect(sendMessage).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("stops at a context overflow, as a model failure and not a transport error", async () => {
+    const error =
+      "input length (300021 tokens) exceeds the model's maximum context length (131072 tokens) (HTTP 400 http://localhost:11434/v1/chat/completions)";
+    const { run, turns, sendMessage } = runWithReplies(
+      { text: "", toolCalls: [], error },
+      { text: "done", toolCalls: [] },
+    );
+
+    await expect(run).rejects.toThrow(ContextOverflowError);
+    await expect(run).rejects.not.toThrow(TurnTransportError);
+    await expect(run).rejects.toThrow(error);
+    expect(turns).toHaveLength(1);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a bad key", "Incorrect API key provided (HTTP 401 http://x/v1)"],
+    ["a rate limit", "Too many requests (HTTP 429 http://x/v1)"],
+    ["a server failure", "Internal error (HTTP 500 http://x/v1)"],
+    ["a malformed request", "invalid message format (HTTP 400 http://x/v1)"],
+    ["a refused connection", "Cannot connect to API: connect ECONNREFUSED"],
+  ])("keeps %s a transport error", async (_label, error) => {
+    const { run } = runWithReplies({ text: "", toolCalls: [], error });
+
+    await expect(run).rejects.toThrow(TurnTransportError);
+  });
 
   it("throws a refusal as the same kind of error", async () => {
     const { run } = runWithReplies({

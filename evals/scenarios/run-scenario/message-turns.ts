@@ -25,6 +25,7 @@ import {
   isStepBudgetStop,
   StoppedTurnError,
 } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
+import { isContextOverflow } from "./context-overflow.ts";
 import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { type TurnResult } from "#evals/chat/shared/types.ts";
 import { isQuietMode } from "../helpers/quiet-mode.ts";
@@ -48,6 +49,18 @@ export class TurnTransportError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "TurnTransportError";
+  }
+}
+
+/**
+ * A turn the model server refused because the input outgrew its context
+ * window. Not a transport error: the model's doing, so the run is a graded
+ * fail.
+ */
+export class ContextOverflowError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ContextOverflowError";
   }
 }
 
@@ -107,8 +120,12 @@ export async function runMessageTurns(
     // The AI SDK reports a failed request as a turn error, not a throw. Later
     // turns would fail too, and grading them would score an outage. Only the
     // agent CLIs report a step-budget stop (the model looping), and they throw.
+    // A context overflow stops the run too (later turns would overflow), but it
+    // is the model's doing, so it is not a transport error.
     if (turnResult.error != null && !isStepBudgetStop(turnResult.error)) {
-      throw new TurnTransportError(turnResult.error);
+      throw isContextOverflow(turnResult.error)
+        ? new ContextOverflowError(turnResult.error)
+        : new TurnTransportError(turnResult.error);
     }
   }
 }
