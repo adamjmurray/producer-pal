@@ -665,8 +665,8 @@ describe("select by arrangement position", () => {
 
   // A lane the track doesn't have holds no clip, so the empty result would
   // otherwise read as "nothing recorded there". The spot itself is still a
-  // target, so the call lands and the warning says what it couldn't reach.
-  it("warns for a take lane that isn't there, and still moves the marker", () => {
+  // target, so the call lands and its result says what it couldn't reach.
+  it("says so for a take lane that isn't there, and still moves the marker", () => {
     const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
@@ -682,10 +682,12 @@ describe("select by arrangement position", () => {
     expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_0");
     expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
     expect(result.selectedClip).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(
+    expect(result.detail).toBe(
       'take lane "l9" does not exist on track "t0"; ' +
         "selected the track and moved the start marker to 5|1",
     );
+    // About the target, so it is the result's to say and nothing warns it.
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("refuses a position with no lane, which names one spot per track", () => {

@@ -56,7 +56,11 @@ Part of [Skip entries, tool by tool](README.md).
 - **select has one target**: nothing to list, so a refusal or a failed selection
   throws. It takes an envelope clip's `rt0/s0` or id like a session clip: it
   switches to the session view, highlights the return track's slot and reports
-  `selectedClip` with `path: "rt0/s0"`.
+  `selectedClip` with `path: "rt0/s0"`. A path to a spot on a take lane the
+  track doesn't have still selects the track and moves the start marker; the
+  result's own `detail` says the lane isn't there. A blank `id` or `path` beside
+  one that names the selection warns once (`blank id ignored`), like every tool
+  that takes both.
 - **The read tools answer per target named, through one `readFanOut`.** A target
   that can't be read holds its slot as `{id | path, ok: false, detail}`, and a
   lone one throws. A multi-target read checks the deadline before each target;
