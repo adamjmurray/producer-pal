@@ -58,7 +58,7 @@ and
 ## Hosted Plug-ins
 
 Parameters of a [hosted plug-in](/guide/plugins) can be automated too. Live
-shows them under generic slot names, like "Automation 002". See
+shows them under generic slot names, like "Slot 002". See
 [Hosted Plug-ins: Automation](/guide/plugins#automation).
 
 ## Try Asking

@@ -104,7 +104,7 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
-        detail: 'envelope "t0/d0/h206": mapped to slot "Automation 002"',
+        detail: 'envelope "t0/d0/h206": mapped to slot "Slot 002"',
       }),
     );
   });
@@ -126,8 +126,8 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
       expect.objectContaining({
         envelopes: 2,
         detail:
-          'envelope "t0/d0/h206": mapped to slot "Automation 001"; ' +
-          'envelope "t0/d0/h9": mapped to slot "Automation 002"',
+          'envelope "t0/d0/h206": mapped to slot "Slot 001"; ' +
+          'envelope "t0/d0/h9": mapped to slot "Slot 002"',
       }),
     );
   });
@@ -168,7 +168,7 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
       expect.objectContaining({
         envelopes: 1,
         detail:
-          'envelope "t0/d0/h206": mapped to slot "Automation 002" ' +
+          'envelope "t0/d0/h206": mapped to slot "Slot 002" ' +
           '(it drove "Res", which had no automation left)',
       }),
     );
@@ -289,7 +289,7 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
       expect.objectContaining({
         envelopes: 0,
         detail: expect.stringMatching(
-          /^envelope "t0\/d0\/h206": .*Live said no.*; already changed: mapped to slot "Automation 001"$/,
+          /^envelope "t0\/d0\/h206": .*Live said no.*; already changed: mapped to slot "Slot 001"$/,
         ),
       }),
     );
@@ -302,7 +302,7 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
     expect(await write("t0/d0/h206")).toStrictEqual(
       expect.objectContaining({
         detail:
-          'envelope "t0/d0/h206": t0/d0 has no parameter named "Automation 002"',
+          'envelope "t0/d0/h206": t0/d0 has no parameter named "Slot 002"',
       }),
     );
   });

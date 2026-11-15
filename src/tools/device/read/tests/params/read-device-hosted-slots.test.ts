@@ -50,8 +50,8 @@ function setup(states: number[] = [0, 0], playingSlot = -1): void {
       path: livePath.track(0).device(0).parameter(i),
       type: "DeviceParameter",
       properties: {
-        name: `Automation 00${i + 1}`,
-        original_name: `Automation 00${i + 1}`,
+        name: `Slot 00${i + 1}`,
+        original_name: `Slot 00${i + 1}`,
         automation_state: state,
       },
     });
@@ -109,8 +109,8 @@ describe("readOneDevice on a hosted plug-in with automation slots", () => {
       readOneDevice({ path: "t0/d0", include: ["params"] }).parameters,
     ).toStrictEqual([
       { id: "h5", name: "Cutoff" },
-      { id: "h206", name: "Main Vol", slot: "Automation 001" },
-      { id: "h9", name: "Res", slot: "Automation 002" },
+      { id: "h206", name: "Main Vol", slot: "Slot 001" },
+      { id: "h9", name: "Res", slot: "Slot 002" },
     ]);
   });
 
@@ -124,7 +124,7 @@ describe("readOneDevice on a hosted plug-in with automation slots", () => {
       id: "h9",
       name: "Res",
       value: "20 %",
-      slot: "Automation 002",
+      slot: "Slot 002",
     };
 
     expect((read().parameters as object[]).at(-1)).toStrictEqual({

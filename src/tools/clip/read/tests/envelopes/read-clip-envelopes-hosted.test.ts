@@ -50,7 +50,7 @@ function slotEnvelope(slot: number, device = "d0"): ListedEnvelope {
     device,
     parameter_index: slot,
     parameter: {
-      name: `Automation 00${slot}`,
+      name: `Slot 00${slot}`,
       min: 0,
       max: 1,
       value: 0.5,
@@ -162,7 +162,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
       {
         parameter: "Main Vol",
         id: "t0/d0/h206",
-        slot: "Automation 002",
+        slot: "Slot 002",
         eventCount: 1,
         events: "1|1 0.2",
       },
@@ -176,7 +176,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
 
     expect(await readEnvelopes()).toStrictEqual([
       {
-        parameter: "Automation 002",
+        parameter: "Slot 002",
         id: "slot-2",
         device: "t0/d0",
         eventCount: 1,
@@ -192,7 +192,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
 
     expect(await readEnvelopes()).toStrictEqual([
       expect.objectContaining({
-        parameter: "Automation 002",
+        parameter: "Slot 002",
         id: "slot-2",
         device: "t0/d0",
       }),
@@ -208,7 +208,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
     });
 
     expect(await readEnvelopes()).toStrictEqual([
-      expect.objectContaining({ parameter: "Automation 002", id: "slot-2" }),
+      expect.objectContaining({ parameter: "Slot 002", id: "slot-2" }),
     ]);
   });
 

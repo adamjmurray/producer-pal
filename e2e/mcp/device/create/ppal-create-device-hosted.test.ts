@@ -193,7 +193,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
       /**
        * Find a wrapper's automation dial by its Live parameter name.
        * @param deviceId - The wrapper's Live device id
-       * @param dialName - e.g. "Automation 001"
+       * @param dialName - e.g. "Slot 001"
        * @returns The dial's parameter id, as ppal-update-clip envelopes take it
        */
       async function findDial(
@@ -274,7 +274,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
           expect.objectContaining({ dialSet: false, unchanged: true }),
         );
 
-        const dial = await findDial(deviceId, "Automation 001");
+        const dial = await findDial(deviceId, "Slot 001");
         const clipId = await newClip(track);
 
         await automate(clipId, `${dial}: 1|1 0.2`);
@@ -411,7 +411,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         expect(await automate(clipId, `${path}/h1: 1|1 0.2`)).toStrictEqual(
           expect.objectContaining({
             envelopes: 1,
-            detail: `envelope "${path}/h1": mapped to slot "Automation 001"`,
+            detail: `envelope "${path}/h1": mapped to slot "Slot 001"`,
           }),
         );
 
@@ -421,7 +421,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
           expect.objectContaining({
             parameter: "Main Vol",
             id: `${path}/h1`,
-            slot: "Automation 001",
+            slot: "Slot 001",
           }),
         );
 
@@ -433,7 +433,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         const [mainVol] = (await readDevice(path, "Main Vol")).parameters ?? [];
 
         expect(mainVol).toStrictEqual(
-          expect.objectContaining({ id: "h1", slot: "Automation 001" }),
+          expect.objectContaining({ id: "h1", slot: "Slot 001" }),
         );
 
         await call("ppal-playback", {
@@ -462,14 +462,14 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         ).toStrictEqual(
           expect.objectContaining({
             envelopes: 1,
-            detail: `envelope "${path}/${other?.id}": mapped to slot "Automation 002"`,
+            detail: `envelope "${path}/${other?.id}": mapped to slot "Slot 002"`,
           }),
         );
         expect(
           (await readEnvelopes(clipId))
             .map((entry) => entry.slot ?? "")
             .toSorted((a, b) => a.localeCompare(b)),
-        ).toStrictEqual(["Automation 001", "Automation 002"]);
+        ).toStrictEqual(["Slot 001", "Slot 002"]);
 
         await automate(clipId, `${path}/h1:`);
 
@@ -482,14 +482,14 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         const { track, path } = await hostOnNewTrack("Serum 2");
         const deviceId = (await readDevice(path)).id;
         const clipId = await newClip(track);
-        const dial = await findDial(deviceId, "Automation 001");
+        const dial = await findDial(deviceId, "Slot 001");
 
         await automate(clipId, `${dial}: 1|1 0.9`);
 
         expect(await automate(clipId, `${path}/h1: 1|1 0.2`)).toStrictEqual(
           expect.objectContaining({
             envelopes: 1,
-            detail: `envelope "${path}/h1": mapped to slot "Automation 002"`,
+            detail: `envelope "${path}/h1": mapped to slot "Slot 002"`,
           }),
         );
       }, 60_000);

@@ -70,7 +70,7 @@ const tempTracksDeleted = (): number =>
 
 /**
  * Land a Max device on the temp track whenever the remote script loads one. It
- * has a slot dial ("Automation 001") the way a wrapper does.
+ * has a slot dial ("Slot 001") the way a wrapper does.
  */
 function answerNode(item: Record<string, unknown> = WRAPPER_ITEM): void {
   vi.mocked(requestNode).mockImplementation((route) => {
@@ -149,8 +149,8 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
     ({ tempTrack } = registerTempTrack(liveSet));
     slotDial = registerMockObject("slot-dial", {
       properties: {
-        name: "Automation 001",
-        original_name: "Automation 001",
+        name: "Slot 001",
+        original_name: "Slot 001",
         is_quantized: 0,
         is_enabled: 1,
         state: 0,
@@ -175,14 +175,14 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       expect(
         await createWrapper([
           { name: "Cutoff", value: "1000" },
-          { name: "Automation 001", value: "0.5" },
+          { name: "Slot 001", value: "0.5" },
         ]),
       ).toStrictEqual({
         id: "loaded-1",
         path: "t0/d1",
         params: [
           { name: "Cutoff", ok: false, detail: reason },
-          { name: "Automation 001", ok: false, detail: reason },
+          { name: "Slot 001", ok: false, detail: reason },
         ],
       });
       expect(
@@ -272,12 +272,12 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
     });
 
     const result = (await createWrapper([
-      { name: "Automation 001", value: "0.5" },
+      { name: "Slot 001", value: "0.5" },
     ])) as { params: unknown[] };
 
     expect(probes).toBeGreaterThan(3);
     expect(result.params).toStrictEqual([
-      { name: "Automation 001", ok: false, detail: NO_PLUGIN_LOADED },
+      { name: "Slot 001", ok: false, detail: NO_PLUGIN_LOADED },
     ]);
     expect(slotDial.set).not.toHaveBeenCalled();
     expect(heard.some((request) => request.op === "write")).toBe(false);
@@ -290,7 +290,7 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       await createWrapper(
         [
           { name: "Cutoff", value: "1000" },
-          { name: "Automation 001", value: "0.5" },
+          { name: "Slot 001", value: "0.5" },
         ],
         { name: "My Fx" },
       ),
@@ -299,7 +299,7 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       path: "t0/d1",
       params: [
         { name: "Cutoff", ok: false, detail: WRAPPER_SILENT },
-        { name: "Automation 001", ok: false, detail: WRAPPER_SILENT },
+        { name: "Slot 001", ok: false, detail: WRAPPER_SILENT },
       ],
     });
     expect(slotDial.set).not.toHaveBeenCalledWith("value", expect.anything());
@@ -370,12 +370,12 @@ describe("createDevice - a Producer Pal wrapper made by its browser name", () =>
       const result = (await createDevice({
         deviceName: "Some Max Device",
         path: "t0/d+",
-        params: [{ name: "Automation 001", value: "0.5" }],
+        params: [{ name: "Slot 001", value: "0.5" }],
       })) as { params: unknown[] };
 
       expect(slotDial.set).toHaveBeenCalledWith("value", 0.5);
       expect(result.params).toStrictEqual([
-        { id: "slot-dial", name: "Automation 001" },
+        { id: "slot-dial", name: "Slot 001" },
       ]);
       expect(
         vi.mocked(slotDial.set).mock.invocationCallOrder[0],

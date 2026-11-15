@@ -26,7 +26,7 @@ import {
 
 /** A hosted param, with the slot that drives it when one does. */
 export interface SlottedParamRead extends HostedParamRead {
-  /** The wrapper's automation slot, like "Automation 002" */
+  /** The wrapper's automation slot, like "Slot 002" */
   slot?: string;
   /** Arrangement automation, as on any param; read with values only */
   automation?: string;

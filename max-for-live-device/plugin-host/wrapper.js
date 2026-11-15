@@ -936,7 +936,7 @@ function setDial(n, value) {
 }
 
 function dialName(n) {
-  return `Automation ${String(n).padStart(NAME_WIDTH, "0")}`;
+  return `Slot ${String(n).padStart(NAME_WIDTH, "0")}`;
 }
 
 // Setting a dial would override its automation, so map checks first.
@@ -1138,7 +1138,7 @@ function showKnobs(map) {
     const entry = map[n];
     const knobBox = this.patcher.getnamed(`knob${i}`);
 
-    this.patcher.getnamed(`knoblabel${i}`)?.message("set", knobLabel(n));
+    this.patcher.getnamed(`knoblabel${i}`)?.message("set", dialName(n));
     this.patcher.getnamed(`knobname${i}`)?.message("set", knobName(entry));
     // Set the value first: making a knob active sends what it holds.
     const value = entry ? shownValue(n, entry.index) : 0;
@@ -1153,10 +1153,6 @@ function knobName(entry) {
   const name = entry?.name ?? "—";
 
   return name.length > NAME_CHARS ? `${name.slice(0, NAME_CHARS - 1)}…` : name;
-}
-
-function knobLabel(n) {
-  return `Auto ${String(n).padStart(NAME_WIDTH, "0")}`;
 }
 
 // What a slot's knob shows: the param as the plug-in reports it, or the slot's

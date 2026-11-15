@@ -96,7 +96,7 @@ describe("updateClip - a hosted param's free slot and clip envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
-        detail: 'envelope "t0/d0/h206": mapped to slot "Automation 002"',
+        detail: 'envelope "t0/d0/h206": mapped to slot "Slot 002"',
       }),
     );
   });
@@ -136,7 +136,7 @@ describe("updateClip - a hosted param's free slot and clip envelopes", () => {
     expect(result).toStrictEqual(
       expect.objectContaining({
         detail:
-          'envelope "t0/d0/h206": mapped to slot "Automation 001" ' +
+          'envelope "t0/d0/h206": mapped to slot "Slot 001" ' +
           '(it drove "Cutoff", which had no automation left)',
       }),
     );
@@ -311,7 +311,7 @@ describe("updateClip - a hosted param's slot when the clips can't be checked", (
       expect.objectContaining({
         envelopes: 1,
         detail:
-          'envelope "t0/d0/h206": mapped to slot "Automation 001"; ' +
+          'envelope "t0/d0/h206": mapped to slot "Slot 001"; ' +
           'envelope "t0/d0/h9": Max went away',
       }),
     );
@@ -368,8 +368,8 @@ describe("updateClip - a hosted param's slot when the clips can't be checked", (
         expect.objectContaining({
           envelopes: 1,
           detail:
-            'envelope "t0/d0/h206": mapped to slot "Automation 002"; ' +
-            'the request ran out of time; already changed: mapped to slot "Automation 003"; ' +
+            'envelope "t0/d0/h206": mapped to slot "Slot 002"; ' +
+            'the request ran out of time; already changed: mapped to slot "Slot 003"; ' +
             'envelopes not written, re-run for "t0/d0/h9"',
         }),
       );

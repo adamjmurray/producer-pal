@@ -126,7 +126,7 @@ export function setupTrack(
   ];
 
   for (const [i, slot] of slots.entries()) {
-    const name = `Automation ${String(slot).padStart(3, "0")}`;
+    const name = `Slot ${String(slot).padStart(3, "0")}`;
 
     registerMockObject(`slot-${slot}`, {
       path: device.parameter(i + 1),

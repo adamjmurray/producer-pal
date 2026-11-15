@@ -101,9 +101,7 @@ describe("buildPluginHostDevice", () => {
     expect(patcher.project).toStrictEqual({ searchpath: {} });
     expect(built.readUInt32LE(28)).toBe(built.length - 32);
     expect(built.toString()).toMatch(/\[\s+20\.0,\s+1\.5\s+\]/);
-    expect(built.toString()).toContain(
-      '"parameter_longname": "Automation 001"',
-    );
+    expect(built.toString()).toContain('"parameter_longname": "Slot 001"');
     expect(buildPluginHostDevice(built, CODE).equals(built)).toBe(true);
   });
 
@@ -148,7 +146,7 @@ describe("buildPluginHostDevice", () => {
       }),
     );
     expect(box("knob17")).toBeUndefined();
-    expect(box("knoblabel16")?.text).toBe("Auto 016");
+    expect(box("knoblabel16")?.text).toBe("Slot 016");
     expect(box("knobname16")?.text).toBe("—");
     expect(box("knobprep16")?.text).toBe("prepend knob 16");
     expect(valueof("knob16")).toStrictEqual(

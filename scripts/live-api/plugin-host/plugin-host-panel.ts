@@ -65,7 +65,7 @@ export function isPanelBox(id: string): boolean {
 export function panelBoxes(slots: number, nameWidth: number): Json[] {
   const knobs = Array.from({ length: KNOBS }, (_, i) => i + 1);
   const label = (n: number): string =>
-    `Auto ${String(n).padStart(nameWidth, "0")}`;
+    `Slot ${String(n).padStart(nameWidth, "0")}`;
 
   return [
     pluginName(slots),

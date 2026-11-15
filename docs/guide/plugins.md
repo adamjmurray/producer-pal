@@ -72,11 +72,11 @@ up across the clip". Live can only automate its own parameters, so the wrapper
 has 128 automation slots, and Producer Pal assigns one to each parameter you
 automate.
 
-- **Live shows slot names**, like "Automation 002", in the automation chooser,
-  lane headers, the clip envelope editor, and on Push. To draw automation by
-  hand, check the wrapper's panel: its knobs show the slots 16 at a time (pick a
-  page with the tabs), each labeled with its slot ("Auto 002") and the parameter
-  it drives.
+- **Live shows slot names**, like "Slot 002", in the automation chooser, lane
+  headers, the clip envelope editor, and on Push. To draw automation by hand,
+  check the wrapper's panel: its knobs show the slots 16 at a time (pick a page
+  with the tabs), each labeled with the same slot name and the parameter it
+  drives.
 - **The panel's knobs act like the plug-in's own.** A knob shows the parameter's
   current value, whatever moved it, and turning one changes the parameter and
   its slot. Knobs for unassigned slots are greyed out.

@@ -110,7 +110,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("bare plug-in host wrapper", () => {
       params: [
         { name: "Cutoff", value: "1000" },
         // The wrapper's own slot dial, which must not move.
-        { name: "Automation 001", value: "0.5" },
+        { name: "Slot 001", value: "0.5" },
       ],
     });
 
@@ -119,7 +119,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("bare plug-in host wrapper", () => {
     );
     expect(created.params).toStrictEqual([
       { name: "Cutoff", ok: false, detail: NO_PLUGIN },
-      { name: "Automation 001", ok: false, detail: NO_PLUGIN },
+      { name: "Slot 001", ok: false, detail: NO_PLUGIN },
     ]);
   });
 

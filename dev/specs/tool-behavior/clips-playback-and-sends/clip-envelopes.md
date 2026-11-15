@@ -68,11 +68,11 @@ Mechanics: [plugin-hosting.md](../../../live-api/plugin-hosting.md).
 
 A hosted plug-in's param is an `envelopes` target spelled as its wrapper's
 device path plus its `h` id: `t3/d0/h206`, or `t3/d0/c1/d0/h206` inside a rack.
-Live automates the wrapper's numbered slots ("Automation 001"...), so the line
-is written to a slot's parameter, and the entry reports no slot unless it made
-one. A target that can't be read (`t3/d0/hx`) refuses the call like any other.
-The rest skip that line, as `envelope "<target>": <why>`, and the other lines
-still run:
+Live automates the wrapper's numbered slots ("Slot 001"...), so the line is
+written to a slot's parameter, and the entry reports no slot unless it made one.
+A target that can't be read (`t3/d0/hx`) refuses the call like any other. The
+rest skip that line, as `envelope "<target>": <why>`, and the other lines still
+run:
 
 - **The wrapper must be on the clip's track**, reached by a path that clip
   automation can walk (devices and rack chains, not drum pads or return chains),
@@ -90,10 +90,10 @@ still run:
   `no slot mapped, since the track's clips couldn't be checked for automation: <why>`;
   a missing remote script or an out-of-time call ends the clip's lines as it
   does for a write. Lines whose param already has a slot are unaffected.
-- **Mapping is reported.** A new mapping adds `mapped to slot "Automation 002"`
-  to the entry's `detail`, and a reclaimed slot adds
+- **Mapping is reported.** A new mapping adds `mapped to slot "Slot 002"` to the
+  entry's `detail`, and a reclaimed slot adds
   `(it drove "<param>", which had no automation left)`. If the write then fails,
-  the line's reason ends `; already changed: mapped to slot "Automation 002"`.
+  the line's reason ends `; already changed: mapped to slot "Slot 002"`.
 - **No slot to take**:
   `all 128 automation slots of t3/d0 are in use. Delete the automation of one (a clip's envelope or the arrangement lane; ppal-read-device shows which params have a slot) to free it`.
   While the track plays from Session the reason says which are in use can't be
@@ -114,10 +114,10 @@ still run:
   wins.
 
 On a read, an envelope on a mapped slot names the plug-in's param:
-`{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Automation 002", ... }`, with
-no `device` (the `id` has it), and `id` works as a write target. An envelope on
-an unmapped slot, or on a device that isn't a hosted wrapper, reads as any
-parameter (`parameter: "Automation 002"`, Live's `id`, `device`).
+`{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Slot 002", ... }`, with no
+`device` (the `id` has it), and `id` works as a write target. An envelope on an
+unmapped slot, or on a device that isn't a hosted wrapper, reads as any
+parameter (`parameter: "Slot 002"`, Live's `id`, `device`).
 
 ## Envelopes on a return-track clip
 

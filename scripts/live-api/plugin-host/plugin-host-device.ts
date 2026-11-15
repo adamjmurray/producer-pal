@@ -187,7 +187,7 @@ function ownedLines(): Patchline[] {
 
 // Names are zero-padded so Live sorts them.
 function dial(n: number): Json {
-  const name = `Automation ${String(n).padStart(NAME_WIDTH, "0")}`;
+  const name = `Slot ${String(n).padStart(NAME_WIDTH, "0")}`;
   const { col, row } = grid(n);
 
   return {

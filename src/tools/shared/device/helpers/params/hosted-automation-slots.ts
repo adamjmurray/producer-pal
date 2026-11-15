@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 // A hosted plug-in's params can't be automated directly. Its wrapper has
-// numbered automation slots ("Automation 001"...), each a Live parameter that
+// numbered automation slots ("Slot 001"...), each a Live parameter that
 // can drive one plug-in param. Tools map a slot to the param, then automate
 // the slot's Live parameter.
 
@@ -17,7 +17,7 @@ import {
 } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 
 /** A slot's Live parameter name: three digits, since Live sorts names as text. */
-const SLOT_PARAMETER_NAME = /^Automation (\d{3})$/;
+const SLOT_PARAMETER_NAME = /^Slot (\d{3})$/;
 
 /** A plug-in param a slot drives. */
 export interface MappedSlot {
@@ -46,10 +46,10 @@ export interface SlotParameter {
 
 /**
  * @param slot - A slot number (the first is 1)
- * @returns The slot's name, like "Automation 002"
+ * @returns The slot's name, like "Slot 002"
  */
 export function slotName(slot: number): string {
-  return `Automation ${String(slot).padStart(3, "0")}`;
+  return `Slot ${String(slot).padStart(3, "0")}`;
 }
 
 /**

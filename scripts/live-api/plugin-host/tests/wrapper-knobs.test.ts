@@ -41,7 +41,7 @@ describe("wrapper panel knobs", () => {
 
     rig.run("showKnobs(slotCache.map)");
 
-    expect(sentTo(rig, "knoblabel1")).toStrictEqual([["set", "Auto 001"]]);
+    expect(sentTo(rig, "knoblabel1")).toStrictEqual([["set", "Slot 001"]]);
     expect(sentTo(rig, "knobname3")).toStrictEqual([["set", "Cutoff"]]);
     expect(sentTo(rig, "knobname1")).toStrictEqual([["set", "—"]]);
     // The plug-in doesn't answer here, so the knob takes its slot's dial.
@@ -65,7 +65,7 @@ describe("wrapper panel knobs", () => {
 
     rig.run("knobpage(1)");
 
-    expect(sentTo(rig, "knoblabel1")).toStrictEqual([["set", "Auto 017"]]);
+    expect(sentTo(rig, "knoblabel1")).toStrictEqual([["set", "Slot 017"]]);
     expect(sentTo(rig, "knobname3")).toStrictEqual([["set", "Res"]]);
   });
 

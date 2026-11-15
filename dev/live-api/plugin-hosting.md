@@ -95,7 +95,7 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   tabs and knobs also `parameter_annotation_name` and `parameter_info` in the
   saved `valueof` block (Max writes both). The text is static.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
-  by the tabs. Each has a `knoblabel` ("Auto 003") and a `knobname` (the mapped
+  by the tabs. Each has a `knoblabel` ("Slot 003") and a `knobname` (the mapped
   param, cut to about two lines, or "—"). A knob for an unmapped slot is
   inactive (`active 0`) and reads 0.
   - Knobs and tabs are Live parameters set to Hidden (`parameter_invisible` 2):
@@ -447,11 +447,10 @@ one plug-in param. There are 128: a dial, a `speedlim`, a `prepend` and three
 cords per slot in the patcher, and `SLOT_COUNT` in the code box. Change both
 together.
 
-- **Names are fixed and zero-padded**: "Automation 001" to "Automation 128" (two
-  digits under 100 slots). Live reads a device's parameter list once, about 90
-  ms after load, before the plug-in is restored, so the dials can't be named for
-  it. Live sorts the names as text, so unpadded ones would list as 1, 10, 11,
-  … 2.
+- **Names are fixed and zero-padded**: "Slot 001" to "Slot 128" (two digits
+  under 100 slots). Live reads a device's parameter list once, about 90 ms after
+  load, before the plug-in is restored, so the dials can't be named for it. Live
+  sorts the names as text, so unpadded ones would list as 1, 10, 11, … 2.
 - **Live matches automation to parameters by name** across reloads, so a slot
   keeps its automation whatever it drives.
 - **The mapping** is `vstslots`, a stored-only blob like `vststate`: JSON
@@ -526,9 +525,9 @@ together.
   does nothing when no slot drives the param. Slots are asked about once per
   call per wrapper.
 - **Reads**: `ppal-read-clip` names an envelope on a mapped slot by the
-  plug-in's param, with `id` `t3/d0/h206` and `slot` "Automation 002"; an
-  unmapped slot reads as any parameter. `ppal-read-device` adds `slot`, and with
-  values `automation`, to hosted params that a slot drives.
+  plug-in's param, with `id` `t3/d0/h206` and `slot` "Slot 002"; an unmapped
+  slot reads as any parameter. `ppal-read-device` adds `slot`, and with values
+  `automation`, to hosted params that a slot drives.
 - **Why 128**: each slot adds about 1.5 KB to the `.amxd` (18 KB gzipped for the
   whole wrapper) and under 1 ms to loading it: 128 slots loaded about 40 ms
   slower than 32, and 1000 about 0.6 s slower. Fewer slots save no CPU either:

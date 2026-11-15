@@ -21,12 +21,12 @@ import {
 
 describe("slot names", () => {
   it("pads the number to three digits, as the wrapper names its slots", () => {
-    expect(slotName(2)).toBe("Automation 002");
-    expect(slotName(128)).toBe("Automation 128");
+    expect(slotName(2)).toBe("Slot 002");
+    expect(slotName(128)).toBe("Slot 128");
   });
 
   it("reads a slot number back from a name, and only from a slot's name", () => {
-    expect(parseSlotName("Automation 002")).toBe(2);
+    expect(parseSlotName("Slot 002")).toBe(2);
     expect(parseSlotName("Automation 2")).toBeNull();
     expect(parseSlotName("Device On")).toBeNull();
   });
