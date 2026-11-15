@@ -4,7 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { isPanelBox, panelBoxes, panelLines } from "./plugin-host-panel.ts";
-import { type Json, type Patchline, patchCord } from "./plugin-host-patch.ts";
+import {
+  FLOAT_RANGE,
+  type Json,
+  type Patchline,
+  patchCord,
+  RawJson,
+} from "./plugin-host-patch.ts";
 
 const SLOTS = 128;
 // Keep in step with NAME_WIDTH in wrapper.js
@@ -32,19 +38,6 @@ interface Patcher {
     parameters?: unknown;
   };
 }
-
-// Node has these (JSON.parse source text access); TypeScript's lib doesn't yet.
-const RawJson = JSON as unknown as {
-  parse: (
-    text: string,
-    reviver: (
-      key: string,
-      value: unknown,
-      context: { source: string },
-    ) => unknown,
-  ) => unknown;
-  rawJSON: (text: string) => unknown;
-};
 
 /**
  * Rebuild one plug-in host .amxd: put the wrapper code into its v8.codebox and
@@ -210,10 +203,7 @@ function dial(n: number): Json {
       valueof: {
         parameter_longname: name,
         parameter_shortname: name,
-        parameter_type: 0,
-        parameter_mmin: RawJson.rawJSON("0.0"),
-        parameter_mmax: RawJson.rawJSON("1.0"),
-        parameter_unitstyle: 1,
+        ...FLOAT_RANGE,
       },
     },
   };

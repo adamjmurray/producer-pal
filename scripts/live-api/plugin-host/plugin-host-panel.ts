@@ -3,7 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type Json, type Patchline, patchCord } from "./plugin-host-patch.ts";
+import {
+  FLOAT_RANGE,
+  type Json,
+  type Patchline,
+  patchCord,
+} from "./plugin-host-patch.ts";
 
 type Rect = [x: number, y: number, width: number, height: number];
 
@@ -224,9 +229,7 @@ function knob(i: number): Json {
         ...parameterHelp(KNOB_TITLE, KNOB_HELP),
         parameter_longname: `knob${i}`,
         parameter_shortname: `knob${i}`,
-        parameter_mmin: 0,
-        parameter_mmax: 1,
-        parameter_type: 0,
+        ...FLOAT_RANGE,
         parameter_invisible: HIDDEN,
       },
     },

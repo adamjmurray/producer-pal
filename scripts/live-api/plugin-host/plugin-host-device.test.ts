@@ -218,6 +218,18 @@ describe("buildPluginHostDevice", () => {
     expect(box("openeditor")).not.toHaveProperty("saved_attribute_attributes");
   });
 
+  // A bare 0/1 range or the default Int unit style snaps the dial to 0 or 1.
+  it.each(["knob16", "slotdial4"])("gives %s a float range", (id) => {
+    const text = buildPluginHostDevice(stale, CODE).toString("utf8");
+    const start = text.indexOf(`"id": "${id}"`);
+    const valueof = text.slice(start, text.indexOf("}", start));
+
+    expect(start).toBeGreaterThan(-1);
+    expect(valueof).toContain('"parameter_mmin": 0.0');
+    expect(valueof).toContain('"parameter_mmax": 1.0');
+    expect(valueof).toContain('"parameter_unitstyle": 1');
+  });
+
   it("keeps the panel inside Live's 169 px device height", () => {
     const { patcher } = parse(buildPluginHostDevice(stale, CODE));
     const bottoms = patcher.boxes
