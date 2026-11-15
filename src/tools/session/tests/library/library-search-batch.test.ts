@@ -285,21 +285,22 @@ describe("library tool — searches fan-out", () => {
     );
   });
 
-  it("truncates to the first 20 queries and warns", async () => {
+  it("runs the first 20 searches and gives each extra one its own entry", async () => {
     const warnSpy = await spyOnMaxWarn();
     const result = await runNumberedSearchBatch(25);
 
-    expect(result.results).toHaveLength(20);
     expect(protocolMock.requestNode).toHaveBeenCalledTimes(20);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("exceeds cap of 20"),
+    expect(result.results).toHaveLength(25);
+    expect(result.results.slice(20)).toStrictEqual(
+      [20, 21, 22, 23, 24].map((index) => ({
+        label: String(index),
+        items: [],
+        detail:
+          "not run: a call takes 20 searches; send this one in another call",
+      })),
     );
-    // The dropped count must be queries - cap (25 - 20 = 5), not a sum.
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("ignoring the extra 5"),
-    );
-
-    warnSpy.mockRestore();
+    // The entries say it, so no warning does.
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("does not warn when the batch is exactly at the cap of 20", async () => {

@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { library } from "../../library.ts";
 
 vi.mock(
@@ -39,17 +38,6 @@ describe.each(["searches", "queries"])("library %s", (param) => {
     await expect(
       library({ action: "search", [param]: [{ label: "Kicks" }] }),
     ).rejects.toThrow(`${param} "Kicks" has no query or filter`);
-  });
-
-  it("names the list that is cut to the cap", async () => {
-    const warn = vi.spyOn(maxConsole, "emitWarning");
-    const queries = Array.from({ length: 25 }, (_, i) => ({ query: `q${i}` }));
-
-    await library({ action: "search", [param]: queries });
-
-    expect(warn).toHaveBeenCalledWith(
-      `${param}: 25 queries exceeds cap of 20; ignoring the extra 5`,
-    );
   });
 
   it("names the list that top-level filters were sent beside", async () => {

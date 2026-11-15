@@ -11,12 +11,15 @@ import {
   type LibraryToolSearchResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 /** Hard cap on queries per `searches` fan-out. Internal — not a user param.
- * Extra queries beyond this are dropped (warn-and-truncate) so a runaway
- * batch can't fan out into a flood of DB queries. */
+ * Extra queries beyond this aren't run, so a runaway batch can't fan out into
+ * a flood of DB queries. */
 export const MAX_BATCH_QUERIES = 20;
+
+/** What an extra query's entry says. The caller re-sends it, so a refusal of
+ * the whole call would only add a round trip. */
+const OVER_THE_CAP = `not run: a call takes ${MAX_BATCH_QUERIES} searches; send this one in another call`;
 
 /**
  * Run many filtered library searches in one call, grouping each query's
@@ -25,29 +28,19 @@ export const MAX_BATCH_QUERIES = 20;
  * standalone search. Query order is preserved and a query with no matches
  * yields an empty `items` entry (never dropped).
  *
- * The batch is capped at MAX_BATCH_QUERIES; extras are truncated with a
- * warning. The top-level dbAvailable reflects the global DB state: present
+ * The batch is capped at MAX_BATCH_QUERIES; each extra gets an entry saying it
+ * wasn't run. The top-level dbAvailable reflects the global DB state: present
  * when any query consulted the DB, and false if any such query found the
  * DB missing.
  *
  * @param queries - Per-query filter sets (optional label each)
  * @param runSearch - The single-search implementation to reuse per query
- * @param param - The name the caller sent the queries under, for a warning
  * @returns One entry per query in order, or a lone query's result unwrapped
  */
 export async function runSearchBatch(
   queries: LibraryBatchQuery[],
   runSearch: (args: LibrarySearchArgs) => Promise<LibraryToolSearchResult>,
-  param = "searches",
 ): Promise<LibraryBatchResult | LibraryToolSearchResult> {
-  const capped = queries.slice(0, MAX_BATCH_QUERIES);
-
-  if (queries.length > MAX_BATCH_QUERIES) {
-    emitWarning(
-      `${param}: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
-    );
-  }
-
   const results: LibraryBatchEntry[] = [];
   let dbConsulted = false;
   let dbAvailable = true;
@@ -60,9 +53,15 @@ export async function runSearchBatch(
   // every entry stays addressable; the first occurrence keeps the bare label.
   const usedLabels = new Set<string>();
 
-  for (const [index, q] of capped.entries()) {
+  for (const [index, q] of queries.entries()) {
     const { label, ...filters } = q;
     const resolvedLabel = dedupeLabel(label ?? String(index), usedLabels);
+
+    if (index >= MAX_BATCH_QUERIES) {
+      results.push({ label: resolvedLabel, items: [], detail: OVER_THE_CAP });
+      continue;
+    }
+
     // Guard each query independently: a thrown error in one query (envelope
     // failure, a runSearch impl that doesn't honor the graceful dbAvailable:false
     // contract, etc.) must not discard the entries that already succeeded. The

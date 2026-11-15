@@ -37,6 +37,11 @@ date. The refusal rules are in
   and `find-duplicates` count in memory; the two tag lists read one row past the
   limit and run a `COUNT(*)` only if it exists. The `list-categories` overview
   is not limited.
+- **`searches` runs 20 per call.** The first 20 run. Each one past that gets an
+  entry of its own, in order, with no items and the `detail`
+  `not run: a call takes 20 searches; send this one in another call`. The call
+  is not refused: the caller sends the rest again either way, and a refusal
+  would add a round trip.
 - **A tag name is listed once.** Live keeps a tag per category that has it
   (`Percussion` under Drums and under Grooves), and a search filters by the name
   alone. So `list-tags` and the `list-categories` drill-down list the name once,

@@ -145,7 +145,7 @@ export async function library(args: LibraryArgs = {}): Promise<LibraryResult> {
   // searches is the fan-out form of a search: each entry carries its own
   // filters, so the top-level ones don't apply.
   if (searches != null) {
-    return await runSearchBatch(searches, runSearch, searchesParam);
+    return await runSearchBatch(searches, runSearch);
   }
 
   return await runSearch(args);
