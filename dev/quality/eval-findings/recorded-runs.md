@@ -49,6 +49,7 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 35  | claude-haiku-5-5   | default         | `fc8f151e6`  | 3      | 393 | 386 (98%) | 89.9M  | 1h26m  |
 | 36  | muse-glimmer-30b   | `--small-model` | `01219a45c`  | 3      | 228 | 201 (88%) | 14.9M  | 2h38m  |
 | 37  | qwen3.8-flash-next | default         | `c8edb1676`  | 3      | 402 | 393 (98%) | 84.9M  | 5h53m  |
+| 38  | deepseek-v4-flash  | default         | `c398d5cc2`? | 3      | 402 | 376 (94%) | 67.3M  | 13h03m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -168,3 +169,10 @@ GB on a 128 GB Mac. Debug build of `c8edb1676`, `--decider jev` with Luna
 judging escalations; Jev decided 58 of 93 judged replies. Ollama reports no
 model build to the harness, so the quant is recorded only here. Wall is scenario
 time.
+
+**Run 38 is deepseek-v4-flash's first run** (served by ds4-server over its
+OpenAI-compatible API, 64K context; Live 12.4.16). The server reports no quant,
+so none is recorded. The debug build was made ten minutes before `c398d5cc2` was
+committed, so it may lack part of that commit. `--decider jev` with Luna judging
+escalations; Jev decided 65 of 93 judged replies. No context overflow, timeout
+or cut-off output. Wall is scenario time.
