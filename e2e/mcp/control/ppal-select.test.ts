@@ -279,8 +279,8 @@ describe("ppal-select", () => {
 
   // A lane the track doesn't have holds no clip, so the empty result would
   // otherwise read as "nothing recorded there". The spot itself is still a
-  // target, so the call lands and the warning says what it couldn't reach.
-  it("warns for a take lane the track doesn't have, and still moves the marker", async () => {
+  // target, so the call lands and its result says what it couldn't reach.
+  it("says so on the result for a take lane the track doesn't have, and still moves the marker", async () => {
     const { data, warnings } = parseToolResultWithWarnings<SelectResult>(
       await ctx.client!.callTool({
         name: "ppal-select",
@@ -291,11 +291,42 @@ describe("ppal-select", () => {
     expect(data.view).toBe("arrangement");
     expect(data.selectedTrack!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
     expect(data.selectedClip).toBeUndefined();
-    expect(warnings).toStrictEqual([
-      `WARNING: take lane "l9" does not exist on track "t${EMPTY_MIDI_TRACK}"; ` +
+    expect(data.detail).toBe(
+      `take lane "l9" does not exist on track "t${EMPTY_MIDI_TRACK}"; ` +
         "selected the track and moved the start marker to 17|1",
-    ]);
+    );
+    // About the target, so it is the result's to say and nothing warns it.
+    expect(warnings).toStrictEqual([]);
     expect(await arrangementStartTime()).toBe("17|1");
+  });
+
+  // A blank one reads as unset, so the other carries the call — but nothing in
+  // the result would say what the caller sent was dropped.
+  it("warns once when a blank id or path rides along with the one that names the selection", async () => {
+    const blankId = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { id: "   ", path: "t0" },
+      }),
+    );
+
+    expect(blankId.data.selectedTrack!.path).toBe("t0");
+    expect(blankId.warnings).toStrictEqual([
+      'WARNING: blank id ignored: "path" names the selection',
+    ]);
+
+    const trackId = blankId.data.selectedTrack!.id;
+    const blankPath = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { id: `id ${trackId}`, path: "" },
+      }),
+    );
+
+    expect(blankPath.data.selectedTrack!.id).toBe(trackId);
+    expect(blankPath.warnings).toStrictEqual([
+      'WARNING: blank path ignored: "id" names the selection',
+    ]);
   });
 
   it("refuses a position that names no lane, and a lane with no position", async () => {
@@ -454,6 +485,8 @@ describe("ppal-select", () => {
 
 interface SelectResult {
   view?: string;
+  /** What the call couldn't reach when it still did the rest */
+  detail?: string;
   selectedTrack?: {
     id: string;
     path: string;

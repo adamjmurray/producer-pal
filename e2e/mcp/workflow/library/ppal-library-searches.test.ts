@@ -192,7 +192,7 @@ describe("ppal-library searches", () => {
     );
   });
 
-  it("truncates past the query cap and warns", async () => {
+  it("gives a search past the query cap an entry saying it wasn't run", async () => {
     const searches = Array.from({ length: MAX_QUERIES + 1 }, (_, i) => ({
       label: `q${i}`,
       source: "builtin",
@@ -206,11 +206,19 @@ describe("ppal-library searches", () => {
       }),
     );
 
-    expect(data.results).toHaveLength(MAX_QUERIES);
-    expect(data.results.at(-1)?.label).toBe(`q${MAX_QUERIES - 1}`);
-    expect(warnings.join("\n")).toContain(
-      `${MAX_QUERIES + 1} queries exceeds cap of ${MAX_QUERIES}`,
-    );
+    expect(data.results).toHaveLength(MAX_QUERIES + 1);
+
+    for (const entry of data.results.slice(0, MAX_QUERIES)) {
+      expect(entry.items).toHaveLength(1);
+      expect(entry.detail).toBeUndefined();
+    }
+
+    expect(data.results.at(-1)).toStrictEqual({
+      label: `q${MAX_QUERIES}`,
+      items: [],
+      detail: `not run: a call takes ${MAX_QUERIES} searches; send this one in another call`,
+    });
+    expect(warnings).toStrictEqual([]);
   });
 
   describe("paging", () => {
