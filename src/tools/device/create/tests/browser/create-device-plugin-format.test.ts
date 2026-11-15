@@ -33,6 +33,7 @@ const PRO_Q = {
   path: "VST3/FabFilter/Pro-Q 4",
   name: "Pro-Q 4",
   format: "VST3",
+  vendor: "FabFilter",
 } as const satisfies BrowserItem;
 
 let tempTrack: ReturnType<typeof registerTempTrack>["tempTrack"];
@@ -75,7 +76,12 @@ describe("createDevice — the format a plug-in loaded in", () => {
   it("reports it for a bare name", async () => {
     expect(
       await createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
-    ).toStrictEqual({ id: "loaded-1", path: "t0/d1", format: "VST3" });
+    ).toStrictEqual({
+      id: "loaded-1",
+      path: "t0/d1",
+      format: "VST3",
+      vendor: "FabFilter",
+    });
   });
 
   it("hands a browser path to the lookup as it is, and reports the format it found", async () => {
@@ -91,6 +97,7 @@ describe("createDevice — the format a plug-in loaded in", () => {
       id: "loaded-1",
       path: "t0/d1",
       format: "AU",
+      vendor: "FabFilter",
     });
     expect(requestNode).toHaveBeenCalledWith(
       REMOTE_SCRIPT_ROUTES.resolve,
@@ -102,6 +109,19 @@ describe("createDevice — the format a plug-in loaded in", () => {
       expect.objectContaining({ path: "AUv2/FabFilter/Pro-Q 4" }),
       expect.anything(),
     );
+  });
+
+  it("says nothing of a vendor for a plug-in with no maker's folder", async () => {
+    lookupFinds({
+      type: "plugin",
+      path: "VST/Pro-Q 4",
+      name: "Pro-Q 4",
+      format: "VST",
+    });
+
+    expect(
+      await createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
+    ).toStrictEqual({ id: "loaded-1", path: "t0/d1", format: "VST" });
   });
 
   it("says nothing of a format for a device that isn't a plug-in", async () => {
@@ -140,6 +160,7 @@ describe("createDevice — the format a plug-in loaded in", () => {
       id: "loaded-1",
       path: "t0/d1",
       format: "VST3",
+      vendor: "FabFilter",
       detail: "Live said no; already changed: device created",
     });
   });

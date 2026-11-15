@@ -95,20 +95,3 @@ export function vendorMatches<T>(
 
   return exact.length > 0 ? exact : looseVendorMatches(items, vendor, vendorOf);
 }
-
-/**
- * @param vendors - Vendor names
- * @returns One name per maker, in order, where names that match loosely count
- *   as one
- */
-export function distinctMakers(vendors: string[]): string[] {
-  const makers: string[] = [];
-
-  for (const vendor of vendors) {
-    if (!makers.some((maker) => sameVendor(maker, vendor))) {
-      makers.push(vendor);
-    }
-  }
-
-  return makers;
-}

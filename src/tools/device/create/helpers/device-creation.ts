@@ -53,6 +53,8 @@ export interface CreateDeviceResult {
   hosted?: true;
   /** For a plug-in, the format that loaded (as ppal-library list-plugins names it) */
   format?: PluginFormat;
+  /** For a plug-in, whose it is, when known; retry with a `Plug-Ins/<format>/<vendor>/<name>` path for another maker's */
+  vendor?: string;
   /** How many params a read of the hosted plug-in lists, when the wrapper said */
   paramCount?: number;
   params?: ParamResult[];

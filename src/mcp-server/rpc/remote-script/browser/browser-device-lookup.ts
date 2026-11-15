@@ -36,7 +36,6 @@ import {
   pluginPathFormat,
 } from "./plugin-folder-format.ts";
 import { type PluginFormat } from "../../../live-library/library-types.ts";
-import { distinctMakers } from "../../../live-library/query/plugins/same-vendor.ts";
 
 /** Which format a name loads when a plug-in has several, best first. */
 const FORMAT_ORDER: PluginFormat[] = ["VST3", "AU", "VST"];
@@ -442,10 +441,12 @@ async function searchSections(
 }
 
 /**
- * The one match to load when every match is the same plug-in, from the same
- * maker, in different formats: VST3, then AU, then VST.
+ * The match to load when the matches are one plug-in name in different formats:
+ * the one in the best format, VST3 then AU then VST, whoever made the others.
+ * Two in the best format are ambiguous, as when hosted.
  * @param matches - The matches, more than one
- * @returns That match, or null when the matches are different things
+ * @returns That match, or null when the matches are different things or the
+ *   best format has more than one
  */
 function preferredFormat(matches: Candidate[]): Candidate | null {
   const names = new Set(matches.map((match) => normalizedName(match.name)));
@@ -456,26 +457,17 @@ function preferredFormat(matches: Candidate[]): Candidate | null {
 
     return rank == null ? [] : [{ match, rank }];
   });
-  const ranks = new Set(ranked.map(({ rank }) => rank));
-  // Two makers can share a plug-in name. A VST sits in no maker's folder, and
-  // one maker's folders can be spelled a little differently per format.
-  const makers = distinctMakers(
-    matches.flatMap(({ path }) => path.split("/").slice(1, -1).join("/") || []),
-  );
 
-  if (
-    names.size !== 1 ||
-    makers.length > 1 ||
-    ranked.length !== matches.length ||
-    ranks.size !== matches.length
-  ) {
+  if (names.size !== 1 || ranked.length !== matches.length) {
     return null;
   }
 
-  return assertDefined(
-    ranked.toSorted((a, b) => a.rank - b.rank)[0],
-    "best-ranked format",
-  ).match;
+  const bestRank = Math.min(...ranked.map(({ rank }) => rank));
+  const best = ranked.filter(({ rank }) => rank === bestRank);
+
+  return best.length === 1
+    ? assertDefined(best[0], "best-ranked format").match
+    : null;
 }
 
 /**
@@ -508,15 +500,17 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
  * @returns It as the load route takes it
  */
 function browserItem(match: Candidate): BrowserItem {
-  const format =
-    match.section.type === "plugin"
-      ? pluginFolderFormat(match.path.split("/")[0])
-      : null;
+  const [folder, maker, ...rest] = match.path.split("/");
+  const isPlugin = match.section.type === "plugin";
+  const format = isPlugin ? pluginFolderFormat(folder) : null;
+  // The folder after the format. A VST2 sits in none: its name comes next.
+  const vendor = isPlugin && rest.length > 0 ? maker : undefined;
 
   return {
     type: match.section.type,
     path: match.path,
     name: match.name,
     ...(format != null && { format }),
+    ...(vendor != null && vendor !== "" && { vendor }),
   };
 }

@@ -133,6 +133,7 @@ describe("lookUpBrowserDevice", () => {
         path: "VST3/Valhalla/ValhallaReverb",
         name: "ValhallaReverb",
         format: "VST3",
+        vendor: "Valhalla",
       },
     });
   });
@@ -173,6 +174,7 @@ describe("lookUpBrowserDevice", () => {
         path: "VST3/FabFilter/Pro-Q 4",
         name: "Pro-Q 4",
         format: "VST3",
+        vendor: "FabFilter",
       },
     });
   });
@@ -187,6 +189,7 @@ describe("lookUpBrowserDevice", () => {
         path: "AUv2/FabFilter/Pro-L 2",
         name: "Pro-L 2",
         format: "AU",
+        vendor: "FabFilter",
       },
     });
   });
@@ -204,23 +207,23 @@ describe("lookUpBrowserDevice", () => {
           path: "VST3/Acme/Echo",
           name: "Echo",
           format: "VST3",
+          vendor: "Acme",
         },
         { type: "audio-effect", path: "Echo", name: "Echo" },
       ],
     });
   });
 
-  it("refuses a name two makers' plug-ins share across formats", async () => {
+  it("loads the VST3 of a name two makers' plug-ins share across formats", async () => {
     const plugin = ["VST3/Acme/Limiter", "AUv2/Other Co/Limiter"];
 
     expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
-      "error",
-      expect.stringContaining("matches 2 devices"),
+      "item.path",
+      "VST3/Acme/Limiter",
     );
 
     await fake?.close();
 
-    // A VST sits in no maker's folder, so it can't tell the makers apart.
     const withVst = ["VST/Limiter", "VST3/Acme/Limiter"];
 
     expect(await lookUpIn({ plugin: withVst }, "Limiter")).toHaveProperty(
@@ -229,11 +232,82 @@ describe("lookUpBrowserDevice", () => {
     );
   });
 
+  it("loads the AU over a VST2 of another maker", async () => {
+    const plugin = ["AUv2/Acme/Limiter", "VST/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "AUv2/Acme/Limiter",
+    );
+  });
+
+  it("loads the one VST3 whatever else shares its name", async () => {
+    const plugin = [
+      "VST3/Acme/Limiter",
+      "AUv2/Other Co/Limiter",
+      "AUv2/Third Co/Limiter",
+      "VST/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
+  });
+
+  it("loads the one AU when there is no VST3, whatever VST2s share its name", async () => {
+    const plugin = ["AUv2/Acme/Limiter", "VST/Limiter", "VST/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "AUv2/Acme/Limiter",
+    );
+  });
+
+  it("refuses two plug-ins in the best format, whatever the other formats hold", async () => {
+    const twoAus = [
+      "AUv2/Acme/Limiter",
+      "AUv2/Other Co/Limiter",
+      "VST/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin: twoAus }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 3 devices"),
+    );
+
+    await fake?.close();
+
+    const twoVst3s = [
+      "VST3/Acme/Limiter",
+      "VST3/Other Co/Limiter",
+      "AUv2/Acme/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin: twoVst3s }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 3 devices"),
+    );
+  });
+
+  it("says whose plug-in it is, when it has a maker's folder", async () => {
+    expect(
+      await lookUpIn({ plugin: ["VST3/Acme/Limiter"] }, "Limiter"),
+    ).toHaveProperty("item.vendor", "Acme");
+
+    await fake?.close();
+
+    expect(
+      await lookUpIn({ plugin: ["VST/Limiter"] }, "Limiter"),
+    ).not.toHaveProperty("item.vendor");
+  });
+
   it.each([
     ["Acme Audio", "Acme"],
     ["ACME", "Acme"],
+    ["Acmetone", "Acme"],
   ])(
-    "loads the VST3 when one maker's folders are spelled apart: %s, %s",
+    "loads the VST3 whatever its maker's folder is spelled like the AU's: %s, %s",
     async (vst3Maker, auMaker) => {
       const plugin = [`VST3/${vst3Maker}/Limiter`, `AUv2/${auMaker}/Limiter`];
 
@@ -243,15 +317,6 @@ describe("lookUpBrowserDevice", () => {
       );
     },
   );
-
-  it("still refuses makers whose names only start alike", async () => {
-    const plugin = ["VST3/Acmetone/Limiter", "AUv2/Acme/Limiter"];
-
-    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
-      "error",
-      expect.stringContaining("matches 2 devices"),
-    );
-  });
 
   it("refuses two copies of a plug-in in one format, or in no format", async () => {
     const twoVst3 = { plugin: ["VST3/A/Pro-Q 4", "VST3/B/Pro-Q 4"] };
@@ -432,6 +497,7 @@ describe("lookUpBrowserDevice", () => {
           path: "VST/FabFilter/Pro-Q 4",
           name: "Pro-Q 4",
           format: "VST",
+          vendor: "FabFilter",
         },
       });
       expect(queriesAsked(fake)).toStrictEqual([
@@ -452,6 +518,7 @@ describe("lookUpBrowserDevice", () => {
           path: "AUv2/Xfer Records/Serum 2 FX",
           name: "Serum 2 FX",
           format: "AU",
+          vendor: "Xfer Records",
         },
       };
 

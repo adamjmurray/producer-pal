@@ -122,25 +122,29 @@ Part of [Skip entries, tool by tool](README.md).
   same way.
 
 - **create-device loads a plug-in of a chosen format by browser path.** A bare
-  name installed in several formats loads as VST3, else AU, else VST2; a native
-  load refuses a VST3 and an AU of two makers as ambiguous, listing each path to
-  pass instead. Vendor folders name one maker when they match loosely: case
-  aside, one is the other followed by a non-alphanumeric boundary (`Acme` and
-  `Acme Audio`, `u-he` and `u-he.com`; not `Acme` and `Acmetone`). A VST2 sits
-  in no maker's folder, so it pairs with either. A name spelled
-  `Plug-Ins/<format>/<vendor>/<name>` (VST2 has no vendor folder:
-  `Plug-Ins/VST/<name>`) loads only that format, never another. The format
-  segment is `VST3`, `AU` (or Live's own `AUv2`) or `VST` (or `VST2`), in any
-  case; `VST` is VST2, as `list-plugins` says. Anything else names no format. A
-  native load finds the plug-in at that path (one more listing, only when the
-  segment isn't Live's own folder name); a plug-in that isn't at that path (a
-  wrong vendor folder, a format it isn't installed in) is refused with
+  name installed in several formats loads the one in the best format: VST3, else
+  AU, else VST2, whoever made the others. Native and hosted loads answer the
+  same. Two plug-ins of the name in that best format are refused as ambiguous,
+  listing each path to pass instead. A path's vendor folder names one maker when
+  it matches loosely: case aside, one is the other followed by a
+  non-alphanumeric boundary (`Acme` and `Acme Audio`, `u-he` and `u-he.com`; not
+  `Acme` and `Acmetone`). A name spelled `Plug-Ins/<format>/<vendor>/<name>`
+  (VST2 has no vendor folder: `Plug-Ins/VST/<name>`) loads only that format,
+  never another. The format segment is `VST3`, `AU` (or Live's own `AUv2`) or
+  `VST` (or `VST2`), in any case; `VST` is VST2, as `list-plugins` says.
+  Anything else names no format. A native load finds the plug-in at that path
+  (one more listing, only when the segment isn't Live's own folder name); a
+  plug-in that isn't at that path (a wrong vendor folder, a format it isn't
+  installed in) is refused with
   `invalid device "<path>": no plug-in is at that path; Live lists it at "<its paths>"`,
   its paths in the asked format when it has that one. A name no plug-in has, or
   a search for it that fails, leaves the usual "no native device, plug-in, or
   Max for Live device has that name". A plug-in's entry has `format` (`VST3`,
-  `AU` or `VST`, `list-plugins`' words), the format that loaded, and no other
-  device has it; an entry kept after a later step fails has it too.
+  `AU` or `VST`, `list-plugins`' words), the format that loaded, and `vendor`,
+  whose it is, so a caller who got the wrong maker can retry with a path; a
+  native VST2 in no maker's folder has no `vendor`, nor does a hosted plug-in
+  whose vendor is unknown. No other device has either; an entry kept after a
+  later step fails has them too.
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,

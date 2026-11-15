@@ -51,6 +51,9 @@ const SEEDS: PluginSeed[] = [
   ["Echo", "Acme", 1, "device:vst3:audiofx:i", `${DIR}/VST3/EchoA.vst3`],
   ["Echo", "Acme Audio", 1, "device:vst3:audiofx:j", `${DIR}/VST3/EchoB.vst3`],
   ["Room", "Beta", 1, "device:vst3:audiofx:d", `${DIR}/VST3/RoomB.vst3`],
+  ["Mix", "Acme", 1, "device:vst3:audiofx:m", `${DIR}/VST3/Mix.vst3`],
+  ["Duo", "Acme", 1, "device:vst:audiofx:5", `${DIR}/VST/DuoA.vst`],
+  ["Duo", "Beta", 1, "device:vst:audiofx:6", `${DIR}/VST/DuoB.vst`],
 ];
 
 /**
@@ -105,6 +108,7 @@ describe("resolvePlugin with several makers of one name", () => {
     addBundle("ChimeB", "Beta: Chime");
     addBundle("GongA", "Acme: Gong");
     addBundle("GongB", "Acme Audio: Gong");
+    addBundle("DuoA", "Acme: Duo");
   });
 
   beforeEach(() => {
@@ -242,6 +246,28 @@ describe("resolvePlugin with several makers of one name", () => {
       );
       await expect(resolvePlugin({ name: "Chime" }, [auDir])).rejects.toThrow(
         'More than one AU plug-in is named "Chime"',
+      );
+    });
+  });
+
+  describe("a bare name in several formats", () => {
+    it("loads the one VST3, whatever makers' AUs share its name", async () => {
+      browserLists(listed("Mix", "Acme", "AU"), listed("Mix", "Beta", "AU"));
+
+      await expect(
+        resolvePlugin({ name: "Mix" }, [auDir]),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({ format: "VST3", vendor: "Acme" }),
+      );
+    });
+
+    it("loads the one AU, whatever makers' VST2s share its name", async () => {
+      browserLists(listed("Duo", "Acme", "AU"));
+
+      await expect(
+        resolvePlugin({ name: "Duo" }, [auDir]),
+      ).resolves.toStrictEqual(
+        expect.objectContaining({ format: "AU", vendor: "Acme" }),
       );
     });
   });

@@ -4,11 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import {
-  distinctMakers,
-  foldVendor,
-  sameVendor,
-} from "../../../query/plugins/same-vendor.ts";
+import { foldVendor, sameVendor } from "../../../query/plugins/same-vendor.ts";
 
 describe("sameVendor", () => {
   it.each([
@@ -28,14 +24,6 @@ describe("sameVendor", () => {
     [undefined, undefined],
   ])("does not match %s and %s", (a, b) => {
     expect(sameVendor(a, b)).toBe(false);
-  });
-});
-
-describe("distinctMakers", () => {
-  it("counts spellings of one maker once, keeping the first", () => {
-    expect(
-      distinctMakers(["Acme Audio", "acme", "Beta", "Acmetone"]),
-    ).toStrictEqual(["Acme Audio", "Beta", "Acmetone"]);
   });
 });
 

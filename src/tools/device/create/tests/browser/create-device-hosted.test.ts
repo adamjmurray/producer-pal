@@ -169,6 +169,7 @@ describe("createDevice hosted", () => {
       path: "t0/d1",
       hosted: true,
       format: "VST3",
+      vendor: "Xfer Records",
       paramCount: 543,
     });
     expect(requestNode).toHaveBeenCalledWith(
@@ -223,6 +224,7 @@ describe("createDevice hosted", () => {
         path: "t0/d1",
         hosted: true,
         format: "VST3",
+        vendor: "Xfer Records",
       });
       expect(track.methods.delete_device).not.toHaveBeenCalled();
     },
@@ -246,6 +248,7 @@ describe("createDevice hosted", () => {
       path: "t0/d1",
       hosted: true,
       format: "VST3",
+      vendor: "Xfer Records",
       paramCount: 543,
       detail: "Live said no; already changed: device created",
     });
@@ -267,6 +270,15 @@ describe("createDevice hosted", () => {
       heard.find((request) => request.op === "load"),
       "the wrapper loads it as an AU",
     ).toStrictEqual(expect.objectContaining({ format: "AU" }));
+  });
+
+  it("says whose plug-in it is, and nothing when that isn't known", async () => {
+    answerNode({ plugin: { ...SERUM_FX, vendor: null } });
+    wrapperLoads();
+
+    expect(
+      await createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
+    ).not.toHaveProperty("vendor");
   });
 
   it("reports a VST2 as VST, as list-plugins names it", async () => {
@@ -396,6 +408,7 @@ describe("createDevice hosted", () => {
       path: "t0/d1",
       hosted: true,
       format: "VST3",
+      vendor: "Xfer Records",
       params: [
         {
           name: "Filter 1 Freq",
@@ -643,7 +656,13 @@ describe("createDevice hosted", () => {
       },
       // The mock's delete_device removes nothing, so the first wrapper still
       // holds d1.
-      { id: "loaded-2", path: "t0/d2", hosted: true, format: "VST3" },
+      {
+        id: "loaded-2",
+        path: "t0/d2",
+        hosted: true,
+        format: "VST3",
+        vendor: "Xfer Records",
+      },
     ]);
   });
 

@@ -70,6 +70,8 @@ export interface BrowserItem {
   name: string;
   /** For a plug-in: the format its browser folder holds */
   format?: PluginFormat;
+  /** For a plug-in: its maker's folder, when it has one (a VST2 has none) */
+  vendor?: string;
 }
 
 /** Where a device's presets sit in Live's browser. */

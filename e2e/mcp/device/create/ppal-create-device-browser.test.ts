@@ -23,6 +23,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { sameVendor } from "#src/mcp-server/live-library/query/plugins/same-vendor.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   createMidiTrack,
@@ -468,6 +469,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         );
 
         expect(created.format).toBe("VST3");
+        expect(sameVendor(created.vendor, plugin!.vendors.get("VST3"))).toBe(
+          true,
+        );
         expect(created.hosted).toBe(hosted ? true : undefined);
       });
 
@@ -477,6 +481,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         );
 
         expect(created.format).toBe(format);
+        expect(sameVendor(created.vendor, plugin!.vendors.get(format))).toBe(
+          true,
+        );
         expect(created.hosted).toBe(hosted ? true : undefined);
       });
 
@@ -540,4 +547,5 @@ interface Created {
   path: string;
   hosted?: boolean;
   format?: string;
+  vendor?: string;
 }

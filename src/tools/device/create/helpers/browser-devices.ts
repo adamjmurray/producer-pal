@@ -259,6 +259,7 @@ async function loadAndMove(
         entry: {
           ...createdDeviceEntry(device.id, device, target),
           ...(item.format != null && { format: item.format }),
+          ...(item.vendor != null && { vendor: item.vendor }),
         },
         written: writtenContainer(target),
       };

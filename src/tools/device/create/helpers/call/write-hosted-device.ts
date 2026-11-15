@@ -57,6 +57,7 @@ export async function createHostedDevice(
   // Before placing, so an entry kept by a later failure says it too. A count
   // the wrapper doesn't give never fails a plug-in that loaded.
   const paramCount = countHostedParams(created.device.id);
+  const vendor = plan.hosted.plugin.vendor?.trim() ?? "";
 
   return await placeCreatedDevice(
     {
@@ -65,6 +66,7 @@ export async function createHostedDevice(
         ...created.entry,
         hosted: true,
         format: plan.hosted.plugin.format,
+        ...(vendor !== "" && { vendor }),
         ...(paramCount != null && { paramCount }),
       },
     },
