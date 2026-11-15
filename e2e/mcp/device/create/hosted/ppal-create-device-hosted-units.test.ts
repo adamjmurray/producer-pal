@@ -14,18 +14,18 @@
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: npm run e2e:mcp -- e2e/mcp/device/create/ppal-create-device-hosted-units.test.ts
+ * Run with: npm run e2e:mcp -- e2e/mcp/device/create/hosted/ppal-create-device-hosted-units.test.ts
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers";
+import { setupMcpTestContext } from "../../../mcp-test-helpers";
 import {
   hasVst3,
   hostedPluginHelpers,
-} from "../helpers/hosted-plugin-test-helpers";
+} from "../../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
-} from "../helpers/remote-script-test-helpers";
+} from "../../helpers/remote-script-test-helpers";
 
 // The search lands on the closest value the param shows, not the exact one.
 const TOLERANCE = 0.05;

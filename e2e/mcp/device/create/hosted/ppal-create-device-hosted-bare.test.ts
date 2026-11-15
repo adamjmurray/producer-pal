@@ -13,22 +13,22 @@
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: npm run e2e:mcp -- device/create/ppal-create-device-hosted-bare
+ * Run with: npm run e2e:mcp -- e2e/mcp/device/create/hosted/ppal-create-device-hosted-bare.test.ts
  */
 import { describe, expect, it } from "vitest";
 import {
   createMidiTrack,
   getToolErrorMessage,
   setupMcpTestContext,
-} from "../../mcp-test-helpers";
+} from "../../../mcp-test-helpers";
 import {
   type HostedDevice,
   hostedPluginHelpers,
-} from "../helpers/hosted-plugin-test-helpers";
+} from "../../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
-} from "../helpers/remote-script-test-helpers";
+} from "../../helpers/remote-script-test-helpers";
 
 const NO_PLUGIN = "no plug-in loaded";
 

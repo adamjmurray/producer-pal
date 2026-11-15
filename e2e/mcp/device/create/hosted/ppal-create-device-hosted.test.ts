@@ -20,20 +20,24 @@
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: npm run e2e:mcp -- device/create/ppal-create-device-hosted
+ * Run with: npm run e2e:mcp -- e2e/mcp/device/create/hosted/ppal-create-device-hosted.test.ts
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { setConfig, setupMcpTestContext, sleep } from "../../mcp-test-helpers";
+import {
+  setConfig,
+  setupMcpTestContext,
+  sleep,
+} from "../../../mcp-test-helpers";
 import {
   type HostedDevice,
   hasVst3,
   hostedPluginHelpers,
   UNDO_SETTLE_MS,
-} from "../helpers/hosted-plugin-test-helpers";
+} from "../../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
-} from "../helpers/remote-script-test-helpers";
+} from "../../helpers/remote-script-test-helpers";
 
 interface EnvelopeEntry {
   parameter: string;
