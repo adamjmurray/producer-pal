@@ -11,7 +11,7 @@ const UNQUOTED_KEY_RE = /^(?:[$A-Z_a-z][\w$]*|\d+)$/;
  * Converts object to compact JavaScript literal syntax with unquoted keys
  * - Unquoted keys where valid JS identifiers; otherwise JSON-quoted
  * - No whitespace
- * - Skips undefined values in objects/arrays
+ * - Skips undefined values in objects; writes them as null in arrays
  * - Top-level undefined returns empty string
  *
  * @param obj - Object to convert
@@ -35,7 +35,8 @@ function convert(val: unknown): string | undefined {
   }
 
   if (Array.isArray(val)) {
-    const items = val.map(convert).filter((v) => v !== undefined);
+    // null, as JSON writes it: dropping an item would shift the ones after it.
+    const items = val.map((item) => convert(item) ?? "null");
 
     return "[" + items.join(",") + "]";
   }
