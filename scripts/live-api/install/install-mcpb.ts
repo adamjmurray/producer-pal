@@ -16,86 +16,111 @@
  * way, restart Claude Desktop (or toggle the extension) to load it.
  */
 
-import { execFileSync, spawnSync } from "node:child_process";
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-
-interface Installations {
-  extensions: Record<string, { version: string; manifest: { name: string } }>;
-}
+import { unpackExtension } from "@anthropic-ai/mcpb";
+import {
+  type Installations,
+  findInstalledExtensionId,
+  installedExtensionDir,
+  replaceFolder,
+  writeJsonViaTemp,
+} from "./installed-extension.ts";
+import { runInstallReport } from "./run-install-report.ts";
 
 const rootDir = join(import.meta.dirname, "../../..");
 const mcpbFile = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
 
-if (!existsSync(mcpbFile)) {
-  exit(`${mcpbFile} not found. Run \`npm run build\` first.`);
-}
+await runInstallReport(installMcpb);
 
-const claudeDir =
-  process.platform === "darwin"
-    ? join(homedir(), "Library/Application Support/Claude")
-    : process.platform === "win32"
-      ? join(
-          process.env.APPDATA ?? join(homedir(), "AppData/Roaming"),
-          "Claude",
-        )
-      : exit(`Claude Desktop doesn't run on ${process.platform}.`);
+/**
+ * @returns What happened, or throws with why it couldn't
+ */
+async function installMcpb(): Promise<{ lines: string[]; ok: boolean }> {
+  if (!existsSync(mcpbFile)) {
+    throw new Error(`${mcpbFile} not found. Run \`npm run build\` first.`);
+  }
 
-const installationsFile = join(claudeDir, "extensions-installations.json");
-const installations = existsSync(installationsFile)
-  ? (JSON.parse(readFileSync(installationsFile, "utf8")) as Installations)
-  : { extensions: {} };
+  const claudeDir = claudeDataDir();
+  const installationsFile = join(claudeDir, "extensions-installations.json");
+  const installations = existsSync(installationsFile)
+    ? (JSON.parse(readFileSync(installationsFile, "utf8")) as Installations)
+    : {};
+  const extensions = (installations.extensions ??= {});
+  const unpackDir = mkdtempSync(join(tmpdir(), "producer-pal-mcpb-"));
 
-const unpackDir = mkdtempSync(join(tmpdir(), "producer-pal-mcpb-"));
-
-try {
-  execFileSync("npx", ["mcpb", "unpack", mcpbFile, unpackDir], {
-    cwd: rootDir,
-    stdio: "ignore",
-    shell: process.platform === "win32",
-  });
-
-  const manifest = JSON.parse(
-    readFileSync(join(unpackDir, "manifest.json"), "utf8"),
-  ) as { name: string; version: string };
-
-  // Found by name, not id: the id is derived from the author and name.
-  const id = Object.keys(installations.extensions).find(
-    (key) => installations.extensions[key]?.manifest.name === manifest.name,
-  );
-
-  if (id == null) {
-    openInClaudeDesktop();
-  } else {
-    const installedDir = join(claudeDir, "Claude Extensions", id);
-    const entry = installations.extensions[id];
-
-    rmSync(installedDir, { recursive: true, force: true });
-    cpSync(unpackDir, installedDir, { recursive: true });
-
-    if (entry != null) {
-      const previousVersion = entry.version;
-
-      Object.assign(entry, { version: manifest.version, manifest });
-      writeFileSync(installationsFile, JSON.stringify(installations, null, 2));
-      console.log(`Replaced ${installedDir}`);
-      console.log(`Version: ${previousVersion} -> ${manifest.version}`);
+  try {
+    // Unpacked in-process: spawning npx on Windows needs a shell, which
+    // doesn't quote a path with a space in it.
+    if (
+      !(await unpackExtension({ mcpbPath: mcpbFile, outputDir: unpackDir }))
+    ) {
+      throw new Error(`Couldn't unpack ${mcpbFile}.`);
     }
 
-    console.log(
-      "Restart Claude Desktop, or turn the extension off and on, to load it.",
+    const manifest = JSON.parse(
+      readFileSync(join(unpackDir, "manifest.json"), "utf8"),
+    ) as { name: string; version: string };
+
+    // Found by name, not id: the id is derived from the author and name.
+    const id = findInstalledExtensionId(installations, manifest.name);
+
+    if (id == null) {
+      openInClaudeDesktop();
+
+      return {
+        lines: [
+          `Opened ${mcpbFile} in Claude Desktop. Confirm the install there.`,
+        ],
+        ok: true,
+      };
+    }
+
+    const installedDir = installedExtensionDir(claudeDir, id);
+    const entry = extensions[id] ?? {};
+    const previousVersion = entry.version;
+
+    extensions[id] = {
+      ...entry,
+      version: manifest.version,
+      manifest,
+    };
+    const leftover = replaceFolder(installedDir, unpackDir, () => {
+      writeJsonViaTemp(installationsFile, installations);
+    });
+
+    return {
+      lines: [
+        `Replaced ${installedDir}`,
+        `Version: ${previousVersion ?? "unknown"} -> ${manifest.version}`,
+        ...(leftover == null
+          ? []
+          : [`Couldn't delete the old copy; delete it yourself: ${leftover}`]),
+        "Restart Claude Desktop, or turn the extension off and on, to load it.",
+      ],
+      ok: true,
+    };
+  } finally {
+    rmSync(unpackDir, { recursive: true, force: true });
+  }
+}
+
+/** @returns Claude Desktop's data folder, or throws where it doesn't run */
+function claudeDataDir(): string {
+  if (process.platform === "darwin") {
+    return join(homedir(), "Library/Application Support/Claude");
+  }
+
+  if (process.platform === "win32") {
+    return join(
+      process.env.APPDATA ?? join(homedir(), "AppData/Roaming"),
+      "Claude",
     );
   }
-} finally {
-  rmSync(unpackDir, { recursive: true, force: true });
+
+  throw new Error(`Claude Desktop doesn't run on ${process.platform}.`);
 }
 
 /** Hand the .mcpb to Claude Desktop, which asks to confirm the install. */
@@ -106,21 +131,6 @@ function openInClaudeDesktop(): void {
       : ["cmd", ["/c", "start", "", mcpbFile]];
 
   if (spawnSync(cmd, args, { stdio: "inherit" }).status !== 0) {
-    exit("Couldn't open it in Claude Desktop. Is it installed?");
+    throw new Error("Couldn't open it in Claude Desktop. Is it installed?");
   }
-
-  console.log(
-    `Opened ${mcpbFile} in Claude Desktop. Confirm the install there.`,
-  );
-}
-
-/**
- * Print an error and stop.
- *
- * @param message - What went wrong
- * @returns Never
- */
-function exit(message: string): never {
-  console.error(message);
-  process.exit(1);
 }
