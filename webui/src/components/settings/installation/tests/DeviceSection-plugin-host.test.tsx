@@ -95,6 +95,40 @@ describe("InstallationTab device section: plug-in host devices", () => {
     expect(installLabel()).toBe("Copy");
   });
 
+  it("shows them for a development build, with the command that installs them", async () => {
+    await renderDevice({
+      problem: "not-frozen",
+      state: null,
+      pluginHost: [...MISSING],
+    });
+
+    expect(screen.getByTestId("device-plugin-host").textContent).toBe(
+      "Plug-in host devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed. Run npm run install:plugin-host.",
+    );
+  });
+
+  it("shows a development build's current wrappers as installed", async () => {
+    await renderDevice({
+      problem: "not-frozen",
+      state: null,
+      pluginHost: [...CURRENT],
+    });
+
+    expect(screen.getByTestId("device-plugin-host").textContent).toBe(
+      "Plug-in host devices: installed",
+    );
+  });
+
+  it("says nothing about them when the device has another problem", async () => {
+    await renderDevice({
+      problem: "unreadable-source",
+      state: null,
+      pluginHost: [...MISSING],
+    });
+
+    expect(screen.queryByTestId("device-plugin-host")).toBeNull();
+  });
+
   it("says nothing about them when the server reports none", async () => {
     await renderDevice();
 

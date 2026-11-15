@@ -173,8 +173,7 @@ function DeviceLines({
 }) {
   const line = deviceStatusLine(status);
   // The status describes only the detected User Library.
-  const wrappers =
-    isDetected && status.problem == null ? wrapperStatusLine(status) : null;
+  const wrappers = isDetected ? wrapperStatusLine(status) : null;
 
   return (
     <>

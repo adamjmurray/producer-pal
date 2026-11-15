@@ -6,6 +6,9 @@
 // The Installation tab's plug-in host wrapper devices: their install label,
 // status line and failure check. Keep wrapper text and logic in this file.
 
+/** Installs the wrappers from the repo, for a development build. */
+const DEV_INSTALL_COMMAND = "npm run install:plugin-host";
+
 /** How an installed wrapper compares with the one the server carries. */
 export type PluginHostWrapperStatus = "missing" | "current" | "differs";
 
@@ -33,14 +36,18 @@ export function wrapperInstallLabel(status: {
  * The line saying whether the plug-in host devices are in the User Library.
  * @param status - The server's device-install status
  * @param status.pluginHost - Each wrapper's state
- * @returns The line, or null when the server reports no wrappers
+ * @param status.problem - Why the device can't be installed, if it can't
+ * @returns The line, or null when there is nothing to say about the wrappers
  */
 export function wrapperStatusLine(status: {
   pluginHost?: PluginHostWrapperState[];
+  problem?: string | null;
 }): { text: string; tone: "good" | "warn" } | null {
-  const { pluginHost } = status;
+  const { pluginHost, problem } = status;
+  // A development device can't run the install, but its wrappers still matter.
+  const isDevBuild = problem === "not-frozen";
 
-  if (pluginHost == null) {
+  if (pluginHost == null || (problem != null && !isDevBuild)) {
     return null;
   }
 
@@ -53,7 +60,12 @@ export function wrapperStatusLine(status: {
       `${name} ${state === "missing" ? "is not installed" : state === "differs" ? "differs from this build" : "is installed"}`,
   );
 
-  return { text: `Plug-in host devices: ${each.join("; ")}`, tone: "warn" };
+  const fix = isDevBuild ? `. Run ${DEV_INSTALL_COMMAND}.` : "";
+
+  return {
+    text: `Plug-in host devices: ${each.join("; ")}${fix}`,
+    tone: "warn",
+  };
 }
 
 /**
