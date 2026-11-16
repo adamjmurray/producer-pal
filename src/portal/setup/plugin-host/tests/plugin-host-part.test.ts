@@ -206,7 +206,7 @@ describe("describePluginHostParts", () => {
         { name: "C", ok: false, path: "/c", detail: "No." },
       ]),
     ).toBe(
-      "Plug-in host wrappers: A installed; B already installed; C failed: No.",
+      "Plug-in wrapper devices: A installed; B already installed; C failed: No.",
     );
   });
 });

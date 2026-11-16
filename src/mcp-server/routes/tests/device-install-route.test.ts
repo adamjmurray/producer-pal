@@ -259,7 +259,7 @@ describe("device-install routes", () => {
       const body = (await res.json()) as { detail: string };
 
       expect(body.detail).toBe(
-        "Installed the device. Plug-in host wrappers: PPal Plug-in Effect installed; PPal Plug-in Instrument installed.",
+        "Installed the device. Plug-in wrapper devices: PPal Plug-in Effect installed; PPal Plug-in Instrument installed.",
       );
     });
 
@@ -444,6 +444,124 @@ describe("device-install routes", () => {
       writeFileSync(join(library, "Presets"), "");
 
       const res = await postInstall({ userLibrary: library });
+
+      expect(res.status).toBe(500);
+    });
+  });
+
+  describe("POST /device-install/plugin-host", () => {
+    const postWrappers = (body: unknown, origin?: string): Promise<Response> =>
+      postJson(`${server.baseUrl}/device-install/plugin-host`, body, origin);
+
+    it("installs only the wrappers, even for a development device", async () => {
+      const { library, installed, runFromDownloads } = scratch();
+
+      runFromDownloads(developmentDevice());
+
+      const res = await postWrappers({ userLibrary: library });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toStrictEqual({
+        detail:
+          "Plug-in wrapper devices: PPal Plug-in Effect installed; PPal Plug-in Instrument installed.",
+        pluginHost: [
+          expect.objectContaining({ status: "installed" }),
+          expect.objectContaining({ status: "installed" }),
+        ],
+      });
+      expect(existsSync(installed)).toBe(false);
+
+      for (const wrapper of PLUGIN_HOST_WRAPPERS) {
+        expect(existsSync(pluginHostPath(library, wrapper))).toBe(true);
+      }
+    });
+
+    it("says a wrapper that is already current is", async () => {
+      const { library } = scratch();
+
+      installPluginHostParts(library);
+
+      const res = await postWrappers({ userLibrary: library });
+      const body = (await res.json()) as { detail: string };
+
+      expect(body.detail).toBe(
+        "Plug-in wrapper devices: PPal Plug-in Effect already installed; PPal Plug-in Instrument already installed.",
+      );
+    });
+
+    it("reports a wrapper that fails, after the other was written", async () => {
+      const { library } = scratch();
+
+      mkdirSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), {
+        recursive: true,
+      });
+
+      const res = await postWrappers({ userLibrary: library });
+      const body = (await res.json()) as {
+        detail: string;
+        pluginHost: { ok?: boolean; detail?: string }[];
+      };
+
+      expect(res.status).toBe(200);
+      expect(body.pluginHost.map((part) => part.ok)).toStrictEqual([
+        false,
+        undefined,
+      ]);
+      expect(body.detail).toContain("PPal Plug-in Effect failed");
+      expect(body.detail).toContain("click Install");
+      expect(body.detail).not.toContain("install-producer-pal");
+      expect(existsSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]))).toBe(
+        true,
+      );
+    });
+
+    it("says so when the build carries no wrappers", async () => {
+      vi.mocked(installPluginHostParts).mockReturnValueOnce([]);
+
+      const res = await postWrappers({ userLibrary: scratch().library });
+
+      expect(await res.json()).toStrictEqual({
+        detail: "This build has no plug-in wrapper devices to install.",
+        pluginHost: [],
+      });
+    });
+
+    it("rejects a blank userLibrary, a bad folder and a relative path before writing anything", async () => {
+      const { library } = scratch();
+
+      await expectBlankUserLibraryRejected(postWrappers);
+
+      const missing = await postWrappers({
+        userLibrary: join(library, "nope"),
+      });
+      const relative = await postWrappers({ userLibrary: "User Library" });
+
+      expect(missing.status).toBe(400);
+      expect(await errorOf(missing)).toMatch(/^Not a folder/);
+      expect(relative.status).toBe(400);
+      expect(await errorOf(relative)).toMatch(/^Not an absolute path/);
+      expect(existsSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]))).toBe(
+        false,
+      );
+    });
+
+    it("rejects a foreign browser origin and writes nothing", async () => {
+      const { library } = scratch();
+      const res = await postWrappers(
+        { userLibrary: library },
+        "https://evil.example",
+      );
+
+      expect(res.status).toBe(403);
+      expect(existsSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]))).toBe(
+        false,
+      );
+    });
+
+    it("answers 500 for an error it can't explain", async () => {
+      fault.stat = true;
+
+      const res = await postWrappers({ userLibrary: scratch().library });
 
       expect(res.status).toBe(500);
     });

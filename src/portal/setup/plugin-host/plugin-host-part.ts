@@ -108,7 +108,7 @@ export function describePluginHostParts(parts: PluginHostPart[]): string {
       : `${part.name} ${part.status === "current" ? "already installed" : part.status}`,
   );
 
-  return `Plug-in host wrappers: ${each.join("; ")}.`;
+  return `Plug-in wrapper devices: ${each.join("; ")}.`;
 }
 
 /**

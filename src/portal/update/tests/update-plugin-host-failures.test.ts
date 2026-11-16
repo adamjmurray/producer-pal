@@ -33,7 +33,7 @@ const WRAPPERS: PluginHostPart[] = [
   },
 ];
 const NOTE =
-  "Plug-in host wrappers: PPal Plug-in Effect installed; PPal Plug-in Instrument failed: In use.";
+  "Plug-in wrapper devices: PPal Plug-in Effect installed; PPal Plug-in Instrument failed: In use.";
 
 describe("update-producer-pal's wrappers when it fails after writing them", () => {
   it.each([
@@ -75,7 +75,7 @@ describe("update-producer-pal's wrappers when it fails after writing them", () =
     });
     const text = responseText(await updateCall(fakeDevice(OLD), deps));
 
-    expect(text).not.toContain("Plug-in host wrappers");
+    expect(text).not.toContain("Plug-in wrapper devices");
   });
 
   it("leaves them out of a refusal before they were written", async () => {
@@ -83,6 +83,6 @@ describe("update-producer-pal's wrappers when it fails after writing them", () =
     const text = responseText(await updateCall(fakeDevice(undefined), deps));
 
     expect(deps.installPluginHost).not.toHaveBeenCalled();
-    expect(text).not.toContain("Plug-in host wrappers");
+    expect(text).not.toContain("Plug-in wrapper devices");
   });
 });

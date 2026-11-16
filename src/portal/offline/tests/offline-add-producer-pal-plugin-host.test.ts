@@ -24,7 +24,7 @@ const WRAPPERS: PluginHostPart[] = [
   { name: "PPal Plug-in Instrument", status: "current", path: "/i" },
 ];
 const NOTE =
-  "Plug-in host wrappers: PPal Plug-in Effect updated; PPal Plug-in Instrument already installed.";
+  "Plug-in wrapper devices: PPal Plug-in Effect updated; PPal Plug-in Instrument already installed.";
 
 describe("add-producer-pal's wrappers when it fails after writing them", () => {
   it.each([
@@ -59,7 +59,7 @@ describe("add-producer-pal's wrappers when it fails after writing them", () => {
     const deps = happyDeps({ request: requestAnswers(UNSENT_TIMEOUT) });
     const text = responseText(await addProducerPalCall(deps));
 
-    expect(text).not.toContain("Plug-in host wrappers");
+    expect(text).not.toContain("Plug-in wrapper devices");
   });
 
   it("leaves them out of a refusal before they were written", async () => {
@@ -70,6 +70,6 @@ describe("add-producer-pal's wrappers when it fails after writing them", () => {
     const text = responseText(await addProducerPalCall(deps));
 
     expect(deps.installPluginHost).not.toHaveBeenCalled();
-    expect(text).not.toContain("Plug-in host wrappers");
+    expect(text).not.toContain("Plug-in wrapper devices");
   });
 });

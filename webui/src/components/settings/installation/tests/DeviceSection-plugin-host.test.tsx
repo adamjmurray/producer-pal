@@ -95,7 +95,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
     expect(installLabel()).toBe("Copy");
   });
 
-  it("shows them for a development build, with the command that installs them", async () => {
+  it("shows them for a development build", async () => {
     await renderDevice({
       problem: "not-frozen",
       state: null,
@@ -103,7 +103,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
     });
 
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
-      "Plug-in wrapper devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed. Run npm run install:plugin-host.",
+      "Plug-in wrapper devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed",
     );
   });
 
@@ -117,6 +117,10 @@ describe("InstallationTab device section: plug-in host devices", () => {
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
       "Plug-in wrapper devices: installed",
     );
+    expect(installLabel()).toBe("Copy");
+    expect(
+      (screen.getByTestId("device-install") as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it("says nothing about them when the device has another problem", async () => {
@@ -140,7 +144,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
     await renderDevice({ pluginHost: [...MISSING] });
 
     const detail =
-      "The installed device is already this one. Plug-in host wrappers: PPal Plug-in Effect installed; PPal Plug-in Instrument already installed.";
+      "The installed device is already this one. Plug-in wrapper devices: PPal Plug-in Effect installed; PPal Plug-in Instrument already installed.";
 
     routes.device(
       jsonResponse({
@@ -173,7 +177,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
         outcome: "current",
         path: DEVICE_PATH,
         detail:
-          "Plug-in host wrappers: PPal Plug-in Effect failed: close any Set that uses it, or quit Live, then click Install.",
+          "Plug-in wrapper devices: PPal Plug-in Effect failed: close any Set that uses it, or quit Live, then click Install.",
         pluginHost: [{ name: "PPal Plug-in Effect", ok: false, path: "/p" }],
       }),
       jsonResponse(
@@ -201,5 +205,159 @@ describe("InstallationTab device section: plug-in host devices", () => {
       expect(screen.queryByTestId("device-plugin-host")).toBeNull();
     });
     expect(installLabel()).toBe("Copy");
+  });
+});
+
+describe("InstallationTab device section: plug-in wrapper devices on a development build", () => {
+  const fetchMock = installFetchMock();
+  let routes: ReturnType<typeof routeInstallationFetch>;
+
+  beforeEach(() => {
+    routes = routeInstallationFetch(fetchMock);
+  });
+
+  const DEV: Partial<DeviceInstallStatus> = {
+    problem: "not-frozen",
+    state: null,
+    path: null,
+    pluginHost: [...MISSING],
+  };
+
+  /** Render a development device whose wrappers aren't all in. */
+  async function renderDev(): Promise<void> {
+    routes.device(jsonResponse(deviceStatusBody({ ...DEV })));
+    render(<InstallationTabHarness />);
+    await waitForHookState(() => {
+      expect(screen.queryByTestId("device-loading")).toBeNull();
+    });
+  }
+
+  /**
+   * Click the install button and wait for its POST to settle.
+   * @param answer - What the wrapper route answers
+   * @param after - The status read that follows, when the POST is a 2xx
+   */
+  async function clickInstall(
+    answer: Response | Error,
+    after: Response = jsonResponse(deviceStatusBody({ ...DEV })),
+  ): Promise<void> {
+    routes.device(answer, after);
+    fireEvent.click(screen.getByTestId("device-install"));
+    await waitForHookState(() => {
+      expect(
+        screen.queryByTestId("device-installed-path") ??
+          screen.queryByTestId("device-error"),
+      ).not.toBeNull();
+    });
+  }
+
+  const posts = (): unknown[][] =>
+    fetchMock.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === "POST",
+    );
+
+  it("offers the wrapper install, and posts only to the wrapper route", async () => {
+    await renderDev();
+
+    expect(screen.getByTestId("device-install").textContent).toBe(
+      "Install the plug-in wrapper devices",
+    );
+    expect(
+      (screen.getByTestId("device-install") as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(screen.getByTestId("device-status").textContent).toBe(
+      "Development build: freeze it to copy.",
+    );
+
+    await clickInstall(
+      jsonResponse({
+        detail: "Plug-in wrapper devices: PPal Plug-in Effect installed.",
+        pluginHost: [{ name: "PPal Plug-in Effect", status: "installed" }],
+      }),
+      jsonResponse(deviceStatusBody({ ...DEV, pluginHost: CURRENT })),
+    );
+
+    const [[url, init]] = posts() as [[string, RequestInit]];
+
+    expect(url).toContain("/device-install/plugin-host");
+    expect(JSON.parse(init.body as string)).toStrictEqual({
+      userLibrary: deviceStatusBody().userLibrary,
+    });
+
+    const done = screen.getByTestId("device-installed-path");
+
+    expect(done.textContent).toBe(
+      "Plug-in wrapper devices: PPal Plug-in Effect installed.",
+    );
+    expect(done.className).not.toContain("amber");
+    // The status is read again, and the button goes back to a disabled Copy.
+    await waitForHookState(() => {
+      expect(screen.getByTestId("device-install").textContent).toBe("Copy");
+    });
+    expect(
+      (screen.getByTestId("device-install") as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("flags a wrapper that failed to install", async () => {
+    await renderDev();
+    await clickInstall(
+      jsonResponse({
+        detail:
+          "Plug-in wrapper devices: PPal Plug-in Effect failed: close any Set that uses it, or quit Live, then click Install.",
+        pluginHost: [{ name: "PPal Plug-in Effect", ok: false, path: "/p" }],
+      }),
+    );
+
+    const done = screen.getByTestId("device-installed-path");
+
+    expect(done.className).toContain("amber");
+    expect(done.textContent).toContain("then click Install.");
+    expect(screen.getByTestId("device-install").textContent).toBe(
+      "Install the plug-in wrapper devices",
+    );
+  });
+
+  it("shows the server's reason for a refusal", async () => {
+    await renderDev();
+    await clickInstall(
+      new Response(JSON.stringify({ error: "Not a folder: /nope" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    expect(screen.getByTestId("device-error").textContent).toBe(
+      "Not a folder: /nope",
+    );
+    expect(screen.queryByTestId("device-installed-path")).toBeNull();
+  });
+
+  it("shows an error for a network failure", async () => {
+    await renderDev();
+    await clickInstall(new Error("Failed to fetch"));
+
+    expect(screen.getByTestId("device-error").textContent).toBe(
+      "Failed to fetch",
+    );
+  });
+
+  it("shows an error for a 200 that doesn't say what it did", async () => {
+    await renderDev();
+    await clickInstall(jsonResponse({ detail: "Done." }));
+
+    expect(screen.getByTestId("device-error").textContent).toBe(
+      "Install failed: the server didn't say what it did",
+    );
+    expect(screen.queryByTestId("device-installed-path")).toBeNull();
+  });
+
+  it("shows an error for a non-JSON failure", async () => {
+    await renderDev();
+    await clickInstall(new Response("Not found", { status: 404 }));
+
+    expect(screen.getByTestId("device-error").textContent).toBe(
+      "Install failed (404)",
+    );
   });
 });

@@ -18,6 +18,7 @@ import { deviceInstallStatus } from "../rpc/device-install/device-install-status
 import { deviceSwapCheck } from "../rpc/device-install/device-swap-check.ts";
 import { swapForLibraryCopy } from "../rpc/device-install/device-swap.ts";
 import { remoteScriptPing } from "../rpc/remote-script/remote-script-client.ts";
+import { resolveUserLibraryFolder } from "../rpc/remote-script/user-library/user-library-folder.ts";
 import {
   answerUserLibraryError,
   readUserLibraryPost,
@@ -26,7 +27,8 @@ import {
 const ROUTE = "/device-install";
 
 /**
- * Register GET /device-install (status, plus each plug-in host wrapper's state), POST /device-install/install, and
+ * Register GET /device-install (status, plus each plug-in wrapper device's
+ * state), POST /device-install/install, POST /device-install/plugin-host, and
  * POST /device-install/swap.
  *
  * The install is a same-origin write, like the remote script's. A refused
@@ -35,6 +37,10 @@ const ROUTE = "/device-install";
  * existing absolute folder is a 400. Once the device is in, the plug-in host
  * wrappers go in beside it. They never fail the install: what happened to them
  * is in `pluginHost`, and the `detail` says so.
+ *
+ * `/plugin-host` installs only the wrappers, which don't need a frozen device.
+ * It answers 200 with `{ detail, pluginHost }` even when a wrapper failed (that
+ * part has `ok: false`).
  *
  * A swap replaces the running device, so this server usually dies before it can
  * answer: the chat UI treats a dropped connection as the swap happening and
@@ -99,6 +105,31 @@ export function registerDeviceInstallRoutes(app: Express): void {
       answerUserLibraryError(error, res);
     }
   });
+
+  app.post(
+    "/device-install/plugin-host",
+    (req: Request, res: Response): void => {
+      const posted = readUserLibraryPost(req, res);
+
+      if (posted == null) {
+        return;
+      }
+
+      try {
+        const library = resolveUserLibraryFolder(posted.userLibrary);
+        const pluginHost = installPluginHostParts(library, UI_RETRY);
+
+        res.json({
+          detail:
+            describePluginHostParts(pluginHost) ||
+            "This build has no plug-in wrapper devices to install.",
+          pluginHost,
+        });
+      } catch (error) {
+        answerUserLibraryError(error, res);
+      }
+    },
+  );
 
   app.post(
     "/device-install/swap",

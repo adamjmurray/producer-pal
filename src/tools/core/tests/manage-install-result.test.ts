@@ -58,7 +58,7 @@ describe("manageInstallResult plug-in host wrappers", () => {
 
     expect(result.pluginHost).toHaveLength(2);
     expect(result.nextSteps).toContain(
-      "Plug-in hosting needs PPal Plug-in Instrument (see pluginHost): tell the user why, and call install-producer-pal again to retry.",
+      "Full plug-in control needs PPal Plug-in Instrument (see pluginHost): tell the user why, and call install-producer-pal again to retry.",
     );
     expect(result.nextSteps).toContain("restart Live, then");
   });
@@ -112,7 +112,7 @@ describe("manageInstallResult plug-in host wrappers", () => {
         device: BAD,
         pluginHost,
         nextSteps:
-          "Only the plug-in host wrappers were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call install-producer-pal again to retry.",
+          "Only the plug-in wrapper devices were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call install-producer-pal again to retry.",
       });
     },
   );
@@ -128,9 +128,9 @@ describe("manageInstallResult plug-in host wrappers", () => {
       { running: true },
     );
 
-    expect(result.nextSteps).toContain("Only the plug-in host wrappers");
+    expect(result.nextSteps).toContain("Only the plug-in wrapper devices");
     expect(result.nextSteps).toContain(
-      "Plug-in hosting needs PPal Plug-in Instrument (see pluginHost)",
+      "Full plug-in control needs PPal Plug-in Instrument (see pluginHost)",
     );
   });
 });

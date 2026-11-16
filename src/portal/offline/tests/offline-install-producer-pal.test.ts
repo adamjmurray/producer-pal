@@ -127,7 +127,7 @@ describe("offline install-producer-pal", () => {
     expect(textOf(response)).toContain('remoteScript:{status:"installed"');
     expect(textOf(response)).toContain('device:{status:"installed"');
     expect(textOf(response)).toContain(
-      "Plug-in hosting needs PPal Plug-in Effect",
+      "Full plug-in control needs PPal Plug-in Effect",
     );
   });
 
@@ -282,7 +282,7 @@ describe("offline install-producer-pal when one install fails", () => {
 
     expect(response.isError).toBeUndefined();
     expect(text).toContain('pluginHost:[{name:"PPal Plug-in Effect"');
-    expect(text).toContain("Only the plug-in host wrappers were installed");
+    expect(text).toContain("Only the plug-in wrapper devices were installed");
     expect(text).not.toContain("nothing was installed");
   });
 

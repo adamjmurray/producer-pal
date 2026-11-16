@@ -155,6 +155,15 @@ export function getDeviceInstallActionUrl(): string {
 }
 
 /**
+ * Gets the plug-in wrapper devices endpoint URL (POST copies only the wrappers
+ * into the given User Library, which a development build can do).
+ * @returns {string} The plug-in wrapper devices endpoint URL
+ */
+export function getDevicePluginHostUrl(): string {
+  return serverUrl("/device-install/plugin-host");
+}
+
+/**
  * Gets the device swap endpoint URL (POST replaces the running device in the
  * Live Set with the User Library copy).
  * @returns {string} The device swap endpoint URL

@@ -125,6 +125,8 @@ device depends on the files beside it. `GET /device-install` and
 `POST /device-install/install` serve the chat UI's Installation tab, the same
 way `/remote-script` does. The install is `installDevice` from the portal, with
 `force` needed for a newer or unorderable copy.
+`POST /device-install/plugin-host` installs only the plug-in wrapper devices,
+which a development device can do.
 
 The device shows a "Finish installation…" notice (in the update notice's spot,
 no `×`) when `installIncomplete` says so: the User Library has no copy of a

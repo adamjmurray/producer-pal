@@ -12,6 +12,7 @@ import {
 import {
   getDeviceInstallActionUrl,
   getDeviceInstallUrl,
+  getDevicePluginHostUrl,
 } from "#webui/utils/mcp-url";
 import { postInstallRequest } from "./helpers/post-install-request";
 import {
@@ -36,7 +37,8 @@ export type { DeviceInstallProblem, DeviceState };
 /** What a finished install did, as the chat UI shows it. */
 export interface DeviceInstallDone {
   detail: string;
-  path: string;
+  /** Where the device went; null for the wrappers alone, which have several files. */
+  path: string | null;
   /** Whether part of the install failed, which the detail says. */
   failed: boolean;
 }
@@ -50,6 +52,8 @@ export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceIns
   installResult: DeviceInstallDone | null;
   /** Copy the device into `userLibrary`, replacing a newer one only with `force`, then re-read the status. */
   install: (userLibrary: string, force: boolean) => void;
+  /** Install only the plug-in wrapper devices into `userLibrary`, then re-read the status. */
+  installWrappers: (userLibrary: string) => void;
 }
 
 /**
@@ -74,12 +78,12 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
   });
   const { refresh } = read;
 
-  const install = useCallback(
-    (userLibrary: string, force: boolean): void => {
+  const run = useCallback(
+    (post: Promise<PostResult>): void => {
       setInstalling(true);
       setInstallError(null);
 
-      void postInstall(userLibrary, force).then((result) => {
+      void post.then((result) => {
         setInstalling(false);
 
         setInstallError(result.error);
@@ -91,7 +95,24 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
     [refresh],
   );
 
-  return { ...read, installing, installError, installResult, install };
+  const install = useCallback(
+    (userLibrary: string, force: boolean): void =>
+      run(postInstall(userLibrary, force)),
+    [run],
+  );
+  const installWrappers = useCallback(
+    (userLibrary: string): void => run(postWrappers(userLibrary)),
+    [run],
+  );
+
+  return {
+    ...read,
+    installing,
+    installError,
+    installResult,
+    install,
+    installWrappers,
+  };
 }
 
 // --- Helpers below main export ---
@@ -136,6 +157,41 @@ async function postInstall(
     done: {
       detail: body.detail,
       path: body.path,
+      failed: wrapperInstallFailed(body),
+    },
+    error: null,
+  };
+}
+
+/**
+ * POST the wrapper-only install, folding every failure into one `error` string.
+ * @param userLibrary - The User Library to install into
+ * @returns What was done, or the error to show
+ */
+async function postWrappers(userLibrary: string): Promise<PostResult> {
+  const posted = await postInstallRequest<{
+    detail: string;
+    pluginHost: { ok?: boolean }[];
+  }>(getDevicePluginHostUrl(), { userLibrary });
+
+  if (posted.error != null) {
+    return { done: null, error: posted.error };
+  }
+
+  const { body } = posted;
+
+  if (typeof body?.detail !== "string" || !Array.isArray(body.pluginHost)) {
+    // A 200 owes us what it did to each wrapper.
+    return {
+      done: null,
+      error: "Install failed: the server didn't say what it did",
+    };
+  }
+
+  return {
+    done: {
+      detail: body.detail,
+      path: null,
       failed: wrapperInstallFailed(body),
     },
     error: null,

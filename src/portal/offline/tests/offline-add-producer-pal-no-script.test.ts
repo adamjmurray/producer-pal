@@ -78,7 +78,7 @@ describe("add-producer-pal without a running remote script", () => {
     expect(response.isError).toBe(true);
     expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
     expect(responseText(response)).toContain(
-      "Device: installed in the User Library. Plug-in host wrappers: A installed; B failed: In use. Two ways forward.",
+      "Device: installed in the User Library. Plug-in wrapper devices: A installed; B failed: In use. Two ways forward.",
     );
   });
 

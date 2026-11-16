@@ -84,7 +84,12 @@ export function DeviceSection({
             data-testid="device-install"
             disabled={view.actions.install.disabled}
             onClick={() =>
-              device.install(trimmed, installReplaces(view.status, isDetected))
+              view.actions.install?.wrappersOnly === true
+                ? device.installWrappers(trimmed)
+                : device.install(
+                    trimmed,
+                    installReplaces(view.status, isDetected),
+                  )
             }
             className={`flex-none ${primaryButtonClass}`}
           >
@@ -206,7 +211,9 @@ function DeviceLines({
           }
           data-testid="device-installed-path"
         >
-          {device.installResult.detail} ({device.installResult.path})
+          {device.installResult.detail}
+          {device.installResult.path != null &&
+            ` (${device.installResult.path})`}
         </p>
       )}
       <DeviceSwapMessage swap={swap} />

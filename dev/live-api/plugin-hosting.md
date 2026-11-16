@@ -581,7 +581,11 @@ Live's browser must find the wrappers by name, so they go in the User Library:
 - **Chat UI button.** `GET /device-install` also reports each wrapper
   (`pluginHost`: missing, current or differs), and the Installation tab offers
   Install when the device or any wrapper needs it, even with the device current.
-  A failed wrapper's message says "click Install", not `install-producer-pal`.
+  A failed wrapper's message says "click Install", not `install-producer-pal`. A
+  development device can't be copied, but the wrappers don't need it:
+  `POST /device-install/plugin-host` installs only them (same `userLibrary` body
+  and 400s as the install route; answers `{ detail, pluginHost }`), and the tab
+  offers that on a development build when a wrapper is missing or differs.
 - **Bytes decide.** A wrapper that differs from the embedded one is replaced; no
   version is compared. A Set that's already open keeps the old wrapper until
   it's reopened.

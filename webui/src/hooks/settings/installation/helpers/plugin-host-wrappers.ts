@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The Installation tab's plug-in host wrapper devices: their install label,
+// The Installation tab's plug-in wrapper devices: their install label,
 // status line and failure check. Keep wrapper text and logic in this file.
 
-/** Installs the wrappers from the repo, for a development build. */
-const DEV_INSTALL_COMMAND = "npm run install:plugin-host";
+/** The install button's label when a wrapper needs installing. */
+export const WRAPPER_INSTALL_LABEL = "Install the plug-in wrapper devices";
 
 /** How an installed wrapper compares with the one the server carries. */
 export type PluginHostWrapperStatus = "missing" | "current" | "differs";
@@ -27,9 +27,7 @@ export interface PluginHostWrapperState {
 export function wrapperInstallLabel(status: {
   pluginHost?: PluginHostWrapperState[];
 }): string | null {
-  return needsInstall(status.pluginHost)
-    ? "Install the plug-in wrapper devices"
-    : null;
+  return needsInstall(status.pluginHost) ? WRAPPER_INSTALL_LABEL : null;
 }
 
 /**
@@ -60,10 +58,8 @@ export function wrapperStatusLine(status: {
       `${name} ${state === "missing" ? "is not installed" : state === "differs" ? "differs from this build" : "is installed"}`,
   );
 
-  const fix = isDevBuild ? `. Run ${DEV_INSTALL_COMMAND}.` : "";
-
   return {
-    text: `Plug-in wrapper devices: ${each.join("; ")}${fix}`,
+    text: `Plug-in wrapper devices: ${each.join("; ")}`,
     tone: "warn",
   };
 }

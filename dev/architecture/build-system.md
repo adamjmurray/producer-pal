@@ -16,7 +16,7 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   (`config/rolldown-plugin-embed-remote-script.mjs`) inlines `remote-script/`'s
   Python files, so the device can install them. See
   [runtime-boundary.md](runtime-boundary.md#the-embedded-remote-script)
-- **Plug-in host wrappers:** `embedPluginHost()`
+- **Plug-in wrapper devices:** `embedPluginHost()`
   (`config/rolldown-plugin-embed-plugin-host.mjs`) inlines the two wrapper
   `.amxd` files.
 

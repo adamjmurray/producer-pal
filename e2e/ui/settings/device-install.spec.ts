@@ -209,6 +209,105 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-swap")).toBeHidden();
   });
 
+  test("installs only the plug-in wrapper devices on a development device", async ({
+    page,
+  }) => {
+    await installStubs(page);
+
+    const wrapper = (state: string) => [
+      { name: "PPal Plug-in Effect", path: "/p/e", state },
+      { name: "PPal Plug-in Instrument", path: "/p/i", state },
+    ];
+    const dev = status({
+      problem: "not-frozen",
+      state: null,
+      path: null,
+      pluginHost: wrapper("missing"),
+    });
+    const posted = await stubDevice(page, dev);
+    const posts: unknown[] = [];
+    let installed = false;
+
+    // Overrides the status stub: the wrappers are in once the POST lands.
+    await page.route("**/device-install", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          installed ? { ...dev, pluginHost: wrapper("current") } : dev,
+        ),
+      }),
+    );
+    await page.route("**/device-install/plugin-host", (route) => {
+      posts.push(route.request().postDataJSON());
+      installed = true;
+
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: "Plug-in wrapper devices: both installed.",
+          pluginHost: [{ name: "PPal Plug-in Effect", status: "installed" }],
+        }),
+      });
+    });
+    await loadSettings(page);
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-status")).toHaveText(
+      "Development build: freeze it to copy.",
+    );
+    await expect(page.getByTestId("device-install")).toHaveText(
+      "Install the plug-in wrapper devices",
+    );
+
+    await page.getByTestId("device-install").click();
+
+    await expect(page.getByTestId("device-installed-path")).toHaveText(
+      "Plug-in wrapper devices: both installed.",
+    );
+    await expect(page.getByTestId("device-plugin-host")).toHaveText(
+      "Plug-in wrapper devices: installed",
+    );
+    await expect(page.getByTestId("device-install")).toHaveText("Copy");
+    await expect(page.getByTestId("device-install")).toBeDisabled();
+    expect(posts).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
+    // The device copy route is never used.
+    expect(posted).toStrictEqual([]);
+  });
+
+  test("shows the server's reason when the wrapper install fails", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubDevice(
+      page,
+      status({
+        problem: "not-frozen",
+        state: null,
+        path: null,
+        pluginHost: [
+          { name: "PPal Plug-in Effect", path: "/p/e", state: "missing" },
+        ],
+      }),
+    );
+    await page.route("**/device-install/plugin-host", (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Not a folder: /nope" }),
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+    await page.getByTestId("device-install").click();
+
+    await expect(page.getByTestId("device-error")).toHaveText(
+      "Not a folder: /nope",
+    );
+    await expect(page.getByTestId("device-install")).toBeEnabled();
+  });
+
   test("shows the server's reason when the install fails", async ({ page }) => {
     await installStubs(page);
     await stubDevice(page, status(), {

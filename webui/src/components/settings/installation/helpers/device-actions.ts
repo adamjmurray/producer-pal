@@ -7,7 +7,10 @@ import {
   type DeviceInstallStatus,
   type DeviceState,
 } from "#webui/hooks/settings/installation/use-device-install";
-import { wrapperInstallLabel } from "#webui/hooks/settings/installation/helpers/plugin-host-wrappers";
+import {
+  WRAPPER_INSTALL_LABEL,
+  wrapperInstallLabel,
+} from "#webui/hooks/settings/installation/helpers/plugin-host-wrappers";
 
 /** What the card's actions need to know beyond the server's status. */
 export interface DeviceActionsContext {
@@ -25,6 +28,8 @@ export interface DeviceActionsContext {
 export interface InstallAction {
   label: string;
   disabled: boolean;
+  /** Whether it installs only the plug-in wrapper devices, not the device. */
+  wrappersOnly: boolean;
 }
 
 /** The line offering to swap the running device for the User Library copy. */
@@ -75,16 +80,17 @@ export function installReplaces(
 /**
  * @param status - The server's device-install status
  * @param ctx - The shared path field and in-flight work
- * @returns The install button; off for a development build, or null when the
- *   copy is already this device (and any plug-in host devices are in) or the
- *   device can't be read
+ * @returns The install button; for a development build it installs only the
+ *   plug-in wrapper devices, and is off when they are in. Null when the copy is
+ *   already this device (and the wrapper devices are in) or the device can't be
+ *   read
  */
 function installAction(
   status: DeviceInstallStatus,
   ctx: DeviceActionsContext,
 ): InstallAction | null {
   if (status.problem === "not-frozen") {
-    return { label: "Copy", disabled: true };
+    return developmentAction(status, ctx);
   }
 
   const canInstall =
@@ -94,7 +100,7 @@ function installAction(
   // a plain copy that never replaces a newer one.
   const state = ctx.isDetected ? status.state : null;
 
-  // With the device current, only plug-in host devices left to install is
+  // With the device current, only plug-in wrapper devices left to install is
   // worth a button.
   const label =
     state === "same" ? wrapperInstallLabel(status) : copyLabel(state);
@@ -106,6 +112,38 @@ function installAction(
   return {
     label: ctx.installing ? "Installing…" : label,
     disabled: ctx.installing || ctx.path === "",
+    wrappersOnly: false,
+  };
+}
+
+/**
+ * A development device can't be copied, but the wrapper devices don't depend on
+ * it.
+ * @param status - The server's device-install status
+ * @param ctx - The shared path field and in-flight work
+ * @returns The wrapper devices' install button, or a disabled Copy when they are
+ *   in
+ */
+function developmentAction(
+  status: DeviceInstallStatus,
+  ctx: DeviceActionsContext,
+): InstallAction {
+  // The status describes only the detected User Library; any other path may
+  // need them.
+  const label = ctx.isDetected
+    ? wrapperInstallLabel(status)
+    : ctx.path === ""
+      ? null
+      : WRAPPER_INSTALL_LABEL;
+
+  if (label == null) {
+    return { label: "Copy", disabled: true, wrappersOnly: false };
+  }
+
+  return {
+    label: ctx.installing ? "Installing…" : label,
+    disabled: ctx.installing || ctx.path === "",
+    wrappersOnly: true,
   };
 }
 

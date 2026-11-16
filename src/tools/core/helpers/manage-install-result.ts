@@ -73,7 +73,7 @@ export function manageInstallResult(
 
   const steps =
     remoteScript.ok === false && device.ok === false
-      ? `Only the plug-in host wrappers were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call ${INSTALL} again to retry.`
+      ? `Only the plug-in wrapper devices were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call ${INSTALL} again to retry.`
       : nextSteps(remoteScript, device, context);
 
   return {
@@ -159,7 +159,7 @@ function wrapperRetry(pluginHost: PluginHostPart[]): string {
     .map((part) => part.name)
     .join(", ");
 
-  return `Plug-in hosting needs ${names} (see pluginHost): tell the user why, and call ${INSTALL} again to retry.`;
+  return `Full plug-in control needs ${names} (see pluginHost): tell the user why, and call ${INSTALL} again to retry.`;
 }
 
 /**

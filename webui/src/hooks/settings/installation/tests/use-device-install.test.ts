@@ -138,4 +138,101 @@ describe("useDeviceInstall", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  describe("installWrappers", () => {
+    it("posts the User Library to the wrapper route, and reports what it did", async () => {
+      const { result } = await renderPastMountRead();
+
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          detail: "Plug-in wrapper devices: A installed.",
+          pluginHost: [{ name: "A", status: "installed" }],
+        }),
+      );
+      fetchMock.mockResolvedValueOnce(jsonResponse(deviceStatusBody()));
+      await act(() => {
+        result.current.installWrappers(USER_LIBRARY);
+      });
+      await waitForHookState(() => {
+        expect(result.current.installResult).not.toBeNull();
+      });
+
+      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+
+      expect(url).toContain("/device-install/plugin-host");
+      expect(JSON.parse(init.body as string)).toStrictEqual({
+        userLibrary: USER_LIBRARY,
+      });
+      expect(result.current.installResult).toStrictEqual({
+        detail: "Plug-in wrapper devices: A installed.",
+        path: null,
+        failed: false,
+      });
+      await waitForHookState(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    it("marks the result failed when a wrapper did", async () => {
+      const { result } = await renderPastMountRead();
+
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          detail: "A failed.",
+          pluginHost: [{ name: "A", ok: false }, { name: "B" }],
+        }),
+      );
+      fetchMock.mockResolvedValueOnce(jsonResponse(deviceStatusBody()));
+      await act(() => {
+        result.current.installWrappers(USER_LIBRARY);
+      });
+      await waitForHookState(() => {
+        expect(result.current.installResult?.failed).toBe(true);
+      });
+    });
+
+    it.each([
+      ["no detail", { pluginHost: [] }],
+      ["no wrapper list", { detail: "Done." }],
+      ["a wrapper list that isn't one", { detail: "Done.", pluginHost: "x" }],
+    ])("reports an error for a 200 with %s", async (_what, body) => {
+      const { result } = await renderPastMountRead();
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(body));
+      await act(() => {
+        result.current.installWrappers(USER_LIBRARY);
+      });
+      await waitForHookState(() => {
+        expect(result.current.installError).toBe(
+          "Install failed: the server didn't say what it did",
+        );
+      });
+      expect(result.current.installResult).toBeNull();
+    });
+
+    it("reports the server's reason, and a network failure", async () => {
+      const { result } = await renderPastMountRead();
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Not a folder: /x" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      await act(() => {
+        result.current.installWrappers(USER_LIBRARY);
+      });
+      await waitForHookState(() => {
+        expect(result.current.installError).toBe("Not a folder: /x");
+      });
+
+      fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+      await act(() => {
+        result.current.installWrappers(USER_LIBRARY);
+      });
+      await waitForHookState(() => {
+        expect(result.current.installError).toBe("Failed to fetch");
+      });
+    });
+  });
 });
