@@ -46,11 +46,7 @@ export function applyTrackSwitches(
   }
 
   if (!armable) {
-    noteMissingSwitches(
-      notes,
-      { arm },
-      "return, main and group tracks can't be armed",
-    );
+    noteMissingSwitches(notes, { arm }, cantArmReason(track));
   }
 
   const write = (): void => {
@@ -72,6 +68,26 @@ export function applyTrackSwitches(
   } else {
     write();
   }
+}
+
+/**
+ * Why Live won't arm this track. Names only the track's own kind: which kinds
+ * can't be armed differs by Live version (a return track can from Live 13).
+ * @param track - A track Live can't arm
+ * @returns The reason
+ */
+function cantArmReason(track: LiveAPI): string {
+  if (track.category === "master") {
+    return "the main track can't be armed";
+  }
+
+  if (track.category === "return") {
+    return "a return track can't be armed";
+  }
+
+  return (track.getProperty("is_foldable") as number) > 0
+    ? "a group track can't be armed"
+    : "this track can't be armed";
 }
 
 /**

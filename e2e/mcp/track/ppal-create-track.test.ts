@@ -221,7 +221,7 @@ describe("ppal-create-track", () => {
       expect(created.path).toMatch(/^rt\d+$/);
       expect(created).not.toHaveProperty("ok");
       expect(created.detail).toBe(
-        "arm had no effect: return, main and group tracks can't be armed",
+        "arm had no effect: a return track can't be armed",
       );
 
       await sleep(100);

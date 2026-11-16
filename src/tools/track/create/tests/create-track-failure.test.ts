@@ -184,7 +184,7 @@ describe("createTrack when Live fails partway", () => {
     expect(createTrack({ path: "rt+", arm: true })).toStrictEqual({
       id: expect.any(String),
       path: "rt0",
-      detail: "arm had no effect: return, main and group tracks can't be armed",
+      detail: "arm had no effect: a return track can't be armed",
     });
   });
 
@@ -194,7 +194,7 @@ describe("createTrack when Live fails partway", () => {
     expect(createTrack({ path: "rt+", arm: false })).toStrictEqual({
       id: expect.any(String),
       path: "rt0",
-      detail: "arm already off: return, main and group tracks can't be armed",
+      detail: "arm already off: a return track can't be armed",
     });
   });
 

@@ -26,8 +26,9 @@ const STEREO_ONLY =
   "panningMode to 'stereo', or use leftPan/rightPan";
 const GAIN_DISABLED = "gainDb is disabled and was not changed";
 const NO_MAIN_SWITCH = "the main track has no mute or solo";
-const CANT_ARM = "return, main and group tracks can't be armed";
-const NOT_ARMABLE = `arm had no effect: ${CANT_ARM}`;
+const RETURN_CANT_ARM = "a return track can't be armed";
+const NOT_ARMABLE = `arm had no effect: ${RETURN_CANT_ARM}`;
+const MAIN_NOT_ARMABLE = "arm had no effect: the main track can't be armed";
 
 // A write the track can't take is refused on its entry: ok:false when it was
 // all the call asked of that track, a throw when that track was the only one,
@@ -189,7 +190,7 @@ describe("updateTrack - refused mute, solo and arm", () => {
     expect(updateTrack({ id: "ret1", arm: false })).toStrictEqual({
       id: "ret1",
       path: "rt0",
-      detail: `arm already off: ${CANT_ARM}`,
+      detail: `arm already off: ${RETURN_CANT_ARM}`,
     });
     expect(returnTrack.set).not.toHaveBeenCalledWith("arm", expect.anything());
   });
@@ -197,7 +198,11 @@ describe("updateTrack - refused mute, solo and arm", () => {
   it("keeps an off arm's entry a hit in a multi-track call", () => {
     expect(updateTrack({ id: "123,ret1", arm: false })).toStrictEqual([
       { id: "123", path: "t0" },
-      { id: "ret1", path: "rt0", detail: `arm already off: ${CANT_ARM}` },
+      {
+        id: "ret1",
+        path: "rt0",
+        detail: `arm already off: ${RETURN_CANT_ARM}`,
+      },
     ]);
   });
 
@@ -235,10 +240,21 @@ describe("updateTrack - refused mute, solo and arm", () => {
   });
 
   it.each([
-    ["return", "ret1"],
-    ["main", "main"],
-  ])("throws for a lone arm on a %s track", (_kind, id) => {
-    expect(() => updateTrack({ id, arm: true })).toThrow(NOT_ARMABLE);
+    ["return", "ret1", NOT_ARMABLE],
+    ["main", "main", MAIN_NOT_ARMABLE],
+  ])("throws for a lone arm on a %s track", (_kind, id, message) => {
+    expect(() => updateTrack({ id, arm: true })).toThrow(message);
+  });
+
+  it("names no kind for any other track Live can't arm", () => {
+    registerMockObject("odd1", {
+      path: livePath.track(6),
+      properties: { can_be_armed: 0, is_foldable: 0 },
+    });
+
+    expect(() => updateTrack({ id: "odd1", arm: true })).toThrow(
+      "arm had no effect: this track can't be armed",
+    );
   });
 
   it("throws for a lone arm on a group track", () => {
@@ -247,7 +263,9 @@ describe("updateTrack - refused mute, solo and arm", () => {
       properties: { can_be_armed: 0, is_foldable: 1 },
     });
 
-    expect(() => updateTrack({ id: "grp1", arm: true })).toThrow(NOT_ARMABLE);
+    expect(() => updateTrack({ id: "grp1", arm: true })).toThrow(
+      "arm had no effect: a group track can't be armed",
+    );
     expect(group.set).not.toHaveBeenCalledWith("arm", expect.anything());
   });
 
@@ -265,7 +283,7 @@ describe("updateTrack - refused mute, solo and arm", () => {
     expect(updateTrack({ id: "123,ret1,main", arm: true })).toStrictEqual([
       { id: "123", path: "t0" },
       { id: "ret1", ok: false, detail: NOT_ARMABLE },
-      { id: "main", ok: false, detail: NOT_ARMABLE },
+      { id: "main", ok: false, detail: MAIN_NOT_ARMABLE },
     ]);
   });
 });
