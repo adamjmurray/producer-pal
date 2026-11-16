@@ -2,8 +2,6 @@
 
 ## Next
 
-- Plug-in control out of experimental: refine full plug-in control and make it
-  an official feature
 - Slicing a sample to a drum rack
 - Richer automation notation: generated values and repeat patterns
 
@@ -24,9 +22,9 @@ for more detailed information.
 
 ### 2.6 - Plug-in Control (November 2026)
 
-- Full plug-in control (experimental): add a VST3, AU or VST2 plug-in inside a
-  Producer Pal wrapper and the AI can read and set every parameter, and automate
-  them in clips. Needs the remote script and Live 12.4+. See
+- Full plug-in control: add a VST3, AU or VST2 plug-in inside a Producer Pal
+  wrapper and the AI can read and set every parameter, and automate them in
+  clips. Needs the remote script and Live 12.4+. See
   [Full Plug-in Control](/guide/plugins)
 - Changing an arrangement clip's length resizes the clip in place. Before,
   lengthening a looped clip left a row of copies
