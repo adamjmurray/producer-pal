@@ -100,7 +100,8 @@ function noteMissingSwitches(
 }
 
 /**
- * Whether Live lets this track be armed. Return, main and group tracks can't be.
+ * Whether Live lets this track be armed. Main and group tracks can't be, nor
+ * return tracks before Live 13.
  * @param track - Track object
  * @returns True when the track can be armed
  */

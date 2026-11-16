@@ -478,6 +478,25 @@ describe("updateTrack", () => {
         expect(capturedWarnings()).toStrictEqual([]);
       });
 
+      // Live 13 lets a return track be armed, but ignores a monitoring write.
+      it("refuses monitoring state on a return track Live can arm", () => {
+        const returnTrack = registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 1 },
+        });
+
+        expect(() =>
+          updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
+        ).toThrow(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        );
+
+        expect(returnTrack.set).not.toHaveBeenCalledWith(
+          "current_monitoring_state",
+          expect.anything(),
+        );
+      });
+
       // Two targets: the return track keeps its slot as a skip, in the order
       // the call named them.
       it("keeps a return track's slot when monitoringState was all it asked", () => {

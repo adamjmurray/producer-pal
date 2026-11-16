@@ -21,6 +21,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { LIVE_13_OR_NEWER } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -38,6 +39,7 @@ interface ReadTrackResult {
   type?: string;
   color?: string;
   gainDb?: number;
+  isArmed?: boolean;
   devices?: Array<{ id: string; name: string; type: string; path: string }>;
   inputRoutingType?: unknown;
   availableInputRoutingTypes?: unknown[];
@@ -217,10 +219,26 @@ describe("return and master tracks", () => {
   });
 
   // Both are refused before anything is written, so nothing needs restoring.
-  it("refuses arm on a return track", async () => {
+  it.skipIf(LIVE_13_OR_NEWER)("refuses arm on a return track", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: { path: "rt0", arm: true },
+    });
+
+    it.skipIf(!LIVE_13_OR_NEWER)("arms a return track on Live 13", async () => {
+      try {
+        await ctx.client!.callTool({
+          name: "ppal-update-track",
+          arguments: { path: "rt0", arm: true },
+        });
+
+        expect((await readTrack({ path: "rt0" })).isArmed).toBe(true);
+      } finally {
+        await ctx.client!.callTool({
+          name: "ppal-update-track",
+          arguments: { path: "rt0", arm: false },
+        });
+      }
     });
 
     expect(isToolError(result)).toBe(true);

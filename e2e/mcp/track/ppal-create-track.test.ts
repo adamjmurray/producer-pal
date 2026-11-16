@@ -20,7 +20,11 @@ import {
   sleep,
   type CreateTrackResult,
 } from "../mcp-test-helpers";
-import { CHILD_TRACK, PARENT_TRACK } from "../e2e-test-set.ts";
+import {
+  CHILD_TRACK,
+  LIVE_13_OR_NEWER,
+  PARENT_TRACK,
+} from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -202,25 +206,57 @@ describe("ppal-create-track", () => {
     expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);
   });
 
-  // A return track can't be armed. The track is made, so its entry stays a
-  // normal one and the detail says what did nothing.
-  it("says an arm on a new return track had no effect", async () => {
-    const created = parseToolResult<CreateTrackResult>(
+  // Before Live 13 a return track can't be armed. The track is made, so its
+  // entry stays a normal one and the detail says what did nothing.
+  it.skipIf(LIVE_13_OR_NEWER)(
+    "says an arm on a new return track had no effect",
+    async () => {
+      const created = parseToolResult<CreateTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "rt+", arm: true },
+        }),
+      );
+
+      expect(created.path).toMatch(/^rt\d+$/);
+      expect(created).not.toHaveProperty("ok");
+      expect(created.detail).toBe(
+        "arm had no effect: return, main and group tracks can't be armed",
+      );
+
+      await sleep(100);
+      expect(await nameAt(created.path!)).toBeDefined();
+    },
+  );
+
+  it.skipIf(!LIVE_13_OR_NEWER)(
+    "arms a new return track on Live 13",
+    async () => {
+      const created = parseToolResult<CreateTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-track",
+          arguments: { path: "rt+", arm: true },
+        }),
+      );
+
+      expect(created.detail).toBeUndefined();
+
+      await sleep(100);
+      const read = parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { id: created.id },
+        }),
+      );
+
+      expect(read.isArmed).toBe(true);
+
       await ctx.client!.callTool({
-        name: "ppal-create-track",
-        arguments: { path: "rt+", arm: true },
-      }),
-    );
-
-    expect(created.path).toMatch(/^rt\d+$/);
-    expect(created).not.toHaveProperty("ok");
-    expect(created.detail).toBe(
-      "arm had no effect: return, main and group tracks can't be armed",
-    );
-
-    await sleep(100);
-    expect(await nameAt(created.path!)).toBeDefined();
-  });
+        name: "ppal-update-track",
+        arguments: { id: created.id, arm: false },
+      });
+    },
+  );
 
   // The switches check can_be_armed before writing, so a regular track has to
   // still come back armed with nothing said.

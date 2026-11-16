@@ -37,8 +37,9 @@ Part of [Skip entries, tool by tool](README.md).
   track (a path at one of its members' index) says so in a `detail`:
   `inside group track t9 (id 12)`. A failed insert moves the tracks after it, so
   those are planned again from what the Set holds, and every entry names its
-  track where it sits after the call. `arm` on a return track is a `detail` on
-  its entry, in update-track's words, not a failure: the track was made.
+  track where it sits after the call. `arm` on a return track Live can't arm
+  (before Live 13) is a `detail` on its entry, in update-track's words, not a
+  failure: the track was made.
 - **create-scene answers per path named, the same way.** A scene Live didn't
   make holds its slot as `{path, ok: false, detail}`; one that exists keeps its
   normal entry plus `<error>; already changed: scene created`. Empty scenes made

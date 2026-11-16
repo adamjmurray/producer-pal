@@ -208,9 +208,10 @@ describe.skipIf(!LIVE_13_OR_NEWER)("Live 13 devices", () => {
   });
 
   it("creates a Transient Shaper and gates its S/C params on S/C On", async () => {
+    // By its browser path: a third-party plug-in can share the bare name.
     const path = await createTestDeviceAt(
       ctx.client!,
-      "Transient Shaper",
+      "Audio Effects/Transient Shaper",
       await createTrack("audio"),
     );
     const SIDECHAIN = ["S/C Gain", "S/C Emph Type"];

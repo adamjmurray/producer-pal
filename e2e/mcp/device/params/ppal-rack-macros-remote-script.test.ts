@@ -16,7 +16,7 @@
  */
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { afterEach, describe, expect, it } from "vitest";
-import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
+import { LIVE_13_OR_NEWER, RACKS_TEST_PATH } from "../../e2e-test-set.ts";
 import {
   parseToolResult,
   resetConfig,
@@ -214,7 +214,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("rack macros: which are mapped", () => {
   it("keeps every hidden macro in the list while the remote script is off", async () => {
     await setConfig({ remoteScriptEnabled: false });
 
-    expect(await listedMacros()).toHaveLength(16);
+    // Live 13 doubled a rack's macros.
+    expect(await listedMacros()).toHaveLength(LIVE_13_OR_NEWER ? 32 : 16);
   });
 
   it("falls back to saying there are mappings while the remote script is off", async () => {

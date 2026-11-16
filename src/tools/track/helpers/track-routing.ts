@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import {
@@ -113,7 +114,8 @@ export function processCurrentRouting(
       }
     : null;
 
-  if (canBeArmed) {
+  // A return track has no monitoring, even where Live 13 lets it be armed.
+  if (canBeArmed && category !== "return") {
     const monitoringStateValue = track.getProperty(
       "current_monitoring_state",
     ) as number;
