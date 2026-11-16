@@ -63,9 +63,9 @@ describe("InstallationTab device section: plug-in host devices", () => {
   it("offers to install them when only they are missing", async () => {
     await renderDevice({ pluginHost: [...MISSING] });
 
-    expect(installLabel()).toBe("Install the plug-in host devices");
+    expect(installLabel()).toBe("Install the plug-in wrapper devices");
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
-      "Plug-in host devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed",
+      "Plug-in wrapper devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed",
     );
   });
 
@@ -74,7 +74,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
       pluginHost: [{ ...MISSING[0], state: "differs" }, MISSING[1]],
     });
 
-    expect(installLabel()).toBe("Install the plug-in host devices");
+    expect(installLabel()).toBe("Install the plug-in wrapper devices");
     expect(screen.getByTestId("device-plugin-host").textContent).toContain(
       "PPal Plug-in Effect differs from this build",
     );
@@ -85,7 +85,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
 
     expect(installLabel()).toBeNull();
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
-      "Plug-in host devices: installed",
+      "Plug-in wrapper devices: installed",
     );
   });
 
@@ -103,7 +103,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
     });
 
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
-      "Plug-in host devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed. Run npm run install:plugin-host.",
+      "Plug-in wrapper devices: PPal Plug-in Effect is not installed; PPal Plug-in Instrument is installed. Run npm run install:plugin-host.",
     );
   });
 
@@ -115,7 +115,7 @@ describe("InstallationTab device section: plug-in host devices", () => {
     });
 
     expect(screen.getByTestId("device-plugin-host").textContent).toBe(
-      "Plug-in host devices: installed",
+      "Plug-in wrapper devices: installed",
     );
   });
 

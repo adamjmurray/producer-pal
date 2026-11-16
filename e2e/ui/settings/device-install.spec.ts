@@ -153,7 +153,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-install")).toHaveText(
-      "Install the plug-in host devices",
+      "Install the plug-in wrapper devices",
     );
     await expect(page.getByTestId("device-plugin-host")).toContainText(
       "PPal Plug-in Effect is not installed",

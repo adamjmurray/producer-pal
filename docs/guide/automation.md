@@ -55,11 +55,11 @@ More detail:
 and
 [Some Moves Drop Clip Envelopes](/features/limitations#some-moves-drop-clip-envelopes).
 
-## Hosted Plug-ins
+## Plug-ins With Full Control {#hosted-plug-ins}
 
-Parameters of a [hosted plug-in](/guide/plugins) can be automated too. Live
-shows them under generic slot names, like "Slot 002". See
-[Hosted Plug-ins: Automation](/guide/plugins#automation).
+Parameters of a plug-in added with [full control](/guide/plugins) can be
+automated too. Live shows them under generic slot names, like "Slot 002". See
+[Full Plug-in Control: Automation](/guide/plugins#automation).
 
 ## Try Asking
 

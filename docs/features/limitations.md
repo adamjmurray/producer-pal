@@ -21,9 +21,9 @@ Producer Pal can open or close a plug-in's editor window and
 12.4+), but it cannot read or set the parameters inside a third-party VST/AU
 plug-in that Live loaded.
 
-::: tip Workaround: host the plug-in
+::: tip Workaround: add the plug-in with full control
 
-Ask Producer Pal to add the plug-in as a [hosted plug-in](/guide/plugins). It
+Ask Producer Pal to add the plug-in with [full control](/guide/plugins). It
 loads inside a Producer Pal wrapper, and the AI can read and set every
 parameter. A plug-in already in your Set can't be converted.
 

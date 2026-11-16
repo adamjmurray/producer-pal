@@ -233,7 +233,7 @@ export default defineConfig({
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Remote Script", link: "/guide/remote-script" },
           { text: "Clip Automation", link: "/guide/automation" },
-          { text: "Hosted Plug-ins", link: "/guide/plugins" },
+          { text: "Full Plug-in Control", link: "/guide/plugins" },
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "Optimizing Cost & Context", link: "/guide/optimizing" },

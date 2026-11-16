@@ -367,7 +367,10 @@ const readUi = (dir: string): string =>
 // The chat UI carries the plug-in host install UI in every build. The UI is
 // minified, so a name left in it is real code.
 describe("plug-in host chat UI", () => {
-  const text = ["Install the plug-in host devices", "Plug-in host devices:"];
+  const text = [
+    "Install the plug-in wrapper devices",
+    "Plug-in wrapper devices:",
+  ];
 
   it.each([...text, "pluginHost"])("a release chat-ui.html has %s", (str) => {
     expect(readUi(releaseUiDir)).toContain(str);

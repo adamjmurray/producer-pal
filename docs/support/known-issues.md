@@ -94,8 +94,8 @@ The AI sees what the plug-in shows for the current value ("250 ms", "Free"), but
 can't jump straight to a value: it sets a number, reads what the plug-in shows,
 and adjusts. Reaching an exact value can take a few tries.
 
-**Workaround:** load the plug-in as a [hosted plug-in](/guide/plugins), which is
-set in its own units.
+**Workaround:** add the plug-in with [full control](/guide/plugins), which sets
+its parameters in their own units.
 
 ## Live's Memory Grows Over Very Long Sessions
 

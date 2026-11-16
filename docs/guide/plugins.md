@@ -1,21 +1,28 @@
 ---
-title: Hosted Plug-ins
+title: Full Plug-in Control
 description:
-  Let Producer Pal read and set every parameter of a VST3, AU or VST2 plug-in by
-  loading it inside a Producer Pal wrapper device. What it needs, what works,
-  and the limits.
+  Let Producer Pal read, set and automate every parameter of a VST3, AU or VST2
+  plug-in, with no mapping by hand. What it needs, what works, and the limits.
 ---
 
-# Hosted Plug-ins
+# Full Plug-in Control
 
 Live only lets Producer Pal reach the plug-in parameters you map by hand in
 Configure mode (see
 [Limitations](/features/limitations#vst-au-plug-in-internals-can-t-be-controlled-directly)).
-A **hosted** plug-in has no such limit: Producer Pal loads it inside its own
-wrapper device, and the AI can read and set every parameter.
+A plug-in added with **full control** has no such limit: the AI can read, set
+and automate every parameter, with no mapping.
 
-Ask for it when you add a plug-in, like "add Serum 2 to the bass track, hosted,
-so you can set all its parameters".
+It works by loading the plug-in inside a wrapper, a custom Max for Live device
+that installs with Producer Pal.
+
+Ask for it when you add a plug-in, like "add Serum 2 to the bass track with full
+control". The AI also uses it on its own when you ask it to set or automate a
+plug-in's parameters.
+
+The trade-off is in automation: only the AI can assign a parameter to an
+automation lane, and Live shows the lanes as "Slot 001" and so on instead of the
+parameter's name. See [Automation](#automation) below.
 
 ## What You Need
 
@@ -34,26 +41,27 @@ so you can set all its parameters".
 - **Every parameter**, read and set in the plug-in's own units, by number or by
   the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows is
   refused, with the values it does show.
-- **Automation:** the AI can automate hosted parameters on clips. See
+- **Automation:** the AI can automate the plug-in's parameters on clips. See
   [Automation](#automation) below.
 - **Plug-in window:** the wrapper has an **Open Plug-in** button that opens the
   plug-in's own window. If you rename the device, the wrapper also shows the
   plug-in's name next to the button.
 - **Saving:** the plug-in's settings save with your Set, and a duplicated track
   or device keeps them.
-- **Racks:** a hosted plug-in can go inside a rack chain.
+- **Racks:** a plug-in with full control can go inside a rack chain.
 - **Latency:** Live compensates for the plug-in's latency, and follows it when
   the plug-in changes it.
 
 ## Limits
 
-- **A plug-in can't be switched between native and hosted.** Live's API can't
-  read or set a native plug-in's settings, so they wouldn't carry over. To host
-  a plug-in already in your Set, add a hosted one and delete the native one, and
-  the other way around.
+- **A plug-in already in your Set can't be switched to full control, or back.**
+  Live's API can't read or set a normally loaded plug-in's settings, so they
+  wouldn't carry over. To switch, save a preset in the plug-in's own window, ask
+  the AI to add the plug-in the other way, load the preset in the new one, and
+  delete the old one.
 - **A plug-in installed while Live is running** can show in Live's browser
-  before Live's plug-in database has it. Restart Live to host a new VST3 or VST2
-  plug-in.
+  before Live's plug-in database has it. Restart Live to add a new VST3 or VST2
+  plug-in with full control.
 - **Stereo only.** Live gets the first two outputs of a multi-output instrument,
   and an effect gets no sidechain input.
 - **Only what the plug-in exposes.** Producer Pal reaches the parameters a
@@ -67,10 +75,11 @@ so you can set all its parameters".
 
 ## Automation
 
-Ask Producer Pal to automate a hosted parameter by name, like "sweep the cutoff
-up across the clip". Live can only automate its own parameters, so the wrapper
-has 128 automation slots, and Producer Pal assigns one to each parameter you
-automate.
+Ask Producer Pal to automate a parameter by name, like "sweep the cutoff up
+across the clip". Live can only automate its own parameters, so the wrapper has
+128 automation slots, and Producer Pal assigns one to each parameter you
+automate. You can't assign a slot yourself: ask the AI to automate the
+parameter, and then you can edit its lane by hand.
 
 - **Live shows slot names**, like "Slot 002", in the automation chooser, lane
   headers, the clip envelope editor, and on Push. To draw automation by hand,
@@ -89,6 +98,6 @@ automate.
   parameter, or a program change while automation is moving, may not save with
   the Set until you make another edit with Live stopped.
 
-Hosted automation follows the same rules as any other
+This automation follows the same rules as any other
 [clip automation](/guide/automation). The wrapper must be on the clip's own
 track.

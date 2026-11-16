@@ -560,8 +560,8 @@ cards use the one User Library path at the top of the tab.
   the device in your Set with it. The AI connection drops for a moment while the
   new device starts. Save your Live Set afterwards so it keeps using the User
   Library copy. The card also says whether the two
-  [plug-in host devices](/guide/plugins) are in your User Library, and installs
-  them along with the device.
+  [plug-in wrapper devices](/guide/plugins) are in your User Library, and
+  installs them along with the device.
 - **Control Surface remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether

@@ -28,7 +28,7 @@ export function wrapperInstallLabel(status: {
   pluginHost?: PluginHostWrapperState[];
 }): string | null {
   return needsInstall(status.pluginHost)
-    ? "Install the plug-in host devices"
+    ? "Install the plug-in wrapper devices"
     : null;
 }
 
@@ -52,7 +52,7 @@ export function wrapperStatusLine(status: {
   }
 
   if (!needsInstall(pluginHost)) {
-    return { text: "Plug-in host devices: installed", tone: "good" };
+    return { text: "Plug-in wrapper devices: installed", tone: "good" };
   }
 
   const each = pluginHost.map(
@@ -63,7 +63,7 @@ export function wrapperStatusLine(status: {
   const fix = isDevBuild ? `. Run ${DEV_INSTALL_COMMAND}.` : "";
 
   return {
-    text: `Plug-in host devices: ${each.join("; ")}${fix}`,
+    text: `Plug-in wrapper devices: ${each.join("; ")}${fix}`,
     tone: "warn",
   };
 }
