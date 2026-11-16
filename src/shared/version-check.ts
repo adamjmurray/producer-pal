@@ -303,17 +303,32 @@ export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
     input.problem == null &&
     (input.state === "not-installed" || input.state === "installed-older");
 
-  // The wrappers ride the device install. A newer or different copy means the
-  // User Library may belong to another build, whose wrappers would differ too.
-  // A development device can't be copied, but its wrappers install alone.
   const wrappersBehind =
-    input.wrappersCurrent === false &&
-    (input.problem == null
-      ? input.state !== "installed-newer" && input.state !== "different"
-      : input.problem === "not-frozen");
+    input.wrappersCurrent === false && wrappersAreOursToInstall(input);
 
   // With no User Library there is nothing to compare, so nothing to nag about.
   return copyBehind || wrappersBehind || input.remoteScriptCurrent === false;
+}
+
+/**
+ * Whether a wrapper that is missing or differs is this build's to install. The
+ * wrappers ride the device install: a newer or different device copy means the
+ * User Library may belong to another build, whose wrappers would differ too. A
+ * development device can't be copied, but its wrappers install alone. The
+ * install notice and ppal-connect's wrapper line both go by this.
+ *
+ * @param device - Why the device can't be copied, and how its copy compares
+ * @param device.problem - Why the device can't be copied, or null when it can
+ * @param device.state - The User Library copy compared with the device
+ * @returns Whether to report such a wrapper
+ */
+export function wrappersAreOursToInstall(device: {
+  problem: string | null;
+  state: string | null;
+}): boolean {
+  return device.problem == null
+    ? device.state !== "installed-newer" && device.state !== "different"
+    : device.problem === "not-frozen";
 }
 
 /**

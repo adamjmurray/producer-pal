@@ -16,7 +16,7 @@ import {
 } from "./connect-append.ts";
 import {
   wrappersToInstall,
-  type ReadWrapperStates,
+  type WrapperReaders,
 } from "./plugin-host-notice-inject.ts";
 
 /**
@@ -30,14 +30,14 @@ import {
  * @param inner - The underlying callLiveApi to wrap
  * @param getStatus - Reads the remote script status (shared with the notice)
  * @param getPortalVersion - Reads this request's portal version, if it has one
- * @param readStates - Reads the wrappers' states in a User Library
+ * @param readers - Read the wrappers' states and the device copy's
  * @returns A callLiveApi that appends the new-chat line when all is current
  */
 export function withUpToDate(
   inner: CallLiveApiFunction,
   getStatus: () => Promise<RemoteScriptStatus>,
   getPortalVersion: () => string | undefined,
-  readStates: ReadWrapperStates,
+  readers: WrapperReaders,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () => {
     const portalVersion = getPortalVersion();
@@ -48,10 +48,13 @@ export function withUpToDate(
 
     const status = await getStatus();
 
-    return remoteScriptSettled(status) &&
-      wrappersToInstall(status, readStates).length === 0
-      ? UP_TO_DATE_NEW_CHAT
-      : null;
+    if (!remoteScriptSettled(status)) {
+      return null;
+    }
+
+    const wrappers = await wrappersToInstall(status, readers);
+
+    return wrappers.length === 0 ? UP_TO_DATE_NEW_CHAT : null;
   });
 }
 

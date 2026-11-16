@@ -554,14 +554,15 @@ cards use the one User Library path at the top of the tab.
   User Library, so every Live Set can find it. The device shows a **Finish
   installation…** button until it's there (and the remote script and plug-in
   wrapper devices are current); the button opens this tab. A development
-  (unfrozen) device can't be copied. A Live Set remembers the file a device was
-  loaded from, so a device loaded from Downloads stays tied to that file. Once
-  the remote script is running and your User Library has a copy that is the same
-  version or newer, **Swap** replaces the device in your Set with it. The AI
-  connection drops for a moment while the new device starts. Save your Live Set
-  afterwards so it keeps using the User Library copy. The card also says whether
-  the two [plug-in wrapper devices](/guide/plugins) are in your User Library,
-  and installs them along with the device.
+  (unfrozen) device can't be copied, but it can install the plug-in wrapper
+  devices. A Live Set remembers the file a device was loaded from, so a device
+  loaded from Downloads stays tied to that file. Once the remote script is
+  running and your User Library has a copy that is the same version or newer,
+  **Swap** replaces the device in your Set with it. The AI connection drops for
+  a moment while the new device starts. Save your Live Set afterwards so it
+  keeps using the User Library copy. The card also says whether the two
+  [plug-in wrapper devices](/guide/plugins) are in your User Library, and
+  installs them along with the device.
 - **Control Surface remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether

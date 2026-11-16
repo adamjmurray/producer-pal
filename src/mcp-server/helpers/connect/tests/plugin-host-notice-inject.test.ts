@@ -14,6 +14,7 @@ import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remot
 import {
   withPluginHostNotice,
   type ReadWrapperStates,
+  type WrapperReaders,
 } from "../plugin-host-notice-inject.ts";
 
 const INSTALL = 'ppal-manage action "install-producer-pal"';
@@ -33,8 +34,13 @@ const BOTH_BEHIND: PluginHostWrapperState[] = [
   { ...INSTRUMENT, state: "differs" },
 ];
 
+type DeviceCopy = Awaited<ReturnType<WrapperReaders["device"]>>;
+
+const SAME_COPY: DeviceCopy = { problem: null, state: "same" };
+
 interface ConnectOptions {
   wrappers?: PluginHostWrapperState[] | null;
+  device?: DeviceCopy;
   status?: Partial<RemoteScriptStatus>;
   manage?: boolean;
   smallModel?: boolean;
@@ -48,6 +54,7 @@ interface ConnectOptions {
 async function connectThrough(options: ConnectOptions = {}): Promise<string[]> {
   const {
     wrappers = BOTH_BEHIND,
+    device = SAME_COPY,
     status = {},
     manage = true,
     smallModel = false,
@@ -56,7 +63,7 @@ async function connectThrough(options: ConnectOptions = {}): Promise<string[]> {
     fakeInnerCall(connectResponse()),
     () => Promise.resolve(currentRemoteScriptStatus(status)),
     () => ({ manage, smallModel }),
-    () => wrappers,
+    { states: () => wrappers, device: () => Promise.resolve(device) },
   )("ppal-connect", {});
 
   return result.content.slice(1).map((block) => block.text);
@@ -91,6 +98,19 @@ describe("withPluginHostNotice", () => {
   it.each([
     ["both wrappers are current", { wrappers: [EFFECT, INSTRUMENT] }],
     ["there is no User Library to look in", { wrappers: null }],
+    ["the status names no User Library", { status: { userLibrary: null } }],
+    [
+      "the User Library's device copy is newer",
+      { device: { problem: null, state: "installed-newer" } },
+    ],
+    [
+      "the User Library's device copy is a different build",
+      { device: { problem: null, state: "different" } },
+    ],
+    [
+      "the device hasn't said where it was loaded from",
+      { device: { problem: "unknown-source", state: null } },
+    ],
     ["the caller is in small-model mode", { manage: false, smallModel: true }],
     ["the remote script isn't running", { status: { running: false } }],
     [
@@ -108,29 +128,56 @@ describe("withPluginHostNotice", () => {
     },
   );
 
-  it("reads the wrappers in the User Library the status names", async () => {
-    const readStates = vi.fn<ReadWrapperStates>(() => []);
+  it.each([
+    ["an older device copy", { problem: null, state: "installed-older" }],
+    ["a development device", { problem: "not-frozen", state: null }],
+  ] satisfies [string, DeviceCopy][])(
+    "still names the wrappers with %s",
+    async (_why, device) => {
+      expect(await connectThrough({ device })).toHaveLength(1);
+    },
+  );
+
+  it("reads the wrappers and the device copy in the User Library the status names", async () => {
+    const states = vi.fn<ReadWrapperStates>(() => BOTH_BEHIND);
+    const device = vi.fn<WrapperReaders["device"]>(() =>
+      Promise.resolve(SAME_COPY),
+    );
 
     await withPluginHostNotice(
       fakeInnerCall(connectResponse()),
       () => Promise.resolve(currentRemoteScriptStatus({ userLibrary: "/ul" })),
       () => ({ manage: true, smallModel: false }),
-      readStates,
+      { states, device },
     )("ppal-connect", {});
 
-    expect(readStates).toHaveBeenCalledExactlyOnceWith("/ul");
+    expect(states).toHaveBeenCalledExactlyOnceWith("/ul");
+    expect(device).toHaveBeenCalledExactlyOnceWith("/ul");
+  });
+
+  it("doesn't read the device copy when the wrappers are current", async () => {
+    const device = vi.fn<WrapperReaders["device"]>();
+
+    await withPluginHostNotice(
+      fakeInnerCall(connectResponse()),
+      () => Promise.resolve(currentRemoteScriptStatus()),
+      () => ({ manage: true, smallModel: false }),
+      { states: () => [EFFECT, INSTRUMENT], device },
+    )("ppal-connect", {});
+
+    expect(device).not.toHaveBeenCalled();
   });
 
   it("leaves other tools alone", async () => {
-    const readStates = vi.fn<ReadWrapperStates>();
+    const states = vi.fn<ReadWrapperStates>();
     const result = await withPluginHostNotice(
       fakeInnerCall(connectResponse()),
       () => Promise.resolve(currentRemoteScriptStatus()),
       () => ({ manage: true, smallModel: false }),
-      readStates,
+      { states, device: () => Promise.resolve(SAME_COPY) },
     )("ppal-read-live-set", {});
 
     expect(result.content).toHaveLength(1);
-    expect(readStates).not.toHaveBeenCalled();
+    expect(states).not.toHaveBeenCalled();
   });
 });

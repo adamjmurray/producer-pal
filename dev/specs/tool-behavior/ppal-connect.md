@@ -55,10 +55,14 @@ that are in place add no line.
 
 It stays out while the remote script line still has something to install or
 start (the script isn't running, or its copy is behind this build): plug-ins
-can't load until then, and the script's install brings the wrappers. It also
-stays out when the installed script is newer than this build, since that User
-Library belongs to a newer build, and in small-model mode, which doesn't manage
-installs.
+can't load until then. `install-producer-pal` installs the wrappers with the
+script; the Chat UI's remote script button doesn't, so the line follows on a
+later connect. It also stays out when the User Library looks like another
+build's: the installed script is newer than this build, or the device's copy
+there is newer or a different build of the same version (the rule the install
+notice uses). It reads the device copy only when a wrapper is behind. A
+development device has no copy to compare, and gets the line. Small-model mode,
+which doesn't manage installs, never gets it.
 
 ## Version check (`versionCheck: true`)
 

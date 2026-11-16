@@ -20,6 +20,7 @@ import { withNextStep } from "./next-step-inject.ts";
 import { withPluginHostNotice } from "./plugin-host-notice-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
 import { type RemoteScriptCaller } from "./remote-script-line.ts";
+import { deviceInstallStatus } from "../../rpc/device-install/device-install-status.ts";
 import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
 import { withUpToDate } from "./up-to-date-inject.ts";
 
@@ -71,6 +72,10 @@ export function enrichConnect(
     manage: manageToolOffered(getConfig().smallModelMode, getConfig().tools),
     smallModel: getConfig().smallModelMode,
   });
+  const wrapperReaders = {
+    states: pluginHostStates,
+    device: deviceInstallStatus,
+  };
   const portalVersioned = withPluginHostNotice(
     withRemoteScriptNotice(
       withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
@@ -79,7 +84,7 @@ export function enrichConnect(
     ),
     connectPing.getStatus,
     getCaller,
-    pluginHostStates,
+    wrapperReaders,
   );
 
   const full = withNextStep(
@@ -114,7 +119,7 @@ export function enrichConnect(
     portalVersioned,
     connectPing.getStatus,
     () => getConfig().portalVersion,
-    pluginHostStates,
+    wrapperReaders,
   );
 
   return (tool, args, overrides) =>

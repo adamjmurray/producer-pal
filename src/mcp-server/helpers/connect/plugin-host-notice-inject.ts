@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type PluginHostWrapperState } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
+import { wrappersAreOursToInstall } from "#src/shared/version-check.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import { type RemoteScriptStatus } from "../../rpc/remote-script/remote-script-status.ts";
@@ -18,6 +19,16 @@ export type ReadWrapperStates = (
   library: string | null,
 ) => PluginHostWrapperState[] | null;
 
+/** What connect reads to decide which wrappers to mention. */
+export interface WrapperReaders {
+  /** The wrappers' states in a User Library. */
+  states: ReadWrapperStates;
+  /** How the device's copy in that User Library compares with the device. */
+  device: (
+    library: string,
+  ) => Promise<{ problem: string | null; state: string | null }>;
+}
+
 /**
  * Wrap a callLiveApi so a successful ppal-connect response says when a plug-in
  * wrapper device in the User Library is missing or differs from this build.
@@ -26,18 +37,18 @@ export type ReadWrapperStates = (
  * @param inner - The underlying callLiveApi to wrap
  * @param getStatus - Reads the remote script status (shared per connect)
  * @param getCaller - Reads what this caller can do
- * @param readStates - Reads the wrappers' states in a User Library
+ * @param readers - Read the wrappers' states and the device copy's
  * @returns A callLiveApi that appends the line to connect results
  */
 export function withPluginHostNotice(
   inner: CallLiveApiFunction,
   getStatus: () => Promise<RemoteScriptStatus>,
   getCaller: () => RemoteScriptCaller,
-  readStates: ReadWrapperStates,
+  readers: WrapperReaders,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () =>
     pluginHostLine(
-      wrappersToInstall(await getStatus(), readStates),
+      await wrappersToInstall(await getStatus(), readers),
       getCaller(),
     ),
   );
@@ -45,28 +56,34 @@ export function withPluginHostNotice(
 
 /**
  * The wrappers connect should mention. None while the remote script line still
- * has something to install or start: plug-ins can't load until then, the
- * script's install brings the wrappers, and a copy newer than this build means
- * the User Library belongs to a newer build.
+ * has something to install or start, since plug-ins can't load until then. None
+ * when the script or the device copy says the User Library belongs to another
+ * build, as for the install notice.
  *
  * @param status - The remote script status
- * @param readStates - Reads the wrappers' states in a User Library
+ * @param readers - Read the wrappers' states and the device copy's
  * @returns The wrappers that are missing or differ from this build
  */
-export function wrappersToInstall(
+export async function wrappersToInstall(
   status: RemoteScriptStatus,
-  readStates: ReadWrapperStates,
-): PluginHostWrapperState[] {
+  readers: WrapperReaders,
+): Promise<PluginHostWrapperState[]> {
+  const { userLibrary } = status;
   const settled =
     status.running && !status.updateAvailable && !status.installedNewer;
 
-  if (!settled) {
+  if (!settled || userLibrary == null) {
     return [];
   }
 
-  return (readStates(status.userLibrary) ?? []).filter(
+  const behind = (readers.states(userLibrary) ?? []).filter(
     ({ state }) => state !== "current",
   );
+
+  return behind.length > 0 &&
+    wrappersAreOursToInstall(await readers.device(userLibrary))
+    ? behind
+    : [];
 }
 
 /**

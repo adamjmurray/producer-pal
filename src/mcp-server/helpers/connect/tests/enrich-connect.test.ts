@@ -17,6 +17,7 @@ import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
+import { type DeviceInstallStatus } from "#src/shared/max/device-install-status.ts";
 import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import {
@@ -24,13 +25,17 @@ import {
   type ConnectEnrichmentConfig,
 } from "../enrich-connect.ts";
 
-const { remoteScriptPing, remoteScriptStatus, pluginHostStates } = vi.hoisted(
-  () => ({
-    remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
-    remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
-    pluginHostStates: vi.fn<() => PluginHostWrapperState[]>(),
-  }),
-);
+const {
+  remoteScriptPing,
+  remoteScriptStatus,
+  pluginHostStates,
+  deviceInstallStatus,
+} = vi.hoisted(() => ({
+  remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
+  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+  pluginHostStates: vi.fn<() => PluginHostWrapperState[]>(),
+  deviceInstallStatus: vi.fn<() => Promise<DeviceInstallStatus>>(),
+}));
 
 // The real ones read the developer's running Live and User Library.
 vi.mock(
@@ -48,12 +53,20 @@ vi.mock(
   async (original) => ({ ...(await original()), pluginHostStates }),
 );
 
+vi.mock(
+  import("#src/mcp-server/rpc/device-install/device-install-status.ts"),
+  () => ({ deviceInstallStatus }),
+);
+
 const getDir = useTempConfigDir();
 
 beforeEach(() => {
   remoteScriptPing.mockReset();
   remoteScriptStatus.mockReset();
   pluginHostStates.mockReset().mockReturnValue([]);
+  deviceInstallStatus
+    .mockReset()
+    .mockResolvedValue({ problem: null, state: "same" } as DeviceInstallStatus);
   remoteScriptPing.mockResolvedValue({
     running: true,
     liveVersion: "12.4.0",

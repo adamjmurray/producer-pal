@@ -36,7 +36,10 @@ async function connectThrough(
     fakeInnerCall(connectResponse()),
     getStatus,
     () => portalVersion,
-    () => wrappers,
+    {
+      states: () => wrappers,
+      device: () => Promise.resolve({ problem: null, state: "same" }),
+    },
   )("ppal-connect", {});
 
   return result.content.map((block) => block.text);
@@ -131,7 +134,10 @@ describe("withUpToDate", () => {
       fakeInnerCall(connectResponse()),
       getStatus,
       () => undefined,
-      () => [],
+      {
+        states: () => [],
+        device: () => Promise.resolve({ problem: null, state: "same" }),
+      },
     )("ppal-read-live-set", {});
 
     expect(result.content).toHaveLength(1);
