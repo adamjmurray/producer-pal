@@ -197,7 +197,7 @@ export const OPENROUTER_MODELS = [
     value: "google/gemini-4-hydrogen",
     label: "[Paid] Google Gemini 4 Hydrogen",
   },
-  { value: "qwen/qwen3.8-max-prime", label: "[Paid] Qwen 3.8 Max Prime" },
+  { value: "qwen/qwen4-max", label: "[Paid] Qwen 4 Max" },
   {
     value: "deepseek/deepseek-v4.1-flash-1017",
     label: "[Paid] DeepSeek V4.1 Flash (1017)",
@@ -241,7 +241,7 @@ export const VERCEL_MODELS = [
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
   { value: "google/gemini-4-carbon", label: "Google Gemini 4 Carbon" },
   { value: "google/gemini-4-hydrogen", label: "Google Gemini 4 Hydrogen" },
-  { value: "alibaba/qwen3.8-max-prime", label: "Qwen 3.8 Max Prime" },
+  { value: "alibaba/qwen4-max", label: "Qwen 4 Max" },
   {
     value: "deepseek/deepseek-v4.1-flash-1017",
     label: "DeepSeek V4.1 Flash (1017)",
