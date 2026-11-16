@@ -14,11 +14,12 @@ because only Node can read files and headers. In this order:
 
 1. Portal version line, when the request came through a portal.
 2. Remote script line.
-3. Skills.
-4. Project context.
-5. Global context.
-6. Memory index.
-7. Next step, always last: which of project context, global context and memory
+3. Plug-in wrapper line, only when a wrapper needs installing.
+4. Skills.
+5. Project context.
+6. Global context.
+7. Memory index.
+8. Next step, always last: which of project context, global context and memory
    are empty, and what to do now.
 
 The overview lists regular and return tracks as `{ path, name }`, the path and
@@ -44,6 +45,21 @@ that Live hasn't reloaded, reads as the plain running line (the running version,
 no instruction). A copy that is behind and not running says it isn't running.
 Not installed, not running and another program on the port stay.
 
+### The plug-in wrapper line
+
+`pluginWrappers:` names each plug-in wrapper device in the User Library that is
+missing or differs from this build, and says to call
+`ppal-manage install-producer-pal`, or, for a caller without `ppal-manage`, to
+have the user install them in the Chat UI's Settings → Installation. Wrappers
+that are in place add no line.
+
+It stays out while the remote script line still has something to install or
+start (the script isn't running, or its copy is behind this build): plug-ins
+can't load until then, and the script's install brings the wrappers. It also
+stays out when the installed script is newer than this build, since that User
+Library belongs to a newer build, and in small-model mode, which doesn't manage
+installs.
+
 ## Version check (`versionCheck: true`)
 
 For re-checking after an install, update or Live restart, in a chat that already
@@ -57,7 +73,8 @@ overview (the Set isn't read), then:
 
 1. Portal version line, when the request came through a portal.
 2. Remote script line.
-3. **New-chat line**, only when nothing needs fixing (below).
+3. Plug-in wrapper line, only when a wrapper needs installing.
+4. **New-chat line**, only when nothing needs fixing (below).
 
 Skills, project context, global context, memory index and the next step are not
 sent. `false` or no `versionCheck` is a full connect. It is a strict boolean:
@@ -79,6 +96,9 @@ It appears only when all of these hold:
   no new-chat line. In small-model mode a script that is behind or needs a
   restart is not reported (see above), but it still withholds this line, so the
   check ends without it rather than claiming everything is current.
+- No plug-in wrapper device is missing or differs from this build. Small-model
+  mode gets no wrapper line, but a wrapper that needs installing still withholds
+  this one.
 - The portal's version, when there is one, equals the device's. A portal older
   than the device gets its update advice in the portal line. A portal newer than
   the device means the device is older than the portal; the portal appends its

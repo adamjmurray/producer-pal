@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { pluginHostStates } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { manageToolOffered } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
@@ -16,7 +17,9 @@ import { type WrappedCallLiveApi } from "./connect-append.ts";
 import { shareConnectPing } from "./connect-ping.ts";
 import { isNewUser } from "./new-user.ts";
 import { withNextStep } from "./next-step-inject.ts";
+import { withPluginHostNotice } from "./plugin-host-notice-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
+import { type RemoteScriptCaller } from "./remote-script-line.ts";
 import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
 import { withUpToDate } from "./up-to-date-inject.ts";
 
@@ -43,13 +46,13 @@ export interface ConnectEnrichmentConfig {
  *
  * Order is the point of this function. Blocks land inner-to-outer, so a
  * successful connect response reads: portal version, remote script notice,
- * skills, project context, global context, memory index, next step.
+ * plug-in wrapper notice, skills, project context, global context, memory index, next step.
  * withNextStep MUST stay outermost — it reads the same context and memory the
  * blocks before it carry (to decide whether this is a user we know nothing
  * about) and its instruction only works as the final word.
  *
- * A `versionCheck: true` call gets only the portal and remote script lines,
- * plus the new-chat line when both are current.
+ * A `versionCheck: true` call gets only the portal, remote script and plug-in
+ * wrapper lines, plus the new-chat line when all are current.
  *
  * Settings arrive through a getter because the device can change them between
  * requests; createMcpServer is rebuilt per POST /mcp for the same reason.
@@ -64,13 +67,19 @@ export function enrichConnect(
 ): WrappedCallLiveApi {
   // The skills and the remote script blocks share one ping and one status read.
   const connectPing = shareConnectPing(inner);
-  const portalVersioned = withRemoteScriptNotice(
-    withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
+  const getCaller = (): RemoteScriptCaller => ({
+    manage: manageToolOffered(getConfig().smallModelMode, getConfig().tools),
+    smallModel: getConfig().smallModelMode,
+  });
+  const portalVersioned = withPluginHostNotice(
+    withRemoteScriptNotice(
+      withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
+      connectPing.getStatus,
+      getCaller,
+    ),
     connectPing.getStatus,
-    () => ({
-      manage: manageToolOffered(getConfig().smallModelMode, getConfig().tools),
-      smallModel: getConfig().smallModelMode,
-    }),
+    getCaller,
+    pluginHostStates,
   );
 
   const full = withNextStep(
@@ -105,6 +114,7 @@ export function enrichConnect(
     portalVersioned,
     connectPing.getStatus,
     () => getConfig().portalVersion,
+    pluginHostStates,
   );
 
   return (tool, args, overrides) =>

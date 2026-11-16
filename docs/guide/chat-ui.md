@@ -552,16 +552,16 @@ cards use the one User Library path at the top of the tab.
 
 - **Max for Live device:** copies the Producer Pal device you loaded into your
   User Library, so every Live Set can find it. The device shows a **Finish
-  installation…** button until it's there (and the remote script is current);
-  the button opens this tab. A development (unfrozen) device can't be copied. A
-  Live Set remembers the file a device was loaded from, so a device loaded from
-  Downloads stays tied to that file. Once the remote script is running and your
-  User Library has a copy that is the same version or newer, **Swap** replaces
-  the device in your Set with it. The AI connection drops for a moment while the
-  new device starts. Save your Live Set afterwards so it keeps using the User
-  Library copy. The card also says whether the two
-  [plug-in wrapper devices](/guide/plugins) are in your User Library, and
-  installs them along with the device.
+  installation…** button until it's there (and the remote script and plug-in
+  wrapper devices are current); the button opens this tab. A development
+  (unfrozen) device can't be copied. A Live Set remembers the file a device was
+  loaded from, so a device loaded from Downloads stays tied to that file. Once
+  the remote script is running and your User Library has a copy that is the same
+  version or newer, **Swap** replaces the device in your Set with it. The AI
+  connection drops for a moment while the new device starts. Save your Live Set
+  afterwards so it keeps using the User Library copy. The card also says whether
+  the two [plug-in wrapper devices](/guide/plugins) are in your User Library,
+  and installs them along with the device.
 - **Control Surface remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether
@@ -583,9 +583,10 @@ Two checkboxes under **Options**, at the bottom of the tab, control the notices
 on the device:
 
 - **Warn when installation is incomplete** - On by default. The device shows
-  **Finish installation…** while its User Library copy or the remote script is
-  missing or out of date. It gives way to the **Update available** notice, which
-  sits in the same spot. Turn this off and the device never shows it.
+  **Finish installation…** while its User Library copy, the remote script or a
+  plug-in wrapper device is missing or out of date. It gives way to the **Update
+  available** notice, which sits in the same spot. Turn this off and the device
+  never shows it.
 - **Automatically check for new versions** - On by default. Producer Pal asks
   GitHub once per device load whether a newer release exists, and shows an
   `(update)` link next to the version number when there is one. Turn this off

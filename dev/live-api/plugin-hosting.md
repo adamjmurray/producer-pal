@@ -586,6 +586,11 @@ Live's browser must find the wrappers by name, so they go in the User Library:
   `POST /device-install/plugin-host` installs only them (same `userLibrary` body
   and 400s as the install route; answers `{ detail, pluginHost }`), and the tab
   offers that on a development build when a wrapper is missing or differs.
+- **Notices.** A wrapper that is missing or differs counts as an unfinished
+  install: the device shows "Finish installation…" and the Installation tab gets
+  its dot (`isInstallIncomplete`). `ppal-connect` adds a `pluginWrappers:` line
+  naming it (`plugin-host-notice-inject.ts`; see the
+  [ppal-connect spec](../specs/tool-behavior/ppal-connect.md#the-plug-in-wrapper-line)).
 - **Bytes decide.** A wrapper that differs from the embedded one is replaced; no
   version is compared. A Set that's already open keeps the old wrapper until
   it's reopened.

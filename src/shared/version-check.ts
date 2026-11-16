@@ -280,14 +280,20 @@ export interface InstallIncompleteInput {
    * been read yet.
    */
   remoteScriptCurrent: boolean | null;
+  /**
+   * Whether both plug-in wrapper devices in the User Library match this build.
+   * Null when there is no User Library to look in, or it hasn't been read yet.
+   */
+  wrappersCurrent: boolean | null;
 }
 
 /**
  * Whether the installation is unfinished: the User Library has no copy of this
  * device or an older one (only a frozen device can be copied; a newer or
- * different copy is the user's call), or its remote script is missing or behind
- * this build. The one definition the device's notice and the chat UI's
- * Installation tab dot both go by.
+ * different copy is the user's call), its remote script is missing or behind
+ * this build, or a plug-in wrapper device is missing or differs from this
+ * build. The one definition the device's notice and the chat UI's Installation
+ * tab dot both go by.
  *
  * @param input - The device copy and remote script facts
  * @returns Whether something in the User Library is missing or out of date
@@ -297,8 +303,17 @@ export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
     input.problem == null &&
     (input.state === "not-installed" || input.state === "installed-older");
 
+  // The wrappers ride the device install. A newer or different copy means the
+  // User Library may belong to another build, whose wrappers would differ too.
+  // A development device can't be copied, but its wrappers install alone.
+  const wrappersBehind =
+    input.wrappersCurrent === false &&
+    (input.problem == null
+      ? input.state !== "installed-newer" && input.state !== "different"
+      : input.problem === "not-frozen");
+
   // With no User Library there is nothing to compare, so nothing to nag about.
-  return copyBehind || input.remoteScriptCurrent === false;
+  return copyBehind || wrappersBehind || input.remoteScriptCurrent === false;
 }
 
 /**

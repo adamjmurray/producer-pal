@@ -473,6 +473,7 @@ describe("isInstallIncomplete", () => {
           problem: null,
           state,
           remoteScriptCurrent: true,
+          wrappersCurrent: true,
         }),
       ).toBe(true);
     },
@@ -486,6 +487,7 @@ describe("isInstallIncomplete", () => {
           problem: null,
           state,
           remoteScriptCurrent: true,
+          wrappersCurrent: true,
         }),
       ).toBe(false);
     },
@@ -497,6 +499,7 @@ describe("isInstallIncomplete", () => {
         problem: "not-frozen",
         state: "not-installed",
         remoteScriptCurrent: true,
+        wrappersCurrent: true,
       }),
     ).toBe(false);
   });
@@ -507,6 +510,7 @@ describe("isInstallIncomplete", () => {
         problem: null,
         state: "same",
         remoteScriptCurrent: false,
+        wrappersCurrent: true,
       }),
     ).toBe(true);
   });
@@ -517,6 +521,39 @@ describe("isInstallIncomplete", () => {
         problem: null,
         state: "same",
         remoteScriptCurrent: null,
+        wrappersCurrent: null,
+      }),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["a current copy", null, "same"],
+    ["a development device", "not-frozen", null],
+  ])(
+    "is incomplete when a wrapper is missing or differs, with %s",
+    (_why, problem, state) => {
+      expect(
+        isInstallIncomplete({
+          problem,
+          state,
+          remoteScriptCurrent: true,
+          wrappersCurrent: false,
+        }),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ["a newer copy", null, "installed-newer"],
+    ["a different copy", null, "different"],
+    ["a device that hasn't said where it is", "unknown-source", null],
+  ])("leaves the wrappers alone with %s", (_why, problem, state) => {
+    expect(
+      isInstallIncomplete({
+        problem,
+        state,
+        remoteScriptCurrent: true,
+        wrappersCurrent: false,
       }),
     ).toBe(false);
   });

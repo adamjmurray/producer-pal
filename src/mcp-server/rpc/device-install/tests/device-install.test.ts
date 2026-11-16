@@ -7,6 +7,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installPluginHostParts } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { installRemoteScript } from "../../remote-script/install/remote-script-install.ts";
 import { UserLibraryFolderError } from "../../remote-script/user-library/user-library-folder.ts";
@@ -111,6 +112,8 @@ describe("installRunningDevice", () => {
 
     vi.mocked(findUserLibraryPath).mockResolvedValue(library);
     installRemoteScript(library);
+    // The notice counts the plug-in wrapper devices too.
+    installPluginHostParts(library);
     runFromDownloads(bytes);
 
     const result = installRunningDevice(library);

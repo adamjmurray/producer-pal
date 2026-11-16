@@ -9,6 +9,7 @@ import {
   fakeInnerCall,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
+import { type PluginHostWrapperState } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
@@ -18,11 +19,13 @@ import { withUpToDate } from "../up-to-date-inject.ts";
  * Run withUpToDate over a ppal-connect call.
  * @param status - The remote script status, or a read that fails
  * @param portalVersion - The portal version the request carries, if any
+ * @param wrappers - The plug-in wrapper devices' states
  * @returns The response content blocks' text
  */
 async function connectThrough(
   status: Partial<RemoteScriptStatus> | Error = {},
   portalVersion?: string,
+  wrappers: PluginHostWrapperState[] = [],
 ): Promise<string[]> {
   const getStatus = (): Promise<RemoteScriptStatus> =>
     status instanceof Error
@@ -33,6 +36,7 @@ async function connectThrough(
     fakeInnerCall(connectResponse()),
     getStatus,
     () => portalVersion,
+    () => wrappers,
   )("ppal-connect", {});
 
   return result.content.map((block) => block.text);
@@ -106,6 +110,17 @@ describe("withUpToDate", () => {
     expect(content).toContain(UP_TO_DATE_NEW_CHAT);
   });
 
+  it.each(["missing", "differs"] as const)(
+    "says nothing when a plug-in wrapper device is %s",
+    async (state) => {
+      const content = await connectThrough({}, undefined, [
+        { name: "PPal Plug-in Effect", path: "/lib/e.amxd", state },
+      ]);
+
+      expect(content).toHaveLength(1);
+    },
+  );
+
   it("says nothing when the status can't be read", async () => {
     expect(await connectThrough(new Error("db locked"))).toHaveLength(1);
   });
@@ -116,6 +131,7 @@ describe("withUpToDate", () => {
       fakeInnerCall(connectResponse()),
       getStatus,
       () => undefined,
+      () => [],
     )("ppal-read-live-set", {});
 
     expect(result.content).toHaveLength(1);

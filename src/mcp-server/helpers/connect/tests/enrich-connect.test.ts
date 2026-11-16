@@ -12,6 +12,7 @@ import {
   fakeInnerCall,
   useTempConfigDir,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { type PluginHostWrapperState } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
@@ -23,10 +24,13 @@ import {
   type ConnectEnrichmentConfig,
 } from "../enrich-connect.ts";
 
-const { remoteScriptPing, remoteScriptStatus } = vi.hoisted(() => ({
-  remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
-  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
-}));
+const { remoteScriptPing, remoteScriptStatus, pluginHostStates } = vi.hoisted(
+  () => ({
+    remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
+    remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+    pluginHostStates: vi.fn<() => PluginHostWrapperState[]>(),
+  }),
+);
 
 // The real ones read the developer's running Live and User Library.
 vi.mock(
@@ -39,11 +43,17 @@ vi.mock(
   () => ({ remoteScriptStatus }),
 );
 
+vi.mock(
+  import("#src/portal/setup/plugin-host/plugin-host-part.ts"),
+  async (original) => ({ ...(await original()), pluginHostStates }),
+);
+
 const getDir = useTempConfigDir();
 
 beforeEach(() => {
   remoteScriptPing.mockReset();
   remoteScriptStatus.mockReset();
+  pluginHostStates.mockReset().mockReturnValue([]);
   remoteScriptPing.mockResolvedValue({
     running: true,
     liveVersion: "12.4.0",
@@ -336,6 +346,18 @@ describe("enrichConnect", () => {
 
       expect(blocks).toHaveLength(3);
       expect(blocks.at(-1)).toBe(UP_TO_DATE_NEW_CHAT);
+    });
+
+    it("names a plug-in wrapper device to install after the script line, with no new-chat line", async () => {
+      pluginHostStates.mockReturnValue([
+        { name: "PPal Plug-in Effect", path: "/lib/e.amxd", state: "differs" },
+      ]);
+
+      const blocks = await enrichedBlocks({}, CHECK);
+
+      expect(blocks).toHaveLength(3);
+      expect(blocks[1]).toMatch(/^remoteScript: /);
+      expect(blocks[2]).toMatch(/^pluginWrappers: PPal Plug-in Effect differs/);
     });
 
     it.each([

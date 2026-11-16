@@ -14,23 +14,30 @@ import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "./connect-append.ts";
+import {
+  wrappersToInstall,
+  type ReadWrapperStates,
+} from "./plugin-host-notice-inject.ts";
 
 /**
  * Wrap a callLiveApi so a version check that found nothing to fix ends by
  * suggesting a new chat. Compose it outermost so the line lands last.
  *
  * "Nothing to fix" means the portal (if any) matches the device and the remote
- * script runs this version with nothing pending. An unreadable status doesn't.
+ * script runs this version with nothing pending, and both plug-in wrapper
+ * devices are in place. An unreadable status doesn't.
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getStatus - Reads the remote script status (shared with the notice)
  * @param getPortalVersion - Reads this request's portal version, if it has one
+ * @param readStates - Reads the wrappers' states in a User Library
  * @returns A callLiveApi that appends the new-chat line when all is current
  */
 export function withUpToDate(
   inner: CallLiveApiFunction,
   getStatus: () => Promise<RemoteScriptStatus>,
   getPortalVersion: () => string | undefined,
+  readStates: ReadWrapperStates,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () => {
     const portalVersion = getPortalVersion();
@@ -39,7 +46,12 @@ export function withUpToDate(
       return null;
     }
 
-    return remoteScriptSettled(await getStatus()) ? UP_TO_DATE_NEW_CHAT : null;
+    const status = await getStatus();
+
+    return remoteScriptSettled(status) &&
+      wrappersToInstall(status, readStates).length === 0
+      ? UP_TO_DATE_NEW_CHAT
+      : null;
   });
 }
 

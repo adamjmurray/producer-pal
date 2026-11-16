@@ -142,6 +142,31 @@ describe("useInstallation", () => {
     expect(result.current.incomplete).toBe(false);
   });
 
+  it.each([
+    ["a current copy", CURRENT_DEVICE],
+    ["a development device", { problem: "not-frozen", state: null } as const],
+  ])(
+    "is incomplete when a plug-in wrapper device needs installing, with %s",
+    async (_why, device) => {
+      const { result } = await renderInstallation(
+        {
+          ...device,
+          pluginHost: [
+            { name: "PPal Plug-in Effect", path: "/e.amxd", state: "current" },
+            {
+              name: "PPal Plug-in Instrument",
+              path: "/i.amxd",
+              state: "differs",
+            },
+          ],
+        },
+        CURRENT_SCRIPT,
+      );
+
+      expect(result.current.incomplete).toBe(true);
+    },
+  );
+
   it("is incomplete when the remote script is missing or behind", async () => {
     const missing = await renderInstallation(CURRENT_DEVICE, {});
 

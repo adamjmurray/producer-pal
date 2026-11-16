@@ -83,7 +83,8 @@ Library copy.
 ### The reminder
 
 The device's Main tab shows **Finish installation…** while the User Library copy
-is missing or older, or the remote script is missing or out of date. It stays
+is missing or older, the remote script is missing or out of date, or a
+[plug-in wrapper device](/guide/plugins) is missing or out of date. It stays
 hidden while **Update available** is showing. To turn it off, untick **Warn when
 installation is incomplete** in **Settings → Installation**.
 

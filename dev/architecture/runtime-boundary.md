@@ -130,11 +130,13 @@ which a development device can do.
 
 The device shows a "Finish installation…" notice (in the update notice's spot,
 no `×`) when `installIncomplete` says so: the User Library has no copy of a
-frozen device or an older one, or its remote script is missing or behind this
-build. `syncDeviceInstallNotice` is the one place that decides. The notice also
-needs the global setting `warnIfInstallIncomplete` (default on, set from the
-Installation tab) and no update notice: it asks `getUpdate()`, which already
-folds in the update check setting and its dismissal. Node sends
+frozen device or an older one, its remote script is missing or behind this
+build, or a plug-in wrapper device is missing or differs from this build (not
+counted when the copy is newer or can't be ordered: that User Library may belong
+to another build). `syncDeviceInstallNotice` is the one place that decides. The
+notice also needs the global setting `warnIfInstallIncomplete` (default on, set
+from the Installation tab) and no update notice: it asks `getUpdate()`, which
+already folds in the update check setting and its dismissal. Node sends
 `config installNotice 1|0` (`tab-main` routes it), and re-sends it whenever an
 input changes: the device reports its path, an install, a remote script install,
 the update notice's dismissal or check being turned off, the warning setting,

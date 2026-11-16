@@ -14,6 +14,7 @@ import {
   pluginHostStates,
 } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { installRunningDevice } from "../rpc/device-install/device-install.ts";
+import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import { deviceInstallStatus } from "../rpc/device-install/device-install-status.ts";
 import { deviceSwapCheck } from "../rpc/device-install/device-swap-check.ts";
 import { swapForLibraryCopy } from "../rpc/device-install/device-swap.ts";
@@ -83,6 +84,9 @@ export function registerDeviceInstallRoutes(app: Express): void {
 
       if (install.status === "done") {
         const pluginHost = installPluginHostParts(install.library, UI_RETRY);
+
+        // The notice counts the wrappers, which are only now in.
+        void syncDeviceInstallNotice();
         const { result } = install;
 
         res.json(
@@ -118,6 +122,9 @@ export function registerDeviceInstallRoutes(app: Express): void {
       try {
         const library = resolveUserLibraryFolder(posted.userLibrary);
         const pluginHost = installPluginHostParts(library, UI_RETRY);
+
+        // The device's "Finish installation" notice may be done with.
+        void syncDeviceInstallNotice();
 
         res.json({
           detail:
