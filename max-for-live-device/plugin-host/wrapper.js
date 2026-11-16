@@ -117,13 +117,14 @@ function isRead(req, result) {
   return READ_OPS.has(req.op) || result.unchanged === true;
 }
 
-// A plug-in applies a written value a few ms after the request, so its state
-// changes only then. Saving before that leaves the write to the 2 s poll, and
-// a duplicate or Set save right after the call loses it. So wait for the
-// change, at most CHANGE_MAX_MS (a write that changes nothing waits that long).
+// A plug-in applies a written value after the request (a few ms for most;
+// Aalto's VST2 takes ~115 ms on Live 13), so its state changes only then.
+// Saving before that leaves the write to the 2 s poll, and a duplicate or Set
+// save right after the call loses it. So wait for the change, at most
+// CHANGE_MAX_MS (a write that changes nothing waits that long).
 const WRITE_OPS = new Set(["set", "write"]);
 const CHANGE_INTERVAL_MS = 5;
-const CHANGE_MAX_MS = 100;
+const CHANGE_MAX_MS = 250;
 
 function changeThenFinish(id, result, before) {
   const started = Date.now();

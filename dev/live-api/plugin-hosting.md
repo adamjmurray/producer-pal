@@ -321,10 +321,10 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
     so the tool call's own undo step covers it. Reads (`info`, `params`,
     `slots`) never write: that would add an undo step and mark the Set changed
     (one `ppal-update-device` call is 1 step)
-  - (`set` and `write` first wait for the state to change, for at most 100 ms: a
-    plug-in applies a written value 1–5 ms after the request. Saving sooner
-    found nothing new and left the write to the poll, so a duplicate made just
-    after the call lost it.)
+  - (`set` and `write` first wait for the state to change, for at most 250 ms:
+    most plug-ins apply a written value 1–5 ms after the request, but Aalto's
+    VST2 takes about 115 ms on Live 13. Saving sooner found nothing new and left
+    the write to the poll, so a duplicate made just after the call lost it.)
   - (`load` first waits until two reads of the state, 250 ms apart, agree, for
     at most 3 s: a fresh u-he plug-in's state changes once just after loading,
     which would leave a second write outside the call's undo step. That adds
