@@ -114,6 +114,9 @@ Point an MCP client at it:
 }
 ```
 
+Don't use the `npx -y producer-pal@latest` config from the install guide: it
+runs the published release, not this build.
+
 - [ ] Tool descriptions are the short ones
 - [ ] Connecting calls `ppal-read-live-set`
 
