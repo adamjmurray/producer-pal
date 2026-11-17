@@ -189,7 +189,7 @@ program
   )
   .option(
     "--decider <provider/model>",
-    "Judge with a decider first; the -j LLM judge decides what it escalates. jev (hosted Jev, first provider with a key), typesafe|openrouter|vercel (Jev there), or <provider>/<model>, e.g. ollama/autotrust-jev",
+    "Judge with a decider first; the -j LLM judge decides what it escalates. jev (hosted Jev, first provider with a key), typesafe|openrouter|vercel (Jev there), openai (its Decisions API), or <provider>/<model>, e.g. ollama/autotrust-jev",
   )
   .option(
     "-r, --repeat <N>",

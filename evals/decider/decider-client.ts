@@ -4,12 +4,21 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Minimal client for a decider (TypeSafe AI's Jev, or a local model with the same
- * API): ask typed questions about a piece of state and get back probabilities.
+ * Minimal client for a decider (TypeSafe AI's Jev, a local model with the same
+ * API, or OpenAI's Decisions API): ask typed questions about a piece of state
+ * and get back probabilities.
  */
 
 import { sleep } from "#evals/shared/sleep.ts";
-import { resolveDecider, type DeciderProvider } from "./decider-provider.ts";
+import {
+  resolveDecider,
+  type DeciderProvider,
+} from "./providers/decider-provider.ts";
+import {
+  fromOpenaiDecisionsResponse,
+  toOpenaiDecisionsRequest,
+  type OpenaiDecisionsResponse,
+} from "./providers/openai-decisions.ts";
 
 const MAX_RETRIES = 2;
 
@@ -90,12 +99,17 @@ export async function askDecider(
   questions: Record<string, DeciderQuestion>,
   options: AskDeciderOptions = {},
 ): Promise<DeciderResponse> {
-  const { url, apiKey, model } = resolveDecider(
+  const { provider, url, apiKey, model } = resolveDecider(
     { provider: options.provider, model: options.model },
     options.apiKey,
   );
 
-  const body = JSON.stringify({ model, state, questions });
+  const isOpenai = provider === "openai";
+  const body = JSON.stringify(
+    isOpenai
+      ? toOpenaiDecisionsRequest(model, state, questions)
+      : { model, state, questions },
+  );
 
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, {
@@ -108,7 +122,11 @@ export async function askDecider(
     });
 
     if (response.ok) {
-      return (await response.json()) as DeciderResponse;
+      const json: unknown = await response.json();
+
+      return isOpenai
+        ? fromOpenaiDecisionsResponse(json as OpenaiDecisionsResponse, model)
+        : (json as DeciderResponse);
     }
 
     const retryable = response.status === 429 || response.status >= 500;
@@ -123,7 +141,8 @@ export async function askDecider(
 
 /**
  * Pull the error text out of a failed response. Jev sends `{detail}` as a
- * string (400) or a list of problems (422); Ollama sends `{error}` as a string.
+ * string (400) or a list of problems (422); Ollama sends `{error}` as a string;
+ * OpenAI sends `{error: {message}}`.
  *
  * @param response - The non-2xx response
  * @returns A readable error message
@@ -151,6 +170,12 @@ async function readDetail(response: Response): Promise<string> {
 
     if (typeof error === "string") {
       return error;
+    }
+
+    const message = (error as { message?: unknown } | null)?.message;
+
+    if (typeof message === "string") {
+      return message;
     }
   } catch {
     // not JSON; fall through to the raw text

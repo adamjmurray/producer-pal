@@ -12,7 +12,7 @@
 import {
   defaultConcurrency,
   type DeciderProvider,
-} from "../decider-provider.ts";
+} from "../providers/decider-provider.ts";
 
 export interface ProviderLanes {
   /** How many calls the provider's lane lets through at once */

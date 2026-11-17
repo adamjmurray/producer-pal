@@ -10,7 +10,7 @@ import {
   ollamaBaseUrl,
   parseDeciderSpec,
   resolveDecider,
-} from "../decider-provider.ts";
+} from "../providers/decider-provider.ts";
 import { stubKeys } from "./decider-test-helpers.ts";
 
 afterEach(() => {
@@ -22,7 +22,7 @@ describe("parseDeciderSpec", () => {
     expect(parseDeciderSpec("jev")).toStrictEqual({});
   });
 
-  it.each(["typesafe", "openrouter", "vercel"] as const)(
+  it.each(["typesafe", "openrouter", "vercel", "openai"] as const)(
     "reads bare %s as that provider with the default model",
     (provider) => {
       expect(parseDeciderSpec(provider)).toStrictEqual({ provider });
@@ -50,7 +50,7 @@ describe("parseDeciderSpec", () => {
 
   it("rejects an unknown provider, naming the choices", () => {
     expect(() => parseDeciderSpec("nowhere")).toThrow(
-      /Unknown --decider=nowhere; use jev, typesafe, openrouter, vercel/,
+      /Unknown --decider=nowhere; use jev, typesafe, openrouter, vercel, openai, or/,
     );
     expect(() => parseDeciderSpec("jev/x", "--d")).toThrow("Unknown --d=jev/x");
   });
@@ -73,6 +73,20 @@ describe("resolveDecider", () => {
 
     stubKeys({ TYPESAFE_KEY: "t", OPENROUTER_KEY: "o" });
     expect(resolveDecider().provider).toBe("typesafe");
+  });
+
+  it("never picks openai by default, and runs gpt-6-luna there when named", () => {
+    stubKeys({ OPENAI_KEY: "k" });
+
+    expect(() => resolveDecider()).toThrow(
+      /set one of TYPESAFE_KEY, OPENROUTER_KEY, VERCEL_AI_GATEWAY_KEY \(/,
+    );
+    expect(resolveDecider({ provider: "openai" })).toStrictEqual({
+      provider: "openai",
+      model: "gpt-6-luna",
+      url: "https://api.openai.com/v1/decisions",
+      apiKey: "k",
+    });
   });
 
   it("uses the named provider even when an earlier one has a key", () => {
@@ -169,6 +183,7 @@ describe("provider limits", () => {
 
   it("caps the state lower for ollama, which also caps the request", () => {
     expect(DECIDER_PROVIDERS.typesafe.maxStateChars).toBe(80_000);
+    expect(DECIDER_PROVIDERS.openai.maxStateChars).toBe(400_000);
     expect(DECIDER_PROVIDERS.ollama.maxStateChars).toBe(48_000);
     expect(DECIDER_PROVIDERS.ollama.maxRequestBytes).toBeLessThan(65_536);
     expect(DECIDER_PROVIDERS.typesafe.maxRequestBytes).toBeUndefined();

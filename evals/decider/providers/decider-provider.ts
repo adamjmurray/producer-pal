@@ -5,10 +5,11 @@
 
 /**
  * The places a decider can run, and the `--decider provider/model` value that
- * picks one. All of them take the same `/v1/systemone` request and answer alike.
+ * picks one. All take the same `/v1/systemone` request and answer alike, except
+ * `openai`, whose Decisions API the client translates to and from.
  */
 
-/** The model the hosted providers use when none is named. */
+/** The model the hosted Jev providers use when none is named. */
 export const DEFAULT_HOSTED_MODEL = "jev-latest";
 
 const OLLAMA_DEFAULT_URL = "http://localhost:11434";
@@ -19,6 +20,10 @@ export interface DeciderProviderInfo {
   url: () => string;
   /** The API key variable; absent when the provider needs no key */
   envVar?: string;
+  /** The model used when none is named; absent when one must be named */
+  defaultModel?: string;
+  /** Input price in USD per million tokens; absent when calls are free */
+  usdPerMInputTokens?: number;
   /** Size cap for the state text, in characters */
   maxStateChars: number;
   /** Cap for the whole request body, in UTF-8 bytes, when the provider has one */
@@ -27,10 +32,20 @@ export interface DeciderProviderInfo {
   defaultConcurrency: number;
 }
 
-export type DeciderProvider = "typesafe" | "openrouter" | "vercel" | "ollama";
+export type DeciderProvider =
+  | "typesafe"
+  | "openrouter"
+  | "vercel"
+  | "openai"
+  | "ollama";
 
 /** Jev's input limit is 32k tokens; 80k characters stays well under it. */
-const HOSTED = { maxStateChars: 80_000, defaultConcurrency: 4 };
+const HOSTED = {
+  maxStateChars: 80_000,
+  defaultConcurrency: 4,
+  defaultModel: DEFAULT_HOSTED_MODEL,
+  usdPerMInputTokens: 0.042,
+};
 
 /** Hosted Jev first (the default pick takes the first with a key), then local. */
 export const DECIDER_PROVIDERS: Record<DeciderProvider, DeciderProviderInfo> = {
@@ -49,6 +64,16 @@ export const DECIDER_PROVIDERS: Record<DeciderProvider, DeciderProviderInfo> = {
     url: () => "https://ai-gateway.vercel.sh/typesafe/v1/systemone",
     envVar: "VERCEL_AI_GATEWAY_KEY",
   },
+  // Not Jev: `gpt-6-luna` is the only model the Decisions API takes. Input
+  // costs double past 272k tokens; 400k characters stays well under that.
+  openai: {
+    url: () => "https://api.openai.com/v1/decisions",
+    envVar: "OPENAI_KEY",
+    defaultModel: "gpt-6-luna",
+    usdPerMInputTokens: 0.1,
+    maxStateChars: 400_000,
+    defaultConcurrency: 4,
+  },
   // Local models run one call at a time. Ollama refuses text plus schema over
   // 64 KiB, so the state leaves room for the questions.
   ollama: {
@@ -64,11 +89,17 @@ export const DECIDER_PROVIDER_NAMES = Object.keys(
   DECIDER_PROVIDERS,
 ) as DeciderProvider[];
 
-const HOSTED_NAMES = DECIDER_PROVIDER_NAMES.filter(
-  (n) => DECIDER_PROVIDERS[n].envVar != null,
+/** The providers that host Jev, which bare `jev` picks from. */
+const JEV_HOSTS = DECIDER_PROVIDER_NAMES.filter(
+  (n) => DECIDER_PROVIDERS[n].defaultModel === DEFAULT_HOSTED_MODEL,
 );
 
-/** What `--decider` names; a missing provider means the first hosted one with a key. */
+/** The providers a bare name can pick, since they have a default model. */
+const BARE_NAMES = DECIDER_PROVIDER_NAMES.filter(
+  (n) => DECIDER_PROVIDERS[n].defaultModel != null,
+);
+
+/** What `--decider` names; a missing provider means the first Jev host with a key. */
 export interface DeciderSpec {
   provider?: DeciderProvider;
   model?: string;
@@ -108,9 +139,9 @@ export function ollamaBaseUrl(host: string | undefined): string {
 /**
  * Check the value of `--decider`.
  *
- * `jev` is the first hosted provider with a key, running `jev-latest`. A bare
- * hosted provider name runs `jev-latest` there. `provider/model` runs that
- * model; only the first `/` splits, since model names can contain `:` and `/`.
+ * `jev` is the first Jev host with a key, running `jev-latest`. A bare hosted
+ * provider name runs its default model (`jev-latest`, or `gpt-6-luna` on
+ * `openai`). `provider/model` runs that model; only the first `/` splits, since model names can contain `:` and `/`.
  *
  * @param value - The flag value
  * @param flag - The flag's name, for the error message
@@ -125,7 +156,7 @@ export function parseDeciderSpec(
   const slash = text.indexOf("/");
   const name = slash === -1 ? text : text.slice(0, slash);
   const model = slash === -1 ? undefined : text.slice(slash + 1);
-  const usage = `use jev, ${HOSTED_NAMES.join(", ")}, or <provider>/<model> (provider: ${DECIDER_PROVIDER_NAMES.join(", ")})`;
+  const usage = `use jev, ${BARE_NAMES.join(", ")}, or <provider>/<model> (provider: ${DECIDER_PROVIDER_NAMES.join(", ")})`;
 
   if (slash === -1 && name === "jev") {
     return {};
@@ -151,10 +182,10 @@ export function parseDeciderSpec(
 /**
  * Pick the provider, model, URL and key a call uses.
  *
- * @param spec - What was asked for; no provider takes the first hosted one with a key
+ * @param spec - What was asked for; no provider takes the first Jev host with a key
  * @param apiKey - Key override; with no provider, it goes to TypeSafe
  * @returns The provider, model, URL and key (none for Ollama)
- * @throws When no hosted provider has a key, or the one named has none
+ * @throws When no Jev host has a key, or the provider named has none
  */
 export function resolveDecider(
   spec: DeciderSpec = {},
@@ -171,13 +202,11 @@ export function resolveDecider(
 
   const provider =
     spec.provider ??
-    HOSTED_NAMES.find((n) => keyFor(n) != null) ??
+    JEV_HOSTS.find((n) => keyFor(n) != null) ??
     (hasOverride ? "typesafe" : undefined);
 
   if (provider == null) {
-    const vars = HOSTED_NAMES.map((n) => DECIDER_PROVIDERS[n].envVar).join(
-      ", ",
-    );
+    const vars = JEV_HOSTS.map((n) => DECIDER_PROVIDERS[n].envVar).join(", ");
 
     throw new Error(
       `No decider API key set: set one of ${vars} (add it to .env)`,
@@ -185,8 +214,7 @@ export function resolveDecider(
   }
 
   const info = DECIDER_PROVIDERS[provider];
-  const model =
-    spec.model ?? (info.envVar == null ? undefined : DEFAULT_HOSTED_MODEL);
+  const model = spec.model ?? info.defaultModel;
 
   if (model == null) {
     throw new Error(

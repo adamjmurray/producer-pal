@@ -15,7 +15,7 @@ import {
   type DeciderJudgeResult,
   type DeciderQuestionResult,
 } from "../decider-judge.ts";
-import { DECIDER_PROVIDERS } from "../decider-provider.ts";
+import { DECIDER_PROVIDERS } from "../providers/decider-provider.ts";
 
 /**
  * Set the hosted providers' keys; unlisted ones are blanked.

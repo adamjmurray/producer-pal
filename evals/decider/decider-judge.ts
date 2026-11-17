@@ -28,7 +28,7 @@ import {
   resolveDecider,
   type DeciderProvider,
   type DeciderProviderInfo,
-} from "./decider-provider.ts";
+} from "./providers/decider-provider.ts";
 import { buildDeciderState, type BuiltDeciderState } from "./decider-state.ts";
 
 // Both tuned on saved eval results against the stored judge.

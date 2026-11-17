@@ -9,7 +9,7 @@
  */
 
 import { type JsonEvalResult } from "#evals/scenarios/helpers/json-results/types.ts";
-import { type DeciderProvider } from "../decider-provider.ts";
+import { type DeciderProvider } from "../providers/decider-provider.ts";
 import { buildQuestions, type DeciderJudgeResult } from "../decider-judge.ts";
 
 /**

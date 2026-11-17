@@ -116,7 +116,7 @@ export interface JsonJudge {
    * authoritative). Set per-scenario via `judgeAdvisory`. */
   advisory?: boolean;
   /** Provider that produced the verdict (absent in older results). For a
-   *  decider, the decider's provider (typesafe, openrouter, vercel, ollama). */
+   *  decider, the decider's provider (typesafe, openrouter, vercel, openai, ollama). */
   provider?: string;
   /** Model that produced the verdict, as resolved (absent in older results) */
   model?: string;
@@ -144,7 +144,7 @@ export interface JsonLlmVerdict {
 
 /** What the decider answered for one judge call. */
 export interface JsonDeciderAnswer {
-  /** Where the decider ran: typesafe, openrouter, vercel or ollama */
+  /** Where the decider ran: typesafe, openrouter, vercel, openai or ollama */
   provider: string;
   /** pass and fail decide the verdict; escalate hands it to the LLM judge */
   verdict: "pass" | "fail" | "escalate";

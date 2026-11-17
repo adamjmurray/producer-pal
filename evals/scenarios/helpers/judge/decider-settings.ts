@@ -11,7 +11,7 @@
 import {
   parseDeciderSpec,
   resolveDecider,
-} from "#evals/decider/decider-provider.ts";
+} from "#evals/decider/providers/decider-provider.ts";
 import { type DeciderSettings } from "./decider-first-judge.ts";
 
 /** The CLI flags that decide how the judge runs. */

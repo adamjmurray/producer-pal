@@ -9,7 +9,7 @@
  * without the flag.
  */
 
-import { type DeciderProvider } from "#evals/decider/decider-provider.ts";
+import { type DeciderProvider } from "#evals/decider/providers/decider-provider.ts";
 import {
   escalationReason,
   FAIL_THRESHOLD,

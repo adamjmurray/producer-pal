@@ -14,8 +14,8 @@
  *   flags:   --scenario=id   only this scenario (repeatable)
  *            --limit=N       compare at most N results
  *            --concurrency=N parallel decider calls (default 4; 1 for ollama)
- *            --decider=D     jev (default), typesafe|openrouter|vercel, or
- *                            provider/model, e.g. ollama/autotrust-jev
+ *            --decider=D     jev (default), typesafe|openrouter|vercel|openai,
+ *                            or provider/model, e.g. ollama/autotrust-jev
  *            --include-stale also use results older than the judge criteria
  *            --reference=slug use this sidecar judge (a judges/ folder, or
  *                            provider/model) instead of the stored verdict
@@ -40,7 +40,7 @@ import {
   resolveDecider,
   type DeciderSpec,
   type ResolvedDecider,
-} from "./decider-provider.ts";
+} from "./providers/decider-provider.ts";
 import {
   compareToBaseline,
   type CompareDeps,

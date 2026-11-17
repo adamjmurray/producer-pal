@@ -278,6 +278,22 @@ describe("formatReport", () => {
     );
   });
 
+  it("prices each call at its own provider's rate", () => {
+    const base = entry("a.json", true, "pass");
+    const openai = {
+      ...base,
+      decider: {
+        ...deciderResult("pass", 0.95),
+        provider: "openai" as const,
+        inputTokens: 1_000_000,
+      },
+    };
+
+    expect(
+      formatReport([openai, entry("b.json", true, "pass")], skipped).join("\n"),
+    ).toContain("Decider input tokens: 1001000 (~$0.1000 estimated)");
+  });
+
   it("keeps the estimate when any answer lacks a cost", () => {
     const partial = [
       entry("a.json", true, "pass"),

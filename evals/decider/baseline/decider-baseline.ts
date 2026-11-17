@@ -16,7 +16,7 @@ import {
   resolveDecider,
   type DeciderSpec,
   type ResolvedDecider,
-} from "../decider-provider.ts";
+} from "../providers/decider-provider.ts";
 import { deciderJudge, type DeciderJudgeResult } from "../decider-judge.ts";
 import { recordedDecider } from "./decider-recorded.ts";
 import {

@@ -499,12 +499,17 @@ judge decides as usual. `--skip-judge` wins over `--decider`. The value is:
   key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`, in that
   order).
 - `typesafe`, `openrouter` or `vercel`: Jev on that provider.
+- `openai`: OpenAI's Decisions API (`gpt-6-luna`, its only model), with
+  `OPENAI_KEY`. It is not Jev, so `jev` never picks it. Don't trust its verdicts
+  yet: on 133 saved results (mostly ones Jev escalated) it decided 59% but got
+  12 of those 78 wrong, with the thresholds tuned on Jev.
 - `<provider>/<model>`: that model on that provider, split at the first `/` (so
   `:` in a model name is fine). `ollama` needs a model.
 
 ```bash
 scripts/eval --decider jev
 scripts/eval --decider openrouter/jev-latest
+scripts/eval --decider openai
 scripts/eval --decider ollama/autotrust-jev
 scripts/eval --decider ollama/pplx-decider-flash:latest
 ```
@@ -514,19 +519,19 @@ Ollama uses no key and reads `OLLAMA_HOST` (default `http://localhost:11434`).
 Local models answer one call at a time, so the probe scripts default
 `--concurrency` to 1 for `ollama` (4 otherwise). Ollama refuses requests over 64
 KiB, so the transcript sent to it is cut to fit (48,000 characters, and again if
-multi-byte text pushes the request over the limit); hosted providers get 80,000.
-The pass/fail thresholds were tuned on Jev and apply unchanged to every decider.
-Each saved `judge` records `decidedBy` (`decider` or `llm`), the decider's
-`provider` and `model`, its per-question probabilities, outcome level and
-verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the LLM
-verdict when it ran. When the decider decided, the judge's own `provider` and
-`model` are the decider's. An escalation caused only by the claims check (below)
-is marked `escalatedBy: "claims"`. Such results are `version: 2`. Results saved
-before the rename wrote `jev` for `decider` (and `route` for `provider`, and
-meant TypeSafe's Jev); they still load. The summary (and
-`eval-report --summarize`) counts calls the decider decided versus escalated,
-how many of those the claims check caused, and the token cost. The thresholds
-are in `evals/decider/decider-judge.ts`.
+multi-byte text pushes the request over the limit); hosted Jev gets 80,000 and
+`openai` 400,000. The pass/fail thresholds were tuned on Jev and apply unchanged
+to every decider. Each saved `judge` records `decidedBy` (`decider` or `llm`),
+the decider's `provider` and `model`, its per-question probabilities, outcome
+level and verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and
+the LLM verdict when it ran. When the decider decided, the judge's own
+`provider` and `model` are the decider's. An escalation caused only by the
+claims check (below) is marked `escalatedBy: "claims"`. Such results are
+`version: 2`. Results saved before the rename wrote `jev` for `decider` (and
+`route` for `provider`, and meant TypeSafe's Jev); they still load. The summary
+(and `eval-report --summarize`) counts calls the decider decided versus
+escalated, how many of those the claims check caused, and the token cost. The
+thresholds are in `evals/decider/decider-judge.ts`.
 
 Every decider gets the same graded outcome question, with six levels (0 complete
 failure to 5 complete success; autotrust-jev refuses any other count), so scores

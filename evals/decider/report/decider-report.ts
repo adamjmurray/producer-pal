@@ -17,11 +17,8 @@ import {
 import { bandLines, claimsLines } from "./decider-bands.ts";
 import { type DeciderJudgeResult } from "../decider-judge.ts";
 import { type ReferenceVerdict } from "../sidecar-judges/decider-reference.ts";
-import { DECIDER_PROVIDERS } from "../decider-provider.ts";
+import { DECIDER_PROVIDERS } from "../providers/decider-provider.ts";
 import { type SkipCounts } from "../decider-results.ts";
-
-/** Jev input price, USD per million tokens. */
-export const JEV_USD_PER_M_INPUT_TOKENS = 0.042;
 
 /** How many results the "Lowest outcome scores" section lists. */
 const LOWEST_OUTCOME_COUNT = 10;
@@ -294,21 +291,22 @@ function costLine(judged: CompareEntry[]): string {
     return `Decider input tokens: ${tokens} (actual $${actual.toFixed(4)})`;
   }
 
-  // The price is Jev's, so only hosted calls get an estimate; local ones are free.
-  const hosted = judged.filter(
-    (e) =>
-      e.decider != null && DECIDER_PROVIDERS[e.decider.provider].envVar != null,
-  );
+  // Each call is priced at its provider's input rate; local ones are free.
+  const priceOf = (e: (typeof judged)[number]): number | undefined =>
+    e.decider == null
+      ? undefined
+      : DECIDER_PROVIDERS[e.decider.provider].usdPerMInputTokens;
+  const hosted = judged.filter((e) => priceOf(e) != null);
 
   if (hosted.length === 0) {
     return `Decider input tokens: ${tokens} (local, no cost)`;
   }
 
-  const hostedTokens = hosted.reduce(
-    (sum, e) => sum + (e.decider?.inputTokens ?? 0),
+  const usd = hosted.reduce(
+    (sum, e) =>
+      sum + ((e.decider?.inputTokens ?? 0) / 1_000_000) * (priceOf(e) ?? 0),
     0,
   );
-  const usd = (hostedTokens / 1_000_000) * JEV_USD_PER_M_INPUT_TOKENS;
   const local = hosted.length < judged.length ? ", local calls free" : "";
 
   return `Decider input tokens: ${tokens} (~$${usd.toFixed(4)} estimated${local})`;
