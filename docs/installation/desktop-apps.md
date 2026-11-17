@@ -1,5 +1,8 @@
 # Desktop Apps
 
+Already pay for Claude, ChatGPT or Gemini? Add Producer Pal to its desktop app
+at no extra cost.
+
 ## Claude Desktop
 
 Anthropic's desktop app. Producer Pal installs as an extension.
@@ -34,16 +37,7 @@ config file — one extra step, but everything else is the same.
 
 [Get started with Google Antigravity →](./antigravity)
 
-## Bionic / LM Studio
+## Want to Run the AI Offline?
 
-LM Studio's agent app for open models, running entirely on your machine.
-
-<!--@include: ../_partials/local-ai-warning.md-->
-
-Online AI is faster and smarter.
-
-- **Difficulty:** Easy — download a model, then add Producer Pal in settings
-- **Cost:** Free (uses your hardware)
-- **Best for:** Free, private, offline use on a powerful computer
-
-[Bionic setup guide →](./bionic)
+[Bionic / LM Studio](./bionic) is a desktop app that runs the AI on your own
+computer. See [Running Locally](./choose-local).

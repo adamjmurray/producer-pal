@@ -145,65 +145,51 @@ export default defineConfig({
         link: "/installation",
         items: [
           {
-            text: "Desktop Apps",
-            link: "/installation/desktop-apps",
+            text: "Use Your AI Subscription",
             items: [
               {
-                text: "Claude Desktop",
-                link: "/installation/claude-desktop",
+                text: "Desktop Apps",
+                link: "/installation/desktop-apps",
+                items: [
+                  {
+                    text: "Claude Desktop",
+                    link: "/installation/claude-desktop",
+                  },
+                  { text: "ChatGPT App", link: "/installation/chatgpt-app" },
+                  {
+                    text: "Google Antigravity",
+                    link: "/installation/antigravity",
+                  },
+                ],
               },
-              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               {
-                text: "Google Antigravity",
-                link: "/installation/antigravity",
+                text: "CLI Coding Agents",
+                link: "/installation/cli",
+                items: [
+                  { text: "Claude Code", link: "/installation/claude-code" },
+                  { text: "Codex CLI", link: "/installation/codex-cli" },
+                  { text: "Gemini CLI", link: "/installation/gemini-cli" },
+                  {
+                    text: "Mistral Vibe",
+                    link: "/installation/mistral-vibe",
+                  },
+                ],
               },
-              { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
           {
-            text: "Command Line",
-            link: "/installation/cli",
+            text: "Use API Keys",
             items: [
-              { text: "Claude Code", link: "/installation/claude-code" },
-              { text: "Codex CLI", link: "/installation/codex-cli" },
-              { text: "Gemini CLI", link: "/installation/gemini-cli" },
-              { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
-            ],
-          },
-          {
-            text: "Built-in Chat UI",
-            link: "/installation/chat-ui",
-            items: [
-              { text: "Local AI", link: "/installation/local-ai" },
               { text: "AI Routers", link: "/installation/ai-routers" },
-              { text: "API Keys", link: "/installation/api-keys" },
+              { text: "Provider API Keys", link: "/installation/api-keys" },
             ],
           },
           {
-            text: "Choose by Provider",
-            link: "/installation/choose-by-provider",
+            text: "Use a Local Model",
+            link: "/installation/choose-local",
             items: [
-              {
-                text: "Claude / Anthropic",
-                link: "/installation/choose-claude",
-              },
-              {
-                text: "ChatGPT / OpenAI",
-                link: "/installation/choose-openai",
-              },
-              {
-                text: "Gemini / Google",
-                link: "/installation/choose-gemini",
-              },
-              {
-                text: "Mistral / Mistral AI",
-                link: "/installation/choose-mistral",
-              },
-              { text: "Local / Offline", link: "/installation/choose-local" },
-              {
-                text: "Multi / AI Routers",
-                link: "/installation/choose-multi",
-              },
+              { text: "Built-in Chat UI", link: "/installation/local-ai" },
+              { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
           {
@@ -218,6 +204,33 @@ export default defineConfig({
                   { text: "claude.ai", link: "/installation/claude-web" },
                   { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
                   { text: "Le Chat", link: "/installation/mistral-le-chat" },
+                ],
+              },
+              {
+                text: "Choose by Provider",
+                link: "/installation/choose-by-provider",
+                collapsed: true,
+                items: [
+                  {
+                    text: "Claude / Anthropic",
+                    link: "/installation/choose-claude",
+                  },
+                  {
+                    text: "ChatGPT / OpenAI",
+                    link: "/installation/choose-openai",
+                  },
+                  {
+                    text: "Gemini / Google",
+                    link: "/installation/choose-gemini",
+                  },
+                  {
+                    text: "Mistral / Mistral AI",
+                    link: "/installation/choose-mistral",
+                  },
+                  {
+                    text: "Multi / AI Routers",
+                    link: "/installation/choose-multi",
+                  },
                 ],
               },
             ],

@@ -7,8 +7,8 @@ Use Producer Pal with Mistral's open-source command line coding assistant.
 <!--@include: ../_partials/live-requirement.md-->
 
 - [Node.js 20+](https://nodejs.org/en/download)
-- [Mistral Vibe](https://github.com/mistralai/mistral-vibe) (requires Mistral
-  API key)
+- [Mistral Vibe](https://github.com/mistralai/mistral-vibe), signed in with your
+  Mistral account or an API key
 
 ## Installation Steps
 

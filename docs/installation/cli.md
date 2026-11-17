@@ -1,4 +1,4 @@
-# Command Line Interfaces
+# CLI Coding Agents
 
 For users comfortable with the terminal. Each guide below sets the CLI up as an
 MCP client, usually via `npx producer-pal`.
@@ -12,7 +12,7 @@ Claude Code, Codex CLI, and Gemini CLI can use the portable
 | [Claude Code](./claude-code)   | Anthropic | Subscription             | Claude models  |
 | [Codex CLI](./codex-cli)       | OpenAI    | Subscription             | GPT models     |
 | [Gemini CLI](./gemini-cli)     | Google    | Subscription recommended | Gemini models  |
-| [Mistral Vibe](./mistral-vibe) | Mistral   | API key                  | Mistral models |
+| [Mistral Vibe](./mistral-vibe) | Mistral   | Subscription or API key  | Mistral models |
 
 ## Quick Start
 

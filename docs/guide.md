@@ -16,15 +16,19 @@ device.
 For detailed installation instructions for your preferred AI platform, see the
 [Installation Guide](/installation).
 
-Quick options:
+Three ways to get an AI:
 
-- **[Built-in Chat UI](/installation/chat-ui)** - Works with local AI, an AI
-  router like OpenRouter, or your own API key
-- **[Claude Desktop](/installation/claude-desktop)** - Anthropic's desktop app
-- **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
-  Claude Code, and other MCP-compatible coding agents
-- **[Local Models](/installation/choose-local)** - Run completely offline with
-  Ollama, Bionic / LM Studio, and other MCP-compatible platforms
+- **[Your AI subscription](/installation#option-1-use-your-subscription)** -
+  Already pay for Claude, ChatGPT, Gemini or Mistral? Use its desktop app or
+  [CLI coding agent](/installation#command-line) at no extra cost
+- **[Pay-as-you-go API keys](/installation#option-2-use-api-keys)** - Try nearly
+  any AI model in the built-in chat UI, through an AI router like OpenRouter or
+  your own API key
+- **[A local model](/installation#option-3-use-a-local-model)** - Free and
+  offline with Ollama or Bionic / LM Studio, on a powerful computer
+
+No AI needed for these:
+
 - **[Agent Skill](/guide/skills)** - Drop a folder into Claude Code, Codex CLI,
   or Gemini CLI, with no MCP config
 - **[REST API](/guide/rest-api)** - Script Live over plain HTTP, no AI required
