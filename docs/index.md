@@ -206,7 +206,9 @@ features:
   ([written guide](/installation/api-keys#gemini)). _Note: the free use shown
   here is now very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users). _Note: the free use shown here is now very limited._
+  (for command line users). _Note: Gemini CLI is now
+  [Antigravity CLI](/installation/antigravity-cli), and the free use shown here
+  is now very limited._
 
 ## About Producer Pal
 
@@ -221,7 +223,7 @@ models via Ollama or Bionic / LM Studio. The AI is optional. The same device
 exposes an open [REST API](/guide/rest-api), so anything that can make an HTTP
 request (scripts, coding agents, your own tools) can read and edit a Live Set
 with no AI involved. There's also a portable [Agent Skill](/guide/skills) for
-Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime.
+Claude Code, Codex CLI, Antigravity CLI, and any SKILL.md-compatible runtime.
 
 Producer Pal is free, open-source (MIT), and developed in the open, with updates
 for new Ableton Live features.

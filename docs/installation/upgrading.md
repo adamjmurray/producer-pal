@@ -36,8 +36,8 @@ update a 2.4 device, so do this by hand. It takes a few minutes.
    (see [Claude Desktop installation](./claude-desktop)).
 8. Restart your AI app and start a fresh conversation.
 
-Apps set up with `npx -y producer-pal@latest` (Claude Code, Codex, Gemini CLI
-and others) update themselves, and so does the built-in chat.
+Apps set up with `npx -y producer-pal@latest` (Claude Code, Codex, Antigravity
+CLI and others) update themselves, and so does the built-in chat.
 
 ## Let your AI update it
 

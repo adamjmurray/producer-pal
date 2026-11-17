@@ -9,10 +9,10 @@ options.
 | ------------------------------------- | ----------------- | ----------------------------------------------------------------- |
 | [Built-in Chat UI](./api-keys#gemini) | A quick first try | Easy setup. Regular use needs billing or an AI router.            |
 | [Google Antigravity](./antigravity)   | Desktop app fans  | Google's agent app. MCP servers are added by editing a JSON file. |
-| [Gemini CLI](./gemini-cli)            | Developers        | Terminal-based. Google AI subscription increases CLI limits.      |
+| [Antigravity CLI](./antigravity-cli)  | Developers        | Terminal-based. Google AI subscription increases CLI limits.      |
 
-Gemini CLI can also use the portable [Agent Skill](/guide/skills) instead of
-MCP.
+Antigravity CLI can also use the portable [Agent Skill](/guide/skills) instead
+of MCP.
 
 ## Recommendation
 
@@ -26,5 +26,5 @@ through an [AI router](./ai-routers#openrouter) instead.
 - Gemini 4 Argon recommended
 - For regular use:
   - [OpenRouter](./ai-routers#openrouter) with Gemini - simplest paid option
-  - [Google Antigravity](./antigravity) or [Gemini CLI](./gemini-cli) with a
-    Google AI subscription - higher limits without API billing setup
+  - [Google Antigravity](./antigravity) or [Antigravity CLI](./antigravity-cli)
+    with a Google AI subscription - higher limits without API billing setup

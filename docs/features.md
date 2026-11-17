@@ -259,8 +259,8 @@ reproduce them here:
 ### Agent Skill (for coding agents) {#agent-skill}
 
 Not to be confused with the skills above: an **[Agent Skill](/guide/skills)** is
-the portable `SKILL.md` convention that Claude Code, Codex CLI, and Gemini CLI
-share. Producer Pal ships one: a drop-in folder that drives the
+the portable `SKILL.md` convention that Claude Code, Codex CLI, and Antigravity
+CLI share. Producer Pal ships one: a drop-in folder that drives the
 [REST API](/guide/rest-api), so a coding agent can control Ableton Live with no
 MCP client at all.
 

@@ -12,7 +12,7 @@ npx producer-pal@latest
 ```
 
 This starts a stdio-to-HTTP bridge that enables MCP clients (Claude Desktop,
-Claude Code, Gemini CLI, Codex CLI, VS Code with Cline, LM Studio, etc.) to
+Claude Code, Antigravity CLI, Codex CLI, VS Code with Cline, LM Studio, etc.) to
 communicate with the Producer Pal Max for Live device running in Ableton Live.
 
 ## Prerequisites
@@ -64,9 +64,9 @@ claude mcp add producer-pal npx producer-pal@latest
 </details>
 
 <details>
-<summary>Gemini CLI</summary>
+<summary>Antigravity CLI</summary>
 
-Edit `~/.gemini/settings.json`:
+Edit `~/.gemini/config/mcp_config.json`:
 
 ```json
 {

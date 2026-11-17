@@ -28,6 +28,7 @@ export default defineConfig({
           item.url !== "installation/codex-app" &&
           item.url !== "installation/lm-studio" &&
           item.url !== "installation/gemini" &&
+          item.url !== "installation/gemini-cli" &&
           item.url !== "installation/openai" &&
           item.url !== "installation/chat-ui-other-providers" &&
           item.url !== "installation/ollama" &&
@@ -168,7 +169,10 @@ export default defineConfig({
                 items: [
                   { text: "Claude Code", link: "/installation/claude-code" },
                   { text: "Codex CLI", link: "/installation/codex-cli" },
-                  { text: "Gemini CLI", link: "/installation/gemini-cli" },
+                  {
+                    text: "Antigravity CLI",
+                    link: "/installation/antigravity-cli",
+                  },
                   {
                     text: "Mistral Vibe",
                     link: "/installation/mistral-vibe",

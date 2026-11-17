@@ -59,10 +59,10 @@ with your other tools. See the
 
 - **[Claude Code](./installation/claude-code)** — Anthropic
 - **[Codex CLI](./installation/codex-cli)** — OpenAI
-- **[Gemini CLI](./installation/gemini-cli)** — Google
+- **[Antigravity CLI](./installation/antigravity-cli)** — Google
 - **[Mistral Vibe](./installation/mistral-vibe)** — Mistral
 
-Claude Code, Codex CLI and Gemini CLI can also use the portable
+Claude Code, Codex CLI and Antigravity CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP: one folder dropped into the
 agent's skills directory. (Agent Skill users: follow
 [Path B](#path-b-device-first) below.)
@@ -110,7 +110,7 @@ paths, depending on your app.
   <div class="install-paths-grid">
     <div class="install-path install-path-ai">
       <h3 class="install-path-title">Path A: The AI sets it up</h3>
-      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Google Antigravity, Bionic / LM Studio, other MCP clients</p>
+      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Antigravity CLI, Mistral Vibe, ChatGPT app, Google Antigravity, Bionic / LM Studio, other MCP clients</p>
       <ol class="install-path-steps">
         <li>Add Producer Pal to your app</li>
         <li>Open Live and say "connect to ableton"</li>

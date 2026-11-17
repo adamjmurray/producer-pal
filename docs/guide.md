@@ -30,7 +30,7 @@ Three ways to get an AI:
 No AI needed for these:
 
 - **[Agent Skill](/guide/skills)** - Drop a folder into Claude Code, Codex CLI,
-  or Gemini CLI, with no MCP config
+  or Antigravity CLI, with no MCP config
 - **[REST API](/guide/rest-api)** - Script Live over plain HTTP, no AI required
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
