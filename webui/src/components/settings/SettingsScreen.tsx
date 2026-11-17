@@ -20,6 +20,7 @@ import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings"
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { ConnectionTab } from "./ConnectionTab";
+import { SubscriptionHint } from "./helpers/SubscriptionHint";
 import { InstallationTab } from "./installation/InstallationTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import {
@@ -176,6 +177,9 @@ function SettingsTabContent(
 
   return (
     <div className="space-y-4">
+      {activeTab === "connection" && (
+        <SubscriptionHint chatSetUp={settings.chatSetUp} />
+      )}
       {activeTab === "connection" && (
         <ConnectionTab
           provider={settings.provider}
