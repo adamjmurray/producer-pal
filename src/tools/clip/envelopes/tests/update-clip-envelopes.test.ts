@@ -244,6 +244,21 @@ describe("updateClip - envelopes", () => {
     ).rejects.toThrow('Invalid envelopes target "kick"');
   });
 
+  it.each(["modwheel", "Pitch Bend", "Modulation", "CC1", "sustain"])(
+    "points a MIDI controller target at CC Control: %s",
+    async (target) => {
+      await expect(
+        updateClip({ id: "123", envelopes: `${target}: 1|1 0` }),
+      ).rejects.toThrow("add a CC Control device");
+    },
+  );
+
+  it("leaves CC Control out of other invalid targets", async () => {
+    await expect(
+      updateClip({ id: "123", envelopes: "kick: 1|1 0" }),
+    ).rejects.toThrow(/h56$/);
+  });
+
   it("refuses a line with no colon between target and notation", async () => {
     await expect(
       updateClip({ id: "123", envelopes: "volume 1|1 0" }),

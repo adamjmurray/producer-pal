@@ -15,6 +15,10 @@ export {
   automationArrangementDirect,
   automationArrangementViaSession,
 } from "./clip/automation/automation-arrangement.ts";
+export {
+  automationCcControlModWheel,
+  automationCcControlPitchBend,
+} from "./clip/automation/automation-cc-control.ts";
 export { automationClearOne } from "./clip/automation/automation-clear-one.ts";
 export { automationNoRemoteScript } from "./clip/automation/automation-no-remote-script.ts";
 export { automationReadEnvelopes } from "./clip/automation/automation-read.ts";

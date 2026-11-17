@@ -8,6 +8,10 @@ Mechanics: [clip-envelopes.md](../../../live-api/clip-envelopes.md).
 remote script. A line it can't write is a `detail` on that clip's entry
 (`envelope "<target>": <why>`), and the other lines still run.
 
+- **A target that isn't an id, a mixer name or a hosted param refuses the
+  call**, before anything is written. When it reads like MIDI controller data
+  (`modwheel`, `Pitch Bend`, `CC1`), the refusal also says to add a CC Control
+  device and use its param ids: that data has no envelope target of its own.
 - **A line that stalls may still have landed; one Live skipped didn't.** When
   the route doesn't answer, or its connection is lost after the request went
   out, the line's `detail` says its points may still have landed (or that it may

@@ -19,6 +19,14 @@ const MIXER_TARGET = /^(?:volume|pan|send\d+)$/;
 /** A Live object id, which is how a device parameter is named. */
 const ID_TARGET = /^\d+$/;
 
+/** A target that names MIDI controller data, which has no envelope target of its own. */
+const MIDI_CONTROLLER_NAME =
+  /mod|bend|pressure|aftertouch|sustain|pedal|midi|\bcc/i;
+
+/** Where that data is automated instead. */
+const CC_CONTROL_HINT =
+  ". For mod wheel, pitch bend, pressure or a MIDI CC, add a CC Control device (ppal-create-device) and use its param ids";
+
 /** One line of the `envelopes` param. */
 export interface EnvelopeLine {
   /** The parameter, as the call named it: an id, volume/pan/send0.., a chain's t0/d0/c1/volume, or a hosted param like t0/d0/h56 */
@@ -89,7 +97,7 @@ function readLine(line: string): EnvelopeLine {
     parseHostedTarget(target) == null
   ) {
     throw new Error(
-      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param like t0/d0/h56`,
+      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param like t0/d0/h56${MIDI_CONTROLLER_NAME.test(target) ? CC_CONTROL_HINT : ""}`,
     );
   }
 
