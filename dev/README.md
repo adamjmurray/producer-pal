@@ -81,7 +81,7 @@ part is a file beside it.
 
 ## Process
 
-- [process/releasing/](process/releasing/README.md) — the release steps.
+- [process/releasing.md](process/releasing.md) — the release steps.
 - [process/documentation-site.md](process/documentation-site.md) — the VitePress
   docs site.
 
