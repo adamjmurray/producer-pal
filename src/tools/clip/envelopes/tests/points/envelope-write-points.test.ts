@@ -12,7 +12,7 @@ import {
   formatEnvelopeNotation,
   parseEnvelopeNotation,
 } from "#src/notation/barbeat/envelope/envelope-notation.ts";
-import { envelopeWritePoints } from "#src/tools/clip/envelopes/envelope-write-points.ts";
+import { envelopeWritePoints } from "#src/tools/clip/envelopes/points/envelope-write-points.ts";
 import { type EnvelopeWritePoint } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 
 const FOUR_FOUR = { timeSigNumerator: 4, timeSigDenominator: 4 };

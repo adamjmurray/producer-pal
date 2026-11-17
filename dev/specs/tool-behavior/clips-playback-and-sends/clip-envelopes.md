@@ -66,6 +66,14 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `envelope "<target>": re-enabled its automation, which was overridden`. A
   parameter that wasn't overridden adds nothing.
 
+- **A line that looks spelled 0..1 on a wider parameter is noted.** Values are
+  raw, and a 0..1 line is in range for a parameter that runs 0..127, so it
+  writes and plays as a near-flat line. When the parameter's range spans 10 or
+  more, it isn't stepped, every value written is within 0..1 and not all are 0,
+  the clip's `detail` gives both:
+  `envelope "<target>": values span 0..1 of the param's -64..64 range`. The line
+  is still written. Any other write says nothing about the range.
+
 ## Hosted plug-in params
 
 Mechanics: [plugin-hosting.md](../../../live-api/plugin-hosting.md).

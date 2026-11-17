@@ -19,8 +19,9 @@ import {
 import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { hostedSlots, type HostedSlots } from "./hosted/hosted-slots.ts";
-import { envelopeWritePoints } from "./envelope-write-points.ts";
+import { envelopeWritePoints } from "./points/envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
+import { narrowRangeNote } from "./points/narrow-range-note.ts";
 import { type EnvelopeTrack, trackText } from "./envelope-track.ts";
 import {
   findSameParameter,
@@ -428,6 +429,7 @@ async function writeEnvelope(
         note: joinDetails([
           outcome.result.re_enabled ? REENABLED_NOTE : undefined,
           pastEndNote(points, address),
+          narrowRangeNote(points, outcome.result.parameter),
         ]),
       }
     : outcome;

@@ -36,17 +36,24 @@ describe("updateClip - envelopes on a CC Control", () => {
     });
   });
 
-  it("writes Mod Wheel, found in a device read, by its index on the device", async () => {
+  /**
+   * The id a device read gives the CC Control's Mod Wheel.
+   * @returns The param id
+   */
+  async function modWheelId(): Promise<string | undefined> {
     const read = (await readDevice({ id: "cc-1", include: ["params"] })) as {
       parameters: Array<{ id: string; name: string }>;
     };
-    const modWheel = read.parameters.find(
-      (param) => param.name === "Mod Wheel",
-    );
+
+    return read.parameters.find((param) => param.name === "Mod Wheel")?.id;
+  }
+
+  it("writes Mod Wheel, found in a device read, by its index on the device", async () => {
+    const id = await modWheelId();
 
     const result = await updateClip({
       id: "123",
-      envelopes: `${modWheel?.id}: 1|1 0 / 2|1 64`,
+      envelopes: `${id}: 1|1 0 / 2|1 64`,
     });
 
     const [, args] =
@@ -64,6 +71,32 @@ describe("updateClip - envelopes on a CC Control", () => {
     );
     expect(result).toStrictEqual(
       expect.objectContaining({ id: "123", envelopes: 1 }),
+    );
+  });
+
+  it("notes a line spelled 0..1 on a 0..127 param", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        available: true,
+        result: {
+          samples: [],
+          parameter: { name: "Mod Wheel", min: 0, max: 127, quantized: false },
+        },
+      },
+    });
+
+    const id = await modWheelId();
+    const result = await updateClip({
+      id: "123",
+      envelopes: `${id}: 1|1 0 / 2|1 1`,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        detail: `envelope "${id}": values span 0..1 of the param's 0..127 range`,
+      }),
     );
   });
 });

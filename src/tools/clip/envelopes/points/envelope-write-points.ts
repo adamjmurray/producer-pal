@@ -11,7 +11,7 @@ import {
   curveToCoefficients,
 } from "#src/notation/barbeat/envelope/envelope-curves.ts";
 import { type EnvelopeNotationPoint } from "#src/notation/barbeat/envelope/envelope-notation.ts";
-import { type EnvelopeWritePoint } from "./remote-script-envelope-contract.ts";
+import { type EnvelopeWritePoint } from "../remote-script-envelope-contract.ts";
 
 /**
  * Build the points to send for one envelope.
