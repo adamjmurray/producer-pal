@@ -27,7 +27,7 @@ import { errorPayloadMessage } from "#src/shared/error-message.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
   luna: "gpt-6-luna",
-  sol: "gpt-6.1-sol",
+  sol: "gpt-6.2-sol",
 };
 
 export const CODEX_CLI_TRANSPORT: AgentCliTransport = {

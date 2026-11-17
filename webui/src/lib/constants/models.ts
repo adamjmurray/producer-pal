@@ -145,8 +145,8 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-6.1-terra", label: "GPT-6.1 Terra" },
-  { value: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
-  { value: "gpt-6-astra", label: "GPT-6 Astra" },
+  { value: "gpt-6.2-sol", label: "GPT-6.2 Sol" },
+  { value: "gpt-6.2-astra", label: "GPT-6.2 Astra" },
   { value: "gpt-6-luna", label: "GPT-6 Luna" },
   {
     value: OPENAI_REALTIME_MODEL,
@@ -182,8 +182,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Haiku 5.5",
   },
   { value: "openai/gpt-6.1-terra", label: "[Paid] OpenAI GPT-6.1 Terra" },
-  { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
-  { value: "openai/gpt-6-astra", label: "[Paid] OpenAI GPT-6 Astra" },
+  { value: "openai/gpt-6.2-sol", label: "[Paid] OpenAI GPT-6.2 Sol" },
+  { value: "openai/gpt-6.2-astra", label: "[Paid] OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
     value: "google/gemini-4-argon",
@@ -235,8 +235,8 @@ export const VERCEL_MODELS = [
   { value: "anthropic/claude-fable-5.2", label: "Anthropic Claude Fable 5.2" },
   { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
   { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
-  { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
-  { value: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra" },
+  { value: "openai/gpt-6.2-sol", label: "OpenAI GPT-6.2 Sol" },
+  { value: "openai/gpt-6.2-astra", label: "OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
   { value: "google/gemini-4-carbon", label: "Google Gemini 4 Carbon" },

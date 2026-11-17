@@ -125,7 +125,7 @@ const BASE_STORAGE: Body = {
   },
   producer_pal_provider_openai: {
     apiKey: FAKE_KEY,
-    model: "gpt-6.1-sol",
+    model: "gpt-6.2-sol",
     thinking: "Default",
   },
 };

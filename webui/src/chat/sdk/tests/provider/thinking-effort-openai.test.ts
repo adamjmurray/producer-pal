@@ -98,6 +98,8 @@ describe("mapThinkingToReasoningEffort", () => {
     it("should map off to low for GPT-6 models that reject none", () => {
       expect(mapThinkingToReasoningEffort("off", "gpt-6-astra")).toBe("low");
       expect(mapThinkingToReasoningEffort("off", "gpt-6.1-sol")).toBe("low");
+      expect(mapThinkingToReasoningEffort("off", "gpt-6.2-sol")).toBe("low");
+      expect(mapThinkingToReasoningEffort("off", "gpt-6.2-astra")).toBe("low");
     });
 
     it("should keep none for dated ids of the models that accept it", () => {

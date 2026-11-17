@@ -28,7 +28,7 @@ export type ReasoningEffort =
   | "max";
 
 // GPT-6 ids that accept `reasoning_effort: "none"`. Every other GPT-6 model
-// (6.1 Sol, Astra, ...) 400s on it; the AI SDK drops the field with a warning,
+// (6.1+ Sol, Astra, ...) 400s on it; the AI SDK drops the field with a warning,
 // so the model would reason at its default instead of staying off.
 const GPT6_ACCEPTS_NONE = /^gpt-6(-sol|-luna|\.1-terra)(-\d{4}-\d{2}-\d{2})?$/;
 

@@ -38,7 +38,7 @@ the [ChatGPT App](./chatgpt-app) or [ChatGPT web app](./chatgpt-web) instead.
 1. [Get an OpenAI API key](https://platform.openai.com/api-keys)
 2. Settings to use in step 3:
    - Provider: **OpenAI**
-   - Model: e.g., `gpt-6.1-sol`
+   - Model: e.g., `gpt-6.2-sol`
 
 ### Anthropic
 

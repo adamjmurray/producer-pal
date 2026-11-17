@@ -127,7 +127,7 @@ be inferred from the prefix:
 | ----------------------------- | ----------- |
 | `gemini-4-argon`              | google      |
 | `claude-sonnet-5-5`           | anthropic   |
-| `gpt-6.1-sol`                 | openai      |
+| `gpt-6.2-sol`                 | openai      |
 | `google/gemini-4-argon`       | google      |
 | `anthropic/claude-sonnet-5-5` | anthropic   |
 | `codex-code/sol`              | codex-code  |
@@ -194,7 +194,7 @@ scripts/eval --tag paths,clips -m gemini-4-argon
 scripts/eval --tag paths -t path-session-slot -m gemini-4-argon
 
 # Run Luna at high reasoning effort, the other model at its default
-scripts/eval -m codex-code/luna -m openai/gpt-6.1-sol --thinking codex-code/luna=high -t connect-to-ableton
+scripts/eval -m codex-code/luna -m openai/gpt-6.2-sol --thinking codex-code/luna=high -t connect-to-ableton
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
