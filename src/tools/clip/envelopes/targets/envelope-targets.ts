@@ -3,21 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Turning an `envelopes` target — a Live parameter id, a mixer name, or a rack
-// chain's mixer name like `t0/d0/c1/volume` — into the address the remote
-// script takes.
+// Turning an `envelopes` target — a Live parameter id, a device path and param
+// name like `t0/d0/Filter Freq`, a mixer name, or a rack chain's mixer name
+// like `t0/d0/c1/volume` — into the address the remote script takes.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { mixerParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
-import { type EnvelopeLine } from "./envelope-lines.ts";
-import { type EnvelopeTrack, isOnTrack, trackText } from "./envelope-track.ts";
+import { type EnvelopeLine } from "../envelope-lines.ts";
+import { parseNameTarget, resolveNameTarget } from "./envelope-name-target.ts";
+import { type EnvelopeTrack, isOnTrack, trackText } from "../envelope-track.ts";
 import {
   type HostedTarget,
   parseHostedTarget,
   resolveHostedTarget,
-} from "./hosted/hosted-envelope-target.ts";
+} from "../hosted/hosted-envelope-target.ts";
 
 /** A device parameter reachable by the remote script's d0/c1/d0 walk. */
 const DEVICE_PARAMETER =
@@ -116,13 +117,21 @@ export function findSameParameter(
 
 /**
  * Resolve one `envelopes` target against the clip's own track.
- * @param target - The target as the call wrote it: an id, or volume/pan/send0..
+ * @param target - The target as the call wrote it: an id, a device path and
+ *   param name, or volume/pan/send0..
  * @param track - The track the clip sits on
  * @returns The address the remote script takes
- * @throws Error when the id names nothing, isn't a parameter, or sits
+ * @throws Error when the target names nothing, isn't a parameter, or sits
  *   somewhere clip automation can't reach
  */
 function envelopeTarget(target: string, track: EnvelopeTrack): EnvelopeTarget {
+  // Before the chain mixer check: `t0/d0/volume` is d0's own "Volume" param.
+  const named = parseNameTarget(target);
+
+  if (named != null) {
+    return trackParameter(target, resolveNameTarget(named, track).path);
+  }
+
   const chainMixer = CHAIN_MIXER_TARGET.exec(target);
 
   if (chainMixer != null) {

@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   type ClipEnvelopeResult,
+  createTestDeviceAt,
   getToolErrorMessage,
   parseToolResult,
   type ReadClipResult,
@@ -252,6 +253,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
       expect((await readEnvelopes(id)) as ClipEnvelopeResult[]).toStrictEqual([
         expect.objectContaining({
+          events: expect.stringMatching(/^1\|1 0\.25/) as string,
+        }),
+      ]);
+    });
+
+    it("writes a parameter named by its device path and name", async () => {
+      const device = await createTestDeviceAt(ctx.client!, "Reverb", TRACK);
+      const id = await emptyClip();
+
+      // The name holds a slash, which must not read as more path.
+      expect(
+        await writeEnvelopes(id, `${device}/Dry/Wet: 1|1 0.25`),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+      expect((await readEnvelopes(id)) as ClipEnvelopeResult[]).toStrictEqual([
+        expect.objectContaining({
+          parameter: expect.stringContaining("Dry/Wet") as string,
           events: expect.stringMatching(/^1\|1 0\.25/) as string,
         }),
       ]);

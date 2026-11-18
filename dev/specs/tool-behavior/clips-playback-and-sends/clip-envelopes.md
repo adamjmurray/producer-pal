@@ -8,10 +8,18 @@ Mechanics: [clip-envelopes.md](../../../live-api/clip-envelopes.md).
 remote script. A line it can't write is a `detail` on that clip's entry
 (`envelope "<target>": <why>`), and the other lines still run.
 
-- **A target that isn't an id, a mixer name or a hosted param refuses the
-  call**, before anything is written. When it reads like MIDI controller data
-  (`modwheel`, `Pitch Bend`, `CC1`), the refusal also says to add a CC Control
-  device and use its param ids: that data has no envelope target of its own.
+- **A target that isn't an id, a device path and param name, a mixer name or a
+  hosted param refuses the call**, before anything is written. When it reads
+  like MIDI controller data (`modwheel`, `Pitch Bend`, `CC1`), the refusal also
+  says to add a CC Control device and use its param ids: that data has no
+  envelope target of its own.
+- **A device param is named by id, or by its device's path and its name**
+  (`t0/d0/Filter Freq`). The leading `dN`/`cN` segments are the path and the
+  rest is the name, matched as `ppal-update-device` matches one, so a name may
+  hold a `/` or a `:` (`t0/d1/c0/d0/Dry/Wet`). A line splits at its last colon.
+  A name that matches two params on the device skips the line, naming their ids
+  and ranges; so does a name that matches none. The name and the id of one param
+  in one call are refused, as any two lines on one parameter are.
 - **A line that stalls may still have landed; one Live skipped didn't.** When
   the route doesn't answer, or its connection is lost after the request went
   out, the line's `detail` says its points may still have landed (or that it may

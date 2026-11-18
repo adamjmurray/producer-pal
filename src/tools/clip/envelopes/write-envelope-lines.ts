@@ -27,7 +27,7 @@ import {
   findSameParameter,
   resolveEnvelopeLines,
   type ResolvedEnvelopeLine,
-} from "./envelope-targets.ts";
+} from "./targets/envelope-targets.ts";
 import {
   ENVELOPE_ROUTES,
   type EnvelopeClearResult,

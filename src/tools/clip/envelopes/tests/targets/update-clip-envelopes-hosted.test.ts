@@ -465,7 +465,7 @@ describe("updateClip - hosted envelope targets", () => {
     setupTrack();
 
     await expect(
-      updateClip({ id: "123", envelopes: `t0/d0/hx: ${NOTATION}` }),
+      updateClip({ id: "123", envelopes: `t0/hx: ${NOTATION}` }),
     ).rejects.toThrow("or a hosted plug-in's param like t0/d0/h56");
   });
 
