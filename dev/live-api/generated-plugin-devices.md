@@ -41,7 +41,8 @@ the generic wrapper (under 2 s). The file is about 2.5 KB per param.
   dials. Opening an undo group around it doesn't change that.
 
 So a preset load costs **two undo steps**, and that's the floor with a Max state
-blob. The first undo puts the whole sound back. The second puts the dials back.
+blob. With follow in Python, the first undo puts the dials back (the plug-in's
+params follow them) and the second puts the whole state back.
 
 ### No other place to keep the state
 
@@ -65,8 +66,14 @@ duplicate doesn't get its contents).
   been quiet for 50 ms. Slot writes pass `speedlim 20`, so an echo can arrive 20
   ms stale. Following each echo right away ping-ponged stale values against the
   dials and looped undo.
-- **Set dials through the Live API**, all in one undo group, never with
-  `setvalueof`. A dial message per param floods undo.
+- **Compare with the echoed values**, not fresh reads. Once echoes are quiet,
+  the last one per param is its value. Asking the plug-in again costs about 0.7
+  ms a param (it formats the display text too): 394 ms for Serum's 543.
+- **Set the dials from the remote script.** The wrapper posts the changes with
+  `XMLHttpRequest`, and Python sets them in one undo step, skipping automated
+  params (setting one overrides its automation). Never `setvalueof` on the
+  dials: a dial message per param floods undo. If the remote script doesn't
+  answer, the wrapper sets them through the Live API in one undo group.
 - **Don't follow while playing, for 1 s after a stop, or for 3 s after a state
   restore.** Echoes then are automation or the restore, not the user.
 - **Follow's dial sets must not look like playback.** The generic wrapper skips
@@ -76,22 +83,25 @@ duplicate doesn't get its contents).
 
 ## Costs and open problems
 
-- **Follow blocks Live.** Each Live API set costs about 5–6 ms on Live's main
-  thread: 200 changed params took 0.9 s, 543 took 3.3 s. A remote script ping
-  stalled 2.4 s while Serum's 543 followed. Loading real Serum presets showed
-  the OS waiting spinner for about a second, then Live recovered. Older machines
-  will be slower. Ways to manage it:
-  - Cap the dials per device (512 or 1024, say), possibly set by the user. This
-    bounds the worst case, but then something has to pick which params get
-    dials.
-  - Warn users about the cost on big plug-ins.
-  - **Set the dials from the remote script.** Python set all 543 of Serum's in
-    1.6 ms (against 3.3 s from Max), inside `begin_undo_step`/`end_undo_step`,
-    as one undo step. Live didn't stall, and the plug-in followed every dial.
-    The wrapper can post its changes straight to the remote script with
-    `XMLHttpRequest`, which Max's v8 has in Live 12.4 (Max 9.1.5; a ping took
-    25–100 ms). `fetch()` arrives only in Max 9.2 (Live 13), which also rewrote
-    `XMLHttpRequest`, so check it there. Follow then needs the remote script.
+- **Follow from Max blocked Live.** Each Live API set costs about 5–6 ms on
+  Live's main thread: Serum's 543 took 3.3 s, and real preset loads showed the
+  OS waiting spinner for about a second. From the remote script, Python set all
+  543 in 1.6 ms, as one undo step, and the plug-in followed every dial. A whole
+  follow of Serum's 543 now takes about 20 ms to compare and 35–85 ms for the
+  round trip to Python. Notes:
+  - `XMLHttpRequest` works in Max 9.1.5 (Live 12.4). `fetch()` arrives only in
+    Max 9.2 (Live 13), which also rewrote `XMLHttpRequest`, so check it there.
+  - Follow at full speed needs the remote script; the Live API fallback still
+    stalls. A cap on dials per device (512 or 1024) and a warning would bound
+    that case.
+  - The spike route hardcodes port 3349. A real build has to find the port the
+    script got.
+  - The first follow after load builds the device's name-to-param map, one Live
+    API call per param (about 0.5 s for Serum). Build it earlier, off the user's
+    way.
+  - A preset load is still two undo steps. The dials' step is now the newest:
+    the first undo puts the dials back (the plug-in's params follow), the second
+    puts the whole state back.
 - **Plug-in updates.** The map is by `vst~` param index. If an update adds,
   removes or reorders params, dials drive the wrong params and new ones have no
   dial. The device would need to check names at load and remap by name, or ask

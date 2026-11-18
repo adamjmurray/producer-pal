@@ -12,10 +12,16 @@ from . import hotswap
 
 
 def set_params(bridge, params):
-    """Set `values` ([[param index, value], ...]) on `device_path`."""
+    """Set `values` ([[param index, value], ...]) on `device_path`.
+
+    With `skip_automated`, leaves params that have automation alone: setting
+    one would override it.
+    """
     device = hotswap.device_at(bridge.song, params.get("device_path"))
     values = params.get("values") or []
     group = params.get("undo", True)
+    skip_automated = params.get("skip_automated", False)
+    skipped = 0
     song = bridge.song
     started = time.perf_counter()
 
@@ -24,12 +30,16 @@ def set_params(bridge, params):
     try:
         parameters = device.parameters
         for index, value in values:
-            parameters[int(index)].value = float(value)
+            parameter = parameters[int(index)]
+            if skip_automated and parameter.automation_state != 0:
+                skipped += 1
+                continue
+            parameter.value = float(value)
     finally:
         if group:
             song.end_undo_step()
 
-    return {"set": len(values), "ms": round((time.perf_counter() - started) * 1000, 2)}
+    return {"set": len(values) - skipped, "skipped": skipped, "ms": round((time.perf_counter() - started) * 1000, 2)}
 
 
 ROUTES = {"/spike/set-params": set_params}

@@ -179,7 +179,7 @@ function pval(index, value, ...display) {
 
   state.values[index] = { value, display: display.join(" ") };
   showKnobValue(Number(index), value);
-  if (BAKED) noteFollow(Number(index));
+  if (BAKED) noteFollow(Number(index), Number(value));
 
   // Our own writes echo back synchronously while busy is up.
   if (busy > 0) return;
@@ -218,7 +218,10 @@ const STOP_GRACE_MS = 1000;
 // back starts a ping-pong. Note the param, and once echoes have been quiet for
 // FOLLOW_SETTLE_MS compare the dial with the param as it is then.
 const FOLLOW_SETTLE_MS = 50; // longer than SLOT_INTERVAL_MS (speedlim)
-const pendingFollow = new Set(); // param indexes echoed since the last check
+// param index -> its last echoed value since the last check. Once echoes are
+// quiet, the last one is the param's value: no need to ask the plug-in again
+// (about 0.7 ms a param, with its display text).
+const pendingFollow = new Map();
 const followTask = new Task(followSettled);
 const followLog = []; // spike: what the last checks did, for the debug op
 let followChecks = 0;
@@ -245,17 +248,18 @@ function debugInfo() {
 let checking = false; // the check's own reads echo too
 let followSetAt = 0; // when a check last set dials
 
-function noteFollow(index) {
+function noteFollow(index, value) {
   if (checking || !slotOfIndex.has(index)) return;
   if (pendingFollow.size === 0) logFollow("echoes start");
 
-  pendingFollow.add(index);
+  pendingFollow.set(index, value);
   followTask.cancel();
   followTask.schedule(FOLLOW_SETTLE_MS);
 }
 
 function followSettled() {
-  const indexes = [...pendingFollow];
+  const echoes = new Map(pendingFollow);
+  const indexes = [...echoes.keys()];
 
   pendingFollow.clear();
   followChecks++;
@@ -263,42 +267,80 @@ function followSettled() {
     checking = true;
     let changes;
 
+    const compareStart = Date.now();
+
     try {
-      changes = followChanges(indexes);
+      changes = followChanges(echoes);
     } finally {
       checking = false;
     }
 
     if (changes.length === 0) return logFollow(`none of ${indexes.length}`);
 
-    // Through the Live API, not messages to the dials: Live gives each dial
-    // message its own undo step, but merges API changes into the open step.
-    // All in this one call, so the step closes right after.
-    // The state is saved here too, so a preset load is two undo steps: this
-    // state write (Live keeps a Max write as its own step even inside the
-    // group, and it lands after the dials) and the dials. Undoing the first
-    // brings the whole sound back; the second brings the dials.
-    new LiveAPI("live_set").call("begin_undo_step");
-    try {
-      followSetAt = Date.now();
-      saveState("follow");
-      for (const { param, value } of changes) {
-        new LiveAPI(`this_device parameters ${param}`).set("value", value);
-      }
-    } finally {
-      new LiveAPI("live_set").call("end_undo_step");
-    }
-    // No markEdited: the state is saved, and the dials' own writes echoing
-    // back would only add an undo step that changes nothing.
+    // The state is saved first, so a preset load is two undo steps: this
+    // state write (Live keeps a Max write as its own step) and the dials.
+    // Undoing the dials' step brings their values back; the state's step
+    // brings the whole sound.
     followSetAt = Date.now();
-    logFollow(`set ${changes.length} of ${indexes.length}`);
+    saveState("follow");
+    setDials(changes);
+    logFollow(`setting ${changes.length} of ${indexes.length} (compare ${Date.now() - compareStart} ms)`);
   } catch (error) {
     logFollow(`error ${error?.message ?? error}`);
   }
 }
 
+// Spike: the remote script sets the dials in one undo step, about 2000 times
+// faster than the Live API here (5-6 ms a param on Live's main thread, so a
+// big preset load froze Live for seconds). Falls back to the Live API when the
+// remote script doesn't answer.
+const REMOTE_SCRIPT_URL = "http://127.0.0.1:3349/spike/set-params";
+
+function setDials(changes) {
+  const started = Date.now();
+  const xhr = new XMLHttpRequest();
+
+  xhr.open("POST", REMOTE_SCRIPT_URL);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    followSetAt = Date.now();
+    if (xhr.status === 200) {
+      const { set, skipped } = JSON.parse(xhr.responseText);
+
+      logFollow(`set ${set} via remote script in ${Date.now() - started} ms, ${skipped} automated`);
+    } else {
+      setDialsByApi(changes);
+      logFollow(`set ${changes.length} via Live API (remote script: ${xhr.status})`);
+    }
+  };
+  xhr.send(
+    JSON.stringify({
+      device_path: new LiveAPI("this_device").unquotedpath,
+      values: changes.map(({ param, value }) => [param, value]),
+      // Setting an automated dial overrides its automation.
+      skip_automated: true,
+    }),
+  );
+}
+
+// Through the Live API, not messages to the dials: Live gives each dial
+// message its own undo step, but merges API changes into the open step.
+function setDialsByApi(changes) {
+  new LiveAPI("live_set").call("begin_undo_step");
+  try {
+    for (const { param, value } of changes) {
+      const api = new LiveAPI(`this_device parameters ${param}`);
+
+      if (Number(api.get("automation_state")) === 0) api.set("value", value);
+    }
+  } finally {
+    new LiveAPI("live_set").call("end_undo_step");
+  }
+  followSetAt = Date.now();
+}
+
 // The dials that differ from their param now.
-function followChanges(indexes) {
+function followChanges(echoes) {
   // Playing: automation moves the dials. Just stopped: a speedlim may still
   // send a held value. Restoring (load, duplicate, undo): the stored state can
   // be older than the dials, and Live restores the dials itself.
@@ -307,14 +349,11 @@ function followChanges(indexes) {
 
   const changes = [];
 
-  for (const index of indexes) {
+  for (const [index, value] of echoes) {
     const n = slotOfIndex.get(index);
-    const value = Number(readParam(index).value);
     const dial = Number(this.patcher.getnamed(`slotdial${n}`)?.getvalueof());
 
     if (!isFinite(value) || Math.abs(dial - value) < 1e-4) continue;
-    // Setting an automated dial overrides its automation.
-    if (dialHasAutomation(n)) continue;
 
     const param = paramIndexOf(dialName(n));
 
