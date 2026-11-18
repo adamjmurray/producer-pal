@@ -43,6 +43,22 @@ the generic wrapper (under 2 s). The file is about 2.5 KB per param.
 So a preset load costs **two undo steps**, and that's the floor with a Max state
 blob. The first undo puts the whole sound back. The second puts the dials back.
 
+### No other place to keep the state
+
+The plug-in's hidden state (wavetables, routings, samples) exists only inside
+its one opaque state chunk, so it can't be split into params. Tried as other
+stores for that chunk:
+
+- **A v8 box in parameter mode** (stored-only blob) acts like a `pattr`. Live
+  reads the value only when the box calls `notifyclients()`, and each of those
+  is an undo step. Saving the Set or duplicating the device uses the last value
+  Live read; it never asks for a fresh one.
+- **v8 `save()` + `embedmessage`** never runs in Live: not on Set save, not on
+  duplicate.
+
+Our notes on the plug-in name also rule out a `dict` with `@embed 1` (a
+duplicate doesn't get its contents).
+
 ## The follow design, and why each part exists
 
 - **Settle first.** Echoes from the plug-in are noted, then checked once they've
@@ -69,8 +85,12 @@ blob. The first undo puts the whole sound back. The second puts the dials back.
     bounds the worst case, but then something has to pick which params get
     dials.
   - Warn users about the cost on big plug-ins.
-  - Untested: make the sets from the remote script, where a Python param set
-    should be far cheaper, inside its own undo group.
+  - **Set the dials from the remote script.** Python set all 543 of Serum's in
+    1.6 ms (against 3.3 s from Max), inside `begin_undo_step`/`end_undo_step`,
+    as one undo step. Live didn't stall, and the plug-in followed every dial.
+    The wrapper still has to hand its changes to Python: Max's v8 has no HTTP,
+    so it would go through a `maxurl` object in the device, or through Producer
+    Pal's device. Either way, follow then needs the remote script.
 - **Plug-in updates.** The map is by `vst~` param index. If an update adds,
   removes or reorders params, dials drive the wrong params and new ones have no
   dial. The device would need to check names at load and remap by name, or ask
