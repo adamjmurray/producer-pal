@@ -18,6 +18,9 @@
 // On read a point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`.
 // Round brackets inside a display are written as square ones, so it stays one
 // group. A curve that isn't one Live draws reads as the nearest amount.
+//
+// On write a point may give the display alone, `1|1 (112 Hz)`, for the caller
+// to turn into a raw value. With both, the raw value is the one written.
 
 import {
   type CurveCoefficients,
@@ -43,8 +46,8 @@ const CONNECTOR = /^(?:\/|_|~.*)$/;
 /** A curve token `~N`: a signed decimal, no space after the `~`. */
 const CURVE = /^~([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/;
 
-/** "bar|beat value", with an optional "(display)" a read may have written. */
-const POINT = /^(\S+)\s+([^\s()]+)(?:\s*\(([^()]*)\))?$/;
+/** "bar|beat value", "bar|beat value (display)" or "bar|beat (display)". */
+const POINT = /^(\S+)\s+(?:([^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
 
 /** The clip meter the times are spelled in. */
 export interface EnvelopeMeter {
@@ -68,12 +71,20 @@ export interface EnvelopeNotationEvent {
 export interface EnvelopeNotationPoint {
   /** Ableton beats from the clip start */
   time: number;
+  /** Raw min..max */
   value: number;
   /** Hold the previous value until `time`, then jump to `value` */
   jump: boolean;
   /** The `~N` amount of the ramp that arrives here; absent for a straight one */
   curve?: number;
 }
+
+/**
+ * A point as it was written: its raw value, or the display that stands for one
+ * (`(112 Hz)`), which only the parameter can turn into a raw value.
+ */
+export type WrittenEnvelopePoint = Omit<EnvelopeNotationPoint, "value"> &
+  ({ value: number } | { display: string });
 
 /**
  * Write a clip's envelope events as notation.
@@ -108,12 +119,12 @@ export function formatEnvelopeNotation(
 export function parseEnvelopeNotation(
   text: string,
   meter: EnvelopeMeter,
-): EnvelopeNotationPoint[] {
+): WrittenEnvelopePoint[] {
   if (text.trim() === "") {
     return [];
   }
 
-  const points: EnvelopeNotationPoint[] = [];
+  const points: WrittenEnvelopePoint[] = [];
 
   for (const segment of splitOnConnectors(text)) {
     const connector = readConnector(segment.connector);
@@ -399,8 +410,8 @@ function readConnector(token: string | null): {
 function parsePoint(
   segment: string,
   meter: EnvelopeMeter,
-): EnvelopeNotationPoint {
-  const { barBeat, value } = readPoint(segment);
+): WrittenEnvelopePoint {
+  const { barBeat, ...value } = readPoint(segment);
 
   return {
     time: barBeatToAbletonBeats(
@@ -408,7 +419,7 @@ function parsePoint(
       meter.timeSigNumerator,
       meter.timeSigDenominator,
     ),
-    value,
+    ...value,
     jump: false,
   };
 }
@@ -416,10 +427,12 @@ function parsePoint(
 /**
  * Read one segment's time text and value, leaving the time unconverted.
  * @param segment - The text between two connectors
- * @returns The bar|beat text and the value
+ * @returns The bar|beat text, and the value or the display that stands for it
  * @throws If the segment isn't a point, or its value isn't a finite number
  */
-function readPoint(segment: string): { barBeat: string; value: number } {
+function readPoint(
+  segment: string,
+): { barBeat: string } & ({ value: number } | { display: string }) {
   const token = segment.trim();
 
   if (token === "") {
@@ -432,11 +445,25 @@ function readPoint(segment: string): { barBeat: string; value: number } {
 
   if (match == null) {
     throw new Error(
-      `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5"`,
+      `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5" (or a display value in parentheses: "1|1 (-6 dB)")`,
     );
   }
 
   const barBeat = match[1] as string;
+  const display = match[3]?.trim();
+
+  if (display != null) {
+    if (display === "") {
+      throw new Error(
+        `Invalid envelope point: "${token}". The parentheses are empty; put a display value in them, like "1|1 (-6 dB)"`,
+      );
+    }
+
+    validateBarBeatPosition(barBeat);
+
+    return { barBeat, display };
+  }
+
   const valueText = match[2] as string;
 
   if (!VALUE.test(valueText)) {
@@ -467,8 +494,8 @@ function readPoint(segment: string): { barBeat: string; value: number } {
  * @throws If the point goes back in time, or is the third at its time
  */
 function checkOrder(
-  points: EnvelopeNotationPoint[],
-  point: EnvelopeNotationPoint,
+  points: { time: number }[],
+  point: { time: number },
   token: string,
 ): void {
   const previous = points.at(-1);

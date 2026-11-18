@@ -20,6 +20,14 @@ remote script. A line it can't write is a `detail` on that clip's entry
   A name that matches two params on the device skips the line, naming their ids
   and ranges; so does a name that matches none. The name and the id of one param
   in one call are refused, as any two lines on one parameter are.
+- **A point's value is raw, or what Live displays, in parentheses**
+  (`1|1 (-6 dB)`, `(2 kHz)`, `(High-pass)`). A display value is read as
+  `ppal-update-device` reads a param value and converted to raw before the line
+  is sent; nothing is written to find it. A value the param can't take (wrong
+  unit, unknown option, outside its range) skips the line, saying why; outside
+  the range is refused, not clamped, as a raw value is. A point with both
+  (`1|1 0.25 (112 Hz)`, as a read prints it) writes the raw value. A ramp stays
+  straight in raw values. A hosted plug-in's param takes raw values only.
 - **A line that stalls may still have landed; one Live skipped didn't.** When
   the route doesn't answer, or its connection is lost after the request went
   out, the line's `detail` says its points may still have landed (or that it may

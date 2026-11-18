@@ -274,6 +274,39 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]);
     });
 
+    it("writes values given as what Live displays", async () => {
+      const id = await emptyClip();
+
+      expect(
+        await writeEnvelopes(
+          id,
+          "volume: 1|1 (-12 dB) / 2|1 (0 dB)\npan: 1|1 (50L) _ 2|1 (25R)",
+        ),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 2 }));
+
+      const events = ((await readEnvelopes(id)) as ClipEnvelopeResult[]).map(
+        (envelope) => envelope.events,
+      );
+
+      expect(events).toStrictEqual([
+        expect.stringMatching(/\(-12\.0 dB\).*\(0\.0 dB\)/) as string,
+        expect.stringMatching(/\(50L\).*\(25R\)/) as string,
+      ]);
+    });
+
+    it("refuses a display value outside the param's range", async () => {
+      const id = await emptyClip();
+
+      expect(await writeEnvelopes(id, "volume: 1|1 (30 dB)")).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 0,
+          detail: expect.stringContaining(
+            "(30 dB) is outside the param's range",
+          ) as string,
+        }),
+      );
+    });
+
     it("reports a refused line and still writes the others", async () => {
       const id = await emptyClip();
 

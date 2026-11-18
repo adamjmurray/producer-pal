@@ -43,6 +43,25 @@ describe("parseEnvelopeNotation", () => {
     ]);
   });
 
+  it("keeps a display written in place of a value, for the caller to convert", () => {
+    expect(
+      parseEnvelopeNotation("1|1 (-6 dB) / 3|1 0.5 _ 5|1 ( 1/8 )", FOUR_FOUR),
+    ).toStrictEqual([
+      { time: 0, display: "-6 dB", jump: false },
+      { time: 8, value: 0.5, jump: false },
+      { time: 16, display: "1/8", jump: true },
+    ]);
+  });
+
+  it("rejects empty parentheses, and a display on a bad time", () => {
+    expect(() => parseEnvelopeNotation("1|1 ()", FOUR_FOUR)).toThrow(
+      /The parentheses are empty/,
+    );
+    expect(() => parseEnvelopeNotation("0|1 (-6 dB)", FOUR_FOUR)).toThrow(
+      /1-indexed/,
+    );
+  });
+
   it("does not read a connector inside a display as its own", () => {
     expect(
       parseEnvelopeNotation("1|1 0.5 (_ 2 ~ 3 / 4) / 2|1 1", FOUR_FOUR),
@@ -108,7 +127,7 @@ describe("parseEnvelopeNotation", () => {
 
   it("rejects a point that isn't bar|beat and a value", () => {
     expect(() => parseEnvelopeNotation("1|1", FOUR_FOUR)).toThrow(
-      'Invalid envelope point: "1|1". Expected "bar|beat value", like "1|1 0.5"',
+      'Invalid envelope point: "1|1". Expected "bar|beat value", like "1|1 0.5" (or a display value in parentheses: "1|1 (-6 dB)")',
     );
     expect(() => parseEnvelopeNotation("beat3 0.5", FOUR_FOUR)).toThrow(
       /Invalid bar\|beat format: "beat3"/,

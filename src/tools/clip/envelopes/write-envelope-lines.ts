@@ -7,7 +7,10 @@
 // script per line. The clip is a session clip, or the scratch clip an
 // arrangement clip's lane is stamped from.
 
-import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import {
+  type EnvelopeNotationPoint,
+  parseEnvelopeNotation,
+} from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
@@ -19,6 +22,11 @@ import {
 import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { hostedSlots, type HostedSlots } from "./hosted/hosted-slots.ts";
+import {
+  HOSTED_DISPLAY_REFUSAL,
+  hasDisplayValues,
+  rawPointValues,
+} from "./points/display-point-values.ts";
 import { envelopeWritePoints } from "./points/envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
 import { narrowRangeNote } from "./points/narrow-range-note.ts";
@@ -276,17 +284,13 @@ async function writeOneLine(
     return { ok: false, reason: refusal, available: true };
   }
 
-  let points;
+  const read = readPoints(resolved, address);
 
-  try {
-    // The up-front check read only the syntax; times need this clip's meter.
-    points =
-      line.notation === ""
-        ? undefined
-        : parseEnvelopeNotation(line.notation, address);
-  } catch (error) {
-    return { ok: false, reason: errorMessage(error), available: true };
+  if ("reason" in read) {
+    return { ok: false, reason: read.reason, available: true };
   }
+
+  const { points, converted } = read;
 
   let placed;
 
@@ -327,9 +331,49 @@ async function writeOneLine(
   const outcome =
     points == null
       ? await clearEnvelope(request, call)
-      : await writeEnvelope(request, { points, address }, call);
+      : await writeEnvelope(request, { points, address, converted }, call);
 
   return placed.mapped == null ? outcome : afterMapping(outcome, placed.mapped);
+}
+
+/**
+ * Read a line's points for this clip, turning display values into raw ones.
+ * @param resolved - The line, with the parameter it reaches
+ * @param address - The clip it writes to, and its meter
+ * @returns The points (none for a clear) and whether any was converted, or why
+ *   the line can't be written
+ */
+function readPoints(
+  resolved: Exclude<ResolvedEnvelopeLine, { error: string }>,
+  address: ClipAddress,
+):
+  | { points: EnvelopeNotationPoint[] | undefined; converted: boolean }
+  | { reason: string } {
+  const { line } = resolved;
+
+  if (line.notation === "") {
+    return { points: undefined, converted: false };
+  }
+
+  try {
+    // The up-front check read only the syntax; times need this clip's meter.
+    const written = parseEnvelopeNotation(line.notation, address);
+    const converted = hasDisplayValues(written);
+
+    if ("hosted" in resolved) {
+      // A hosted param's slot isn't mapped yet, so there is nothing to ask.
+      return converted
+        ? { reason: HOSTED_DISPLAY_REFUSAL }
+        : { points: written as EnvelopeNotationPoint[], converted };
+    }
+
+    return {
+      points: rawPointValues(written, resolved.target, address.track),
+      converted,
+    };
+  } catch (error) {
+    return { reason: errorMessage(error) };
+  }
 }
 
 /**
@@ -399,18 +443,20 @@ async function clearEnvelope(
  * @param what - The points, and the clip they are spelled for
  * @param what.points - The parsed points
  * @param what.address - The clip it writes to, and its meter
+ * @param what.converted - Whether any value came from a display value
  * @param call - The deadline and who is calling
  * @returns Whether it was written
  */
 async function writeEnvelope(
   request: object,
   what: {
-    points: ReturnType<typeof parseEnvelopeNotation>;
+    points: EnvelopeNotationPoint[];
     address: ClipAddress;
+    converted: boolean;
   },
   call: LineCall,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
-  const { points, address } = what;
+  const { points, address, converted } = what;
   const writePoints = envelopeWritePoints(points);
   const outcome = await envelopeChange<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
@@ -429,7 +475,10 @@ async function writeEnvelope(
         note: joinDetails([
           outcome.result.re_enabled ? REENABLED_NOTE : undefined,
           pastEndNote(points, address),
-          narrowRangeNote(points, outcome.result.parameter),
+          // Values converted from display units weren't spelled 0..1.
+          converted
+            ? undefined
+            : narrowRangeNote(points, outcome.result.parameter),
         ]),
       }
     : outcome;

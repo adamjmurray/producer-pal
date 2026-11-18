@@ -347,20 +347,37 @@ function parameterId(
   track: EnvelopeTrack,
   entry: ListedEnvelope,
 ): string | null {
-  const object = trackObject(track);
+  const parameter = envelopeParameter(
+    trackObject(track),
+    entry.device,
+    entry.parameter_name ?? entry.parameter_index ?? 0,
+  );
+
+  return parameter != null && parameter.exists() ? parameter.id : null;
+}
+
+/**
+ * The Live parameter at the address the remote script uses for an envelope.
+ * @param track - The clip's track
+ * @param device - The remote script's device or chain path, if any
+ * @param parameter - The parameter's index on its device, or volume/pan/send0..
+ * @returns The parameter, or null when the address isn't one we can walk
+ */
+export function envelopeParameter(
+  track: LiveAPI,
+  device: string | undefined,
+  parameter: string | number,
+): LiveAPI | null {
   // A name is a mixer parameter: the track's, or the chain's `device` ends on.
-  const holder = entry.device == null ? object : deviceAt(object, entry.device);
+  const holder = device == null ? track : deviceAt(track, device);
 
   if (holder == null) {
     return null;
   }
 
-  const parameter =
-    entry.parameter_name == null
-      ? holder.child("parameters", String(entry.parameter_index ?? 0))
-      : mixerParameter(holder, entry.parameter_name);
-
-  return parameter != null && parameter.exists() ? parameter.id : null;
+  return typeof parameter === "number"
+    ? holder.child("parameters", String(parameter))
+    : mixerParameter(holder, parameter);
 }
 
 /**

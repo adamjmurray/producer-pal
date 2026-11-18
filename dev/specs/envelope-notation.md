@@ -26,9 +26,11 @@ A point is `bar|beat value`, in the clip's own meter.
 - **Value** is the parameter's raw value, not Live's display units. It is a
   plain decimal (`0.5`, `-1`, `.5`, `1e-2`). Range is not checked here; the tool
   refuses a value outside the parameter's range.
-- **Display**, read only: a read may add Live's display in parentheses,
+- **Display**: a read may add Live's display in parentheses,
   `1|1 0.25 (112 Hz)`. It is left out when it matches the value. Round brackets
-  inside it are written as square ones. A write accepts and ignores it.
+  inside it are written as square ones. A write ignores a display that follows a
+  value, and takes one written in place of the value, `1|1 (112 Hz)`, as the
+  value to convert to raw.
 - Values print with up to 3 decimals and no trailing zeros.
 
 ## Connectors

@@ -9,10 +9,7 @@ import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.t
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import { findRawValueForDisplay } from "./param-display-search.ts";
 import { displayValueForWrite } from "./param-unit-display-value.ts";
-import {
-  type ParamWriteOutcome,
-  writeParam,
-} from "./param-write-verification.ts";
+import { type RawParamValue } from "./param-write-verification.ts";
 
 /** Everything the numeric write path needs about the param and the request. */
 export interface NumericWrite {
@@ -31,14 +28,14 @@ export interface NumericWrite {
 }
 
 /**
- * Write a number to a param that displays a number line, converting from the
- * param's own display units. A param with no numeric range at all (a note-name
+ * The raw value for a number on a param that displays a number line, converted
+ * from the param's own display units. A param with no numeric range at all (a note-name
  * or word-list display) has nothing to convert, so the input goes to Live as a
  * raw value the way it always has.
  * @param write - The param, the requested value and the param's labels
- * @returns The param the write landed on, or why it landed nowhere
+ * @returns The raw value and what a write should report, or why there is none
  */
-export function setNumericParamValue(write: NumericWrite): ParamWriteOutcome {
+export function numericRawValue(write: NumericWrite): RawParamValue {
   const { param, range } = write;
   // Name the range by its trimmed ends: a param with a word at one end
   // (Glue Compressor's Release tops out at "A") would otherwise be described
@@ -71,8 +68,8 @@ export function setNumericParamValue(write: NumericWrite): ParamWriteOutcome {
     return target;
   }
 
-  return writeParam(param, target.value, {
-    changed: target.detail,
-    requested: write.requested,
-  });
+  return {
+    raw: target.value,
+    report: { changed: target.detail, requested: write.requested },
+  };
 }

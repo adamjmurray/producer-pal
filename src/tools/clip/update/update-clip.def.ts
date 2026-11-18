@@ -194,7 +194,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry), or its device path and name (t0/d0/Filter Freq), or a mixer name - volume, pan, send0, send1... (a rack chain's own: t0/d0/c1/volume)" +
         ", or a hosted plug-in's param as its device path and h id (t0/d0/h56), which takes an automation slot. " +
         "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line, negative below), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
-        "Values are raw, not ppal-read-device's units: usually 0..1; an out-of-range value is refused, naming the range. Mod wheel, pitch bend, pressure or a MIDI CC: add a CC Control device to the track and target its params, 0..127 (Pitch Bend -64..64). Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
+        "A bare value is raw, not ppal-read-device's units: usually 0..1; an out-of-range value is refused, naming the range. " +
+        "Or write what Live displays, in parentheses, as ppal-read-device reports it: '1|1 (-12 dB) / 3|1 (0 dB)', '(2 kHz)', an option's label '(High-pass)'; not on a hosted param. A ramp between them is straight in raw values, so it bends in display units. " +
+        "Mod wheel, pitch bend, pressure or a MIDI CC: add a CC Control device to the track and target its params, 0..127 (Pitch Bend -64..64). Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
         "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",
       smallModel: null,
     }),
