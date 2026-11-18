@@ -209,7 +209,7 @@ describe("withWriteQueue", () => {
     const first = call(WRITE, {});
     const read = call(READ, {});
     const second = call(WRITE, {});
-    let finishLate = (): void => {};
+    let finishLate = (_late: McpResponse | null): void => {};
     const timedOut: McpResponse = { content: [], isError: true };
 
     markStillRunning(
@@ -225,7 +225,7 @@ describe("withWriteQueue", () => {
     await settle();
     expect(sent.map((s) => s.tool)).toStrictEqual([WRITE]);
 
-    finishLate();
+    finishLate(null);
     await settle();
     expect(sent.map((s) => s.tool)).toStrictEqual([WRITE, READ, WRITE]);
 
@@ -237,7 +237,7 @@ describe("withWriteQueue", () => {
   it("frees the queue when a timed-out write finishes with no one waiting", async () => {
     const { call, sent } = setup();
     const write = call(WRITE, {});
-    let finishLate = (): void => {};
+    let finishLate = (_late: McpResponse | null): void => {};
     const timedOut: McpResponse = { content: [], isError: true };
 
     markStillRunning(
@@ -250,7 +250,7 @@ describe("withWriteQueue", () => {
     await settle();
     sent[0]?.answer(timedOut);
     await write;
-    finishLate();
+    finishLate(null);
     await settle();
     await expectQueueFree(call, sent);
   });
@@ -427,6 +427,90 @@ describe("withWriteQueue", () => {
     sent[0]?.answer();
     sent[1]?.answer();
     await Promise.all([read, write]);
+  });
+});
+
+describe("withWriteQueue afterWrite", () => {
+  it("holds the next write, but not the caller or the reads, until it settles", async () => {
+    let endStep = (): void => {};
+    const afterWrite = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          endStep = resolve;
+        }),
+    );
+    const { call, sent } = setup(afterWrite);
+    const first = call(WRITE, { a: 1 });
+    const read = call(READ, {});
+    const second = call(WRITE, {});
+    const answer: McpResponse = { content: [] };
+
+    await settle();
+    sent[0]?.answer(answer);
+    expect(await first).toBe(answer);
+    await settle();
+    expect(afterWrite).toHaveBeenCalledWith(WRITE, { a: 1 }, answer);
+    expect(sent.map((s) => s.tool)).toStrictEqual([WRITE, READ]);
+
+    endStep();
+    await settle();
+    expect(sent.map((s) => s.tool)).toStrictEqual([WRITE, READ, WRITE]);
+
+    sent[1]?.answer();
+    sent[2]?.answer();
+    await Promise.all([read, second]);
+    await settle();
+    // Free the queue for the tests after this one.
+    endStep();
+  });
+
+  it("passes the turn even when it rejects", async () => {
+    const { call, sent } = setup(() => Promise.reject(new Error("boom")));
+    const write = call(WRITE, {});
+
+    await settle();
+    sent[0]?.answer();
+    await write;
+    await settle();
+    await expectQueueFree(call, sent);
+  });
+
+  it("gets undefined when sending threw", async () => {
+    const afterWrite = vi.fn(() => undefined);
+    const { call, sent } = setup(afterWrite);
+    const write = call(WRITE, {});
+
+    await settle();
+    sent[0]?.fail(new Error("boom"));
+    await expect(write).rejects.toThrow("boom");
+    expect(afterWrite).toHaveBeenCalledWith(WRITE, {}, undefined);
+  });
+
+  it("gets V8's late answer for a timed-out write, or doesn't run once it is given up on", async () => {
+    const afterWrite = vi.fn(() => undefined);
+    const { call, sent } = setup(afterWrite);
+    const late: McpResponse = { content: [] };
+
+    for (const finalAnswer of [late, null]) {
+      const write = call(WRITE, {});
+      let finishLate = (_late: McpResponse | null): void => {};
+      const timedOut: McpResponse = { content: [], isError: true };
+
+      markStillRunning(
+        timedOut,
+        new Promise((resolve) => {
+          finishLate = resolve;
+        }),
+      );
+      await settle();
+      sent.at(-1)?.answer(timedOut);
+      await write;
+      expect(afterWrite).not.toHaveBeenCalledWith(WRITE, {}, timedOut);
+      finishLate(finalAnswer);
+      await settle();
+    }
+
+    expect(afterWrite.mock.calls).toStrictEqual([[WRITE, {}, late]]);
   });
 });
 

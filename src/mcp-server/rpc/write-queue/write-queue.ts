@@ -25,6 +25,18 @@ type SendToV8 = (
   queuedMs?: number,
 ) => Promise<McpResponse>;
 
+/**
+ * Runs once V8 is done with a write, with its answer (undefined when sending
+ * threw). A returned promise holds the next write, not the caller or the held
+ * reads, until it settles. Never runs for a timed-out write the adapter gave
+ * up on: V8 may still be running it.
+ */
+export type AfterWrite = (
+  tool: string,
+  args: object,
+  response: McpResponse | undefined,
+) => Promise<void> | undefined;
+
 type Turn = { waitedMs: number } | { notRun: string };
 
 /** Least time a queued write needs left to be worth starting. */
@@ -65,11 +77,13 @@ const unanswered = new Set<TrackedWrite>();
  * @param send - Sends one call to V8 with how long it queued, and resolves
  *   with its answer
  * @param getTimeoutMs - Reads the default timeout, for calls without an override
+ * @param afterWrite - Runs after each write; see AfterWrite
  * @returns The same call, with writes queued and reads behind them
  */
 export function withWriteQueue(
   send: SendToV8,
   getTimeoutMs: () => number,
+  afterWrite: AfterWrite = () => undefined,
 ): SendToolCall {
   return async (tool, args, overrides) => {
     // The signal is for the queue only; V8 gets the rest.
@@ -90,10 +104,17 @@ export function withWriteQueue(
       return notRunResponse(turn.notRun);
     }
 
-    // Release the held reads (sending them) before the next write starts.
-    const finish = (): void => {
+    // Send the held reads now; the next write also waits for afterWrite.
+    const finish = (answer: McpResponse | undefined): void => {
       markAnswered();
-      passTurn();
+
+      const after = afterWrite(tool, args, answer);
+
+      if (after == null) {
+        passTurn();
+      } else {
+        void after.then(passTurn, passTurn);
+      }
     };
 
     let response: McpResponse;
@@ -101,17 +122,24 @@ export function withWriteQueue(
     try {
       response = await send(tool, args, rest, turn.waitedMs);
     } catch (error) {
-      finish();
+      finish(undefined);
       throw error;
     }
 
     const finished = whenFinished(response);
 
     if (finished == null) {
-      finish();
+      finish(response);
     } else {
       nodeInfo(`${tool} timed out; holding later calls until V8 finishes it`);
-      void finished.then(finish, finish);
+      void finished.then((late) => {
+        if (late == null) {
+          markAnswered();
+          passTurn();
+        } else {
+          finish(late);
+        }
+      });
     }
 
     return response;
