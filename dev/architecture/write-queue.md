@@ -36,12 +36,15 @@ half done: two of the three envelopes it was writing.
   down as `RequestOverrides.signal`. MCP `notifications/cancelled` aborts
   nothing: POST /mcp builds a new server per request, and the portal doesn't
   forward it. Once a write is in V8 it can't be stopped.
-- **Limits.** The turn passes on when a call answers, a timeout included, so the
-  next write can overlap a timed-out write V8 is still finishing. A user editing
-  Live during a wait can still shift things under a write. A write that arrives
-  after a read can still land while that read waits on the remote script
-  (read-clip envelopes, read-device macros or Simpler), so the read may report
-  part of it; it changes nothing.
+- **A write that times out** answers its caller, but V8 may still be running it.
+  Node keeps listening for V8's late answer, and the write keeps the turn, and
+  the reads behind it, until that answer comes. Node gives up after
+  `MAX_TIMEOUT_MS` (55 s), longer than any single wait inside V8, and frees the
+  queue. A late answer that never comes means the device is gone or V8 is stuck.
+- **Limits.** A user editing Live during a wait can still shift things under a
+  write. A write that arrives after a read can still land while that read waits
+  on the remote script (read-clip envelopes, read-device macros or Simpler), so
+  the read may report part of it; it changes nothing.
 
 Node also ends Live's undo step after each write; see
 [write-pipeline.md](../tools/write-pipeline.md#one-undo-step-per-call).

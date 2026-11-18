@@ -22,6 +22,7 @@ import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothin
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withWriteQueue } from "./rpc/write-queue/write-queue.ts";
+import { markStillRunning } from "./rpc/write-queue/still-running.ts";
 import { nodeError, nodeInfo, nodeWarn } from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
@@ -70,6 +71,16 @@ const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 45_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map<string, PendingRequest>();
+
+/**
+ * How long to wait for V8 to answer a timed-out call before giving up on it.
+ * No single wait inside V8 runs longer than this, so a late answer that hasn't
+ * come by then isn't coming (the device is gone, or V8 is stuck).
+ */
+const LATE_ANSWER_CAP_MS = MAX_TIMEOUT_MS;
+
+/** Timed-out calls V8 may still be running; each entry ends its wait. */
+const lateRequests = new Map<string, () => void>();
 
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 
@@ -183,14 +194,43 @@ function sendToolCall(
         // it to HTTP 504. The message must not read as "nothing happened": V8
         // runs the tool synchronously with no cancellation channel, so the Set
         // is likely still being mutated as this resolves.
-        resolve(
-          formatErrorResponse(
-            `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms${queuedText}. ` +
-              `Live may still be applying it — wait, then re-read before acting.`,
-            "timeout",
-          ),
+        const response = formatErrorResponse(
+          `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms${queuedText}. ` +
+            `Live may still be applying it — wait, then re-read before acting.`,
+          "timeout",
         );
+
+        // So the write queue holds the next write until V8 is done.
+        markStillRunning(response, waitForLateAnswer(requestId, tool));
+        resolve(response);
       }, remainingMs),
+    });
+  });
+}
+
+/**
+ * Wait for V8 to answer a call Node already timed out, up to LATE_ANSWER_CAP_MS.
+ * @param requestId - The timed-out request
+ * @param tool - Tool name, for the log
+ * @returns Resolves when V8 answers, or when the cap runs out
+ */
+function waitForLateAnswer(requestId: string, tool: string): Promise<void> {
+  return new Promise((resolve) => {
+    const cap = setTimeout(() => {
+      lateRequests.delete(requestId);
+      nodeWarn(
+        `No late answer for timed-out ${tool} after ${LATE_ANSWER_CAP_MS}ms; ` +
+          `giving up on it [requestId=${requestId}]`,
+      );
+      resolve();
+    }, LATE_ANSWER_CAP_MS);
+
+    // Don't keep Node alive just for this.
+    cap.unref();
+    lateRequests.set(requestId, () => {
+      clearTimeout(cap);
+      lateRequests.delete(requestId);
+      resolve();
     });
   });
 }
@@ -254,6 +294,10 @@ function handleLiveApiResult(...args: unknown[]): void {
         ),
       );
     }
+  } else if (lateRequests.has(requestId)) {
+    // Its caller already got the timeout; only the write queue is waiting.
+    nodeInfo(`Late answer for timed-out request ${requestId}`);
+    lateRequests.get(requestId)?.();
   } else {
     nodeInfo(`Received response for unknown request ID: ${requestId}`);
   }

@@ -474,6 +474,9 @@ describe("Max API Adapter", () => {
             "waiting for other writes). Live may still be applying it — " +
             "wait, then re-read before acting.",
         );
+
+        // V8's late answer frees the queue for the tests after this one.
+        handleLiveApiResult(outlet.mock.calls[1]![1], "{}", END_OF_CHUNKS);
       } finally {
         vi.useRealTimers();
       }
