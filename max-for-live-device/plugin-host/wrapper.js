@@ -466,6 +466,32 @@ function loadNames() {
   outlet(0, "params");
 }
 
+// Plug-ins repeat names across modules (two envelopes, each with "Attack"),
+// and a name has to reach one param. A repeat gets " (2)", " (3)" in the
+// plug-in's own order. Every name read or matched goes through here;
+// state.names keeps the plug-in's own, for spotting stand-ins.
+let named = { from: null, names: [] };
+
+function paramNames() {
+  if (named.from !== state.names || named.names.length !== state.names.length) {
+    named = { from: state.names, names: uniqueNames(state.names) };
+  }
+
+  return named.names;
+}
+
+function uniqueNames(names) {
+  const seen = new Map();
+
+  return names.map((name) => {
+    const count = (seen.get(name) ?? 0) + 1;
+
+    seen.set(name, count);
+
+    return count === 1 ? name : `${name} (${count})`;
+  });
+}
+
 // VST3 plug-ins expose a stand-in param per MIDI CC, pitch bend and
 // aftertouch, usually per channel: one unbroken block of 132 or 2080 near the
 // end. Vendors name them differently ("CC 1, CH 4", "MIDI CC 0|0", "CC107
@@ -519,7 +545,7 @@ function readParams({ names, search, all, offset = 0, limit = DEFAULT_LIMIT }) {
   const [hideFrom, hideTo] = standInRange(state.names);
   const isStandIn = (i) => i >= hideFrom && i < hideTo;
 
-  state.names.forEach((name, i) => {
+  paramNames().forEach((name, i) => {
     if (wanted ? wanted.has(name) : all === true || !isStandIn(i)) {
       if (!needle || name.toLowerCase().includes(needle)) matches.push(i + 1);
     }
@@ -541,7 +567,7 @@ function readParam(index, name) {
 
   return {
     index,
-    name: name ?? state.names[index - 1],
+    name: name ?? paramNames()[index - 1],
     value: read.value,
     display: read.display,
   };
@@ -1200,7 +1226,7 @@ function setParams(changes) {
     const index =
       change.index != null
         ? Number(change.index)
-        : state.names.indexOf(String(change.name)) + 1;
+        : paramNames().indexOf(String(change.name)) + 1;
 
     if (!Number.isInteger(index) || index < 1 || index > state.names.length) {
       throw new Error(`no param ${change.name ?? change.index}`);
@@ -1251,7 +1277,7 @@ function lastOf(targets, index) {
 }
 
 function identity(target) {
-  return { index: target.index, name: state.names[target.index - 1] };
+  return { index: target.index, name: paramNames()[target.index - 1] };
 }
 
 function failure(target) {
@@ -1298,7 +1324,7 @@ function resolveEntry(entry) {
 function indexesOf(test) {
   const found = [];
 
-  state.names.forEach((name, i) => {
+  paramNames().forEach((name, i) => {
     if (test(name)) found.push(i + 1);
   });
 

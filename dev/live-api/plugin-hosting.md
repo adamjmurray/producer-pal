@@ -251,6 +251,16 @@ param back and says what the param does show. One request covers a whole
 that matches more than one param is refused; two entries reaching one param
 write the last.
 
+### Params the plug-in names alike
+
+Plug-ins repeat names across modules: two envelopes, each with an "Attack". The
+wrapper gives every repeat a number, in the plug-in's own order: "Attack",
+"Attack (2)", "Attack (3)". Reads list those names and writes, slots and the
+panel's knobs match them, so each param can be reached by name. The first keeps
+the plain name, so "Attack" means the first. An Audio Unit also puts its params
+in groups ("ENV1"), which would make a better name, but `vst~` doesn't report
+them.
+
 `find` runs the same search for one param and a list of values, then puts the
 param back where it was: it answers each value's 0–1 position and saves nothing.
 Clip envelopes use it to turn a display value into the raw value a slot takes.

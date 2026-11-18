@@ -40,7 +40,8 @@ parameter's name. See [Automation](#automation) below.
   for a format by name to load that one instead.
 - **Every parameter**, read and set in the plug-in's own units, by number or by
   the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows is
-  refused, with the values it does show.
+  refused, with the values it does show. When a plug-in gives several parameters
+  the same name, Producer Pal numbers the repeats: "Attack", "Attack (2)".
 - **Automation:** the AI can automate the plug-in's parameters on clips. See
   [Automation](#automation) below.
 - **Plug-in window:** the wrapper has an **Open Plug-in** button that opens the
