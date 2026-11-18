@@ -10,6 +10,7 @@ import {
 } from "#webui/chat/sdk/build-model-messages";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
+import { contextLengthLookup } from "#webui/chat/sdk/provider/local-model/local-model-catalog";
 import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import {
   type ChatClientConfig,
@@ -65,6 +66,11 @@ function buildSubagentConfig(
       ),
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(preset.provider, overrideThinking, preset.model),
+      lookupContextLength: contextLengthLookup(
+        preset.provider,
+        preset.baseUrl,
+        preset.model,
+      ),
       // Carry the preset's toolset through; buildWorkerConfig replaces the
       // worker's tools with it (and always re-strips spawn_subagent).
       enabledTools: preset.enabledTools,
@@ -163,6 +169,7 @@ export const chatAdapter: ChatAdapter<
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
+      lookupContextLength: contextLengthLookup(provider, baseUrl, model),
       maxRequestImages:
         provider === "mistral" || isMistralModelId(model)
           ? MISTRAL_MAX_REQUEST_IMAGES

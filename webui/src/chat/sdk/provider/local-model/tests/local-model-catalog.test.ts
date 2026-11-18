@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchLocalModels } from "#webui/chat/sdk/provider/local-model/local-model-catalog";
+import {
+  contextLengthLookup,
+  fetchLocalModels,
+} from "#webui/chat/sdk/provider/local-model/local-model-catalog";
 
 type Routes = Record<string, unknown>;
 
@@ -137,5 +140,65 @@ describe("fetchLocalModels for Ollama", () => {
     serve({ [PS]: { models: [] } });
 
     expect(await fetchLocalModels("ollama", "")).toBeUndefined();
+  });
+});
+
+describe("contextLengthLookup", () => {
+  const LM_STUDIO = {
+    "http://localhost:1234/api/v1/models": {
+      models: [
+        {
+          key: "qwen/qwen3.8-27b",
+          loaded_instances: [{ config: { context_length: 24064 } }],
+        },
+        { key: "google/gemma-4-e4b", loaded_instances: [] },
+      ],
+    },
+  };
+  const OLLAMA = {
+    "http://localhost:11434/api/tags": {
+      models: [{ name: "qwen3.8:latest" }],
+    },
+    "http://localhost:11434/api/ps": {
+      models: [{ name: "qwen3.8:latest", context_length: 8192 }],
+    },
+  };
+
+  it("has no lookup for a cloud provider", () => {
+    expect(contextLengthLookup("openai", undefined, "gpt-5.2")).toBeUndefined();
+  });
+
+  it.each(["qwen/qwen3.8-27b", "Qwen/Qwen3.8-27B", "qwen/qwen3.8-27b@q4_k_m"])(
+    "reads LM Studio's loaded context length for %s",
+    async (model) => {
+      serve(LM_STUDIO);
+
+      expect(await contextLengthLookup("lmstudio", "", model)?.()).toBe(24064);
+    },
+  );
+
+  it.each(["qwen3.8", "qwen3.8:latest"])(
+    "reads Ollama's loaded context length for %s",
+    async (model) => {
+      serve(OLLAMA);
+
+      expect(await contextLengthLookup("ollama", "", model)?.()).toBe(8192);
+    },
+  );
+
+  it("reads nothing for a model that isn't loaded", async () => {
+    serve(LM_STUDIO);
+
+    expect(
+      await contextLengthLookup("lmstudio", "", "google/gemma-4-e4b")?.(),
+    ).toBeUndefined();
+  });
+
+  it("reads nothing when the server can't be reached", async () => {
+    serve({});
+
+    expect(
+      await contextLengthLookup("ollama", "", "qwen3.8")?.(),
+    ).toBeUndefined();
   });
 });

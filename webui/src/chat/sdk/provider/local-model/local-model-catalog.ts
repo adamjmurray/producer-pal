@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { DEFAULT_LOCAL_URLS } from "#webui/lib/constants/provider-urls";
+import { type Provider } from "#webui/types/settings";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /** A chat model a local server has downloaded */
@@ -61,6 +62,42 @@ export async function fetchLocalModels(
   return provider === "lmstudio"
     ? await fetchLmStudioModels(origin)
     : await fetchOllamaModels(origin);
+}
+
+/**
+ * A lookup of the context length a local model is loaded with, for the chat
+ * client to call each turn, or undefined for a cloud provider.
+ * @param provider - Chat provider
+ * @param baseUrl - The provider's URL setting
+ * @param modelId - Model the chat uses
+ * @returns The lookup, or undefined when the provider can't report one
+ */
+export function contextLengthLookup(
+  provider: Provider,
+  baseUrl: string | undefined,
+  modelId: string,
+): (() => Promise<number | undefined>) | undefined {
+  if (provider !== "lmstudio" && provider !== "ollama") {
+    return undefined;
+  }
+
+  const key = modelKey(provider, modelId);
+
+  return async () => {
+    const models = await fetchLocalModels(provider, baseUrl);
+
+    return models?.find((m) => modelKey(provider, m.id) === key)?.contextLength;
+  };
+}
+
+// The id the server lists a model under: LM Studio drops `@variant`, Ollama
+// drops `:latest`.
+function modelKey(provider: LocalProvider, id: string): string {
+  const key = id.trim().toLowerCase();
+
+  return provider === "lmstudio"
+    ? (key.split("@")[0] as string)
+    : key.replace(/:latest$/, "");
 }
 
 async function fetchLmStudioModels(
