@@ -17,6 +17,7 @@ import { type EnvelopeTrack, isOnTrack, trackText } from "../envelope-track.ts";
 import {
   type HostedTarget,
   parseHostedTarget,
+  resolveHostedNameTarget,
   resolveHostedTarget,
 } from "../hosted/hosted-envelope-target.ts";
 
@@ -70,11 +71,11 @@ export function resolveEnvelopeLines(
 ): ResolvedEnvelopeLine[] {
   return lines.map((line) => {
     try {
-      const hosted = parseHostedTarget(line.target);
+      const hosted = hostedTarget(line.target, track);
 
       return hosted == null
         ? { line, target: envelopeTarget(line.target, track) }
-        : { line, hosted: resolveHostedTarget(hosted, track) };
+        : { line, hosted };
     } catch (error) {
       return { line, error: errorMessage(error) };
     }
@@ -114,6 +115,29 @@ export function findSameParameter(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Resolve a target that reaches a hosted plug-in's param: a wrapper's path
+ * and the param's `h` id or its name.
+ * @param target - The target as the call wrote it
+ * @param track - The track the clip sits on
+ * @returns The hosted param, or null when the target is no hosted param's
+ * @throws Error saying why it reaches no hosted param
+ */
+function hostedTarget(
+  target: string,
+  track: EnvelopeTrack,
+): HostedTarget | null {
+  const byId = parseHostedTarget(target);
+
+  if (byId != null) {
+    return resolveHostedTarget(byId, track);
+  }
+
+  const named = parseNameTarget(target);
+
+  return named == null ? null : resolveHostedNameTarget(named, track);
+}
 
 /**
  * Resolve one `envelopes` target against the clip's own track.

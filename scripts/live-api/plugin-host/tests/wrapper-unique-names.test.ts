@@ -73,6 +73,17 @@ describe("wrapper names for params the plug-in names alike", () => {
     ).toStrictEqual([4]);
   });
 
+  it("looks a name up, exactly first and then ignoring case", () => {
+    const { json } = rigWithRepeats();
+
+    expect(json('lookupName({ name: "decay (2)" })')).toStrictEqual({
+      matches: [{ index: 5, name: "Decay (2)" }],
+    });
+    expect(json('lookupName({ name: "Resonance" })')).toStrictEqual({
+      matches: [],
+    });
+  });
+
   it("follows the plug-in's names when they change", () => {
     const { json } = rigWithRepeats();
 

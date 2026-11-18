@@ -466,7 +466,7 @@ describe("updateClip - hosted envelope targets", () => {
 
     await expect(
       updateClip({ id: "123", envelopes: `t0/hx: ${NOTATION}` }),
-    ).rejects.toThrow("or a hosted plug-in's param like t0/d0/h56");
+    ).rejects.toThrow("or a hosted plug-in's param by name or as t0/d0/h56");
   });
 
   it("refuses two lines that name one param by different spellings", async () => {

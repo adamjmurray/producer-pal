@@ -48,6 +48,8 @@ export interface Wrapper {
   mapError?: string;
   /** Answers `find`, when set; a wrapper without it gives no answer */
   find?: (request: WrapperMessage) => WrapperMessage;
+  /** Answers `lookup`, when set; a wrapper without it gives no answer */
+  lookup?: (request: WrapperMessage) => WrapperMessage;
 }
 
 /**
@@ -162,6 +164,7 @@ export function answerAsWrapper(mapped: Mapping[] = []): Wrapper {
     }),
     // No answer when unset: installWrapper replies only with an object.
     find: (request) => wrapper.find?.(request) as WrapperMessage,
+    lookup: (request) => wrapper.lookup?.(request) as WrapperMessage,
     map: (request) => {
       if (wrapper.mapError != null) {
         return { success: false, error: wrapper.mapError };

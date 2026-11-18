@@ -151,6 +151,7 @@ const FAILED = {
   read: "couldn't read the automation slots",
   map: "couldn't map an automation slot",
   find: "couldn't convert a display value",
+  lookup: "couldn't look up the param's name",
 };
 
 /**

@@ -111,7 +111,7 @@ function settleThenFinish(id, result) {
 
 // Ops that change nothing. They never save: a write would add an undo step to
 // a read and mark the Set changed. The poll saves any other change.
-const READ_OPS = new Set(["info", "params", "slots", "find"]);
+const READ_OPS = new Set(["info", "params", "slots", "find", "lookup"]);
 
 function isRead(req, result) {
   return READ_OPS.has(req.op) || result.unchanged === true;
@@ -229,6 +229,8 @@ function handle(req) {
       return { params: writeParams(req.params ?? []) };
     case "find":
       return findValues(req);
+    case "lookup":
+      return lookupName(req);
     case "raw":
       return raw(req.message ?? []);
     case "map":
@@ -1302,14 +1304,7 @@ function resolveEntry(entry) {
       : { kind: "missing", error: `no param ${entry.index}` };
   }
 
-  const name = String(entry.name ?? "");
-  const exact = indexesOf((n) => n === name);
-  const loose = () => {
-    const wanted = name.trim().toLowerCase();
-
-    return indexesOf((n) => n.trim().toLowerCase() === wanted);
-  };
-  const found = exact.length > 0 ? exact : loose();
+  const found = namedIndexes(String(entry.name ?? ""));
 
   if (found.length === 1) return { index: found[0] };
   if (found.length > 1) {
@@ -1319,6 +1314,27 @@ function resolveEntry(entry) {
   }
 
   return { kind: "missing", error: "no param with that name" };
+}
+
+// Which params a name reaches, as {matches: [{index, name}]}.
+function lookupName({ name }) {
+  if (state.names.length === 0) loadNames();
+
+  return {
+    matches: namedIndexes(String(name ?? "")).map((index) => identity({ index })),
+  };
+}
+
+// The params a name reaches: the ones named exactly so, else ignoring case
+// and padding.
+function namedIndexes(name) {
+  const exact = indexesOf((n) => n === name);
+
+  if (exact.length > 0) return exact;
+
+  const wanted = name.trim().toLowerCase();
+
+  return indexesOf((n) => n.trim().toLowerCase() === wanted);
 }
 
 function indexesOf(test) {

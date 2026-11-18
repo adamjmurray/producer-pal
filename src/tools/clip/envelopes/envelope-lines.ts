@@ -100,7 +100,7 @@ function readLine(line: string): EnvelopeLine {
     parseNameTarget(target) == null
   ) {
     throw new Error(
-      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, a device path and param name like t0/d0/Filter Freq, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param like t0/d0/h56${MIDI_CONTROLLER_NAME.test(target) ? CC_CONTROL_HINT : ""}`,
+      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, a device path and param name like t0/d0/Filter Freq, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param by name or as t0/d0/h56${MIDI_CONTROLLER_NAME.test(target) ? CC_CONTROL_HINT : ""}`,
     );
   }
 

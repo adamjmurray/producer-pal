@@ -192,7 +192,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       default:
         "clip automation, one '<target>: <notation>' line per parameter, broadcast across the clips. On an arrangement clip it writes the track's automation lane over the clip's span: times run from the clip start, once through, and the clip comes back under a new id. " +
         "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry), or its device path and name (t0/d0/Filter Freq), or a mixer name - volume, pan, send0, send1... (a rack chain's own: t0/d0/c1/volume)" +
-        ", or a hosted plug-in's param as its device path and h id (t0/d0/h56), which takes an automation slot. " +
+        ", or a hosted plug-in's param the same way or by its h id (t0/d0/h56); it takes an automation slot. " +
         "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line, negative below), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
         "A bare value is raw, not ppal-read-device's units: usually 0..1; an out-of-range value is refused, naming the range. " +
         "Or write what Live displays, in parentheses, as ppal-read-device reports it: '1|1 (-12 dB) / 3|1 (0 dB)', '(2 kHz)', an option's label '(High-pass)'. A ramp between them is straight in raw values, so it bends in display units. " +

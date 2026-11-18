@@ -261,6 +261,9 @@ the plain name, so "Attack" means the first. An Audio Unit also puts its params
 in groups ("ENV1"), which would make a better name, but `vst~` doesn't report
 them.
 
+`lookup` answers which params a name reaches, matched as a write matches one.
+Clip envelopes use it for a target that names a hosted param (`t3/d0/Cutoff`).
+
 `find` runs the same search for one param and a list of values, then puts the
 param back where it was: it answers each value's 0–1 position and saves nothing.
 Clip envelopes use it to turn a display value into the raw value a slot takes.
