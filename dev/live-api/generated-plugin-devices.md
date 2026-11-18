@@ -62,10 +62,15 @@ blob. The first undo puts the whole sound back. The second puts the dials back.
 
 - **Follow blocks Live.** Each Live API set costs about 5–6 ms on Live's main
   thread: 200 changed params took 0.9 s, 543 took 3.3 s. A remote script ping
-  stalled 2.4 s while Serum's 543 followed. A preset load in a big plug-in
-  freezes Live's UI for seconds. Untested idea: make the sets from the remote
-  script, where a Python param set should be far cheaper, inside its own undo
-  group.
+  stalled 2.4 s while Serum's 543 followed. Loading real Serum presets showed
+  the OS waiting spinner for about a second, then Live recovered. Older machines
+  will be slower. Ways to manage it:
+  - Cap the dials per device (512 or 1024, say), possibly set by the user. This
+    bounds the worst case, but then something has to pick which params get
+    dials.
+  - Warn users about the cost on big plug-ins.
+  - Untested: make the sets from the remote script, where a Python param set
+    should be far cheaper, inside its own undo group.
 - **Plug-in updates.** The map is by `vst~` param index. If an update adds,
   removes or reorders params, dials drive the wrong params and new ones have no
   dial. The device would need to check names at load and remap by name, or ask
