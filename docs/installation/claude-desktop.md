@@ -54,6 +54,12 @@ extensions as a general security measure. Producer Pal is open source and you
 can review the entire codebase on
 [GitHub](https://github.com/adamjmurray/producer-pal) before installing.
 
+Other ways of connecting skip this warning but aren't any safer, since Producer
+Pal runs the same software in Live either way. This extension also adds
+conveniences: it can respond when Live isn't running, install the
+[remote script](/guide/remote-script) and Max for Live device for you, and add
+the device to a Live Set that doesn't have one.
+
 ### 4. Verify Installation
 
 Producer Pal now appears on the Extensions screen:
