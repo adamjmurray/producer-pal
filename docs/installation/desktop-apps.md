@@ -1,7 +1,7 @@
 # Desktop Apps
 
-Already pay for Claude, ChatGPT or Gemini? Add Producer Pal to its desktop app
-at no extra cost.
+Already pay for Claude, ChatGPT, Gemini or Mistral? Add Producer Pal to its
+desktop app at no extra cost.
 
 ## Claude Desktop
 
@@ -36,6 +36,17 @@ config file — one extra step, but everything else is the same.
 - **Best for:** Gemini users who want a desktop app instead of the CLI
 
 [Get started with Google Antigravity →](./antigravity)
+
+## Mistral Vibe
+
+Mistral's desktop app (formerly Le Chat). Adding Producer Pal means editing a
+config file, and it works in the app's Code tab only.
+
+- **Difficulty:** Easy — one config file to edit
+- **Cost:** A Mistral account (free or paid)
+- **Best for:** Mistral users on macOS or Windows
+
+[Get started with Mistral Vibe →](./mistral-vibe)
 
 ## Want to Run the AI Offline?
 

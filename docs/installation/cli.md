@@ -7,19 +7,19 @@ Claude Code, Codex CLI, and Antigravity CLI can use the portable
 [Agent Skill](/guide/skills) instead — it drives the
 [REST API](/guide/rest-api), so there's no MCP config at all.
 
-| CLI                                  | Provider  | Cost                     | Notes          |
-| ------------------------------------ | --------- | ------------------------ | -------------- |
-| [Claude Code](./claude-code)         | Anthropic | Subscription             | Claude models  |
-| [Codex CLI](./codex-cli)             | OpenAI    | Subscription             | GPT models     |
-| [Antigravity CLI](./antigravity-cli) | Google    | Subscription recommended | Gemini models  |
-| [Mistral Vibe](./mistral-vibe)       | Mistral   | Subscription or API key  | Mistral models |
+| CLI                                    | Provider  | Cost                     | Notes          |
+| -------------------------------------- | --------- | ------------------------ | -------------- |
+| [Claude Code](./claude-code)           | Anthropic | Subscription             | Claude models  |
+| [Codex CLI](./codex-cli)               | OpenAI    | Subscription             | GPT models     |
+| [Antigravity CLI](./antigravity-cli)   | Google    | Subscription recommended | Gemini models  |
+| [Mistral Vibe CLI](./mistral-vibe-cli) | Mistral   | Subscription or API key  | Mistral models |
 
 ## Quick Start
 
 Every CLI runs the same `npx producer-pal` command under the hood, but each tool
-has its own MCP configuration format — a `claude mcp add` command, a TOML file,
-or a JSON file, depending on the tool. See the individual guides linked above
-for the exact steps and config for your CLI, and the
+has its own MCP configuration format — an `mcp add` command, a TOML file, or a
+JSON file, depending on the tool. See the individual guides linked above for the
+exact steps and config for your CLI, and the
 [`npx producer-pal` reference](/guide/npx-cli) for every flag and environment
 variable it accepts.
 

@@ -49,6 +49,7 @@ The most straightforward way: you chat, the AI works in Live.
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI, with Codex built in
 - **[Google Antigravity](./installation/antigravity)** — Google's agent app for
   Gemini
+- **[Mistral Vibe](./installation/mistral-vibe)** — Mistral
 
 #### CLI Coding Agents {#command-line}
 
@@ -60,7 +61,7 @@ with your other tools. See the
 - **[Claude Code](./installation/claude-code)** — Anthropic
 - **[Codex CLI](./installation/codex-cli)** — OpenAI
 - **[Antigravity CLI](./installation/antigravity-cli)** — Google
-- **[Mistral Vibe](./installation/mistral-vibe)** — Mistral
+- **[Mistral Vibe CLI](./installation/mistral-vibe-cli)** — Mistral
 
 Claude Code, Codex CLI and Antigravity CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP: one folder dropped into the
@@ -110,7 +111,7 @@ paths, depending on your app.
   <div class="install-paths-grid">
     <div class="install-path install-path-ai">
       <h3 class="install-path-title">Path A: The AI sets it up</h3>
-      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Antigravity CLI, Mistral Vibe, ChatGPT app, Google Antigravity, Bionic / LM Studio, other MCP clients</p>
+      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Antigravity CLI, Mistral Vibe CLI, ChatGPT app, Google Antigravity, Mistral Vibe, Bionic / LM Studio, other MCP clients</p>
       <ol class="install-path-steps">
         <li>Add Producer Pal to your app</li>
         <li>Open Live and say "connect to ableton"</li>

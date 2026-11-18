@@ -1,22 +1,33 @@
 # Mistral Vibe
 
-Use Producer Pal with Mistral's open-source command line coding assistant.
+Mistral's desktop app (formerly Le Chat). Custom MCP servers are added by
+editing a config file instead of filling in a form.
+
+::: warning Code tab only
+
+Producer Pal works in the **Code** tab, not the **Work** tab. The Work tab can
+only reach servers on the public internet, which needs a
+[web tunnel](./mistral-le-chat) and is not recommended.
+
+:::
 
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->
 
 - [Node.js 20+](https://nodejs.org/en/download)
-- [Mistral Vibe](https://github.com/mistralai/mistral-vibe), signed in with your
-  Mistral account or an API key
+- [Mistral Vibe](https://mistral.ai/products/vibe/) for macOS or Windows
+  (requires a Mistral account)
 
 ## Installation Steps
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 1. Configure Mistral Vibe
+### 1. Add Producer Pal
 
-Add Producer Pal to your Vibe configuration file (`~/.vibe/config.toml`):
+Open `config.toml` in the `.vibe` folder of your home folder
+(`~/.vibe/config.toml`) in a text editor, creating the file if it doesn't exist,
+and add Producer Pal:
 
 <!--@include: ../_partials/mcp-option-npx.md-->
 
@@ -37,11 +48,19 @@ transport = "streamable-http"
 url = "http://localhost:3350/mcp"
 ```
 
+Save the file and restart Mistral Vibe.
+
+::: tip Shared with Mistral Vibe CLI
+
+[Mistral Vibe CLI](./mistral-vibe-cli) reads the same file, and can add Producer
+Pal to it with one command.
+
+:::
+
 ### 2. Start Using Producer Pal
 
-1. Run `vibe` in an empty folder (so it can focus on Producer Pal instead of
-   coding)
-2. With Live open, start a conversation with "connect to ableton"
+1. Open the **Code** tab and start a new conversation
+2. With Live open, say "connect to ableton"
 3. Allow Producer Pal tools to be used when prompted
 
 <!--@include: ../_partials/setup-by-ai-finish.md-->

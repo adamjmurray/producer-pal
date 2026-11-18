@@ -161,6 +161,7 @@ export default defineConfig({
                     text: "Google Antigravity",
                     link: "/installation/antigravity",
                   },
+                  { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
                 ],
               },
               {
@@ -174,8 +175,8 @@ export default defineConfig({
                     link: "/installation/antigravity-cli",
                   },
                   {
-                    text: "Mistral Vibe",
-                    link: "/installation/mistral-vibe",
+                    text: "Mistral Vibe CLI",
+                    link: "/installation/mistral-vibe-cli",
                   },
                 ],
               },

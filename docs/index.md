@@ -101,6 +101,7 @@ features:
           <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
           <li><a href="/installation/antigravity">Google Antigravity</a></li>
+          <li><a href="/installation/mistral-vibe">Mistral Vibe</a></li>
           <li><a href="/installation/cli">CLI coding agents</a></li>
         </ul>
       </div>
