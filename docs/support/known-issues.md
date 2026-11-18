@@ -116,8 +116,8 @@ mode enabled and then disable it, Claude Desktop will remain stuck in small
 model mode; switch the notation to Stark and it will keep writing bar|beat.
 
 **Workaround:** Either fully quit Claude Desktop (not just close the window) and
-relaunch it, or go to Settings → Extensions → Producer Pal → Configure and
-toggle the "Enabled" switch off and on.
+relaunch it, or go to Settings → Desktop app → Extensions → Producer Pal →
+Configure and toggle the "Enabled" switch off and on.
 
 ## `npx` Fails Inside the Source Repository
 

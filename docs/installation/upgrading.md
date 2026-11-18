@@ -30,8 +30,8 @@ update a 2.4 device, so do this by hand. It takes a few minutes.
 6. <!--@include: ../_partials/control-surface.md-->
    If you'd already set up the remote script, Live remembers your Control
    Surface choice, so only the restart is needed.
-7. **Claude Desktop only:** go to Settings → Extensions, click the `...` menu on
-   Producer Pal and choose **Uninstall**. Then open the new
+7. **Claude Desktop only:** go to Settings → Desktop app → Extensions, click the
+   `...` menu on Producer Pal and choose **Uninstall**. Then open the new
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    (see [Claude Desktop installation](./claude-desktop)).
 8. Restart your AI app and start a fresh conversation.
