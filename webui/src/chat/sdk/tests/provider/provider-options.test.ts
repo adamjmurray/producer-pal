@@ -145,7 +145,7 @@ describe("buildProviderOptions for Ollama", () => {
   it("sends nothing at Max and none at Off", () => {
     expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toBeUndefined();
     expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
-      openai: { reasoningEffort: "none" },
+      ollama: { reasoningEffort: "none" },
     });
   });
 });

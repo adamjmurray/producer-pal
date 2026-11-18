@@ -34,13 +34,11 @@ import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
- * LM Studio and custom OpenAI-compatible endpoints use
- * `@ai-sdk/openai-compatible` (which surfaces the `reasoning_content` field
- * local reasoning models emit as thinking; `@ai-sdk/openai`'s chat model
- * silently drops it). Ollama stays on `@ai-sdk/openai` because its thinking
- * control (`reasoning_effort`) rides on the `openai` providerOptions
- * namespace. OpenRouter uses its
- * own SDK; Gemini uses `@ai-sdk/google`; Vercel AI Gateway uses `ai`'s own.
+ * LM Studio, Ollama and custom OpenAI-compatible endpoints use
+ * `@ai-sdk/openai-compatible`, which shows the `reasoning_content` or
+ * `reasoning` field local models stream as thinking (`@ai-sdk/openai`'s chat
+ * model drops both). OpenRouter uses its own SDK; Gemini uses
+ * `@ai-sdk/google`; Vercel AI Gateway uses `ai`'s own.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
@@ -91,10 +89,13 @@ export function createProviderModel(
       }).chatModel(modelId);
 
     case "ollama":
-      return createOpenAI({
+      return createOpenAICompatible({
+        name: "ollama",
         apiKey: apiKey || "not-needed",
         baseURL: withDefaultUrl(baseUrl, "http://localhost:11434/v1"),
-      }).chat(modelId);
+        // See lmstudio note.
+        includeUsage: true,
+      }).chatModel(modelId);
 
     case "custom": {
       // Unlike lmstudio/ollama, the custom provider has no default endpoint and
