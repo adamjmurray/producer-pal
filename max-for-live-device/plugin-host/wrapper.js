@@ -225,7 +225,7 @@ let followChecks = 0;
 
 function logFollow(why) {
   followLog.push(`${Date.now() % 100000} ${why}`);
-  if (followLog.length > 20) followLog.shift();
+  if (followLog.length > 60) followLog.shift();
 }
 
 function debugInfo() {
@@ -243,9 +243,11 @@ function debugInfo() {
 }
 
 let checking = false; // the check's own reads echo too
+let followSetAt = 0; // when a check last set dials
 
 function noteFollow(index) {
   if (checking || !slotOfIndex.has(index)) return;
+  if (pendingFollow.size === 0) logFollow("echoes start");
 
   pendingFollow.add(index);
   followTask.cancel();
@@ -267,21 +269,29 @@ function followSettled() {
       checking = false;
     }
 
-    if (changes.length === 0) return;
+    if (changes.length === 0) return logFollow(`none of ${indexes.length}`);
 
     // Through the Live API, not messages to the dials: Live gives each dial
     // message its own undo step, but merges API changes into the open step.
     // All in this one call, so the step closes right after.
+    // The state is saved here too, so a preset load is two undo steps: this
+    // state write (Live keeps a Max write as its own step even inside the
+    // group, and it lands after the dials) and the dials. Undoing the first
+    // brings the whole sound back; the second brings the dials.
     new LiveAPI("live_set").call("begin_undo_step");
     try {
+      followSetAt = Date.now();
+      saveState("follow");
       for (const { param, value } of changes) {
         new LiveAPI(`this_device parameters ${param}`).set("value", value);
       }
     } finally {
       new LiveAPI("live_set").call("end_undo_step");
     }
+    // No markEdited: the state is saved, and the dials' own writes echoing
+    // back would only add an undo step that changes nothing.
+    followSetAt = Date.now();
     logFollow(`set ${changes.length} of ${indexes.length}`);
-    markEdited();
   } catch (error) {
     logFollow(`error ${error?.message ?? error}`);
   }
@@ -829,6 +839,7 @@ function restoreStored() {
   // Up, so the plug-in's echoes of the restore don't count as edits: saving
   // them would add an undo step and drop the redo.
   busy++;
+  if (BAKED) logFollow("state restored");
   try {
     restoreInto(dict.name);
   } finally {
@@ -934,8 +945,13 @@ function saveState(why) {
     const settling = Date.now() - restoredAt < RESTORE_SETTLE_MS;
     const quiet = why === "poll" || why === "edit";
     // A stopped change to a slot's param, then slot writes: playback started.
+    // Spike: a generated device's follow sets dials right after an edit, and
+    // their writes aren't playback starting.
     const playbackStart =
-      why === "edit" && slotEditAt > savedAt && slotWriteAt >= slotEditAt;
+      why === "edit" &&
+      slotEditAt > savedAt &&
+      slotWriteAt >= slotEditAt &&
+      !(BAKED && followSetAt >= slotEditAt);
 
     if (
       quiet &&
@@ -943,6 +959,9 @@ function saveState(why) {
     ) {
       lastSaved = current;
       savedAt = Date.now();
+      if (BAKED) {
+        logFollow(`state adopted (${why}${playbackStart ? " playbackStart" : ""}${settling ? " settling" : ""})`);
+      }
 
       return settled();
     }
@@ -951,6 +970,7 @@ function saveState(why) {
     // already holds it, and writing again would drop the redo.
     if (current === storedState()) {
       lastSaved = current;
+      if (BAKED) logFollow(`state matches stored (${why})`);
 
       return settled();
     }
@@ -961,6 +981,7 @@ function saveState(why) {
     lastSaved = current;
     this.patcher.getnamed("vststate").message("dictionary", dict.name);
     savedAt = Date.now();
+    if (BAKED) logFollow(`state saved (${why})`);
 
     return settled();
   } catch (error) {
