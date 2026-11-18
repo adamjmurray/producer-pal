@@ -88,10 +88,19 @@ describe("formatEnvelopeNotation", () => {
   it("rounds a value to 3 decimals and trims the zeros", () => {
     expect(
       formatEnvelopeNotation(
-        events([0, 0.8500000238], [4, 1], [8, -0.0001]),
+        events([0, 0.8500000238], [4, 1], [8, -0.0000001]),
         FOUR_FOUR,
       ),
     ).toBe("1|1 0.85 / 2|1 1 / 3|1 0");
+  });
+
+  it("keeps 3 significant digits of a value below 0.1", () => {
+    expect(
+      formatEnvelopeNotation(
+        events([0, 0.0004], [4, -0.012345], [8, 0.05], [12, 0.0996]),
+        FOUR_FOUR,
+      ),
+    ).toBe("1|1 0.0004 / 2|1 -0.0123 / 3|1 0.05 / 4|1 0.0996");
   });
 
   it("spells the times in the clip's own meter", () => {

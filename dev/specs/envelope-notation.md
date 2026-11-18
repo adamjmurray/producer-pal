@@ -31,7 +31,8 @@ A point is `bar|beat value`, in the clip's own meter.
   inside it are written as square ones. A write ignores a display that follows a
   value, and takes one written in place of the value, `1|1 (112 Hz)`, as the
   value to convert to raw.
-- Values print with up to 3 decimals and no trailing zeros.
+- Values print with up to 3 decimals and no trailing zeros. A value below 0.1
+  keeps 3 significant digits instead (`0.0004`, `0.0123`).
 
 ## Connectors
 
