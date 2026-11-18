@@ -117,6 +117,30 @@ export function writeHostedParams(
 }
 
 /**
+ * How a wrapper is asked for a value: as text and, when it reads as one, a
+ * number in Hz or ms. A number with no unit is flagged `bare`: the wrapper
+ * reads it in the unit the param shows (3 is 3 kHz on a param reading
+ * "2.50 kHz"), which only it can see.
+ * @param written - The value, as written
+ * @param key - The param's name or id
+ * @returns The value's part of a wrapper entry
+ */
+export function hostedValueRequest(
+  written: string,
+  key: string,
+): { text: string; number?: number; bare?: true } {
+  const text = written.trim();
+  const value = normalizeParamValue(text, undefined, key);
+  const bare = text !== "" && Number.isFinite(Number(text));
+
+  return {
+    text,
+    ...(typeof value === "number" && { number: value }),
+    ...(bare && { bare }),
+  };
+}
+
+/**
  * Refuse every entry of a wrapper that won't answer, so none of them falls to
  * the wrapper's own Live params.
  * @param params - The call's `params`
@@ -203,10 +227,7 @@ function outOfTime(deadline: number | null | undefined): string | null {
 }
 
 /**
- * What the wrapper is asked for one entry: the param, and the value as text and,
- * when it reads as one, a number in Hz or ms. A number with no unit is flagged
- * `bare`: the wrapper reads it in the unit the param shows (3 is 3 kHz on a
- * param reading "2.50 kHz"), which only it can see.
+ * What the wrapper is asked for one entry: the param and the value.
  * @param item - The entry sent
  * @param item.entry - The entry
  * @param item.key - The name or id as the call spelled it
@@ -214,16 +235,11 @@ function outOfTime(deadline: number | null | undefined): string | null {
  * @returns The wrapper's entry
  */
 function wrapperEntry({ entry, key, byId }: SentEntry): object {
-  const text = entry.value.trim();
-  const value = normalizeParamValue(text, undefined, key);
   const index = byId ? parseHostedParamId(key) : null;
-  const bare = text !== "" && Number.isFinite(Number(text));
 
   return {
     ...(index == null ? { name: key } : { index }),
-    text,
-    ...(typeof value === "number" && { number: value }),
-    ...(bare && { bare }),
+    ...hostedValueRequest(entry.value, key),
   };
 }
 

@@ -22,8 +22,8 @@ import {
 import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { hostedSlots, type HostedSlots } from "./hosted/hosted-slots.ts";
+import { hostedRawPointValues } from "./hosted/hosted-display-values.ts";
 import {
-  HOSTED_DISPLAY_REFUSAL,
   hasDisplayValues,
   rawPointValues,
 } from "./points/display-point-values.ts";
@@ -360,15 +360,12 @@ function readPoints(
     const written = parseEnvelopeNotation(line.notation, address);
     const converted = hasDisplayValues(written);
 
-    if ("hosted" in resolved) {
-      // A hosted param's slot isn't mapped yet, so there is nothing to ask.
-      return converted
-        ? { reason: HOSTED_DISPLAY_REFUSAL }
-        : { points: written as EnvelopeNotationPoint[], converted };
-    }
-
     return {
-      points: rawPointValues(written, resolved.target, address.track),
+      // A hosted param's slot may not be mapped yet, so its plug-in is asked.
+      points:
+        "hosted" in resolved
+          ? hostedRawPointValues(written, resolved.hosted)
+          : rawPointValues(written, resolved.target, address.track),
       converted,
     };
   } catch (error) {

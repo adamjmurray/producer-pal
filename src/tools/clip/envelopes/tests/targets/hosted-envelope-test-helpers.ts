@@ -46,6 +46,8 @@ export interface Wrapper {
   heard: WrapperMessage[];
   /** Answers `map` with this error, when set */
   mapError?: string;
+  /** Answers `find`, when set; a wrapper without it gives no answer */
+  find?: (request: WrapperMessage) => WrapperMessage;
 }
 
 /**
@@ -158,6 +160,8 @@ export function answerAsWrapper(mapped: Mapping[] = []): Wrapper {
       slotCount: SLOT_COUNT,
       slots: wrapper.mapped,
     }),
+    // No answer when unset: installWrapper replies only with an object.
+    find: (request) => wrapper.find?.(request) as WrapperMessage,
     map: (request) => {
       if (wrapper.mapError != null) {
         return { success: false, error: wrapper.mapError };

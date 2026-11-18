@@ -111,7 +111,7 @@ function settleThenFinish(id, result) {
 
 // Ops that change nothing. They never save: a write would add an undo step to
 // a read and mark the Set changed. The poll saves any other change.
-const READ_OPS = new Set(["info", "params", "slots"]);
+const READ_OPS = new Set(["info", "params", "slots", "find"]);
 
 function isRead(req, result) {
   return READ_OPS.has(req.op) || result.unchanged === true;
@@ -227,6 +227,8 @@ function handle(req) {
       return { params: setParams(req.params ?? []) };
     case "write":
       return { params: writeParams(req.params ?? []) };
+    case "find":
+      return findValues(req);
     case "raw":
       return raw(req.message ?? []);
     case "map":
@@ -1327,9 +1329,49 @@ function writeOne(target, entry) {
   };
 }
 
-// Where in 0-1 does the param show this text or number? `before` is what it
-// showed before the search moved it.
-function searchValue(index, { text, number, bare }, before) {
+// Where a param shows each text or number, without leaving it moved: the
+// search moves the param, then it goes back to where it was.
+// Request: {index | name, values: [{text?, number?, bare?}]}.
+// Result: {index, name, low, high, values}, where low and high are what the
+// param shows at 0 and 1, and each value is {value, display, outside?} or
+// {error}. `outside` says the number is past every value the param shows, so
+// `value` is the nearest end.
+function findValues({ index, name, values = [] }) {
+  if (loadedFile() == null) throw new Error("no plug-in loaded");
+  if (state.names.length === 0) loadNames();
+
+  const target = resolveEntry(index != null ? { index } : { name });
+
+  if (target.error) throw new Error(target.error);
+
+  const original = readParam(target.index);
+  const samples = sampleParam(target.index);
+  const found = values.map((wanted) => {
+    const hit = searchValue(target.index, wanted, original.display, samples);
+
+    if (hit.error) return { error: hit.error };
+
+    outlet(0, target.index, hit.value);
+
+    return {
+      value: hit.value,
+      display: readParam(target.index).display,
+      ...(hit.outside ? { outside: true } : {}),
+    };
+  });
+
+  outlet(0, target.index, Number(original.value));
+
+  return {
+    ...identity(target),
+    low: samples[0].display,
+    high: samples[SAMPLES].display,
+    values: found,
+  };
+}
+
+// What the param shows at SAMPLES + 1 values across 0-1.
+function sampleParam(index) {
   const samples = [];
 
   for (let i = 0; i <= SAMPLES; i++) {
@@ -1339,6 +1381,12 @@ function searchValue(index, { text, number, bare }, before) {
     samples.push({ value, display: String(readParam(index).display ?? "") });
   }
 
+  return samples;
+}
+
+// Where in 0-1 does the param show this text or number? `before` is what it
+// showed before the search moved it.
+function searchValue(index, { text, number, bare }, before, samples = sampleParam(index)) {
   const wanted = text == null ? null : looseText(text);
   const hit = wanted && samples.find((s) => matchesText(s.display, wanted));
 
@@ -1416,7 +1464,7 @@ function bisect(index, samples, target) {
 
   let best = closest(samples, shown, target);
 
-  if (pair < 0) return { value: best.value };
+  if (pair < 0) return { value: best.value, outside: best.diff > 0 };
 
   let lo = samples[pair].value;
   let hi = samples[pair + 1].value;

@@ -22,10 +22,6 @@ import { type EnvelopeTarget } from "../targets/envelope-targets.ts";
 /** The tail a Live path adds to a device's own path to name one of its params. */
 const PARAMETER_TAIL = / parameters \d+$/;
 
-/** Why a hosted plug-in's param takes no display values. */
-export const HOSTED_DISPLAY_REFUSAL =
-  "not written: a hosted plug-in's param takes raw values, not a display value in parentheses";
-
 /**
  * Whether any point gives a display value in place of a raw one.
  * @param points - The parsed notation

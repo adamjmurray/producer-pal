@@ -251,6 +251,15 @@ param back and says what the param does show. One request covers a whole
 that matches more than one param is refused; two entries reaching one param
 write the last.
 
+`find` runs the same search for one param and a list of values, then puts the
+param back where it was: it answers each value's 0–1 position and saves nothing.
+Clip envelopes use it to turn a display value into the raw value a slot takes.
+The param is sampled once however many values are asked. A number past every
+value the param shows comes back flagged `outside`, with what the param shows at
+0 and 1 (`low`, `high`). The search is short (well under half a second for a
+param) and leaves a playing slot's automation alone, but the plug-in does sweep
+the param while it runs.
+
 ### Naming the plug-in
 
 After a Set reload or duplicate, `vst~` restores the plug-in but the wrapper has

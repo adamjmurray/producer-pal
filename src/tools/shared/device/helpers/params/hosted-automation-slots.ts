@@ -104,16 +104,27 @@ export function mapSlot(
     return { ok: true, name: typeof reply.name === "string" ? reply.name : "" };
   }
 
+  return { ok: false, reason: wrapperRefusal(deviceId, reply?.error, "map") };
+}
+
+/**
+ * Say why a wrapper didn't do what was asked, in words for the caller.
+ * @param deviceId - Live id of the wrapper device
+ * @param error - What the wrapper said, if it answered
+ * @param what - What was asked of it
+ * @returns The reason
+ */
+export function wrapperRefusal(
+  deviceId: string,
+  error: string | undefined,
+  what: keyof typeof FAILED,
+): string {
   // The wrapper refuses with the same words as NO_PLUGIN_LOADED. Say a missing
   // plug-in the way reads and param writes do.
   const unloaded =
-    reply?.error === NO_PLUGIN_LOADED ? hostedPluginFromInfo(deviceId) : null;
+    error === NO_PLUGIN_LOADED ? hostedPluginFromInfo(deviceId) : null;
 
-  return {
-    ok: false,
-    reason:
-      (unloaded && noPluginDetail(unloaded)) ?? refusal(reply?.error, "map"),
-  };
+  return (unloaded && noPluginDetail(unloaded)) ?? refusal(error, what);
 }
 
 /**
@@ -135,13 +146,20 @@ export function slotParameters(device: LiveAPI): Map<number, SlotParameter> {
   return found;
 }
 
+/** What a wrapper failed at, by what was asked of it. */
+const FAILED = {
+  read: "couldn't read the automation slots",
+  map: "couldn't map an automation slot",
+  find: "couldn't convert a display value",
+};
+
 /**
- * Say why a wrapper didn't do what was asked, in words for the caller.
+ * Say why a wrapper didn't do what was asked, whatever it hosts.
  * @param error - What the wrapper said, if it answered
- * @param what - "read" the slots or "map" one
+ * @param what - What was asked of it
  * @returns The reason
  */
-function refusal(error: string | undefined, what: "read" | "map"): string {
+function refusal(error: string | undefined, what: keyof typeof FAILED): string {
   if (error == null) {
     return "the hosted plug-in didn't answer";
   }
@@ -155,7 +173,5 @@ function refusal(error: string | undefined, what: "read" | "map"): string {
     return "this wrapper is out of date; create the hosted plug-in again";
   }
 
-  return what === "read"
-    ? `couldn't read the automation slots: ${error}`
-    : `couldn't map an automation slot: ${error}`;
+  return `${FAILED[what]}: ${error}`;
 }

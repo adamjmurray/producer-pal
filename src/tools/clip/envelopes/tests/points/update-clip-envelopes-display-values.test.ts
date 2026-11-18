@@ -18,10 +18,6 @@ import {
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import {
-  answerAsWrapper,
-  setupTrack,
-} from "#src/tools/clip/envelopes/tests/targets/hosted-envelope-test-helpers.ts";
-import {
   setupMidiClipMock,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
@@ -195,26 +191,5 @@ describe("updateClip - envelope points written as display values", () => {
     ],
   ])("refuses %s, writing nothing", async (line, why) => {
     await expectRefused(line, why);
-  });
-});
-
-describe("updateClip - display values on a hosted plug-in's param", () => {
-  it("refuses them before a slot is mapped", async () => {
-    setupMidiClipMock(setupUpdateClipMocks().clip123);
-    setupTrack();
-    answerAsWrapper();
-
-    const result = await updateClip({
-      id: "123",
-      envelopes: "t0/d0/h56: 1|1 (50 %)",
-    });
-
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail:
-          'envelope "t0/d0/h56": not written: a hosted plug-in\'s param takes raw values, not a display value in parentheses',
-      }),
-    );
   });
 });

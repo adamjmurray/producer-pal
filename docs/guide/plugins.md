@@ -91,6 +91,9 @@ parameter, and then you can edit its lane by hand.
   its slot. Knobs for unassigned slots are greyed out.
 - **All 128 slots are always listed** in the automation chooser.
 - **Lanes show 0 to 100%**, not the plug-in's units.
+- **Ask in the plug-in's units**, like "ramp the cutoff from 500 Hz to 2 kHz".
+  To find where those values sit, Producer Pal moves the parameter for an
+  instant and puts it back, which you may hear if the Set is playing.
 - **Slots don't follow the plug-in's window.** Turning an automated knob there
   moves the panel's knob but not its slot in Live, so Live shows the slot's old
   value until automation, the panel or Producer Pal moves it.
