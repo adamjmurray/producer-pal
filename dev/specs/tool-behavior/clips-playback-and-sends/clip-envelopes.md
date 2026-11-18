@@ -150,7 +150,9 @@ refuses the call like any other. The rest skip that line, as
 
 On a read, an envelope on a mapped slot names the plug-in's param:
 `{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Slot 002", ... }`, with no
-`device` (the `id` has it), and `id` works as a write target. An envelope on an
+`device` (the `id` has it), and `id` works as a write target. Its points are raw
+values with no display in parentheses: Live knows only the slot's own 0-1
+number, and a write reads parentheses in the plug-in's units. An envelope on an
 unmapped slot, or on a device that isn't a hosted wrapper, reads as any
 parameter (`parameter: "Slot 002"`, Live's `id`, `device`).
 

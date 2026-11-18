@@ -318,6 +318,9 @@ function envelopeEntry(
   unwarped: boolean,
 ): ClipEnvelope {
   const { numerator, denominator } = clipMeter();
+  // A slot shows its own 0-1 number, not what the plug-in shows there, and a
+  // display in parentheses is what a write reads in the plug-in's units.
+  const hosted = identity.slot != null;
 
   return {
     ...identity,
@@ -327,7 +330,7 @@ function envelopeEntry(
       (read.events ?? []).map((event) => ({
         time: event.time,
         value: event.value,
-        display: event.display_str,
+        display: hosted ? undefined : event.display_str,
         coefficients: event.coefficients,
       })),
       { timeSigNumerator: numerator, timeSigDenominator: denominator },

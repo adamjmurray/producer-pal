@@ -82,7 +82,7 @@ function answerEnvelopeRoutes(listed: ListedEnvelope[]): void {
               exists: true,
               event_count: 1,
               events: [
-                { time: 0, value: 0.2, display: 0.2, display_str: "0.2" },
+                { time: 0, value: 0.2, display: 0.2, display_str: "0.20" },
               ],
             },
           },
@@ -153,6 +153,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
     vi.mocked(requestNode).mockReset();
   });
 
+  // No display: the slot's "0.20" is its own number, not the plug-in's text.
   it("names a mapped slot's envelope by the plug-in param, with an id that targets it", async () => {
     setup();
     answerEnvelopeRoutes([slotEnvelope(2)]);
@@ -180,7 +181,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
         id: "slot-2",
         device: "t0/d0",
         eventCount: 1,
-        events: "1|1 0.2",
+        events: "1|1 0.2 (0.20)",
       },
     ]);
   });
