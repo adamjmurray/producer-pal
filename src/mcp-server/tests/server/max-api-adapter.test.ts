@@ -23,6 +23,13 @@ import {
 const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
+// Tested on its own. A real undo-step end here holds the queue between tests
+// while its request fails, so the next test's write waits.
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts"),
+  () => ({ endUndoStep: vi.fn(() => undefined) }),
+);
+
 vi.mock(import("../../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));

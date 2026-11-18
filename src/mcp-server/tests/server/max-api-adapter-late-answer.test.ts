@@ -13,6 +13,13 @@ import {
   setTimeoutForTesting,
 } from "../../max-api-adapter.ts";
 
+// Tested on its own. A real undo-step end here holds the queue between tests
+// while its request fails, so the next test's write waits.
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts"),
+  () => ({ endUndoStep: vi.fn(() => undefined) }),
+);
+
 const FIRST_TIMEOUT_MS = 100;
 
 /**
