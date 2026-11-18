@@ -135,7 +135,12 @@ export function ConnectionTab({
         baseUrl={baseUrl}
       />
 
-      <ModelSelector provider={provider} model={model} setModel={setModel} />
+      <ModelSelector
+        provider={provider}
+        model={model}
+        setModel={setModel}
+        baseUrl={baseUrl}
+      />
       <ModelDocsLink provider={provider} providerLabel={providerLabel} />
 
       <VoiceSettings provider={provider} model={model} {...voice} />

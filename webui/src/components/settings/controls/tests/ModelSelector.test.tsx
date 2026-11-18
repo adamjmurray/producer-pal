@@ -19,6 +19,11 @@ import {
   ModelSelector,
 } from "#webui/components/settings/controls/ModelSelector";
 
+// No local server here: LM Studio and Ollama fall back to their presets.
+vi.mock(import("#webui/hooks/settings/helpers/use-local-models"), () => ({
+  useLocalModels: vi.fn(() => undefined),
+}));
+
 type RenderProps = Partial<ModelSelectorProps> & { setModel?: Mock };
 
 function renderModelSelector(

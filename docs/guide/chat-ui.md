@@ -358,7 +358,9 @@ keys. Instead, they have a configurable URL.
 
 - **URL** - Server address (default: `http://localhost:11434` for Ollama,
   `http://localhost:1234` for Bionic)
-- **Model** - Select from installed models
+- **Model** - Pick from the models the server has downloaded (loaded ones are
+  marked), or choose **Other...** to type a name. If the server can't be
+  reached, type the name instead
 
 The default is almost always right. Change it if:
 
