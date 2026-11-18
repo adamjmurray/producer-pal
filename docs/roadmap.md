@@ -20,20 +20,26 @@ In consideration:
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
-### 2.6 - Plug-in Control (November 2026)
+### 2.6 - Plug-in Control, Live 13, Safer by Default (November 2026)
 
-- Full plug-in control: add a VST3, AU or VST2 plug-in inside a Producer Pal
-  wrapper and the AI can read and set every parameter, and automate them in
-  clips. Needs the remote script and Live 12.4+. See
+- **Full plug-in control:** add a VST3, AU or VST2 plug-in inside a Producer Pal
+  wrapper and the AI can read and set every parameter in the plug-in's own
+  units, and automate them in clips. Needs the remote script and Live 12.4+. See
   [Full Plug-in Control](/guide/plugins)
+- **Live 13 support:** envelope clips on return tracks, 32 macros, and Mid-Side
+  and Multiband racks. Step sequencer clips are recognized, but Live doesn't let
+  Producer Pal read or edit their steps yet
+- **Safer by default:** only Live's own computer can connect unless you turn on
+  [Remote Control](/installation/remote-access), and web pages can no longer
+  reach Producer Pal through your browser
+
+Also in this release:
+
 - Changing an arrangement clip's length resizes the clip in place. Before,
   lengthening a looped clip left a row of copies
 - Clips have their own MIDI scale (Live 12.4.15+)
-- Read, update and automate CC Control
-- Early Live 13 support: step sequencer clips, envelope clips on return tracks,
-  32 macros, and racks with fixed chains
-- Only this computer can connect by default. Turn on Remote Control to use
-  Producer Pal from a phone or another computer
+- Read, set and automate CC Control, so mod wheel and other MIDI CCs can get
+  clip envelopes
 - Folders in Live's Places replace the custom sample folder setting
 - `ppal-library` pages long search results, and the plug-in list is current with
   the remote script

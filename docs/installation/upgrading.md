@@ -90,8 +90,9 @@ version. See
 ### Calling Producer Pal from your own scripts
 
 Over [MCP](/guide/npx-cli), the [REST API](/guide/rest-api), or an
-[agent skill](/guide/skills), some input and output formats changed in 2.3.0.
-See the [Migration Guide](/guide/migration).
+[agent skill](/guide/skills), input and output formats can change a little in
+each release. See the [Migration Guide](/guide/migration) for what changed since
+your version.
 
 ## If something's not working
 

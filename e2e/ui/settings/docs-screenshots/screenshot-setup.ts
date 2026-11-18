@@ -31,6 +31,19 @@ export const FAKE_KEY = "x".repeat(39);
 type Body = Record<string, unknown>;
 
 /**
+ * The two plug-in wrapper devices, both in one state.
+ * @param state - "current" once installed, "missing" before
+ * @returns The /device-install `pluginHost` list
+ */
+export function pluginHostWrappers(state: "current" | "missing"): Body[] {
+  return ["PPal Plug-in Effect", "PPal Plug-in Instrument"].map((name) => ({
+    name,
+    path: `${USER_LIBRARY}/Presets/${name}.amxd`,
+    state,
+  }));
+}
+
+/**
  * Device install status: the User Library copy, unless overridden.
  * @param overrides - Fields to change
  * @returns The /device-install response body
@@ -50,6 +63,7 @@ export function deviceStatus(overrides: Body = {}): Body {
       allowed: false,
       reason: "This device is already the User Library copy.",
     },
+    pluginHost: pluginHostWrappers("current"),
     ...overrides,
   };
 }

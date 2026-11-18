@@ -49,6 +49,8 @@ gives you this shape.
   simplified skills and schemas for less capable models.
 - Call it first when a model is driving Producer Pal. That's how the AI learns
   the notation and conventions. A plain REST script can skip it.
+- Re-check versions after an install or update with `versionCheck`, without
+  re-sending the Skills and context
 
 <!--@include: ../_generated/ppal-connect-schema.md-->
 
@@ -59,6 +61,7 @@ gives you this shape.
 - Read and write the three [context layers](/guide/context): project context
   (notes about this Live Set), global context (preferences that apply to every
   project), and memory (facts AI records about you as you work)
+- Read or delete several memory entries in one call
 
 <!--@include: ../_generated/ppal-context-schema.md-->
 
@@ -122,6 +125,8 @@ Live, or make sure your standalone Max is up to date. See
 - Finds the files in any folder you add to Places in Live's browser, listed
   under User. A folder or file added while Live is running may not show up until
   Live restarts
+- Long results come in pages: a search that hit its `limit` (200 at most)
+  returns `nextOffset`, to pass back as `offset`
 - Sort by `use-count` (Live's persistent usage counter, which surfaces what you
   actually use most), `mod-date`, or `name`
 - Enumerate available tags with `action: "list-tags"` so the AI can discover the
@@ -361,6 +366,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Get audio clip gain, pitch, warp settings, and sample info
 - See a MIDI clip's own `scale` when it differs from the Live Set's (Live
   12.4.15 or later)
+- Live 13: envelope clips on return tracks (`rt0/s0`) read as
+  `type: "envelope"`. Step sequencer clips read as `type: "step-sequencer"`, but
+  Live doesn't let their steps be read or edited yet
 - Read a session clip's automation envelopes with `include: ["envelopes"]`
   (needs the [remote script](/guide/remote-script)). A clip read shows
   `envs: true` when it has some. An arrangement clip's automation is the track's
@@ -466,11 +474,14 @@ sounding.
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
-- List device parameter names and values (the state of knobs, dials, etc)
+- List device parameter names and values (the state of knobs, dials, etc). Page
+  through a device with many parameters using `paramOffset`
 - See a rack chain's own volume, pan, and sends when they're not at default
 - See which parameters have arrangement automation. Left out, with a reason,
   while the track plays from Session
 - See which of a rack's macros are mapped (needs the remote script)
+- See `maxChains` on a rack with fixed chains (Live 13's Mid-Side and Multiband
+  racks)
 - Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
   parameters (needs the remote script)
 
@@ -486,6 +497,7 @@ sounding.
 - Move devices anywhere else in the Live Set, including into racks / wrapping in
   a new rack
 - Create, load, delete, revert, and randomize rack macro variations
+- Set how many macros a rack shows with `macroCount` (up to 32 on Live 13)
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Set a rack chain's own volume, pan, and send levels, several sends at once

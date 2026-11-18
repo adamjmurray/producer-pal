@@ -12,6 +12,7 @@ import {
   type ScreenshotSetup,
   VERSION,
   deviceStatus,
+  pluginHostWrappers,
   remoteScriptStatus,
   saveDialogScreenshot,
   setupScreenshot,
@@ -42,6 +43,7 @@ test("device from Downloads, nothing installed", async ({ page }) => {
         inUserLibrary: false,
         state: "not-installed",
         installedVersion: null,
+        pluginHost: pluginHostWrappers("missing"),
         swap: {
           allowed: false,
           reason:
