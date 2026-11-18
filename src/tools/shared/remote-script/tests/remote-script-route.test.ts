@@ -11,6 +11,8 @@ import {
 } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -158,4 +160,44 @@ describe("remoteScriptChange", () => {
       stalled: "unanswered",
     });
   });
+
+  it.each([
+    [
+      "an unfinished change",
+      true,
+      {
+        success: true,
+        result: { available: true, error: "x", unfinished: true },
+      },
+      true,
+    ],
+    ["a change with no answer", true, { success: false }, true],
+    [
+      "a refused change",
+      true,
+      { success: true, result: { available: true, error: "x" } },
+      false,
+    ],
+    ["a read with no answer", false, { success: false }, false],
+    [
+      "an unfinished read",
+      false,
+      {
+        success: true,
+        result: { available: true, error: "x", unfinished: true },
+      },
+      false,
+    ],
+  ])(
+    "counts %s as changing the Set: %s",
+    async (_name, change, response, changed) => {
+      vi.mocked(requestNode).mockResolvedValue(response);
+
+      const capture = provedUnchangedRequest();
+      const call = change ? remoteScriptChange : remoteScriptRoute;
+
+      await call("w", {}, null, MISSING, true);
+      expect(changedNothing(capture)).toBe(!changed);
+    },
+  );
 });

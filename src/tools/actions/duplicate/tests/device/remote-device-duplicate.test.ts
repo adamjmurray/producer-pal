@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { duplicateOnRemoteScript } from "#src/tools/actions/duplicate/helpers/device/remote-script-copy/remote-device-duplicate.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -107,5 +109,29 @@ describe("duplicateOnRemoteScript", () => {
       },
     );
     expect(requestNode).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "an unfinished copy",
+      {
+        success: true,
+        result: { available: true, error: "x", unfinished: true },
+      },
+      true,
+    ],
+    ["no answer", { success: false }, true],
+    [
+      "a refusal",
+      { success: true, result: { available: true, error: "x" } },
+      false,
+    ],
+  ])("counts %s as changing the Set: %s", async (_name, response, changed) => {
+    vi.mocked(requestNode).mockResolvedValue(response);
+
+    const capture = provedUnchangedRequest();
+
+    await duplicateOnRemoteScript(DEVICE, null);
+    expect(changedNothing(capture)).toBe(!changed);
   });
 });

@@ -118,7 +118,10 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   even if the target ends as a skip (empty chains or scenes made on the way, a
   stray copy, a temp track or scratch clip Live won't delete). The entry is
   unchanged; only the undo verdict is. Call it where the change is made: it
-  marks the request, so a deep helper needs no `step`.
+  marks the request, so a deep helper needs no `step`. A remote-script change
+  that never answered calls `markMayHaveLanded()` (`remote-script-route.ts`)
+  instead: it may have landed, so its step is closed. `remoteScriptChange` does
+  this itself.
 - `withPieces(entry, extra)`: return the target's own entry plus extra entries
   that ride behind it (a clip split into pieces).
 - `call.ignored(params, why)`: warn that a whole-call param did nothing, as

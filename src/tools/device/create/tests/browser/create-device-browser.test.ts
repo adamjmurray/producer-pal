@@ -7,9 +7,13 @@
 // the remote script: onto a temp track, then moved to the path.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  changedNothing,
+  capturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type BrowserItemLoad,
   type BrowserItemResolution,
@@ -441,6 +445,8 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     });
 
     it("saying Live may have loaded it when the load timed out mid-run", async () => {
+      const capture = provedUnchangedRequest();
+
       answerRemoteScript({
         load: {
           success: true,
@@ -459,9 +465,12 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         /^could not load "Pro-Q 4": Live started the request but didn't finish it within 30\.0s; Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it$/,
       );
       expectCleanedUp();
+      expect(changedNothing(capture)).toBe(false);
     });
 
     it("keeping a skipped load's own message, which says nothing changed", async () => {
+      const capture = provedUnchangedRequest();
+
       answerRemoteScript({
         load: {
           success: true,
@@ -479,6 +488,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         /^could not load "Pro-Q 4": the request expired before Live ran it; nothing changed$/,
       );
       expectCleanedUp();
+      expect(changedNothing(capture)).toBe(true);
     });
 
     it("when the device never arrives", async () => {
@@ -706,6 +716,8 @@ describe("createDevice — a plug-in or Max for Live device", () => {
     // The temp track is deleted, and a load that runs later can't find it by
     // name, so nothing reaches the path.
     it("says to re-run a load it stopped waiting for", async () => {
+      const capture = provedUnchangedRequest();
+
       answerRemoteScript({
         load: { success: false, error: "timed out after 8000ms" },
         arrives: false,
@@ -721,6 +733,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
         /^could not load "Pro-Q 4": timed out after 8000ms; Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it$/,
       );
       expectCleanedUp();
+      expect(changedNothing(capture)).toBe(false);
     });
 
     it("keeps a failure's own message when it didn't stop waiting", async () => {
