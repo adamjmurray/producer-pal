@@ -179,6 +179,7 @@ function pval(index, value, ...display) {
 
   state.values[index] = { value, display: display.join(" ") };
   showKnobValue(Number(index), value);
+  if (BAKED) noteFollow(Number(index));
 
   // Our own writes echo back synchronously while busy is up.
   if (busy > 0) return;
@@ -207,6 +208,118 @@ function pval(index, value, ...display) {
 // saveState when more slot writes follow.
 const STOP_GRACE_MS = 1000;
 
+// Spike: a generated device's dial follows its param when something other
+// than the dial moved it (the plug-in window, a Producer Pal write).
+// The plug-in's state is still saved too: a change (a preset load) can carry
+// data no param shows.
+//
+// Never act on an echo as it arrives: a dial reaches vst~ through its speedlim,
+// so an echo can be of a value the dial has already left, and setting the dial
+// back starts a ping-pong. Note the param, and once echoes have been quiet for
+// FOLLOW_SETTLE_MS compare the dial with the param as it is then.
+const FOLLOW_SETTLE_MS = 50; // longer than SLOT_INTERVAL_MS (speedlim)
+const pendingFollow = new Set(); // param indexes echoed since the last check
+const followTask = new Task(followSettled);
+const followLog = []; // spike: what the last checks did, for the debug op
+let followChecks = 0;
+
+function logFollow(why) {
+  followLog.push(`${Date.now() % 100000} ${why}`);
+  if (followLog.length > 20) followLog.shift();
+}
+
+function debugInfo() {
+  return {
+    playing,
+    restoredAgoMs: Date.now() - restoredAt,
+    slotsReady,
+    slotOfIndexSize: slotOfIndex.size,
+    paramIndexesSize: paramIndexes?.size ?? null,
+    pending: pendingFollow.size,
+    followChecks,
+    busy,
+    followLog,
+  };
+}
+
+let checking = false; // the check's own reads echo too
+
+function noteFollow(index) {
+  if (checking || !slotOfIndex.has(index)) return;
+
+  pendingFollow.add(index);
+  followTask.cancel();
+  followTask.schedule(FOLLOW_SETTLE_MS);
+}
+
+function followSettled() {
+  const indexes = [...pendingFollow];
+
+  pendingFollow.clear();
+  followChecks++;
+  try {
+    checking = true;
+    let changes;
+
+    try {
+      changes = followChanges(indexes);
+    } finally {
+      checking = false;
+    }
+
+    if (changes.length === 0) return;
+
+    // Through the Live API, not messages to the dials: Live gives each dial
+    // message its own undo step, but merges API changes into the open step.
+    // All in this one call, so the step closes right after.
+    new LiveAPI("live_set").call("begin_undo_step");
+    try {
+      for (const { param, value } of changes) {
+        new LiveAPI(`this_device parameters ${param}`).set("value", value);
+      }
+    } finally {
+      new LiveAPI("live_set").call("end_undo_step");
+    }
+    logFollow(`set ${changes.length} of ${indexes.length}`);
+    markEdited();
+  } catch (error) {
+    logFollow(`error ${error?.message ?? error}`);
+  }
+}
+
+// The dials that differ from their param now.
+function followChanges(indexes) {
+  // Playing: automation moves the dials. Just stopped: a speedlim may still
+  // send a held value. Restoring (load, duplicate, undo): the stored state can
+  // be older than the dials, and Live restores the dials itself.
+  if (playing || Date.now() - stoppedAt < STOP_GRACE_MS) return skip("playing");
+  if (Date.now() - restoredAt < RESTORE_SETTLE_MS) return skip("restoring");
+
+  const changes = [];
+
+  for (const index of indexes) {
+    const n = slotOfIndex.get(index);
+    const value = Number(readParam(index).value);
+    const dial = Number(this.patcher.getnamed(`slotdial${n}`)?.getvalueof());
+
+    if (!isFinite(value) || Math.abs(dial - value) < 1e-4) continue;
+    // Setting an automated dial overrides its automation.
+    if (dialHasAutomation(n)) continue;
+
+    const param = paramIndexOf(dialName(n));
+
+    if (param != null) changes.push({ param, value });
+  }
+
+  return changes;
+}
+
+function skip(why) {
+  logFollow(`skipped: ${why}`);
+
+  return [];
+}
+
 function isSlotWrite(index, value) {
   if (playing || Date.now() - stoppedAt < STOP_GRACE_MS) return true;
 
@@ -234,7 +347,8 @@ function handle(req) {
     case "unmap":
       return unmapSlot(req);
     case "slots":
-      return listSlots();
+      // Spike: `slots` carries the debug info, so the tool needs no change.
+      return BAKED ? { debug: debugInfo() } : listSlots();
     default:
       throw new Error(`unknown op: ${req.op}`);
   }
@@ -593,6 +707,35 @@ function adoptStored() {
   // Don't push the dials into the plug-in here: a dial is synced only when
   // mapped, so its saved value can be older than the restored state.
   showName(pluginName());
+  if (BAKED) adoptBaked();
+}
+
+// Spike: a fresh generated device loads its plug-in and sets every dial to its
+// param; one restored from a Set routes the dials it already has.
+// A restored one pushes its dials into the plug-in: Live saved them, and the
+// plug-in's stored state can be older (see noteFollow).
+function adoptBaked() {
+  const fresh = loadedPlugin() == null && storedNameDict() == null;
+
+  if (fresh) load(BAKED.load);
+
+  const map = readSlots();
+
+  busy++;
+  try {
+    for (const n of Object.keys(map)) {
+      const dial = Number(this.patcher.getnamed(`slotdial${n}`)?.getvalueof());
+      const param = readParam(map[n].index).value;
+
+      if (Math.abs(dial - param) < 1e-4) continue;
+      // Each set is an undo step, so the device bakes in the plug-in's
+      // defaults and a fresh one should need none.
+      if (fresh) setDial(n, param);
+      else outlet(0, Number(map[n].index), dial);
+    }
+  } finally {
+    busy--;
+  }
 }
 
 function stateOf() {
@@ -902,6 +1045,10 @@ nameWatchTask.schedule(1000);
 // the names are fixed and the mapping is ours. The names are zero-padded so
 // Live lists them in order. Entries for another plug-in file are ignored.
 const SLOT_COUNT = 128; // npm run plugin-host:build sets this
+// Spike: a device generated for one plug-in sets this to
+// {load: <load request>, slots: {"<n>": {index, name}}}. Its dials are named
+// for the plug-in's params and the mapping is fixed.
+const BAKED = null;
 const NAME_WIDTH = Math.max(2, String(SLOT_COUNT).length);
 const SLOTS_REFRESH_MS = 500;
 let slotsReady = false; // the stored mapping is readable, or a plug-in was loaded
@@ -937,23 +1084,37 @@ function setDial(n, value) {
 }
 
 function dialName(n) {
+  if (BAKED) return BAKED.slots[n]?.name ?? "";
+
   return `Slot ${String(n).padStart(NAME_WIDTH, "0")}`;
 }
 
 // Setting a dial would override its automation, so map checks first.
 function dialHasAutomation(n) {
-  const name = dialName(n);
-  const count = new LiveAPI("this_device").getcount("parameters");
+  const i = paramIndexOf(dialName(n));
 
-  for (let i = 0; i < count; i++) {
-    const param = new LiveAPI(`this_device parameters ${i}`);
+  if (i == null) return false;
 
-    if (String(param.get("name")) === name) {
-      return Number(param.get("automation_state")) !== 0;
+  return (
+    Number(new LiveAPI(`this_device parameters ${i}`).get("automation_state")) !==
+    0
+  );
+}
+
+// A device's param list is fixed once it has loaded, so look it up once.
+let paramIndexes = null;
+
+function paramIndexOf(name) {
+  if (paramIndexes == null) {
+    const count = new LiveAPI("this_device").getcount("parameters");
+
+    paramIndexes = new Map();
+    for (let i = 0; i < count; i++) {
+      paramIndexes.set(String(new LiveAPI(`this_device parameters ${i}`).get("name")), i);
     }
   }
 
-  return false;
+  return paramIndexes.get(name);
 }
 
 function slotNumber(slot) {
@@ -969,6 +1130,7 @@ function slotNumber(slot) {
 // The slot's dial is set to the param's value, unless the slot already drives
 // this param or the dial has arrangement automation.
 function mapSlot({ slot: slotArg, name, index }) {
+  if (BAKED) throw new Error("this device's slots are fixed");
   if (!slotsReady) throw new Error("the device is still loading");
 
   const n = slotNumber(slotArg);
@@ -999,6 +1161,7 @@ function mapSlot({ slot: slotArg, name, index }) {
 }
 
 function unmapSlot({ slot: slotArg }) {
+  if (BAKED) throw new Error("this device's slots are fixed");
   if (!slotsReady) throw new Error("the device is still loading");
 
   const n = slotNumber(slotArg);
@@ -1049,6 +1212,8 @@ function readSlots() {
 }
 
 function storedSlots() {
+  if (BAKED) return BAKED.slots;
+
   try {
     const stored = this.patcher.getnamed("vstslots")?.getvalueof();
 
