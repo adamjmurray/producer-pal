@@ -88,9 +88,10 @@ duplicate doesn't get its contents).
   - **Set the dials from the remote script.** Python set all 543 of Serum's in
     1.6 ms (against 3.3 s from Max), inside `begin_undo_step`/`end_undo_step`,
     as one undo step. Live didn't stall, and the plug-in followed every dial.
-    The wrapper still has to hand its changes to Python: Max's v8 has no HTTP,
-    so it would go through a `maxurl` object in the device, or through Producer
-    Pal's device. Either way, follow then needs the remote script.
+    The wrapper can post its changes straight to the remote script with
+    `XMLHttpRequest`, which Max's v8 has in Live 12.4 (Max 9.1.5; a ping took
+    25–100 ms). `fetch()` arrives only in Max 9.2 (Live 13), which also rewrote
+    `XMLHttpRequest`, so check it there. Follow then needs the remote script.
 - **Plug-in updates.** The map is by `vst~` param index. If an update adds,
   removes or reorders params, dials drive the wrong params and new ones have no
   dial. The device would need to check names at load and remap by name, or ask
