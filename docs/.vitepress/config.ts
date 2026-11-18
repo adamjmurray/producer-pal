@@ -29,6 +29,7 @@ export default defineConfig({
           item.url !== "installation/lm-studio" &&
           item.url !== "installation/gemini" &&
           item.url !== "installation/gemini-cli" &&
+          item.url !== "installation/mistral-le-chat" &&
           item.url !== "installation/openai" &&
           item.url !== "installation/chat-ui-other-providers" &&
           item.url !== "installation/ollama" &&
@@ -206,9 +207,12 @@ export default defineConfig({
                 text: "Remote Access",
                 link: "/installation/remote-access",
                 items: [
-                  { text: "claude.ai", link: "/installation/claude-web" },
+                  { text: "Claude Web", link: "/installation/claude-web" },
                   { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
-                  { text: "Le Chat", link: "/installation/mistral-le-chat" },
+                  {
+                    text: "Mistral Vibe Web",
+                    link: "/installation/mistral-vibe-web",
+                  },
                 ],
               },
               {

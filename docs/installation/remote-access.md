@@ -1,8 +1,8 @@
 # Remote Access
 
 Reach Producer Pal from somewhere other than Live's computer: another computer
-on your network, or a chat website (claude.ai, ChatGPT, Le Chat) through a web
-tunnel.
+on your network, or a chat website (claude.ai, ChatGPT, Mistral Vibe) through a
+web tunnel.
 
 ## Local Networks
 
@@ -74,11 +74,11 @@ your computer, so each one needs a [web tunnel](#web-tunnels) first.
 
 <!--@include: ../_partials/web-chat-warning.md-->
 
-| Web App                      | Provider  | Cost                                      |
-| ---------------------------- | --------- | ----------------------------------------- |
-| [claude.ai](./claude-web)    | Anthropic | Claude account (subscription recommended) |
-| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings)      |
-| [Le Chat](./mistral-le-chat) | Mistral   | Mistral account                           |
+| Web App                            | Provider  | Cost                                      |
+| ---------------------------------- | --------- | ----------------------------------------- |
+| [Claude](./claude-web)             | Anthropic | Claude account (subscription recommended) |
+| [ChatGPT](./chatgpt-web)           | OpenAI    | Subscription (for advanced settings)      |
+| [Mistral Vibe](./mistral-vibe-web) | Mistral   | Mistral account                           |
 
 The AI is the same as in the desktop apps. The tradeoff is the tunnel: more
 setup, and Live is reachable by anyone with the link.
@@ -91,8 +91,8 @@ One running in WSL2, Docker, or a VM, or pointed at the computer's network
 address, needs the setting on.
 
 The chat UI works through the tunnels below. On your own domain (a named
-Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or Le
-Chat works, but the chat UI and REST API don't yet.
+Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or
+Mistral Vibe works, but the chat UI and REST API don't yet.
 
 ::: danger Security Warning
 

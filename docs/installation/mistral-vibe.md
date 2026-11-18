@@ -7,7 +7,7 @@ editing a config file instead of filling in a form.
 
 Producer Pal works in the **Code** tab, not the **Work** tab. The Work tab can
 only reach servers on the public internet, which needs a
-[web tunnel](./mistral-le-chat) and is not recommended.
+[web tunnel](./mistral-vibe-web) and is not recommended.
 
 :::
 
