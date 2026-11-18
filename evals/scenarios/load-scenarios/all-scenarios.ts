@@ -13,6 +13,8 @@ import {
   automationCcControlModWheel,
   automationCcControlPitchBend,
   automationClearOne,
+  automationDisplayValuesDeviceParam,
+  automationDisplayValuesMixer,
   automationNoRemoteScript,
   automationReadEnvelopes,
   automationWriteCurve,
@@ -235,6 +237,8 @@ export const allScenarios: EvalScenario[] = [
   automationClearOne,
   automationArrangementViaSession,
   automationArrangementDirect,
+  automationDisplayValuesDeviceParam,
+  automationDisplayValuesMixer,
   automationNoRemoteScript,
   pathLocatorCoordinate,
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:
