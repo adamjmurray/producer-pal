@@ -671,7 +671,7 @@ describe("StdioHttpBridge", () => {
       expect(mockClient.callTool).toHaveBeenCalledWith(
         { name: "test-tool", arguments: { arg1: "value1" } },
         undefined,
-        { timeout: CLIENT_TOOL_TIMEOUT_MS },
+        { timeout: CLIENT_TOOL_TIMEOUT_MS, signal: expect.any(AbortSignal) },
       );
       expect(result).toStrictEqual(toolResult);
       expect(logger.debug).toHaveBeenCalledWith(
@@ -728,7 +728,7 @@ describe("StdioHttpBridge", () => {
       expect(mockClient.callTool).toHaveBeenCalledWith(
         { name: "test-tool", arguments: {} },
         undefined,
-        { timeout: CLIENT_TOOL_TIMEOUT_MS },
+        { timeout: CLIENT_TOOL_TIMEOUT_MS, signal: expect.any(AbortSignal) },
       );
       expect(result).toStrictEqual(toolResult);
     });
@@ -776,8 +776,8 @@ describe("StdioHttpBridge", () => {
     });
 
     it("treats ConnectionClosed (-32000) as a connectivity failure, not a protocol error", async () => {
-      // The SDK rejects the in-flight request with ConnectionClosed when the
-      // transport drops mid-call (Ableton quit/restarted, device unloaded). That
+      // The portal fails the in-flight request with ConnectionClosed when its
+      // stream drops mid-call (Ableton quit/restarted, device unloaded). That
       // must return setup guidance and reset isConnected — not pass the cryptic
       // "Connection closed" text to the client while leaving isConnected stuck.
       // _ensureHttpConnection() sets isConnected true during the call, so the

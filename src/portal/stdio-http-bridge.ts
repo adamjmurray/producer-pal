@@ -204,8 +204,8 @@ export class StdioHttpBridge {
       arguments: request.params.arguments ?? {},
     };
 
-    return await this.inFlight.run(client, () =>
-      client.callTool(toolRequest, undefined, { timeout }),
+    return await this.inFlight.run(client, (signal) =>
+      client.callTool(toolRequest, undefined, { timeout, signal }),
     );
   }
 
@@ -262,14 +262,14 @@ export class StdioHttpBridge {
         requestHeaderTransportOptions(this.options),
       );
 
-      this.httpClient = new Client({
-        name: "producer-pal-portal",
-        version: VERSION,
-      });
+      const client = this.inFlight.failOnDrop(
+        new Client({ name: "producer-pal-portal", version: VERSION }),
+      );
+
+      this.httpClient = client;
 
       // The timeout bounds initialize; closing aborts the rest of the handshake,
       // whose initialized notification has no timeout of its own.
-      const client = this.httpClient;
       const timer =
         timeoutMs == null
           ? undefined
@@ -389,8 +389,8 @@ export class StdioHttpBridge {
         await this._ensureHttpConnection();
         // httpClient is guaranteed non-null after successful _ensureHttpConnection()
         const client = this.httpClient as Client;
-        const result = await this.inFlight.run(client, () =>
-          client.listTools(),
+        const result = await this.inFlight.run(client, (signal) =>
+          client.listTools(undefined, { signal }),
         );
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
