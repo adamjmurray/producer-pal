@@ -24,7 +24,7 @@ import packageJson from "../../../../package.json" with { type: "json" };
 // Debug flags are turned on by build:debug / dev:debug, so a development build
 // always has them. Opt-in flags are deliberately left off and set by hand for a
 // specific need (a LAN/remote browser origin, in the CORS case).
-const DEBUG_FLAGS = ["ENABLE_LIVE_API"];
+const DEBUG_FLAGS = ["ENABLE_LIVE_API", "ENABLE_STALE_LIVE_API_CHECK"];
 
 // Debug features that add PARAMS to a tool schema with no runtime gate. A model
 // sees them on every call, so a debug build would grade evals and e2e runs on a

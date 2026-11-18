@@ -50,6 +50,9 @@ const envVarReplacements = {
   "process.env.ENABLE_OBJECT_PROBE": JSON.stringify(
     process.env.ENABLE_OBJECT_PROBE,
   ),
+  "process.env.ENABLE_STALE_LIVE_API_CHECK": JSON.stringify(
+    process.env.ENABLE_STALE_LIVE_API_CHECK,
+  ),
 };
 
 // Substitute dev-only modules with do-nothing stubs unless the build asked for
