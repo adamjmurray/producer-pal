@@ -439,11 +439,11 @@ export function holdingAreaStartAfter(blockEnd: number): number {
  * clip — which moveClipFromHolding's clearClipAtDuplicateTarget then misreads
  * as a self-overlap, skips the clear, and re-triggers the same crash.
  *
- * Concurrent requests can derive the SAME start: nothing reserves the range.
- * That is safe only because every consumer stages, uses, and clears its block
- * synchronously — requests interleave at await points, so their staged content
- * never coexists. Put an await between staging and clearing and two requests
- * can overwrite each other there, silently.
+ * Nothing reserves the range, so two requests staging at once would derive the
+ * SAME start and overwrite each other silently. They can't: every caller is a
+ * write tool, and the write queue sends writes to V8 one at a time (ADR-0059).
+ * Each consumer also stages, uses and clears its block with no await between.
+ * Keep both true: staging from a read, or across an await, reopens it.
  * @param track - The track the holding area is on
  * @param minStartBeats - Earliest beat the holding area must clear (default 0)
  * @param context - The call's context, which carries its lane view
