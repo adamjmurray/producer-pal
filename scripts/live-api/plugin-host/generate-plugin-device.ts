@@ -10,16 +10,27 @@
  *
  * Usage: node scripts/live-api/plugin-host/generate-plugin-device.ts \
  *   <params.json> --name Diva --file Diva [--format VST3] [--effect] [--limit N]
+ *   [--au "<AU name>"]
  *
  * params.json: [{index, name, value}], as ppal-plugin-host `params` lists
  * them for a freshly loaded plug-in. Each value becomes its dial's initial one.
+ * With --au (macOS), the plug-in's Audio Unit says which group each param is
+ * in, and repeated names get their group in front.
  */
 
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { buildPluginHostDevice } from "./plugin-host-device.ts";
+import {
+  type AuParam,
+  groupParams,
+  knobPages,
+  type Param,
+  uniqueNames,
+} from "./plugin-param-groups.ts";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -29,6 +40,7 @@ const { values, positionals } = parseArgs({
     format: { type: "string", default: "VST3" },
     effect: { type: "boolean", default: false },
     limit: { type: "string" },
+    au: { type: "string" },
   },
 });
 
@@ -38,7 +50,9 @@ if (paramsPath == null || values.name == null || values.file == null) {
   throw new Error("usage: <params.json> --name <name> --file <file>");
 }
 
-const params = JSON.parse(readFileSync(paramsPath, "utf8")) as Param[];
+const listed = JSON.parse(readFileSync(paramsPath, "utf8")) as Param[];
+const params =
+  values.au == null ? listed : groupParams(listed, auParams(values.au));
 const limit = values.limit == null ? params.length : Number(values.limit);
 const dir = join(
   import.meta.dirname,
@@ -48,6 +62,7 @@ const kind = values.effect ? "Effect" : "Instrument";
 const template = readFileSync(join(dir, `PPal Plug-in ${kind}.amxd`));
 const code = readFileSync(join(dir, "wrapper.js"), "utf8");
 
+const slots = uniqueNames(params.slice(0, limit));
 const built = buildPluginHostDevice(template, code, {
   load: {
     format: values.format,
@@ -55,7 +70,8 @@ const built = buildPluginHostDevice(template, code, {
     name: values.name,
     synth: !values.effect,
   },
-  slots: uniqueNames(params.slice(0, limit)),
+  slots,
+  pages: knobPages(slots),
 });
 
 const out = join(
@@ -70,22 +86,10 @@ const out = join(
 writeFileSync(out, built);
 console.log(`${out} ${built.length} bytes, ${limit} params`);
 
-interface Param {
-  index: number;
-  name: string;
-  value?: number;
-}
+function auParams(name: string): AuParam[] {
+  const script = join(import.meta.dirname, "au-param-groups.swift");
 
-// Live param names must be unique in a device; plug-ins repeat them across
-// modules (Diva's two envelopes both have "Attack").
-function uniqueNames(list: Param[]): Param[] {
-  const seen = new Map<string, number>();
-
-  return list.map(({ index, name, value }) => {
-    const count = (seen.get(name) ?? 0) + 1;
-
-    seen.set(name, count);
-
-    return { index, name: count === 1 ? name : `${name} (${count})`, value };
-  });
+  return JSON.parse(
+    execFileSync("swift", [script, name], { encoding: "utf8" }),
+  ) as AuParam[];
 }

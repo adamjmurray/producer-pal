@@ -95,16 +95,14 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knob3")).toHaveLength(0);
   });
 
-  it("cuts a name too long for two lines under a knob", () => {
+  it("cuts a name too long for one line under a knob", () => {
     const rig = mapped();
 
     rig.run(
       'showKnobs({ "1": { index: 1, name: "Oscillator 1 Wavetable Position" } })',
     );
 
-    expect(sentTo(rig, "knobname1")).toStrictEqual([
-      ["set", "Oscillator 1 Wa…"],
-    ]);
+    expect(sentTo(rig, "knobname1")).toStrictEqual([["set", "Oscillator…"]]);
   });
 
   // Making a knob active sends the value it holds, which is not a turn.

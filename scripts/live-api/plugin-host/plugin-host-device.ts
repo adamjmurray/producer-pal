@@ -14,6 +14,7 @@ import {
 
 const SLOTS = 128;
 const COLUMNS = 8;
+const KNOBS = 16; // keep in step with KNOBS in plugin-host-panel.ts
 const HEADER_SIZE = 32;
 const SLOT_BOX = /^slot(dial|lim|prep)\d+$/;
 // Live sends a moving slot about 670 values a second (one per audio block).
@@ -25,12 +26,24 @@ const SLOT_ROUTE = "slotroute";
 // the panel before the knobs.
 const REMOVED_BOXES = new Set(["vstmirror", "slotlist"]);
 
+/** A page of the panel's knobs: `count` slots from slot `first` (1-based). */
+export interface KnobPage {
+  name: string;
+  first: number;
+  count: number;
+}
+
 /** Spike: what a device generated for one plug-in bakes in. */
 export interface BakedPlugin {
   /** The wrapper's load request for the plug-in */
   load: Json;
-  /** One per dial: its Live param name and the plug-in param it drives */
-  slots: { name: string; index: number; value?: number }[];
+  /**
+   * One per dial: its Live param name, the plug-in param it drives, and the
+   * shorter name its panel knob shows
+   */
+  slots: { name: string; index: number; value?: number; label?: string }[];
+  /** The panel's pages; default: 16 slots each */
+  pages?: KnobPage[];
 }
 
 interface Box {
@@ -90,7 +103,12 @@ export function buildPluginHostDevice(
 
   const initial = baked?.slots.map((s) => s.value);
 
-  p.boxes = [...boxes, ...ownedBoxes(names, initial).map((box) => ({ box }))];
+  const pages = baked?.pages ?? slotPages(names.length);
+
+  p.boxes = [
+    ...boxes,
+    ...ownedBoxes(names, pages, initial).map((box) => ({ box })),
+  ];
   p.lines = [
     ...p.lines.filter((l) => !touchesOurs(l) && !feedsVst(l)),
     ...ownedLines(names.length),
@@ -162,14 +180,25 @@ function bake(code: string, baked?: BakedPlugin): string {
   const slots = Object.fromEntries(
     baked.slots.map((s, i) => [
       String(i + 1),
-      { index: s.index, name: s.name },
+      { index: s.index, name: s.name, label: s.label },
     ]),
   );
+  const { load, pages } = baked;
 
   return code.replace(
     line,
-    `const BAKED = ${JSON.stringify({ load: baked.load, slots })};`,
+    `const BAKED = ${JSON.stringify({ load, slots, pages })};`,
   );
+}
+
+// Keep in step with slotPages in wrapper.js
+function slotPages(count: number): KnobPage[] {
+  return Array.from({ length: Math.ceil(count / KNOBS) }, (_, p) => {
+    const first = p * KNOBS + 1;
+    const last = Math.min(count, first + KNOBS - 1);
+
+    return { name: `Slots ${first}–${last}`, first, count: last - first + 1 };
+  });
 }
 
 // Keep in step with dialName in wrapper.js
@@ -207,7 +236,11 @@ function feedsVst(line: Patchline): boolean {
   return line.patchline.source[0] === "vststate";
 }
 
-function ownedBoxes(names: string[], initial?: (number | undefined)[]): Json[] {
+function ownedBoxes(
+  names: string[],
+  pages: KnobPage[],
+  initial?: (number | undefined)[],
+): Json[] {
   const slots = names.map((_, i) => i + 1);
 
   return [
@@ -216,7 +249,10 @@ function ownedBoxes(names: string[], initial?: (number | undefined)[]): Json[] {
     ...slots.map(prepend),
     slotRoute(),
     vstslots(),
-    ...panelBoxes(names.length, Math.max(2, String(names.length).length)),
+    ...panelBoxes(
+      pages.map((page) => page.name),
+      Math.max(2, String(names.length).length),
+    ),
   ];
 }
 
