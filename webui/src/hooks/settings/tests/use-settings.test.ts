@@ -54,7 +54,7 @@ describe("useSettings", () => {
     expect(result.current).toStrictEqual(
       expect.objectContaining({
         apiKey: "",
-        model: "gemini-4-argon",
+        model: "gemini-4-neon",
         thinking: "Default",
         hasApiKey: false,
       }),

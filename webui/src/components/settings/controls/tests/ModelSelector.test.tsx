@@ -63,9 +63,10 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-4-argon");
-    expect(options[1]!.value).toBe("gemini-4-carbon");
-    expect(options[2]!.value).toBe("gemini-4-hydrogen");
+    expect(options[0]!.value).toBe("gemini-4-neon");
+    expect(options[1]!.value).toBe("gemini-4-argon");
+    expect(options[2]!.value).toBe("gemini-4-carbon");
+    expect(options[3]!.value).toBe("gemini-4-hydrogen");
   });
 
   it("triggers setModel callback on change", () => {
