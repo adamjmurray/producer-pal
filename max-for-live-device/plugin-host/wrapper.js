@@ -178,7 +178,8 @@ function pval(index, value, ...display) {
   }
 
   state.values[index] = { value, display: display.join(" ") };
-  showKnobValue(Number(index), value);
+  showKnobValue(Number(index), value, state.values[index].display);
+  if (BAKED) noteFollow(Number(index), Number(value));
 
   // Our own writes echo back synchronously while busy is up.
   if (busy > 0) return;
@@ -207,6 +208,193 @@ function pval(index, value, ...display) {
 // saveState when more slot writes follow.
 const STOP_GRACE_MS = 1000;
 
+// Spike: a generated device's dial follows its param when something other
+// than the dial moved it (the plug-in window, a Producer Pal write).
+// The plug-in's state is still saved too: a change (a preset load) can carry
+// data no param shows.
+//
+// Never act on an echo as it arrives: a dial reaches vst~ through its speedlim,
+// so an echo can be of a value the dial has already left, and setting the dial
+// back starts a ping-pong. Note the param, and once echoes have been quiet for
+// FOLLOW_SETTLE_MS compare the dial with the param as it is then.
+const FOLLOW_SETTLE_MS = 50; // longer than SLOT_INTERVAL_MS (speedlim)
+// param index -> its last echoed value since the last check. Once echoes are
+// quiet, the last one is the param's value: no need to ask the plug-in again
+// (about 0.7 ms a param, with its display text).
+const pendingFollow = new Map();
+const followTask = new Task(followSettled);
+const followLog = []; // spike: what the last checks did, for the debug op
+let followChecks = 0;
+
+function logFollow(why) {
+  followLog.push(`${Date.now() % 100000} ${why}`);
+  if (followLog.length > 60) followLog.shift();
+}
+
+function debugInfo() {
+  return {
+    playing,
+    restoredAgoMs: Date.now() - restoredAt,
+    slotsReady,
+    slotOfIndexSize: slotOfIndex.size,
+    paramIndexesSize: paramIndexes?.size ?? null,
+    pending: pendingFollow.size,
+    followChecks,
+    busy,
+    followLog,
+  };
+}
+
+let checking = false; // the check's own reads echo too
+let followSetAt = 0; // when a check last set dials
+
+function noteFollow(index, value) {
+  if (checking || !slotOfIndex.has(index)) return;
+  if (pendingFollow.size === 0) logFollow("echoes start");
+
+  pendingFollow.set(index, value);
+  followTask.cancel();
+  followTask.schedule(FOLLOW_SETTLE_MS);
+}
+
+function followSettled() {
+  const echoes = new Map(pendingFollow);
+  const indexes = [...echoes.keys()];
+
+  pendingFollow.clear();
+  followChecks++;
+  try {
+    checking = true;
+    let changes;
+
+    const compareStart = Date.now();
+
+    try {
+      changes = followChanges(echoes);
+    } finally {
+      checking = false;
+    }
+
+    if (changes.length === 0) return logFollow(`none of ${indexes.length}`);
+
+    // The state is saved first, so a preset load is two undo steps: this
+    // state write (Live keeps a Max write as its own step) and the dials.
+    // Undoing the dials' step brings their values back; the state's step
+    // brings the whole sound.
+    followSetAt = Date.now();
+    saveState("follow");
+    setDials(changes);
+    logFollow(`setting ${changes.length} of ${indexes.length} (compare ${Date.now() - compareStart} ms)`);
+  } catch (error) {
+    logFollow(`error ${error?.message ?? error}`);
+  }
+}
+
+// Spike: the remote script sets the dials in one undo step, about 2000 times
+// faster than the Live API here (5-6 ms a param on Live's main thread, so a
+// big preset load froze Live for seconds). Falls back to the Live API when the
+// remote script doesn't answer.
+// The ports the remote script may be on: it takes the first free one.
+const REMOTE_SCRIPT_PORTS = [3349, 3351, 3352, 3353, 3354, 3355, 3356, 3357, 3358];
+// After a scan finds no script, use the Live API this long before scanning again.
+const REMOTE_SCRIPT_RETRY_MS = 30000;
+let remotePort = null; // the port that last set this device's dials
+let remoteMissingAt = 0;
+
+function setDials(changes) {
+  if (remotePort == null && Date.now() - remoteMissingAt < REMOTE_SCRIPT_RETRY_MS) {
+    setDialsByApi(changes);
+    return logFollow(`set ${changes.length} via Live API (no remote script)`);
+  }
+
+  const others = REMOTE_SCRIPT_PORTS.filter((port) => port !== remotePort);
+
+  postDials(changes, remotePort == null ? others : [remotePort, ...others], Date.now());
+}
+
+// Tries each port until one sets the dials. Another Live's script may hold a
+// port and have a device at our path, so the request carries what some of our
+// params hold now, and a script whose device doesn't match refuses.
+function postDials(changes, ports, started) {
+  const [port, ...rest] = ports;
+
+  if (port == null) {
+    remotePort = null;
+    remoteMissingAt = Date.now();
+    setDialsByApi(changes);
+    return logFollow(`set ${changes.length} via Live API (no remote script answered)`);
+  }
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.open("POST", `http://127.0.0.1:${port}/spike/set-params`);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status !== 200) return postDials(changes, rest, started);
+
+    const { set, skipped } = JSON.parse(xhr.responseText);
+
+    remotePort = port;
+    followSetAt = Date.now();
+    logFollow(`set ${set} via remote script :${port} in ${Date.now() - started} ms, ${skipped} automated`);
+  };
+  xhr.send(
+    JSON.stringify({
+      device_path: new LiveAPI("this_device").unquotedpath,
+      values: changes.map(({ param, value }) => [param, value]),
+      expect: changes.slice(0, 8).map(({ param, was }) => [param, was]),
+      // Setting an automated dial overrides its automation.
+      skip_automated: true,
+    }),
+  );
+}
+
+// Through the Live API, not messages to the dials: Live gives each dial
+// message its own undo step, but merges API changes into the open step.
+function setDialsByApi(changes) {
+  new LiveAPI("live_set").call("begin_undo_step");
+  try {
+    for (const { param, value } of changes) {
+      const api = new LiveAPI(`this_device parameters ${param}`);
+
+      if (Number(api.get("automation_state")) === 0) api.set("value", value);
+    }
+  } finally {
+    new LiveAPI("live_set").call("end_undo_step");
+  }
+  followSetAt = Date.now();
+}
+
+// The dials that differ from their param now.
+function followChanges(echoes) {
+  // Playing: automation moves the dials. Just stopped: a speedlim may still
+  // send a held value. Restoring (load, duplicate, undo): the stored state can
+  // be older than the dials, and Live restores the dials itself.
+  if (playing || Date.now() - stoppedAt < STOP_GRACE_MS) return skip("playing");
+  if (Date.now() - restoredAt < RESTORE_SETTLE_MS) return skip("restoring");
+
+  const changes = [];
+
+  for (const [index, value] of echoes) {
+    const n = slotOfIndex.get(index);
+    const dial = Number(this.patcher.getnamed(`slotdial${n}`)?.getvalueof());
+
+    if (!isFinite(value) || Math.abs(dial - value) < 1e-4) continue;
+
+    const param = paramIndexOf(dialName(n));
+
+    if (param != null) changes.push({ param, value, was: dial });
+  }
+
+  return changes;
+}
+
+function skip(why) {
+  logFollow(`skipped: ${why}`);
+
+  return [];
+}
+
 function isSlotWrite(index, value) {
   if (playing || Date.now() - stoppedAt < STOP_GRACE_MS) return true;
 
@@ -234,7 +422,8 @@ function handle(req) {
     case "unmap":
       return unmapSlot(req);
     case "slots":
-      return listSlots();
+      // Spike: `slots` carries the debug info, so the tool needs no change.
+      return BAKED ? { debug: debugInfo() } : listSlots();
     default:
       throw new Error(`unknown op: ${req.op}`);
   }
@@ -593,6 +782,35 @@ function adoptStored() {
   // Don't push the dials into the plug-in here: a dial is synced only when
   // mapped, so its saved value can be older than the restored state.
   showName(pluginName());
+  if (BAKED) adoptBaked();
+}
+
+// Spike: a fresh generated device loads its plug-in and sets every dial to its
+// param; one restored from a Set routes the dials it already has.
+// A restored one pushes its dials into the plug-in: Live saved them, and the
+// plug-in's stored state can be older (see noteFollow).
+function adoptBaked() {
+  const fresh = loadedPlugin() == null && storedNameDict() == null;
+
+  if (fresh) load(BAKED.load);
+
+  const map = readSlots();
+
+  busy++;
+  try {
+    for (const n of Object.keys(map)) {
+      const dial = Number(this.patcher.getnamed(`slotdial${n}`)?.getvalueof());
+      const param = readParam(map[n].index).value;
+
+      if (Math.abs(dial - param) < 1e-4) continue;
+      // Each set is an undo step, so the device bakes in the plug-in's
+      // defaults and a fresh one should need none.
+      if (fresh) setDial(n, param);
+      else outlet(0, Number(map[n].index), dial);
+    }
+  } finally {
+    busy--;
+  }
 }
 
 function stateOf() {
@@ -686,6 +904,7 @@ function restoreStored() {
   // Up, so the plug-in's echoes of the restore don't count as edits: saving
   // them would add an undo step and drop the redo.
   busy++;
+  if (BAKED) logFollow("state restored");
   try {
     restoreInto(dict.name);
   } finally {
@@ -791,8 +1010,13 @@ function saveState(why) {
     const settling = Date.now() - restoredAt < RESTORE_SETTLE_MS;
     const quiet = why === "poll" || why === "edit";
     // A stopped change to a slot's param, then slot writes: playback started.
+    // Spike: a generated device's follow sets dials right after an edit, and
+    // their writes aren't playback starting.
     const playbackStart =
-      why === "edit" && slotEditAt > savedAt && slotWriteAt >= slotEditAt;
+      why === "edit" &&
+      slotEditAt > savedAt &&
+      slotWriteAt >= slotEditAt &&
+      !(BAKED && followSetAt >= slotEditAt);
 
     if (
       quiet &&
@@ -800,6 +1024,9 @@ function saveState(why) {
     ) {
       lastSaved = current;
       savedAt = Date.now();
+      if (BAKED) {
+        logFollow(`state adopted (${why}${playbackStart ? " playbackStart" : ""}${settling ? " settling" : ""})`);
+      }
 
       return settled();
     }
@@ -808,6 +1035,7 @@ function saveState(why) {
     // already holds it, and writing again would drop the redo.
     if (current === storedState()) {
       lastSaved = current;
+      if (BAKED) logFollow(`state matches stored (${why})`);
 
       return settled();
     }
@@ -818,6 +1046,7 @@ function saveState(why) {
     lastSaved = current;
     this.patcher.getnamed("vststate").message("dictionary", dict.name);
     savedAt = Date.now();
+    if (BAKED) logFollow(`state saved (${why})`);
 
     return settled();
   } catch (error) {
@@ -902,6 +1131,10 @@ nameWatchTask.schedule(1000);
 // the names are fixed and the mapping is ours. The names are zero-padded so
 // Live lists them in order. Entries for another plug-in file are ignored.
 const SLOT_COUNT = 128; // npm run plugin-host:build sets this
+// Spike: a device generated for one plug-in sets this to
+// {load: <load request>, slots: {"<n>": {index, name, label}}, pages}. Its
+// dials are named for the plug-in's params and the mapping is fixed.
+const BAKED = null;
 const NAME_WIDTH = Math.max(2, String(SLOT_COUNT).length);
 const SLOTS_REFRESH_MS = 500;
 let slotsReady = false; // the stored mapping is readable, or a plug-in was loaded
@@ -937,23 +1170,37 @@ function setDial(n, value) {
 }
 
 function dialName(n) {
+  if (BAKED) return BAKED.slots[n]?.name ?? "";
+
   return `Slot ${String(n).padStart(NAME_WIDTH, "0")}`;
 }
 
 // Setting a dial would override its automation, so map checks first.
 function dialHasAutomation(n) {
-  const name = dialName(n);
-  const count = new LiveAPI("this_device").getcount("parameters");
+  const i = paramIndexOf(dialName(n));
 
-  for (let i = 0; i < count; i++) {
-    const param = new LiveAPI(`this_device parameters ${i}`);
+  if (i == null) return false;
 
-    if (String(param.get("name")) === name) {
-      return Number(param.get("automation_state")) !== 0;
+  return (
+    Number(new LiveAPI(`this_device parameters ${i}`).get("automation_state")) !==
+    0
+  );
+}
+
+// A device's param list is fixed once it has loaded, so look it up once.
+let paramIndexes = null;
+
+function paramIndexOf(name) {
+  if (paramIndexes == null) {
+    const count = new LiveAPI("this_device").getcount("parameters");
+
+    paramIndexes = new Map();
+    for (let i = 0; i < count; i++) {
+      paramIndexes.set(String(new LiveAPI(`this_device parameters ${i}`).get("name")), i);
     }
   }
 
-  return false;
+  return paramIndexes.get(name);
 }
 
 function slotNumber(slot) {
@@ -969,6 +1216,7 @@ function slotNumber(slot) {
 // The slot's dial is set to the param's value, unless the slot already drives
 // this param or the dial has arrangement automation.
 function mapSlot({ slot: slotArg, name, index }) {
+  if (BAKED) throw new Error("this device's slots are fixed");
   if (!slotsReady) throw new Error("the device is still loading");
 
   const n = slotNumber(slotArg);
@@ -999,6 +1247,7 @@ function mapSlot({ slot: slotArg, name, index }) {
 }
 
 function unmapSlot({ slot: slotArg }) {
+  if (BAKED) throw new Error("this device's slots are fixed");
   if (!slotsReady) throw new Error("the device is still loading");
 
   const n = slotNumber(slotArg);
@@ -1049,6 +1298,8 @@ function readSlots() {
 }
 
 function storedSlots() {
+  if (BAKED) return BAKED.slots;
+
   try {
     const stored = this.patcher.getnamed("vstslots")?.getvalueof();
 
@@ -1093,7 +1344,9 @@ const KNOB_COUNT = 16;
 // Echoes trail a drag by up to one speedlim interval; showing them would pull
 // the knob back under the mouse.
 const DRAG_HOLD_MS = 150;
-const NAME_CHARS = 16; // about two lines under a knob
+const NAME_CHARS = 11; // one line in a knob's cell
+// The page menu's pages: {name, first, count}, `count` slots from slot `first`.
+const PAGES = BAKED?.pages ?? slotPages();
 let knobPage = 0;
 let knobsShown = null; // the page and mapping the knobs last showed
 const turnedAt = {}; // knob -> when the user last turned it
@@ -1105,6 +1358,16 @@ function knobpage(page) {
   showKnobs(readSlots());
 }
 
+// Keep in step with slotPages in plugin-host-device.ts
+function slotPages() {
+  return Array.from({ length: Math.ceil(SLOT_COUNT / KNOB_COUNT) }, (_, p) => {
+    const first = p * KNOB_COUNT + 1;
+    const last = Math.min(SLOT_COUNT, first + KNOB_COUNT - 1);
+
+    return { name: `Slots ${first}–${last}`, first, count: last - first + 1 };
+  });
+}
+
 // The dial's value reaches vst~ through the slot's own path. Live keeps the
 // dial, but the wrapper never pushes dials into the plug-in on load, so the
 // turn is saved into the plug-in's state too, like an edit in its window.
@@ -1114,7 +1377,7 @@ function knobpage(page) {
 function knob(i, value) {
   const n = knobSlot(i);
 
-  if (!isFinite(value) || readSlots()[n] == null) return;
+  if (n == null || !isFinite(value) || readSlots()[n] == null) return;
   if (Math.abs(Number(value) - (knobValue[i] ?? NaN)) < 1e-6) return;
 
   knobValue[i] = Number(value);
@@ -1123,8 +1386,11 @@ function knob(i, value) {
   markEdited();
 }
 
+// The slot knob i shows, or null when the page has fewer knobs.
 function knobSlot(i) {
-  return knobPage * KNOB_COUNT + Number(i);
+  const page = PAGES[knobPage];
+
+  return page && i <= page.count ? page.first + Number(i) - 1 : null;
 }
 
 function showKnobs(map) {
@@ -1136,13 +1402,21 @@ function showKnobs(map) {
 
   for (let i = 1; i <= KNOB_COUNT; i++) {
     const n = knobSlot(i);
-    const entry = map[n];
+    const entry = n == null ? null : map[n];
     const knobBox = this.patcher.getnamed(`knob${i}`);
-
-    this.patcher.getnamed(`knoblabel${i}`)?.message("set", dialName(n));
-    this.patcher.getnamed(`knobname${i}`)?.message("set", knobName(entry));
     // Set the value first: making a knob active sends what it holds.
     const value = entry ? shownValue(n, entry.index) : 0;
+
+    // A generated device's knob shows the plug-in's short name above and its
+    // value text below; a slot's shows the slot above and its param below.
+    const label = BAKED ? BAKED.slots[n]?.label : dialName(n);
+    const below = BAKED
+      ? state.values[entry?.index]?.display
+      : (entry?.name ?? "—");
+
+    if (knobBox) knobBox.hidden = n == null;
+    this.patcher.getnamed(`knoblabel${i}`)?.message("set", short(label));
+    this.patcher.getnamed(`knobname${i}`)?.message("set", short(below));
 
     knobIndex[i] = entry ? Number(entry.index) : undefined;
     setKnob(i, value);
@@ -1150,8 +1424,8 @@ function showKnobs(map) {
   }
 }
 
-function knobName(entry) {
-  const name = entry?.name ?? "—";
+function short(text) {
+  const name = String(text ?? "");
 
   return name.length > NAME_CHARS ? `${name.slice(0, NAME_CHARS - 1)}…` : name;
 }
@@ -1175,11 +1449,12 @@ function shownValue(n, index) {
 }
 
 // Two slots can drive one param, so every knob showing it follows.
-function showKnobValue(index, value) {
+function showKnobValue(index, value, display) {
   if (!isFinite(value)) return;
 
   for (let i = 1; i <= KNOB_COUNT; i++) {
     if (knobIndex[i] !== index) continue;
+    if (BAKED) this.patcher.getnamed(`knobname${i}`)?.message("set", short(display));
     if (Date.now() - (turnedAt[i] ?? 0) < DRAG_HOLD_MS) continue;
 
     setKnob(i, value);

@@ -13,9 +13,8 @@ import {
 } from "./plugin-host-patch.ts";
 
 const SLOTS = 128;
-// Keep in step with NAME_WIDTH in wrapper.js
-const NAME_WIDTH = Math.max(2, String(SLOTS).length);
 const COLUMNS = 8;
+const KNOBS = 16; // keep in step with KNOBS in plugin-host-panel.ts
 const HEADER_SIZE = 32;
 const SLOT_BOX = /^slot(dial|lim|prep)\d+$/;
 // Live sends a moving slot about 670 values a second (one per audio block).
@@ -26,6 +25,26 @@ const SLOT_ROUTE = "slotroute";
 // change, which glitches the audio while automation moves. The slot list was
 // the panel before the knobs.
 const REMOVED_BOXES = new Set(["vstmirror", "slotlist"]);
+
+/** A page of the panel's knobs: `count` slots from slot `first` (1-based). */
+export interface KnobPage {
+  name: string;
+  first: number;
+  count: number;
+}
+
+/** Spike: what a device generated for one plug-in bakes in. */
+export interface BakedPlugin {
+  /** The wrapper's load request for the plug-in */
+  load: Json;
+  /**
+   * One per dial: its Live param name, the plug-in param it drives, and the
+   * shorter name its panel knob shows
+   */
+  slots: { name: string; index: number; value?: number; label?: string }[];
+  /** The panel's pages; default: 16 slots each */
+  pages?: KnobPage[];
+}
 
 interface Box {
   box: Json;
@@ -49,13 +68,16 @@ interface Patcher {
  *
  * @param amxd - The device file
  * @param wrapperCode - wrapper.js source; its SLOT_COUNT is set to SLOTS
+ * @param baked - Spike: bake in one plug-in, a dial per param
  * @returns The rebuilt device file
  */
 export function buildPluginHostDevice(
   amxd: Buffer,
   wrapperCode: string,
+  baked?: BakedPlugin,
 ): Buffer {
-  const code = setSlotCount(wrapperCode);
+  const names = baked ? baked.slots.map((s) => s.name) : slotNames(SLOTS);
+  const code = bake(setSlotCount(wrapperCode, names.length), baked);
   const json = readPatcher(amxd);
   const p = json.patcher;
   const boxes = p.boxes.filter(
@@ -79,10 +101,17 @@ export function buildPluginHostDevice(
     }
   }
 
-  p.boxes = [...boxes, ...ownedBoxes().map((box) => ({ box }))];
+  const initial = baked?.slots.map((s) => s.value);
+
+  const pages = baked?.pages ?? slotPages(names.length);
+
+  p.boxes = [
+    ...boxes,
+    ...ownedBoxes(names, pages, initial).map((box) => ({ box })),
+  ];
   p.lines = [
     ...p.lines.filter((l) => !touchesOurs(l) && !feedsVst(l)),
-    ...ownedLines(),
+    ...ownedLines(names.length),
   ];
   p.parameters ??= { parameterbanks: {}, inherited_shortname: 1 };
 
@@ -127,14 +156,59 @@ function readPatcher(amxd: Buffer): Patcher {
   ) as Patcher;
 }
 
-function setSlotCount(code: string): string {
+function setSlotCount(code: string, count: number): string {
   const pattern = /const SLOT_COUNT = \d+;/g;
 
   if (code.match(pattern)?.length !== 1) {
     throw new Error("wrapper.js needs one 'const SLOT_COUNT = <n>;' line");
   }
 
-  return code.replaceAll(pattern, `const SLOT_COUNT = ${SLOTS};`);
+  return code.replaceAll(pattern, `const SLOT_COUNT = ${count};`);
+}
+
+function bake(code: string, baked?: BakedPlugin): string {
+  if (!baked) {
+    return code;
+  }
+
+  const line = "const BAKED = null;";
+
+  if (code.split(line).length !== 2) {
+    throw new Error(`wrapper.js needs one '${line}' line`);
+  }
+
+  const slots = Object.fromEntries(
+    baked.slots.map((s, i) => [
+      String(i + 1),
+      { index: s.index, name: s.name, label: s.label },
+    ]),
+  );
+  const { load, pages } = baked;
+
+  return code.replace(
+    line,
+    `const BAKED = ${JSON.stringify({ load, slots, pages })};`,
+  );
+}
+
+// Keep in step with slotPages in wrapper.js
+function slotPages(count: number): KnobPage[] {
+  return Array.from({ length: Math.ceil(count / KNOBS) }, (_, p) => {
+    const first = p * KNOBS + 1;
+    const last = Math.min(count, first + KNOBS - 1);
+
+    return { name: `Slots ${first}–${last}`, first, count: last - first + 1 };
+  });
+}
+
+// Keep in step with dialName in wrapper.js
+function slotNames(count: number): string[] {
+  const width = Math.max(2, String(count).length);
+
+  return Array.from(
+    { length: count },
+    (_, i) => `Slot ${String(i + 1).padStart(width, "0")}`,
+  );
 }
 
 // Includes dials and prepends left by a build with more slots.
@@ -162,21 +236,28 @@ function feedsVst(line: Patchline): boolean {
   return line.patchline.source[0] === "vststate";
 }
 
-function ownedBoxes(): Json[] {
-  const slots = Array.from({ length: SLOTS }, (_, i) => i + 1);
+function ownedBoxes(
+  names: string[],
+  pages: KnobPage[],
+  initial?: (number | undefined)[],
+): Json[] {
+  const slots = names.map((_, i) => i + 1);
 
   return [
-    ...slots.map(dial),
+    ...slots.map((n) => dial(n, names[n - 1] as string, initial?.[n - 1])),
     ...slots.map(speedlim),
     ...slots.map(prepend),
     slotRoute(),
     vstslots(),
-    ...panelBoxes(SLOTS, NAME_WIDTH),
+    ...panelBoxes(
+      pages.map((page) => page.name),
+      Math.max(2, String(names.length).length),
+    ),
   ];
 }
 
-function ownedLines(): Patchline[] {
-  const slotCords = Array.from({ length: SLOTS }, (_, i) => [
+function ownedLines(count: number): Patchline[] {
+  const slotCords = Array.from({ length: count }, (_, i) => [
     patchCord(`slotdial${i + 1}`, `slotlim${i + 1}`),
     patchCord(`slotlim${i + 1}`, `slotprep${i + 1}`),
     patchCord(`slotprep${i + 1}`, SLOT_ROUTE),
@@ -186,8 +267,7 @@ function ownedLines(): Patchline[] {
 }
 
 // Names are zero-padded so Live sorts them.
-function dial(n: number): Json {
-  const name = `Slot ${String(n).padStart(NAME_WIDTH, "0")}`;
+function dial(n: number, name: string, initial?: number): Json {
   const { col, row } = grid(n);
 
   return {
@@ -204,6 +284,9 @@ function dial(n: number): Json {
         parameter_longname: name,
         parameter_shortname: name,
         ...FLOAT_RANGE,
+        ...(initial == null
+          ? {}
+          : { parameter_initial_enable: 1, parameter_initial: [initial] }),
       },
     },
   };
