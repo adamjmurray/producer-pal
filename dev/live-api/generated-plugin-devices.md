@@ -11,8 +11,17 @@ Nothing here ships. The shipped design is in
 (`ppal-plugin-host` `params` on a freshly loaded plug-in) and builds a device
 from the wrapper template. The User Library gets `PPal <name>.amxd`:
 
-- One `live.dial` per plug-in param, named after it. Repeated names get " (2)",
-  " (3)": Live param names must be unique in a device.
+- One `live.dial` per plug-in param, named after it. Live param names must be
+  unique in a device, so a repeated name gets its group in front ("ENV1
+  Attack"), or " (2)" when the group isn't known.
+- With `--au` (macOS), groups come from the plug-in's Audio Unit
+  (`au-param-groups.swift`). `vst~` only gives flat names. The AU numbers its
+  params differently, so they're matched by name, and a repeated name takes its
+  neighbours' group: in Diva and Serum 2 each group is one unbroken run of
+  params.
+- The panel has a page menu with one page per group (16 knobs a page, so big
+  groups get "OSC 1/4"). Each knob shows the plug-in's own name above and its
+  value text below. The value text comes free with each echo from the plug-in.
 - Each dial's initial value is the plug-in's default, baked into the file.
   Without it, inserting the device adds an undo step per param.
 - The wrapper code gets a `BAKED` block: the load request and the dial → param
@@ -94,8 +103,12 @@ duplicate doesn't get its contents).
   - Follow at full speed needs the remote script; the Live API fallback still
     stalls. A cap on dials per device (512 or 1024) and a warning would bound
     that case.
-  - The spike route hardcodes port 3349. A real build has to find the port the
-    script got.
+  - The wrapper tries the script's ports in order (3349, then 3351–3358) and
+    keeps the one that answers. Another Live's script may hold a port with a
+    device at the same path, so each request carries some of our params' current
+    values and a script whose device doesn't match refuses. Untested with two
+    Lives running. With no script, it uses the Live API for 30 s before scanning
+    again.
   - The first follow after load builds the device's name-to-param map, one Live
     API call per param (about 0.5 s for Serum). Build it earlier, off the user's
     way.
@@ -108,11 +121,11 @@ duplicate doesn't get its contents).
   to be regenerated.
 - **Live sorts M4L params alphabetically** and shows them as raw 0–1, not the
   plug-in's units. Live can't show the plug-in's own value text.
-- **Repeated names.** Diva repeats names across modules ("Attack" in both
-  envelopes); " (2)" doesn't say which module. Serum 2's names are unique except
-  its Pitch Bend and Mod Wheel stand-ins.
+- **Groups need the AU.** A VST3-only plug-in, or Windows, falls back to " (2)"
+  names and pages of 16. VST3 has its own groups (units), but reading them needs
+  a VST3 host. Diva's group names are terse ("VCC", "Rtary1").
+- **Knob labels** are cut at 11 characters, because `live.comment` wraps.
 - **Producer Pal's tools** still treat the device as a slot wrapper.
-- **The panel** pages 16 knobs at a time; 543 params is 34 pages.
 - **Generating** needs a step that loads the plug-in, reads its params, writes a
   file and waits for Live's browser. That's the per-plug-in file ADR-0061 wanted
   to avoid.
