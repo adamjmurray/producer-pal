@@ -77,10 +77,19 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
     const before = await trackCount();
 
     // The bigger call runs long enough for the other to arrive and queue.
-    await Promise.all([
+    const calls = [
       appendTracksInOneCall(ctx.client!, 12),
       appendTracksInOneCall(ctx.client!, 1),
-    ]);
+    ];
+    const bothSentAt = Date.now();
+    const answeredAt = await Promise.all(calls);
+
+    // Calls that never overlapped get a step each anyway, so this would pass
+    // without testing anything.
+    expect(
+      Math.min(...answeredAt),
+      "a call answered before both were sent; the calls didn't overlap",
+    ).toBeGreaterThan(bothSentAt);
     expect(await trackCount()).toBe(before + 13);
 
     await undoOnce();
