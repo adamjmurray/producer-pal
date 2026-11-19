@@ -72,6 +72,13 @@ parameter's name. See [Automation](#automation) below.
 - **Tested on macOS and Windows.**
 - **Undo** reverts the plug-in's whole previous state at once, not one parameter
   at a time.
+- **Setting a value sweeps the parameter.** To set a value in the plug-in's
+  units, Producer Pal moves the parameter through its range for a moment to find
+  it, which you may hear if sound is playing through the plug-in.
+- **Sharing a Set:** the other person needs Max for Live, the plug-in, and the
+  wrapper device. Live's **Collect All and Save** copies the wrappers the Set
+  uses into its project folder, as long as its User Library option is on (Live's
+  default).
 
 ## Automation
 
