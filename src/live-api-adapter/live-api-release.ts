@@ -30,7 +30,7 @@
  * with no error anywhere.
  *
  * Build objects where you use them. Nothing in the codebase holds one across
- * requests today; keep it that way.
+ * requests today, and debug builds warn if one does (live-api-stale-check.ts).
  *
  * Mode 1 (follow the object) is not the way around this — it is the worst case
  * measured. The same 7,190 held objects at mode 1 took that track add and
@@ -78,6 +78,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { maxError } from "#src/shared/max/v8-max-console.ts";
+import { markReleased, unguard } from "./live-api-stale-check.ts";
 
 const trackedObjects: LiveAPI[] = [];
 
@@ -233,7 +234,7 @@ export function trackLiveApiObject(api: LiveAPI): LiveAPI {
  * @param api - The object to forget
  */
 export function untrackLiveApiObject(api: LiveAPI): void {
-  const index = trackedObjects.indexOf(api);
+  const index = trackedObjects.indexOf(unguard(api));
 
   if (index !== -1) {
     trackedObjects.splice(index, 1);
@@ -299,6 +300,9 @@ function releaseTrackedObjects(): void {
   let firstError: string | null = null;
 
   for (const api of trackedObjects) {
+    // Whatever this request was handed for it is stale from here, cleared or not.
+    markReleased(api);
+
     try {
       // Mode first, so the clear below always runs against a path-following
       // object. Reusing without resetting would carry a mode of 1 into the next

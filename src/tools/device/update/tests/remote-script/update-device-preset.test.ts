@@ -7,6 +7,8 @@
 // the rest of the update runs on whatever device is there afterwards.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -397,6 +399,8 @@ describe("updateDevice with a preset", () => {
   });
 
   it("says Live may have loaded the preset when V8 stopped waiting", async () => {
+    const capture = provedUnchangedRequest();
+
     outlastTheWait();
 
     await expect(
@@ -405,9 +409,12 @@ describe("updateDevice with a preset", () => {
         { deadline: 1_000_000 + 10_000 },
       ),
     ).rejects.toThrow("timed out; Live may have loaded it anyway");
+    expect(changedNothing(capture)).toBe(false);
   });
 
   it("keeps a skipped hotswap's own message, which says nothing changed", async () => {
+    const capture = provedUnchangedRequest();
+
     answerRemoteScript({
       hotswaps: [
         {
@@ -422,6 +429,7 @@ describe("updateDevice with a preset", () => {
     ).rejects.toThrow(
       /^preset not loaded: the request expired before Live ran it; nothing changed$/,
     );
+    expect(changedNothing(capture)).toBe(true);
   });
 
   it("says the preset needs the remote script when it stopped answering", async () => {

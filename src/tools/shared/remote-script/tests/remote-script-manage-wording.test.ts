@@ -136,7 +136,7 @@ describe("where ppal-manage is named", () => {
     // Dispatch table entry for the tool.
     "src/live-api-adapter/live-api-adapter.ts",
     // Skips the undo-step end for ppal-manage's own calls; not a message.
-    "src/mcp-server/rpc/remote-script/forwarded/with-undo-step-end.ts",
+    "src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts",
     // Skills, sent only while ppal-manage is on (the fragment's tool gate).
     "src/skills/fragments/history.ts",
     "src/skills/fragment-tool-gates.ts",

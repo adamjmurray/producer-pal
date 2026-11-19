@@ -140,6 +140,10 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
   pings the remote script to say whether Live is up without Producer Pal, and
   runs `ppal-manage` `install-producer-pal` and `add-producer-pal`. See
   [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
+- A call in flight when the device goes away gets the same offline answer at
+  once (`src/portal/update/in-flight-clients.ts`). The SDK only reports the
+  dropped response stream and leaves the call waiting for its timeout, so the
+  portal fails the calls on that connection itself.
 - Updates the running device in place (`src/portal/update/`): the bridge answers
   `ppal-manage` `update-producer-pal` itself, online or off, since the device it
   replaces dies with the swap, and adds an update hint to `ppal-connect` when

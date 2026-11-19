@@ -33,6 +33,10 @@ const ALLOWED: Record<string, string> = {
     "The pool: objects here have a cleared path and are not in use.",
   "src/live-api-adapter/live-api-release.ts:memoizedObjects":
     "Cleared in the same step that releases tracked objects.",
+  "src/live-api-adapter/live-api-stale-check.ts:generations":
+    "Debug-only WeakMap of release counts; never used to reach an object.",
+  "src/live-api-adapter/live-api-stale-check.ts:unwrapped":
+    "Debug-only WeakMap from wrapper to object, only to unwrap one in hand.",
   "src/tools/shared/device/helpers/path/with-device-path-cache.ts:cache":
     "Set and restored in a try/finally around one synchronous callback.",
   "src/tools/shared/clip/recreate-clip.ts:partialClip":

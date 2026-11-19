@@ -11,6 +11,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
+  expectSetupGuidance,
   mockServer,
   mockStandardTools,
   mockTransport,
@@ -26,6 +27,7 @@ interface FakeClient {
   listTools: ReturnType<typeof vi.fn>;
   callTool: ReturnType<typeof vi.fn>;
   getServerVersion: ReturnType<typeof vi.fn>;
+  onerror?: (error: Error) => void;
 }
 
 const state = vi.hoisted(() => ({
@@ -43,10 +45,22 @@ vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () =>
         connect: vi.fn().mockResolvedValue(undefined),
         close: vi.fn().mockResolvedValue(undefined),
         listTools: vi.fn(),
-        callTool: vi.fn((request: { name: string }) =>
-          request.name === "ppal-slow" && clients.length === 1
-            ? state.slow
-            : Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
+        callTool: vi.fn(
+          (
+            request: { name: string },
+            _schema: unknown,
+            options?: { signal?: AbortSignal },
+          ) =>
+            request.name === "ppal-slow" && clients.length === 1
+              ? new Promise((resolve, reject) => {
+                  const signal = options?.signal;
+
+                  signal?.addEventListener("abort", () => {
+                    reject(signal.reason as Error);
+                  });
+                  void state.slow?.then(resolve, reject);
+                })
+              : Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
         ),
         getServerVersion: vi.fn(() => ({
           name: "d",
@@ -92,6 +106,14 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () =>
     CallToolRequestSchema: "CallToolRequestSchema",
     ListToolsRequestSchema: "ListToolsRequestSchema",
     ErrorCode: { ConnectionClosed: -32000 },
+    McpError: class extends Error {
+      constructor(
+        readonly code: number,
+        message: string,
+      ) {
+        super(message);
+      }
+    },
   }),
 );
 
@@ -212,6 +234,29 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     expect(clients[1]?.close).not.toHaveBeenCalled();
   });
 
+  it("answers a call offline when its response stream drops", async () => {
+    const { first, bridge } = await startSlowCall();
+
+    clients[0]?.onerror?.(
+      new Error("SSE stream disconnected: TypeError: terminated"),
+    );
+
+    expectSetupGuidance(await first);
+    expect(bridge.isConnected).toBe(false);
+  });
+
+  it("leaves calls alone on any other client error", async () => {
+    const { slow, first } = await startSlowCall();
+
+    clients[0]?.onerror?.(new Error("Unknown message type"));
+    slow.resolve(SLOW_RESULT);
+
+    expect(await first).toBe(SLOW_RESULT);
+
+    // A drop with nothing in flight has nothing to fail.
+    clients[0]?.onerror?.(new Error("SSE stream disconnected: closed"));
+  });
+
   it("closes a client still waiting on a call when the bridge stops", async () => {
     const slow = deferred<unknown>();
 
@@ -244,12 +289,12 @@ async function startSlowCall() {
 
   state.slow = slow.promise;
 
-  const { handler } = await startBridge();
+  const { handler, bridge } = await startBridge();
   const first = handler(SLOW);
 
   await vi.waitFor(() => {
     expect(clients[0]?.callTool).toHaveBeenCalledTimes(1);
   });
 
-  return { handler, slow, first };
+  return { handler, bridge, slow, first };
 }

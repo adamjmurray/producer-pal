@@ -48,6 +48,7 @@ const devFlags = [
   ["ENABLE_WARP_MARKERS", process.env.ENABLE_WARP_MARKERS],
   ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
   ["ENABLE_OBJECT_PROBE", process.env.ENABLE_OBJECT_PROBE],
+  ["ENABLE_STALE_LIVE_API_CHECK", process.env.ENABLE_STALE_LIVE_API_CHECK],
 ].filter(([, value]) => value === "true");
 
 if (devFlags.length > 0) {
