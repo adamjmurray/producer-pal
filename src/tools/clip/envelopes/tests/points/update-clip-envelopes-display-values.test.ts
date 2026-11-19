@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // update-clip's `envelopes` with a point's value written as what Live
@@ -91,7 +91,7 @@ describe("updateClip - envelope points written as display values", () => {
       path: device,
       properties: {
         class_display_name: "Auto Filter",
-        parameters: children("on", "type", "wide"),
+        parameters: children("on", "type", "wide", "ratio"),
       },
     });
     registerMockObject("type", {
@@ -120,6 +120,23 @@ describe("updateClip - envelope points written as display values", () => {
         max: 127,
       },
       methods: { str_for_value: (raw: unknown) => String(raw) },
+    });
+    // Displays with a colon, as Compressor's Ratio does.
+    registerMockObject("ratio", {
+      type: "DeviceParameter",
+      path: device.parameter(3),
+      properties: {
+        name: "Ratio",
+        original_name: "Ratio",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 1,
+      },
+      methods: {
+        str_for_value: (raw: unknown) =>
+          `${(1 + Number(raw) * 6).toFixed(2)} : 1`,
+      },
     });
     mockNonExistentObjects();
     answerEnvelopeRoutes({ parameter: { min: 0, max: 127, quantized: false } });
@@ -160,6 +177,16 @@ describe("updateClip - envelope points written as display values", () => {
     });
 
     expect(writtenValues()).toStrictEqual([1, 2]);
+  });
+
+  it("writes back a read's points whose display holds a colon", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: "t0/d0/Ratio: 1|1 0.5 (4.00 : 1) / 3|1 0.25 (2.50 : 1)",
+    });
+
+    expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+    expect(writtenValues()).toStrictEqual([0.5, 0.25]);
   });
 
   it("leaves out the 0..1 note, since the values weren't spelled raw", async () => {

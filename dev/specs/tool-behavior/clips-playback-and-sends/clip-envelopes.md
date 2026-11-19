@@ -16,10 +16,11 @@ remote script. A line it can't write is a `detail` on that clip's entry
 - **A device param is named by id, or by its device's path and its name**
   (`t0/d0/Filter Freq`). The leading `dN`/`cN` segments are the path and the
   rest is the name, matched as `ppal-update-device` matches one, so a name may
-  hold a `/` or a `:` (`t0/d1/c0/d0/Dry/Wet`). A line splits at its last colon.
-  A name that matches two params on the device skips the line, naming their ids
-  and ranges; so does a name that matches none. The name and the id of one param
-  in one call are refused, as any two lines on one parameter are.
+  hold a `/` or a `:` (`t0/d1/c0/d0/Dry/Wet`). A line splits at its last colon
+  outside parentheses, since a display value can hold one (`(4.00 : 1)`). A name
+  that matches two params on the device skips the line, naming their ids and
+  ranges; so does a name that matches none. The name and the id of one param in
+  one call are refused, as any two lines on one parameter are.
 - **A point's value is raw, or what Live displays, in parentheses**
   (`1|1 (-6 dB)`, `(2 kHz)`, `(High-pass)`). A display value is read as
   `ppal-update-device` reads a param value and converted to raw before the line

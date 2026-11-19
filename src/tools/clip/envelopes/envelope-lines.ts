@@ -80,8 +80,7 @@ export function parseEnvelopeLines(envelopes: string): EnvelopeLine[] {
  * @throws Error naming the line when either half is malformed
  */
 function readLine(line: string): EnvelopeLine {
-  // The last colon: notation never has one, and a param name can.
-  const colon = line.lastIndexOf(":");
+  const colon = findSplitColon(line);
 
   if (colon < 0) {
     throw new Error(
@@ -109,6 +108,32 @@ function readLine(line: string): EnvelopeLine {
   }
 
   return { target, notation };
+}
+
+/**
+ * Find the colon between target and notation: the last one outside round
+ * brackets, since a param name can hold a colon and so can a display value
+ * (`(4.00 : 1)`). Scanning from the right keeps brackets in a name
+ * (`Attack (2)`) out of the count.
+ * @param line - The line
+ * @returns The colon's index, or -1 when there is none
+ */
+function findSplitColon(line: string): number {
+  let depth = 0;
+
+  for (let i = line.length - 1; i >= 0; i--) {
+    const char = line[i];
+
+    if (char === ")") {
+      depth++;
+    } else if (char === "(") {
+      depth = Math.max(0, depth - 1);
+    } else if (char === ":" && depth === 0) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 /**
