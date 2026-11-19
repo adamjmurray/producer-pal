@@ -276,8 +276,9 @@ to ask the user first, unless the user already asked for it.
 Step Live's own history, through the remote script's `/undo/undo` and
 `/undo/redo`. The history holds the user's edits in Live as well as Producer
 Pal's, so an undo can revert something the user did; the tool description says
-so. One step is one write call, parallel calls included, since each is closed as
-its own undo step.
+so. One step is one write call that changed something, parallel calls included,
+since each is closed as its own undo step. A call that changed nothing (every
+target skipped, refused up front, or not run) makes no step.
 
 - **`steps`:** how many steps, a whole number from 1 to 50, default 1. Above 50
   (or below 1, or not whole) is refused, never cut down: the caller would think
