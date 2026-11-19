@@ -12,6 +12,7 @@ import {
   handleLiveApiResult,
   setTimeoutForTesting,
 } from "../../max-api-adapter.ts";
+import { endUndoStep } from "#src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts";
 
 // Tested on its own. A real undo-step end here holds the queue between tests
 // while its request fails, so the next test's write waits.
@@ -80,9 +81,15 @@ describe("Max API Adapter: a timed-out write", () => {
     expect(timedOut.errorCode).toBe("timeout");
     await vi.advanceTimersByTimeAsync(1000);
     expect(outlet).toHaveBeenCalledTimes(1);
+    expect(endUndoStep).not.toHaveBeenCalled();
 
     answer(outlet, 0);
     await vi.advanceTimersByTimeAsync(0);
+    expect(endUndoStep).toHaveBeenCalledExactlyOnceWith(
+      "ppal-create-track",
+      {},
+      { content: [] },
+    );
     expect(outlet).toHaveBeenCalledTimes(2);
     expect(outlet.mock.calls[1]![2]).toBe("ppal-update-clip");
 
@@ -109,5 +116,10 @@ describe("Max API Adapter: a timed-out write", () => {
     const result = await second;
 
     expect(result.isError).toBeUndefined();
+    expect(endUndoStep).toHaveBeenCalledExactlyOnceWith(
+      "ppal-update-clip",
+      {},
+      result,
+    );
   });
 });

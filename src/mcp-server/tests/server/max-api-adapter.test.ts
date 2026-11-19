@@ -39,6 +39,7 @@ vi.mock(import("../../rpc/node-request-protocol.ts"), () => ({
 }));
 
 import { isChangedNothing } from "../../rpc/remote-script/forwarded/changed-nothing.ts";
+import { endUndoStep } from "../../rpc/remote-script/forwarded/end-undo-step.ts";
 import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 import { handleNodeRequest } from "../../rpc/node-request-protocol.ts";
 
@@ -454,6 +455,25 @@ describe("Max API Adapter", () => {
       expect(outlet.mock.calls[1]![2]).toBe("ppal-update-clip");
       handleLiveApiResult(outlet.mock.calls[1]![1], "{}", END_OF_CHUNKS);
       await second;
+    });
+
+    it("should end a write's undo step with its answer, but not a read's", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      const outlet = vi.mocked(Max.outlet);
+      const write = callLiveApi("ppal-create-track", { a: 1 });
+
+      await vi.waitFor(() => expect(outlet).toHaveBeenCalledTimes(1));
+      handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);
+      const answer = await write;
+
+      expect(endUndoStep).toHaveBeenCalledExactlyOnceWith(
+        "ppal-create-track",
+        { a: 1 },
+        answer,
+      );
+
+      await resolveWithResult({ content: [] });
+      expect(endUndoStep).toHaveBeenCalledTimes(1);
     });
 
     it("should count queue time in a queued write's timeout", async () => {
