@@ -4,10 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { type LocalModel } from "#webui/chat/sdk/provider/local-model/local-model-catalog";
+import { useLocalModels } from "#webui/hooks/settings/helpers/use-local-models";
 import {
   OTHER_MODEL_OPTION,
   PROVIDER_MODELS,
 } from "#webui/lib/constants/models";
+import { compactNumber } from "#webui/lib/utils/compact-number";
 import { type Provider } from "#webui/types/settings";
 
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
@@ -26,6 +29,8 @@ export interface ModelSelectorProps {
   provider: Provider;
   model: string;
   setModel: (model: string) => void;
+  /** URL setting of a local provider, whose server lists its models */
+  baseUrl?: string | null;
 }
 
 /**
@@ -34,17 +39,24 @@ export interface ModelSelectorProps {
  * @param {Provider} props.provider - Current provider
  * @param {string} props.model - Current model
  * @param {(model: string) => void} props.setModel - Model setter callback
+ * @param {string | null} [props.baseUrl] - Local provider's URL setting
  * @returns {JSX.Element} - React component
  */
 export function ModelSelector({
   provider,
   model,
   setModel,
+  baseUrl,
 }: ModelSelectorProps) {
-  // Determine preset models for this provider
+  const localModels = useLocalModels(provider, baseUrl);
+
+  // A local server's own model list wins over the presets.
   const presetModels = useMemo(
-    () => PROVIDER_MODELS[provider] ?? [],
-    [provider],
+    () =>
+      localModels != null && localModels.length > 0
+        ? [...localModels.map(localModelOption), OTHER_MODEL_OPTION]
+        : (PROVIDER_MODELS[provider] ?? []),
+    [provider, localModels],
   );
 
   // Track whether custom input is shown (for non-custom providers)
@@ -105,24 +117,21 @@ export function ModelSelector({
     previousShowCustomInputRef.current = showCustomInput;
   }, [showCustomInput]);
 
-  // For custom and local providers, use free-form text input
-  if (provider === "custom" || provider === "lmstudio") {
-    const placeholder =
-      provider === "lmstudio"
-        ? "e.g., qwen/qwen3.8-27b"
-        : "e.g., openai/gpt-oss-120b";
-
+  // Free-form text for custom, and for LM Studio when its server can't list
+  if (
+    provider === "custom" ||
+    (provider === "lmstudio" && presetModels.length === 0)
+  ) {
     return (
-      <div>
-        <label className="mb-2 block text-sm">Model</label>
-        <input
-          type="text"
-          value={model}
-          onInput={(e) => setModel((e.target as HTMLInputElement).value)}
-          placeholder={placeholder}
-          className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
-        />
-      </div>
+      <ModelTextInput
+        model={model}
+        setModel={setModel}
+        placeholder={
+          provider === "lmstudio"
+            ? "e.g., qwen/qwen3.8-27b"
+            : "e.g., openai/gpt-oss-120b"
+        }
+      />
     );
   }
 
@@ -174,4 +183,52 @@ export function ModelSelector({
       )}
     </div>
   );
+}
+
+/**
+ * Free-form model input, for providers with no list to pick from.
+ * @param props - Component props
+ * @param props.model - Current model
+ * @param props.setModel - Model setter callback
+ * @param props.placeholder - Example model id
+ * @returns Input element
+ */
+function ModelTextInput({
+  model,
+  setModel,
+  placeholder,
+}: {
+  model: string;
+  setModel: (model: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm">Model</label>
+      <input
+        type="text"
+        value={model}
+        onInput={(e) => setModel((e.target as HTMLInputElement).value)}
+        placeholder={placeholder}
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
+      />
+    </div>
+  );
+}
+
+/**
+ * A dropdown option for a local model, marking the loaded ones.
+ * @param model - Local model
+ * @returns Dropdown option
+ */
+function localModelOption(model: LocalModel): { value: string; label: string } {
+  const context =
+    model.contextLength != null
+      ? `, ${compactNumber(model.contextLength)} context`
+      : "";
+
+  return {
+    value: model.id,
+    label: model.loaded ? `${model.id} (loaded${context})` : model.id,
+  };
 }

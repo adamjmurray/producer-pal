@@ -23,7 +23,7 @@ through an [AI router](./ai-routers#openrouter) instead.
 
 ## Model Notes
 
-- Gemini 4 Argon recommended
+- Gemini 4 Neon recommended
 - For regular use:
   - [OpenRouter](./ai-routers#openrouter) with Gemini - simplest paid option
   - [Google Antigravity](./antigravity) or [Antigravity CLI](./antigravity-cli)

@@ -132,6 +132,7 @@ export const ANTHROPIC_MODELS = [
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
+  { value: "gemini-4-neon", label: "Gemini 4 Neon" },
   { value: "gemini-4-argon", label: "Gemini 4 Argon" },
   { value: "gemini-4-carbon", label: "Gemini 4 Carbon" },
   { value: "gemini-4-hydrogen", label: "Gemini 4 Hydrogen" },
@@ -186,6 +187,10 @@ export const OPENROUTER_MODELS = [
   { value: "openai/gpt-6.2-astra", label: "[Paid] OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
+    value: "google/gemini-4-neon",
+    label: "[Paid] Google Gemini 4 Neon",
+  },
+  {
     value: "google/gemini-4-argon",
     label: "[Paid] Google Gemini 4 Argon",
   },
@@ -238,6 +243,7 @@ export const VERCEL_MODELS = [
   { value: "openai/gpt-6.2-sol", label: "OpenAI GPT-6.2 Sol" },
   { value: "openai/gpt-6.2-astra", label: "OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
+  { value: "google/gemini-4-neon", label: "Google Gemini 4 Neon" },
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
   { value: "google/gemini-4-carbon", label: "Google Gemini 4 Carbon" },
   { value: "google/gemini-4-hydrogen", label: "Google Gemini 4 Hydrogen" },

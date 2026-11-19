@@ -478,6 +478,9 @@ export class ChatSdkClient {
 
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
+    // Re-read after every step: the model can be reloaded mid-chat.
+    const lookupContextLength = this.config.lookupContextLength;
+    let contextLength = await lookupContextLength?.();
 
     const errorSignal = createStreamErrorSignal();
     const interrupt = createStreamInterrupt(abortSignal);
@@ -503,7 +506,7 @@ export class ChatSdkClient {
           const msg = this.chatHistory[i] as ChatMessage;
 
           if (msg.role === "assistant" && count++ === stepIndex) {
-            msg.usage = toTokenUsage(event.usage);
+            msg.usage = toTokenUsage(event.usage, contextLength);
 
             const timing = toStepTiming(event.performance);
 
@@ -520,6 +523,10 @@ export class ChatSdkClient {
         }
 
         stepIndex++;
+        // Just-in-time loading may only now have loaded the model.
+        void lookupContextLength?.().then((length) => {
+          contextLength = length;
+        });
       },
     });
 

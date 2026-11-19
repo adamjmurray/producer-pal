@@ -19,6 +19,11 @@ import {
   ModelSelector,
 } from "#webui/components/settings/controls/ModelSelector";
 
+// No local server here: LM Studio and Ollama fall back to their presets.
+vi.mock(import("#webui/hooks/settings/helpers/use-local-models"), () => ({
+  useLocalModels: vi.fn(() => undefined),
+}));
+
 type RenderProps = Partial<ModelSelectorProps> & { setModel?: Mock };
 
 function renderModelSelector(
@@ -63,9 +68,10 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-4-argon");
-    expect(options[1]!.value).toBe("gemini-4-carbon");
-    expect(options[2]!.value).toBe("gemini-4-hydrogen");
+    expect(options[0]!.value).toBe("gemini-4-neon");
+    expect(options[1]!.value).toBe("gemini-4-argon");
+    expect(options[2]!.value).toBe("gemini-4-carbon");
+    expect(options[3]!.value).toBe("gemini-4-hydrogen");
   });
 
   it("triggers setModel callback on change", () => {

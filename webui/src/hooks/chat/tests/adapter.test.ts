@@ -376,7 +376,7 @@ describe("chatAdapter", () => {
       const config = buildForProvider("ollama", "Off", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "none" },
+        ollama: { reasoningEffort: "none" },
       });
     });
 
@@ -505,6 +505,36 @@ describe("chatAdapter", () => {
       const overridden = config.buildProviderOptions!("Off");
 
       expect(overridden).toBeUndefined();
+    });
+
+    describe("lookupContextLength", () => {
+      it.each(["lmstudio", "ollama"])("reads %s's context length", (p) => {
+        expect(buildForProvider(p).lookupContextLength).toBeTypeOf("function");
+      });
+
+      it("has none for a cloud provider", () => {
+        expect(buildForProvider("openai").lookupContextLength).toBeUndefined();
+      });
+
+      it("clears a local orchestrator's for a cloud subagent preset", () => {
+        const config = chatAdapter.buildConfig("m", "Off", {}, undefined, {
+          ...extraParams,
+          provider: "ollama",
+          subagentPreset: {
+            provider: "openai" as const,
+            apiKey: "k",
+            baseUrl: undefined,
+            model: "gpt-5.2",
+            thinking: "Off",
+            smallModelMode: false,
+          },
+        });
+
+        expect(config.subagentConfig).toHaveProperty(
+          "lookupContextLength",
+          undefined,
+        );
+      });
     });
 
     describe("subagentConfig from a subagent preset", () => {

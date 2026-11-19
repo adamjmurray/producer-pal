@@ -271,7 +271,7 @@ describe("createProviderModel", () => {
   it("uses the Chat Completions API for ollama (not Responses)", () => {
     const model = createProviderModel("ollama", "llama3", "");
 
-    expect(getApiProvider(model)).toBe("openai.chat");
+    expect(getApiProvider(model)).toBe("ollama.chat");
   });
 
   it("uses the Chat Completions API for custom (not Responses)", () => {
