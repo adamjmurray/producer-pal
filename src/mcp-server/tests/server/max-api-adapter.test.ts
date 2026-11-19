@@ -279,7 +279,7 @@ describe("Max API Adapter", () => {
         "Tool call 'test-tool' args too large for a single Max IPC message",
       );
       expect(result.content[0]!.text).toMatch(/Nothing changed\.$/);
-      // Not run, so the undo-step wrapper must not treat it as a change.
+      // Not run, so ending the undo step must not treat it as a change.
       expect(isChangedNothing(result)).toBe(true);
     });
 

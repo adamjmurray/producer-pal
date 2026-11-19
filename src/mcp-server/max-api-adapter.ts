@@ -76,7 +76,7 @@ const pendingRequests = new Map<string, PendingRequest>();
 /**
  * How long to wait for V8 to answer a timed-out call before giving up on it.
  * No single wait inside V8 runs longer than this, so a late answer that hasn't
- * come by then isn't coming (the device is gone, or V8 is stuck).
+ * come by then isn't coming (V8's script was reloaded, or V8 is stuck).
  */
 const LATE_ANSWER_CAP_MS = MAX_TIMEOUT_MS;
 

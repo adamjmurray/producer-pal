@@ -23,8 +23,8 @@ half done: two of the three envelopes it was writing.
 - **What counts as a write:** a call to a tool that isn't `readOnlyHint`, unless
   its def's `changesSet` says these args leave the Set alone (a read action, a
   read-only `ppal-live-api` batch, firing clips). `ppal-manage` counts: undo and
-  redo change the Set. The undo-step wrapper uses the same check, minus
-  `ppal-manage`.
+  redo change the Set. Ending the undo step (`endUndoStep`, the queue's
+  `afterWrite`) uses the same check, minus `ppal-manage`.
 - **The timeout counts from arrival.** A call that waited is sent with what is
   left of its timeout, so its V8 deadline shrinks too, and the caller always
   hears back within its timeout, under the MCP client's own. A call that gets
@@ -40,7 +40,8 @@ half done: two of the three envelopes it was writing.
   Node keeps listening for V8's late answer, and the write keeps the turn, and
   the reads behind it, until that answer comes. Node gives up after
   `MAX_TIMEOUT_MS` (55 s), longer than any single wait inside V8, and frees the
-  queue. A late answer that never comes means the device is gone or V8 is stuck.
+  queue. A late answer that never comes means V8's script was reloaded while
+  Node stayed up, or V8 is stuck.
 - **Limits.** A user editing Live during a wait can still shift things under a
   write. A write that arrives after a read can still land while that read waits
   on the remote script (read-clip envelopes, read-device macros or Simpler), so
