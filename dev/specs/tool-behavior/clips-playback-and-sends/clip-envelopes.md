@@ -106,9 +106,10 @@ Live automates the wrapper's numbered slots ("Slot 001"...), so the line is
 written to a slot's parameter, and the entry reports no slot unless it made one.
 The plug-in's own name for the param works in place of the id (`t3/d0/Cutoff`,
 matched exactly, else ignoring case); the wrapper numbers names the plug-in
-repeats ("Attack (2)"). A name that still reaches several params skips the line,
-listing their ids; one the plug-in doesn't have is left to the wrapper's own
-Live params ("Slot 001", "Device On"). A target that can't be read (`t3/hx`)
+repeats in its order ("Attack", "Attack (2)"), so the plain name is the first. A
+name that still reaches several params (only once case is ignored) skips the
+line, listing their ids; one the plug-in doesn't have is left to the wrapper's
+own Live params ("Slot 001", "Device On"). A target that can't be read (`t3/hx`)
 refuses the call like any other. The rest skip that line, as
 `envelope "<target>": <why>`, and the other lines still run:
 
