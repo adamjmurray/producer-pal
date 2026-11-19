@@ -71,9 +71,10 @@ export function ModelSelector({
     );
   });
 
-  // Ref for autofocusing the custom input when "Other..." is selected
   const customInputRef = useRef<HTMLInputElement>(null);
-  const previousShowCustomInputRef = useRef(showCustomInput);
+  // Set only when the user picks "Other...". The input also opens when a model
+  // list loads without the saved model, and that must not steal focus.
+  const focusCustomInputRef = useRef(false);
 
   // What the user typed in the custom input. Typing through a preset name
   // (gpt-5 on the way to gpt-5-mini) must not close the input.
@@ -104,17 +105,12 @@ export function ModelSelector({
     setShowCustomInput(isCustom);
   }, [model, provider, presetModels]);
 
-  // Autofocus custom input when user selects "Other..." (but not on initial load)
   useEffect(() => {
-    if (
-      showCustomInput &&
-      !previousShowCustomInputRef.current &&
-      customInputRef.current
-    ) {
-      customInputRef.current.focus();
+    if (focusCustomInputRef.current && showCustomInput) {
+      customInputRef.current?.focus();
     }
 
-    previousShowCustomInputRef.current = showCustomInput;
+    focusCustomInputRef.current = false;
   }, [showCustomInput]);
 
   // Free-form text for custom, and for LM Studio when its server can't list
@@ -140,6 +136,7 @@ export function ModelSelector({
 
   const handleDropdownChange = (value: string) => {
     if (value === OTHER_MODEL_OPTION.value) {
+      focusCustomInputRef.current = true;
       setShowCustomInput(true);
       // Keep current model value - user will edit in text input
     } else {

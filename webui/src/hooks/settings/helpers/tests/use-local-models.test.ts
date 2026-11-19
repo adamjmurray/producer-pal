@@ -105,4 +105,33 @@ describe("useLocalModels", () => {
 
     expect(result.current).toBeUndefined();
   });
+
+  it.each([
+    ["provider", { provider: "ollama" as Provider, url: "http://x" }],
+    ["URL", { provider: "lmstudio" as Provider, url: "http://y" }],
+  ])("never returns a list fetched for another %s", async (_name, next) => {
+    const seen: [Provider, string, unknown][] = [];
+    const { rerender } = renderHook(
+      ({ provider, url }) => {
+        const models = useLocalModels(provider, url);
+
+        seen.push([provider, url, models]);
+
+        return models;
+      },
+      { initialProps: { provider: "lmstudio" as Provider, url: "http://x" } },
+    );
+
+    await settle();
+    expect(seen.at(-1)?.[2]).toStrictEqual(MODELS);
+
+    rerender(next);
+
+    const stale = seen.filter(
+      ([provider, url, models]) =>
+        provider === next.provider && url === next.url && models != null,
+    );
+
+    expect(stale).toStrictEqual([]);
+  });
 });

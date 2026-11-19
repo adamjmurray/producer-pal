@@ -25,20 +25,21 @@ export function useLocalModels(
   provider: Provider,
   baseUrl: string | null | undefined,
 ): LocalModel[] | undefined {
-  const [models, setModels] = useState<LocalModel[] | undefined>();
+  const url = baseUrl ?? undefined;
+  // Tagged with what it was fetched for, so the render right after a provider
+  // or URL change never shows the previous server's list.
+  const [fetched, setFetched] = useState<FetchedModels | undefined>();
 
   useEffect(() => {
-    setModels(undefined);
-
     if (provider !== "lmstudio" && provider !== "ollama") {
       return undefined;
     }
 
     let current = true;
     const timer = setTimeout(() => {
-      void fetchLocalModels(provider, baseUrl ?? undefined).then((result) => {
+      void fetchLocalModels(provider, url).then((models) => {
         if (current) {
-          setModels(result);
+          setFetched({ provider, url, models });
         }
       });
     }, LOCAL_MODELS_DEBOUNCE_MS);
@@ -47,7 +48,15 @@ export function useLocalModels(
       current = false;
       clearTimeout(timer);
     };
-  }, [provider, baseUrl]);
+  }, [provider, url]);
 
-  return models;
+  return fetched?.provider === provider && fetched.url === url
+    ? fetched.models
+    : undefined;
+}
+
+interface FetchedModels {
+  provider: Provider;
+  url: string | undefined;
+  models: LocalModel[] | undefined;
 }
