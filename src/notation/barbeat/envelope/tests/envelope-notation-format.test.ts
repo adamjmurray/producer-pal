@@ -157,6 +157,10 @@ describe("formatEnvelopeNotation", () => {
       { time: 0, value: 0.25, jump: false },
       { time: 8, value: 0.5, jump: false },
     ]);
+    // Written alone, the display gets its round brackets back.
+    expect(parseEnvelopeNotation(`1|1 (${written})`, FOUR_FOUR)).toStrictEqual([
+      { time: 0, display, jump: false },
+    ]);
   });
 
   it.each([

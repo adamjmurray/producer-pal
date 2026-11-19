@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
+import { formatEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
@@ -91,7 +92,21 @@ describe("updateClip - envelope points written as display values", () => {
       path: device,
       properties: {
         class_display_name: "Auto Filter",
-        parameters: children("on", "type", "wide", "ratio"),
+        parameters: children("on", "type", "wide", "ratio", "rate"),
+      },
+    });
+    // A display with round brackets, which a read prints as square ones.
+    registerMockObject("rate", {
+      type: "DeviceParameter",
+      path: device.parameter(4),
+      properties: {
+        name: "Rate",
+        original_name: "Rate",
+        is_quantized: 1,
+        value: 0,
+        min: 0,
+        max: 1,
+        value_items: ["1/4", "1/4 (dotted)"],
       },
     });
     registerMockObject("type", {
@@ -206,6 +221,22 @@ describe("updateClip - envelope points written as display values", () => {
 
     expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
     expect(writtenValues()).toStrictEqual([0.5, 0.25]);
+  });
+
+  it("writes back a read's display that held round brackets", async () => {
+    const read = formatEnvelopeNotation(
+      [{ time: 0, value: 1, display: "1/4 (dotted)" }],
+      { timeSigNumerator: 4, timeSigDenominator: 4 },
+    );
+    // Leave the raw value out, so the display is the one written.
+    const line = `t0/d0/Rate: ${read.replace(" 1 (", " (")}`;
+
+    expect(line).toBe("t0/d0/Rate: 1|1 (1/4 [dotted])");
+
+    const result = await updateClip({ id: "123", envelopes: line });
+
+    expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+    expect(writtenValues()).toStrictEqual([1]);
   });
 
   it("leaves out the 0..1 note, since the values weren't spelled raw", async () => {

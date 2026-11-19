@@ -109,6 +109,19 @@ describe("updateClip - display values on a hosted plug-in's param", () => {
     );
   });
 
+  it("asks for a read's square brackets as the round ones shown", async () => {
+    finds(wrapper, [{ value: 0.5 }]);
+
+    await updateClip({
+      id: "123",
+      envelopes: "t0/d0/h56: 1|1 (1/4 [dotted])",
+    });
+
+    expect(heardOp(wrapper, "find")).toStrictEqual([
+      expect.objectContaining({ values: [{ text: "1/4 (dotted)" }] }),
+    ]);
+  });
+
   it("asks nothing for a line of raw values", async () => {
     await updateClip({ id: "123", envelopes: "t0/d0/h56: 1|1 0.5" });
 

@@ -20,7 +20,8 @@
 // group. A curve that isn't one Live draws reads as the nearest amount.
 //
 // On write a point may give the display alone, `1|1 (112 Hz)`, for the caller
-// to turn into a raw value. With both, the raw value is the one written.
+// to turn into a raw value; its square brackets turn back into round ones.
+// With both, the raw value is the one written.
 
 import {
   type CurveCoefficients,
@@ -474,7 +475,11 @@ function readPoint(
 
     validateBarBeatPosition(barBeat);
 
-    return { barBeat, display };
+    // A read prints a display's round brackets as square ones; undo that.
+    return {
+      barBeat,
+      display: display.replaceAll("[", "(").replaceAll("]", ")"),
+    };
   }
 
   const valueText = match[2] as string;
