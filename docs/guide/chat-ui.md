@@ -360,7 +360,8 @@ keys. Instead, they have a configurable URL.
   `http://localhost:1234` for Bionic)
 - **Model** - Pick from the models the server has downloaded (loaded ones are
   marked), or choose **Other...** to type a name. If the server can't be
-  reached, type the name instead
+  reached, Ollama shows a list of suggested models (with **Other...**) and
+  Bionic shows a box to type the name
 
 The default is almost always right. Change it if:
 

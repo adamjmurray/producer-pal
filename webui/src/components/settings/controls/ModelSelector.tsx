@@ -13,7 +13,8 @@ import {
 import { compactNumber } from "#webui/lib/utils/compact-number";
 import { type Provider } from "#webui/types/settings";
 
-const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
+// Example model ids for wherever the model is typed: "Other..." or a text box.
+const MODEL_PLACEHOLDERS: Record<Provider, string> = {
   anthropic: "e.g., claude-sonnet-5-5",
   gemini: "e.g., gemini-4-carbon",
   openai: "e.g., gpt-6-luna",
@@ -21,8 +22,8 @@ const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   openrouter: "e.g., openai/gpt-6-luna",
   vercel: "e.g., openai/gpt-6-luna",
   ollama: "e.g., qwen3.8",
-  lmstudio: "", // Not used (has dedicated input)
-  custom: "", // Not used (has dedicated input)
+  lmstudio: "e.g., qwen/qwen3.8-27b",
+  custom: "e.g., openai/gpt-oss-120b",
 };
 
 export interface ModelSelectorProps {
@@ -122,11 +123,7 @@ export function ModelSelector({
       <ModelTextInput
         model={model}
         setModel={setModel}
-        placeholder={
-          provider === "lmstudio"
-            ? "e.g., qwen/qwen3.8-27b"
-            : "e.g., openai/gpt-oss-120b"
-        }
+        placeholder={MODEL_PLACEHOLDERS[provider]}
       />
     );
   }
@@ -174,7 +171,7 @@ export function ModelSelector({
             typedRef.current = { provider, value };
             setModel(value);
           }}
-          placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
+          placeholder={MODEL_PLACEHOLDERS[provider]}
           className="mt-2 w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />
       )}

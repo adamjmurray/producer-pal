@@ -88,6 +88,10 @@ describe("ModelSelector with a local server's models", () => {
       "value",
       "not/downloaded",
     );
+    expect(screen.getByRole("textbox")).toHaveProperty(
+      "placeholder",
+      "e.g., qwen/qwen3.8-27b",
+    );
   });
 
   it.each([
