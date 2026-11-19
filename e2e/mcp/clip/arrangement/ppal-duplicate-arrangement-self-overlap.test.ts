@@ -16,6 +16,9 @@
  *   - move      → single full 4-bar clip at the new position (original gone),
  *                 and the same moving -1 bar (no tail left past the copy)
  *
+ * A take-lane clip moved earlier along its own lane leaves one full clip and,
+ * past it, only the emptied or muted tail of the original.
+ *
  * Two or more copies on the source in one call each trim it for the next, so
  * they are made from a spare of the source: the later copy is full length, the
  * earlier one is cut short by it, and no spare is left on the track.
@@ -28,6 +31,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   parseToolResult,
   type ReadClipResult,
+  SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -273,6 +277,59 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
   });
 });
 
+// A take-lane clip is rebuilt at the target, and Live can't delete the
+// original, so it's emptied (MIDI) or muted (audio) in place. Live trims the
+// original to its tail rather than splitting it, so the tail is what gets
+// emptied — no live copy of it survives past the rebuilt clip.
+describe("take-lane clip moved earlier along its own lane", () => {
+  it("MIDI -1 bar: one full clip, and nothing else with notes or unmuted", async () => {
+    const base = await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}/l0[56|1]`,
+      notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
+      length: "4bar",
+    });
+    const baseId = parseToolResult<{ id: string }>(base).id;
+
+    await sleep(100);
+    await moveArrClip(baseId, "55|1");
+
+    const clips = clipsInBarRange(
+      await readLaneClips(EMPTY_MIDI_TRACK),
+      54,
+      61,
+    );
+    const placed = clipAt(clips, "55|1");
+
+    expect(lengthBeats(placed)).toBeCloseTo(beats("4bar"), 5);
+    expect((await readClip(placed!.id!, ["notes"])).notes).toContain("B3");
+    await expectOnlyPlaceholders(clips, placed!.id!);
+  });
+
+  it("audio, half its length back: one full clip, and nothing else unmuted", async () => {
+    const base = await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${AUDIO_TRACK}/l0[125|1]`,
+      sampleFile: SAMPLE_FILE,
+    });
+    const baseId = parseToolResult<{ id: string }>(base).id;
+
+    await sleep(100);
+
+    const baseLen = lengthBeats(
+      clipAt(await readLaneClips(AUDIO_TRACK), "125|1"),
+    );
+    const target = beatsToBarBeat(startToBeats("125|1") - baseLen / 2);
+
+    await moveArrClip(baseId, target);
+
+    const lastBar = 126 + Math.ceil(baseLen / 4);
+    const clips = clipsInBarRange(await readLaneClips(AUDIO_TRACK), 1, lastBar);
+    const placed = clipAt(clips, target);
+
+    expect(lengthBeats(placed)).toBeCloseTo(baseLen, 3);
+    await expectOnlyPlaceholders(clips, placed!.id!);
+  });
+});
+
 /**
  * Duplicate a clip to an arrangement position.
  * @param id - Source clip ID
@@ -347,6 +404,37 @@ async function expectSingleFullClip(
   const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
 
   expect(movedNotes).toContain("B3");
+}
+
+/**
+ * Assert every clip but the kept one is an emptied, muted placeholder.
+ * @param clips - Clips in the checked range
+ * @param keptId - The one clip that should hold content
+ */
+async function expectOnlyPlaceholders(
+  clips: ReadClipResult[],
+  keptId: string,
+): Promise<void> {
+  for (const clip of clips.filter((c) => c.id !== keptId)) {
+    const read = await readClip(clip.id!, ["notes"]);
+
+    expect(read.muted, `leftover at ${clip.path}`).toBe(true);
+    expect(read.notes ?? "", `leftover at ${clip.path}`).toBe("");
+  }
+}
+
+/**
+ * Read the clips on a track's first take lane.
+ * @param trackIndex - Track index
+ * @returns The lane's clips
+ */
+async function readLaneClips(trackIndex: number): Promise<ReadClipResult[]> {
+  const result = await callTool(ctx.client!, "ppal-read-track", {
+    path: `t${trackIndex}/l0`,
+    include: ["arrangement-clips", "timing"],
+  });
+
+  return parseToolResult<{ clips?: ReadClipResult[] }>(result).clips ?? [];
 }
 
 /**
