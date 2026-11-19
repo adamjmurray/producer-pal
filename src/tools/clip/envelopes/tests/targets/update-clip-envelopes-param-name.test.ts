@@ -16,7 +16,11 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { parseNameTarget } from "#src/tools/clip/envelopes/targets/envelope-name-target.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
-import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
+import {
+  answerEnvelopeRoutes,
+  expectSameParameterRefused,
+  expectTargetRefused,
+} from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import {
   setupMidiClipMock,
   setupUpdateClipMocks,
@@ -134,16 +138,8 @@ describe("updateClip - envelopes on a param named by device path and name", () =
   });
 
   it("refuses the name and the id of one parameter together", async () => {
-    const result = await updateClip({
-      id: "123",
-      envelopes: `t0/d0/Filter Freq: ${NOTATION}\n91: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: expect.stringContaining("are the same parameter") as string,
-      }),
+    await expectSameParameterRefused(
+      `t0/d0/Filter Freq: ${NOTATION}\n91: ${NOTATION}`,
     );
   });
 
@@ -162,18 +158,7 @@ describe("updateClip - envelopes on a param named by device path and name", () =
       "t1/d0 is not on the clip's track (t0), and a clip can only automate its own track",
     ],
   ])("says why %s reaches no single param", async (target, why) => {
-    const result = await updateClip({
-      id: "123",
-      envelopes: `${target}: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail: `envelope "${target}": ${why}`,
-      }),
-    );
+    await expectTargetRefused(target, NOTATION, why);
   });
 
   it("says when the path names no device", async () => {
