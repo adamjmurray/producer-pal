@@ -84,6 +84,19 @@ describe("wrapper find", () => {
     expect(current()).toBe(START);
   });
 
+  it("refuses a number in a unit the param doesn't show", () => {
+    const { found, current } = find([
+      { text: "500 ms", number: 500 },
+      { text: "-6 db", number: -6 },
+    ]);
+
+    expect(found.values[0]).toStrictEqual({
+      error: "wrong unit: the param shows dB, not ms",
+    });
+    expect(found.values[1]?.display).toBe("-6.00 dB");
+    expect(current()).toBe(START);
+  });
+
   it("samples the param once, however many values are asked", () => {
     const one = find([{ text: "0.00 dB", number: 0 }]);
     const two = find([

@@ -62,11 +62,13 @@ Part of [Skip entries, tool by tool](README.md).
   sent. `ok: false` says why: a Live param id (not an `h` id) is refused unsent;
   no such param (`not found on <target>`); a name more than one param has lists
   the ids and asks for an `id`; no value displays as asked (`not set:` plus what
-  it does show), and the param is left as it was. Two entries reaching one
-  param, by name and by id, write the last. A wrapper that doesn't answer may
-  have written: the entries say `may have changed` and the hosted devices after
-  it say they weren't tried. A list too big for one request (a few hundred
-  entries; Max cuts a message near 30 KB) is refused unsent, each entry
+  it does show), or a number has a unit the param doesn't show (`800 ms` on a Hz
+  param: `not set: wrong unit: the param shows Hz/kHz, not ms`), and the param
+  is left as it was. Two entries reaching one param, by name and by id, write
+  the last. A wrapper that doesn't answer may have written: the entries say
+  `may have changed` and the hosted devices after it say they weren't tried. A
+  list too big for one request (a few hundred entries; Max cuts a message near
+  30 KB) is refused unsent, each entry
   `not set: too large for one call; split the params across calls`: nothing
   changed, so it never says `may have changed` and the devices after it are not
   stopped by it. create-device's `params` follow the same rule, however the

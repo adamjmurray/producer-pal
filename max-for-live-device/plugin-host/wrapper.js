@@ -1451,6 +1451,10 @@ function searchValue(index, { text, number, bare }, before, samples = samplePara
   if (hit) return { value: hit.value };
   if (number == null) return { error: noMatch(samples, text) };
 
+  const unitError = bare ? null : wrongUnit(samples, text);
+
+  if (unitError) return { error: unitError };
+
   // The unit the param showed before the search, not at the sample it lands on.
   const scale = bare ? bareScale(String(before ?? "")) : 1;
   const found = bisect(index, samples, Number(number) * scale);
@@ -1498,6 +1502,42 @@ function unitScale(unit) {
 // written "3 kHz" or "0.8 s" the same way (param-label-parsing.ts).
 function bareScale(display) {
   return unitScale(splitDisplay(display)?.unit ?? "");
+}
+
+// Units that are one kind once scaled; any other unit counts as unknown.
+const UNIT_KINDS = [
+  ["Hz", /^k?hz$/i],
+  ["ms", /^m?s$/i],
+  ["dB", /^db$/i],
+  ["%", /^(%|percent)$/i],
+  ["st", /^(st|semis?|semitones?)$/i],
+  ["ct", /^(ct|cents?)$/i],
+  ["deg", /^(°|deg|degrees?)$/i],
+];
+
+function unitKind(unit) {
+  return UNIT_KINDS.find(([, pattern]) => pattern.test(unit))?.[0] ?? null;
+}
+
+// A number written in one unit on a param that shows only another, say
+// "500 ms" on "20 Hz" to "20 kHz": say what it shows. Null when the units
+// agree, or either one is unknown.
+function wrongUnit(samples, text) {
+  const asked = splitDisplay(String(text ?? ""))?.unit ?? "";
+  const kind = unitKind(asked);
+  const shown = [];
+
+  for (const { display } of samples) {
+    const unit = splitDisplay(display)?.unit;
+
+    if (unit == null) continue;
+    if (unitKind(unit) == null || unitKind(unit) === kind) return null;
+    if (!shown.includes(unit)) shown.push(unit);
+  }
+
+  if (kind == null || shown.length === 0) return null;
+
+  return `wrong unit: the param shows ${shown.join("/")}, not ${asked}`;
 }
 
 function bisect(index, samples, target) {
