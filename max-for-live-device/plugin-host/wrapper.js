@@ -1403,29 +1403,37 @@ function findValues({ index, name, values = [] }) {
   if (target.error) throw new Error(target.error);
 
   const original = readParam(target.index);
-  const samples = sampleParam(target.index);
-  const found = values.map((wanted) => {
-    const hit = searchValue(target.index, wanted, original.display, samples);
+  const back = Number(original.value);
 
-    if (hit.error) return { error: hit.error };
+  // Put the param back however the search ends, but never send a value that
+  // wasn't read (NaN).
+  try {
+    const samples = sampleParam(target.index);
+    const found = values.map((wanted) => {
+      const hit = searchValue(target.index, wanted, original.display, samples);
 
-    outlet(0, target.index, hit.value);
+      if (hit.error) return { error: hit.error };
+
+      outlet(0, target.index, hit.value);
+
+      return {
+        value: hit.value,
+        display: readParam(target.index).display,
+        ...(hit.outside ? { outside: true } : {}),
+      };
+    });
 
     return {
-      value: hit.value,
-      display: readParam(target.index).display,
-      ...(hit.outside ? { outside: true } : {}),
+      ...identity(target),
+      low: samples[0].display,
+      high: samples[SAMPLES].display,
+      values: found,
     };
-  });
-
-  outlet(0, target.index, Number(original.value));
-
-  return {
-    ...identity(target),
-    low: samples[0].display,
-    high: samples[SAMPLES].display,
-    values: found,
-  };
+  } finally {
+    if (original.value != null && Number.isFinite(back)) {
+      outlet(0, target.index, back);
+    }
+  }
 }
 
 // What the param shows at SAMPLES + 1 values across 0-1.

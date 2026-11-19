@@ -127,6 +127,51 @@ describe("wrapper find", () => {
     expect(two.gets() - one.gets()).toBeLessThan(40);
   });
 
+  it("puts the param back when the search fails partway", () => {
+    let current = START;
+    let gets = 0;
+    const rig = loadWrapper("Plug", (...args) => {
+      if (args[1] === "get") {
+        if (++gets === 50) {
+          throw new Error("vst~ gone");
+        }
+
+        rig.run(`pval(1, ${current}, ${JSON.stringify(decibels(current))})`);
+      } else if (typeof args[2] === "number") {
+        current = args[2];
+      }
+    });
+
+    rig.run('pname("P")');
+
+    expect(() =>
+      rig.run('findValues({ index: 1, values: [{ text: "-6 dB" }] })'),
+    ).toThrow("vst~ gone");
+    expect(current).toBe(START);
+  });
+
+  it("never sends a value it couldn't read back", () => {
+    let current = START;
+    let gets = 0;
+    const sent: unknown[] = [];
+    const rig = loadWrapper("Plug", (...args) => {
+      if (args[1] === "get") {
+        // The read before the search gets no answer.
+        if (++gets > 1) {
+          rig.run(`pval(1, ${current}, ${JSON.stringify(decibels(current))})`);
+        }
+      } else if (args[1] === 1) {
+        sent.push(args[2]);
+        current = args[2] as number;
+      }
+    });
+
+    rig.run('pname("P")');
+    rig.run('findValues({ index: 1, values: [{ text: "-6 dB" }] })');
+
+    expect(sent.every((value) => Number.isFinite(value))).toBe(true);
+  });
+
   it("refuses a param the plug-in doesn't have", () => {
     const rig = loadWrapper("Plug");
 
