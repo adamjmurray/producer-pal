@@ -1334,6 +1334,7 @@ function resolveEntry(entry) {
 
 // Which params a name reaches, as {matches: [{index, name}]}.
 function lookupName({ name }) {
+  if (loadedFile() == null) throw new Error("no plug-in loaded");
   if (state.names.length === 0) loadNames();
 
   return {

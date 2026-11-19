@@ -14,7 +14,15 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { type WrapperMessage } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  infoReply,
+  installWrapper,
+  type WrapperMessage,
+} from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  NO_PLUGIN_LOADED,
+  PLUGIN_NOT_LOADED,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import {
   answerAsWrapper,
   answerRoutes,
@@ -119,6 +127,26 @@ describe("updateClip - envelopes on a hosted param named by path and name", () =
       }),
     );
   });
+
+  it.each([
+    ["missing", "Enstriate", PLUGIN_NOT_LOADED],
+    ["bare", undefined, NO_PLUGIN_LOADED],
+  ])(
+    "says a %s plug-in isn't loaded the way reads do",
+    async (_kind, missing, reason) => {
+      installWrapper({
+        info: () => infoReply(null, missing),
+        lookup: () => ({ success: false, error: NO_PLUGIN_LOADED }),
+      });
+
+      expect(await write("t0/d0/Cutoff")).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 0,
+          detail: `envelope "t0/d0/Cutoff": ${reason}`,
+        }),
+      );
+    },
+  );
 
   it.each<[WrapperMessage | undefined, string]>([
     [

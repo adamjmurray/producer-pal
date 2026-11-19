@@ -84,6 +84,14 @@ describe("wrapper names for params the plug-in names alike", () => {
     });
   });
 
+  it("refuses a lookup when no plug-in is loaded", () => {
+    const rig = loadWrapper(null);
+
+    expect(() => rig.run('lookupName({ name: "Cutoff" })')).toThrow(
+      "no plug-in loaded",
+    );
+  });
+
   it("follows the plug-in's names when they change", () => {
     const { json } = rigWithRepeats();
 
