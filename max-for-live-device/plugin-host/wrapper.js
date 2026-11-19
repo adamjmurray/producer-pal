@@ -470,8 +470,9 @@ function loadNames() {
 
 // Plug-ins repeat names across modules (two envelopes, each with "Attack"),
 // and a name has to reach one param. A repeat gets " (2)", " (3)" in the
-// plug-in's own order. Every name read or matched goes through here;
-// state.names keeps the plug-in's own, for spotting stand-ins.
+// plug-in's own order, skipping any name another param already has. Every
+// name read or matched goes through here; state.names keeps the plug-in's
+// own, for spotting stand-ins.
 let named = { from: null, names: [] };
 
 function paramNames() {
@@ -483,14 +484,29 @@ function paramNames() {
 }
 
 function uniqueNames(names) {
+  const used = new Set(names);
   const seen = new Map();
 
   return names.map((name) => {
-    const count = (seen.get(name) ?? 0) + 1;
+    let count = seen.get(name);
+
+    if (count == null) {
+      seen.set(name, 1);
+
+      return name;
+    }
+
+    let candidate;
+
+    do {
+      count++;
+      candidate = `${name} (${count})`;
+    } while (used.has(candidate));
 
     seen.set(name, count);
+    used.add(candidate);
 
-    return count === 1 ? name : `${name} (${count})`;
+    return candidate;
   });
 }
 

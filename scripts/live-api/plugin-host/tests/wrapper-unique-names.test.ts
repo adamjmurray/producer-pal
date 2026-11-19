@@ -92,4 +92,25 @@ describe("wrapper names for params the plug-in names alike", () => {
 
     expect(json("paramNames()")).toStrictEqual(["Mix", "Mix (2)"]);
   });
+
+  it("never makes up a name another param already has", () => {
+    const { json } = rigWithRepeats();
+
+    json('(state.names = ["Attack", "Attack (2)", "Attack"], 0)');
+    expect(json("paramNames()")).toStrictEqual([
+      "Attack",
+      "Attack (2)",
+      "Attack (3)",
+    ]);
+
+    json('(state.names = ["Attack", "Attack", "Attack (2)"], 0)');
+    expect(json("paramNames()")).toStrictEqual([
+      "Attack",
+      "Attack (3)",
+      "Attack (2)",
+    ]);
+    expect(json('resolveEntry({ name: "Attack (2)" })')).toStrictEqual({
+      index: 3,
+    });
+  });
 });

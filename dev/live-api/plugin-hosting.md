@@ -255,7 +255,8 @@ write the last.
 
 Plug-ins repeat names across modules: two envelopes, each with an "Attack". The
 wrapper gives every repeat a number, in the plug-in's own order: "Attack",
-"Attack (2)", "Attack (3)". Reads list those names and writes, slots and the
+"Attack (2)", "Attack (3)", skipping a number whose name another param already
+has, so every name is distinct. Reads list those names and writes, slots and the
 panel's knobs match them, so each param can be reached by name. The first keeps
 the plain name, so "Attack" means the first. An Audio Unit also puts its params
 in groups ("ENV1"), which would make a better name, but `vst~` doesn't report
