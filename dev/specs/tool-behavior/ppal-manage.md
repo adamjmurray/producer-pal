@@ -323,6 +323,11 @@ the device doesn't. It does this only when the failure is a connection failure,
 not an error the device sent, and only for `ppal-manage` when this portal lists
 it (small-model mode and `--disable-tools` drop it).
 
+- **A call the device already had when the connection dropped** (any tool) gets
+  `Error: the connection to Producer Pal dropped while this call was running. It may still have taken effect: read the current state before trying again.`
+  It doesn't say the device is gone: switching Remote Control drops every
+  connection while the device keeps running. The next call gets the answers
+  below if it really is gone.
 - **`ppal-manage` args are checked first**, by the same code the device uses
   (`manage-args.ts`), so a bad call reads the same either way. Errors read
   `Error: <why>`, as on the device.

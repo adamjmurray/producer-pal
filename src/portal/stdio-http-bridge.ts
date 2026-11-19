@@ -9,15 +9,13 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ErrorCode,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { CLIENT_TOOL_TIMEOUT_MS, VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
-import { InFlightClients } from "./update/in-flight-clients.ts";
+import { InFlightClients } from "./update/in-flight/in-flight-clients.ts";
 import { isFullConnect } from "./update/full-connect-advice.ts";
 import {
   answerOfflineCall,
@@ -28,6 +26,7 @@ import {
 } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { invalidUrlResponse } from "./offline/offline-responses.ts";
+import { forwardedCallFailure } from "./update/in-flight/forwarded-call-failure.ts";
 import {
   setupDeadline,
   timeLeft,
@@ -43,14 +42,6 @@ import {
   callerSmallModelMode,
   requestHeaderTransportOptions,
 } from "./portal-settings.ts";
-
-// Widened to number on purpose: the code read off a thrown error is an
-// unknown narrowed to number, which shares no enum type with ErrorCode, and
-// comparing the two directly is what no-unsafe-enum-comparison reports. A
-// local `as number` does not survive --fix (no-unnecessary-type-assertion
-// deletes it), so the widening lives here instead.
-const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
-const REQUEST_TIMEOUT_CODE: number = ErrorCode.RequestTimeout;
 
 interface CallToolRequest {
   params: {
@@ -175,14 +166,6 @@ export class StdioHttpBridge {
 
   private _timeLeft(deadline?: number): number | undefined {
     return deadline == null ? undefined : timeLeft(this.offlineDeps, deadline);
-  }
-
-  private _setupBudgetRanOut(deadline: number | undefined, code: unknown) {
-    return (
-      deadline != null &&
-      typeof code === "number" &&
-      code === REQUEST_TIMEOUT_CODE
-    );
   }
 
   private _budgetSpent(deadline?: number): boolean {
@@ -474,49 +457,18 @@ export class StdioHttpBridge {
             `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,
           );
 
-          // Check if error has code property (Node.js/MCP errors)
-          const errorCode =
-            error && typeof error === "object" && "code" in error
-              ? error.code
-              : undefined;
+          const failure = forwardedCallFailure(error, args, deadline != null);
 
-          // A setup call's budget ran out while the device had the request
-          // (a connect that ran out is wrapped, with no code). The connection
-          // is still alive, so isConnected stays set.
-          if (this._setupBudgetRanOut(deadline, errorCode)) {
-            return forwardedSetupTimeout(args, true);
-          }
-
-          // A numeric code normally means we connected and got a structured
-          // JSON-RPC error — return it to the client. The exception is
-          // ConnectionClosed (-32000), which the SDK throws when the transport
-          // drops mid-request (Ableton quit/restarted, device unloaded): that is
-          // a connectivity failure, so fall through to reset isConnected and
-          // return the setup guidance. RequestTimeout (-32001) stays here — a
-          // timeout on a still-alive connection must not reset isConnected.
+          // A call on a client we've since replaced says nothing about the new one.
           if (
-            typeof errorCode === "number" &&
-            errorCode !== CONNECTION_CLOSED_CODE
+            failure.connectionLost &&
+            (client == null || client === this.httpClient)
           ) {
-            logger.debug(
-              `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
-            );
-            // Extract the actual error message, removing any "MCP error {code}:" prefix
-            let errMsg = errorMessage(error);
-            // Strip redundant "MCP error {code}:" prefix if present
-            const mcpErrorPrefix = `MCP error ${errorCode}: `;
-
-            if (errMsg.startsWith(mcpErrorPrefix)) {
-              errMsg = errMsg.slice(mcpErrorPrefix.length);
-            }
-
-            return formatErrorResponse(errMsg);
+            this.isConnected = false;
           }
 
-          // This is a real connectivity/network error. A call on a client
-          // we've since replaced says nothing about the new one.
-          if (client == null || client === this.httpClient) {
-            this.isConnected = false;
+          if (failure.response != null) {
+            return failure.response;
           }
         }
 

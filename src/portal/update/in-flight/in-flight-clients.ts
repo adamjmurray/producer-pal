@@ -6,7 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { logger } from "../file-logger.ts";
+import { logger } from "../../file-logger.ts";
 
 // How the SDK words a response stream that broke off (Ableton quit, the device
 // was removed). It says so only through onerror and leaves the call waiting for
@@ -58,8 +58,8 @@ export class InFlightClients {
 
   /**
    * Fail the calls on a client when its response stream drops, as a closed
-   * connection, so they get the answer a fresh call gets with the device gone.
-   * A call that is only slow keeps waiting.
+   * connection, so they're answered at once. A call that is only slow keeps
+   * waiting.
    * @param client - A new client
    * @returns The same client
    */

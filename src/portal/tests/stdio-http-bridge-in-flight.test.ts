@@ -11,6 +11,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
+  expectDroppedMidCall,
   expectSetupGuidance,
   mockServer,
   mockStandardTools,
@@ -35,6 +36,8 @@ const state = vi.hoisted(() => ({
   // What the first client answers to ppal-slow; every other call answers at once
   slow: null as Promise<unknown> | null,
   oldVersion: "",
+  // Whether a new client's connect fails, as with the device gone
+  connectFails: false,
 }));
 const clients = state.clients;
 
@@ -42,7 +45,11 @@ vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () =>
   partialModule({
     Client: vi.fn(function () {
       const client: FakeClient = {
-        connect: vi.fn().mockResolvedValue(undefined),
+        connect: vi.fn(() =>
+          state.connectFails
+            ? Promise.reject(new Error("ECONNREFUSED"))
+            : Promise.resolve(),
+        ),
         close: vi.fn().mockResolvedValue(undefined),
         listTools: vi.fn(),
         callTool: vi.fn(
@@ -174,6 +181,7 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     clients.length = 0;
     state.slow = null;
     state.oldVersion = OLD;
+    state.connectFails = false;
     // The update hint asks the device's GET /config whether it is small-model.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
     mockServer.connect.mockResolvedValue(undefined);
@@ -234,15 +242,19 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     expect(clients[1]?.close).not.toHaveBeenCalled();
   });
 
-  it("answers a call offline when its response stream drops", async () => {
-    const { first, bridge } = await startSlowCall();
+  it("says a call may have run when its response stream drops", async () => {
+    const { handler, first, bridge } = await startSlowCall();
 
     clients[0]?.onerror?.(
       new Error("SSE stream disconnected: TypeError: terminated"),
     );
 
-    expectSetupGuidance(await first);
+    expectDroppedMidCall(await first);
     expect(bridge.isConnected).toBe(false);
+
+    // A fresh call with the device gone still gets the offline answer.
+    state.connectFails = true;
+    expectSetupGuidance(await handler(callToolRequest("ppal-read-live-set")));
   });
 
   it("leaves calls alone on any other client error", async () => {

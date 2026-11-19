@@ -18,11 +18,15 @@ import { createStubDevice, SLOW_TOOL, SLOW_TOOL_MS } from "../stub-device";
 const track = stopAfterEach();
 
 describe("The device goes away while a call is in flight", () => {
-  it("answers the call right away, as a fresh call would", async () => {
+  it("answers the call right away, saying it may have run", async () => {
     const device = track(await createStubDevice({ slowTool: true }));
     const portal = track(await startPortal(device.origin));
     const slow = callToolText(portal, SLOW_TOOL);
 
+    await expect
+      .poll(() => device.requests.some((r) => r.tool === SLOW_TOOL))
+      .toBe(true);
+    // Let the response stream open; the tool takes SLOW_TOOL_MS to answer.
     await new Promise((resolve) => setTimeout(resolve, SLOW_TOOL_MS / 4));
 
     const stoppedAt = Date.now();
@@ -33,6 +37,15 @@ describe("The device goes away while a call is in flight", () => {
 
     // Well under any timeout: the drop answered it, not a clock.
     expect(Date.now() - stoppedAt).toBeLessThan(SLOW_TOOL_MS * 3);
-    expect(inFlight).toStrictEqual(await callToolText(portal, SLOW_TOOL));
+    expect(inFlight).toStrictEqual({
+      text: "Error: the connection to Producer Pal dropped while this call was running. It may still have taken effect: read the current state before trying again.",
+      isError: true,
+    });
+
+    // A fresh call with the device gone keeps the offline answer.
+    const fresh = await callToolText(portal, SLOW_TOOL);
+
+    expect(fresh.isError).toBe(true);
+    expect(fresh.text).toMatch(/^❌ /);
   });
 });
