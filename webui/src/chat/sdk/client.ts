@@ -478,9 +478,9 @@ export class ChatSdkClient {
 
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
-    // Re-read after every step: the model can be reloaded mid-chat.
-    const lookupContextLength = this.config.lookupContextLength;
-    let contextLength = await lookupContextLength?.();
+    // Never await the lookup: a server whose own API hangs would hold up every
+    // reply. A step that ends before it answers just shows no %.
+    const contextLength = trackContextLength(this.config.lookupContextLength);
 
     const errorSignal = createStreamErrorSignal();
     const interrupt = createStreamInterrupt(abortSignal);
@@ -506,7 +506,7 @@ export class ChatSdkClient {
           const msg = this.chatHistory[i] as ChatMessage;
 
           if (msg.role === "assistant" && count++ === stepIndex) {
-            msg.usage = toTokenUsage(event.usage, contextLength);
+            msg.usage = toTokenUsage(event.usage, contextLength.latest);
 
             const timing = toStepTiming(event.performance);
 
@@ -523,10 +523,8 @@ export class ChatSdkClient {
         }
 
         stepIndex++;
-        // Just-in-time loading may only now have loaded the model.
-        void lookupContextLength?.().then((length) => {
-          contextLength = length;
-        });
+        // The model can be (re)loaded mid-chat, so read it again.
+        contextLength.refresh();
       },
     });
 
@@ -684,6 +682,41 @@ function stampOverrides(msg: ChatMessage, overrides?: MessageOverrides): void {
   if (overrides.thinking != null) {
     msg.thinkingOverride = overrides.thinking;
   }
+}
+
+/**
+ * Keep the latest context length a lookup reported, without waiting on it.
+ * Starts one lookup now; an older lookup that answers late never overwrites a
+ * newer one.
+ * @param lookup - The config's lookup, if any
+ * @returns The latest known length and a way to read it again
+ */
+function trackContextLength(
+  lookup: (() => Promise<number | undefined>) | undefined,
+): { readonly latest: number | undefined; refresh: () => void } {
+  let latest: number | undefined;
+  let started = 0;
+  let answered = 0;
+
+  const refresh = (): void => {
+    const id = ++started;
+
+    void lookup?.().then((length) => {
+      if (id > answered) {
+        answered = id;
+        latest = length;
+      }
+    });
+  };
+
+  refresh();
+
+  return {
+    get latest() {
+      return latest;
+    },
+    refresh,
+  };
 }
 
 /**

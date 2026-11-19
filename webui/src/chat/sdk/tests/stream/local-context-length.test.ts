@@ -65,6 +65,46 @@ describe("local model context length on step usage", () => {
     expect(turn?.usage).not.toHaveProperty("contextLength");
   });
 
+  it("doesn't hold up the reply while the lookup hangs", async () => {
+    stubProviderFetch([F.ANSWER_AFTER_TOOL]);
+
+    const [turn] = assistantTurns(
+      await say(await chat(() => new Promise(() => {})), "Hi"),
+    );
+
+    expect(turn?.usage).toBeDefined();
+    expect(turn?.usage).not.toHaveProperty("contextLength");
+  }, 1000);
+
+  it("ignores a lookup that answers after a newer one", async () => {
+    let answerFirst = (_length: number): void => {};
+    const lookup = vi
+      .fn<() => Promise<number | undefined>>()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerFirst = resolve;
+        }),
+      )
+      .mockImplementationOnce(() => {
+        const second = Promise.resolve(16384);
+
+        // Queued ahead of the client's own handler, so the first lands later.
+        void second.then(() => answerFirst(8192));
+
+        return second;
+      })
+      .mockResolvedValue(32768);
+
+    stubProviderFetch([F.CALL, F.ANSWER_AFTER_TOOL]);
+
+    const turns = assistantTurns(await say(await chat(lookup), "Tracks?"));
+
+    expect(turns.map((t) => t.usage?.contextLength)).toStrictEqual([
+      undefined,
+      16384,
+    ]);
+  });
+
   it("leaves it out with no lookup (a cloud provider)", async () => {
     stubProviderFetch([F.ANSWER_AFTER_TOOL]);
 
