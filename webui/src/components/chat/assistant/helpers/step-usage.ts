@@ -12,15 +12,16 @@ export const CONTEXT_WARN_PERCENT = 70;
 export const CONTEXT_FULL_PERCENT = 90;
 
 /**
- * How full the local model's context window was for a step.
+ * How full the local model's context window was at the end of a step: its
+ * input plus what it wrote, since both fill the window.
  * @param usage - The step's usage
  * @returns Whole percent, or undefined when the window size is unknown
  */
 export function contextPercent(usage: TokenUsage): number | undefined {
-  const { inputTokens, contextLength } = usage;
+  const { inputTokens, outputTokens, contextLength } = usage;
 
   return contextLength != null && inputTokens != null
-    ? Math.round((inputTokens / contextLength) * 100)
+    ? Math.round(((inputTokens + (outputTokens ?? 0)) / contextLength) * 100)
     : undefined;
 }
 

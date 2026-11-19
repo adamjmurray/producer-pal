@@ -108,6 +108,25 @@ describe("StepUsageLabel context use", () => {
     );
   });
 
+  it("counts the step's output as well as its input", () => {
+    const container = renderStep({
+      inputTokens: 8500,
+      outputTokens: 1400,
+      contextLength: 10_000,
+    });
+
+    expect(container.querySelector(".text-red-600")?.textContent).toBe(
+      "context: 99%",
+    );
+    expect(container.textContent).toContain("almost full");
+  });
+
+  it("counts the input alone when the output is unknown", () => {
+    const container = renderStep({ inputTokens: 7000, contextLength: 10_000 });
+
+    expect(container.textContent).toContain("context: 70%");
+  });
+
   it.each([
     ["stalls", 4000],
     ["drops", 3500],
