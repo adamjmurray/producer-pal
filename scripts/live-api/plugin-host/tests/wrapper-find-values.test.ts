@@ -20,19 +20,24 @@ interface Found {
 }
 
 const decibels = (v: number): string => `${(v * 72 - 60).toFixed(2)} dB`;
+// -inf dB at 0, -36.1 dB at the next sample, 6.0 dB at 1.
+const gain = (v: number): string =>
+  v === 0 ? "-inf dB" : `${(20 * Math.log10(v * 2)).toFixed(1)} dB`;
 const START = 0.3;
 
-// One param, "P", showing -60 to 12 dB, that starts at START.
+// One param, "P", showing -60 to 12 dB unless told otherwise, that starts at
+// START.
 function find(
   values: object[],
   plugin: string | null = "Plug",
+  display: (value: number) => string = decibels,
 ): { found: Found; current: () => number; gets: () => number } {
   let current = START;
   let gets = 0;
   const rig = loadWrapper(plugin, (...args) => {
     if (args[1] === "get") {
       gets++;
-      rig.run(`pval(1, ${current}, ${JSON.stringify(decibels(current))})`);
+      rig.run(`pval(1, ${current}, ${JSON.stringify(display(current))})`);
     } else if (typeof args[2] === "number") {
       current = args[2];
     }
@@ -94,6 +99,20 @@ describe("wrapper find", () => {
       error: "wrong unit: the param shows dB, not ms",
     });
     expect(found.values[1]?.display).toBe("-6.00 dB");
+    expect(current()).toBe(START);
+  });
+
+  it("finds a number between a -inf end and the first number shown", () => {
+    const { found, current } = find(
+      [{ text: "-50 dB", number: -50 }, { text: "-inf" }],
+      "Plug",
+      gain,
+    );
+
+    expect(found.low).toBe("-inf dB");
+    expect(found.values[0]?.display).toBe("-50.0 dB");
+    expect(found.values[0]?.outside).toBeUndefined();
+    expect(found.values[1]).toStrictEqual({ value: 0, display: "-inf dB" });
     expect(current()).toBe(START);
   });
 

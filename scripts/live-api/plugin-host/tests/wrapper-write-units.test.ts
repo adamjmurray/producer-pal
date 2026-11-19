@@ -218,6 +218,15 @@ describe("wrapper write of a number with a unit", () => {
     expect(current).toBe(0.3);
   });
 
+  it("finds a number between the last one shown and an end showing none", () => {
+    const landed = writeTo((v) => (v === 1 ? "+inf dB" : decibels(v)), 0.5, {
+      text: "11.9 dB",
+      number: 11.9,
+    });
+
+    expect(shownNumber(landed)).toBeCloseTo(11.9, 1);
+  });
+
   it("takes any unit on a param whose unit it doesn't know", () => {
     const landed = writeTo((v) => `${(v * 10).toFixed(2)} x`, 0.5, {
       text: "50 %",

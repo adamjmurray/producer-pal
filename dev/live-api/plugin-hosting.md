@@ -240,18 +240,20 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 `vst~` has no way to turn a 0–1 value into text without setting the param. So
 `write` searches: it sets 129 evenly spaced values and reads the text each
 shows. A sample whose text matches (ignoring case and spaces; or the text in
-brackets, as in `[-17.9 dB]`) wins. Otherwise, given a number, it bisects
-between the two samples that bracket it, comparing the leading number of the
-text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. `number` is
-already in Hz or ms; with `bare` (the text had no unit) it is in the unit the
-param showed before the search, so the wrapper scales it by that (1000 for kHz
-or s) and answers with the `scale` it used. A number whose unit is a different
-kind from every unit the param shows (`ms` on Hz, `%` on dB) is refused, naming
-the units it shows; an unknown unit on either side isn't compared. If nothing
-matches, it puts the param back and says what the param does show. One request
-covers a whole `params` list. It resolves names exactly, then ignoring case and
-padding; a name that matches more than one param is refused; two entries
-reaching one param write the last.
+brackets, as in `[-17.9 dB]`) wins; `-inf` takes the sample showing it.
+Otherwise, given a number, it bisects between the two samples that bracket it,
+comparing the leading number of the text (`kHz` and `s` scaled to Hz and ms),
+and keeps the closest. An end that shows no number (`-inf dB`) brackets
+everything past the number beside it. `number` is already in Hz or ms; with
+`bare` (the text had no unit) it is in the unit the param showed before the
+search, so the wrapper scales it by that (1000 for kHz or s) and answers with
+the `scale` it used. A number whose unit is a different kind from every unit the
+param shows (`ms` on Hz, `%` on dB) is refused, naming the units it shows; an
+unknown unit on either side isn't compared. If nothing matches, it puts the
+param back and says what the param does show. One request covers a whole
+`params` list. It resolves names exactly, then ignoring case and padding; a name
+that matches more than one param is refused; two entries reaching one param
+write the last.
 
 ### Params the plug-in names alike
 

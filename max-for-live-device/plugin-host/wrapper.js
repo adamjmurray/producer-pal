@@ -1446,7 +1446,9 @@ function sampleParam(index) {
 // showed before the search moved it.
 function searchValue(index, { text, number, bare }, before, samples = sampleParam(index)) {
   const wanted = text == null ? null : looseText(text);
-  const hit = wanted && samples.find((s) => matchesText(s.display, wanted));
+  const hit =
+    (wanted && samples.find((s) => matchesText(s.display, wanted))) ||
+    infiniteEnd(samples, text);
 
   if (hit) return { value: hit.value };
   if (number == null) return { error: noMatch(samples, text) };
@@ -1466,6 +1468,23 @@ function searchValue(index, { text, number, bare }, before, samples = samplePara
 
 function looseText(text) {
   return String(text).replace(/\s+/g, "").toLowerCase();
+}
+
+// "-inf" lands on the sample that shows "-inf dB" (or "-Inf", "-∞").
+const INFINITE = /^\s*([-+]?)\s*(inf|∞)/i;
+
+function infiniteEnd(samples, text) {
+  const asked = INFINITE.exec(String(text ?? ""));
+
+  if (!asked) return null;
+
+  const negative = asked[1] === "-";
+
+  return samples.find((s) => {
+    const shown = INFINITE.exec(s.display);
+
+    return shown != null && (shown[1] === "-") === negative;
+  });
 }
 
 // The whole text, or a part of it that stands alone ("[-17.9dB]").
@@ -1546,27 +1565,15 @@ function bisect(index, samples, target) {
 
   if (numeric.length < 2) return null;
 
-  // The first neighbouring pair that brackets the target; past either end, the
-  // closest sample.
-  let pair = -1;
-
-  for (let i = 0; i < samples.length - 1; i++) {
-    const a = shown[i];
-    const b = shown[i + 1];
-
-    if (a != null && b != null && Math.min(a, b) <= target && target <= Math.max(a, b)) {
-      pair = i;
-      break;
-    }
-  }
-
+  const bracket = bracketOf(shown, target);
   let best = closest(samples, shown, target);
 
-  if (pair < 0) return { value: best.value, outside: best.diff > 0 };
+  // Past either end, the closest sample.
+  if (bracket == null) return { value: best.value, outside: best.diff > 0 };
 
+  const { pair, loIsLow } = bracket;
   let lo = samples[pair].value;
   let hi = samples[pair + 1].value;
-  const loIsLow = shown[pair] <= shown[pair + 1];
 
   for (let step = 0; step < BISECT_STEPS && best.diff > 0; step++) {
     const mid = (lo + hi) / 2;
@@ -1575,7 +1582,13 @@ function bisect(index, samples, target) {
 
     const n = displayNumber(String(readParam(index).display ?? ""));
 
-    if (n == null) break;
+    // No number: past the last one, toward the end that shows none.
+    if (n == null) {
+      if (shown[pair] == null) lo = mid;
+      else if (shown[pair + 1] == null) hi = mid;
+      else break;
+      continue;
+    }
 
     const diff = Math.abs(n - target);
 
@@ -1585,6 +1598,36 @@ function bisect(index, samples, target) {
   }
 
   return { value: best.value };
+}
+
+// The neighbouring samples the target lies between, as {pair, loIsLow}: the
+// first numeric pair that brackets it, else an end that shows no number
+// ("-inf dB") beside the first or last number, when the target is past it.
+function bracketOf(shown, target) {
+  for (let i = 0; i < shown.length - 1; i++) {
+    const a = shown[i];
+    const b = shown[i + 1];
+
+    if (a != null && b != null && Math.min(a, b) <= target && target <= Math.max(a, b)) {
+      return { pair: i, loIsLow: a <= b };
+    }
+  }
+
+  const at = shown.flatMap((n, i) => (n == null ? [] : [i]));
+  const first = at[0];
+  const last = at[at.length - 1];
+  const upFirst = shown[first] <= shown[at[1]];
+  const upLast = shown[at[at.length - 2]] <= shown[last];
+
+  if (first > 0 && (upFirst ? target < shown[first] : target > shown[first])) {
+    return { pair: first - 1, loIsLow: upFirst };
+  }
+
+  if (last < shown.length - 1 && (upLast ? target > shown[last] : target < shown[last])) {
+    return { pair: last, loIsLow: upLast };
+  }
+
+  return null;
 }
 
 function closest(samples, shown, target) {
