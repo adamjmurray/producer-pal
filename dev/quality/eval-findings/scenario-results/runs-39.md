@@ -26,7 +26,10 @@ In two `create-and-edit-clip` trials the model read the track, wrote nothing,
 and said it had created the clip (once naming a clip id). In `path-topath-clips`
 it answered the connect result's "report status, then wait" line instead of the
 request. Same model and quant as run 37, where neither scenario failed. The
-cause is not known yet.
+model, its settings, Ollama, the harness and the read results all match run 37.
+A ×10 re-run of both scenarios on the same build (`2026-11-19T16-16-33Z`) passed
+20/20, every first turn writing, so this reads as sampling noise at temperature
+1, not a regression.
 
 - `arpeggio-bracket-idiom`: hand-listed the arp pitches instead of the `[...]`
   bracket cycle.
