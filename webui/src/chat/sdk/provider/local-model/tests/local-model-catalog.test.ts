@@ -58,16 +58,19 @@ describe("fetchLocalModels for LM Studio", () => {
     ]);
   });
 
-  it("asks the URL's origin, whatever its path", async () => {
-    const fetchMock = serve({
-      "http://studio.local:9000/api/v1/models": { models: [] },
-    });
+  it.each([
+    ["http://studio.local:9000/v1", "http://studio.local:9000"],
+    ["http://studio.local:9000/v1/", "http://studio.local:9000"],
+    ["http://studio.local:9000", "http://studio.local:9000"],
+    ["http://studio.local:9000//", "http://studio.local:9000"],
+    ["https://host/lmstudio/v1", "https://host/lmstudio"],
+    ["https://host/lmstudio/", "https://host/lmstudio"],
+  ])("asks %s's server at %s", async (baseUrl, root) => {
+    const fetchMock = serve({ [`${root}/api/v1/models`]: { models: [] } });
 
-    expect(
-      await fetchLocalModels("lmstudio", "http://studio.local:9000/v1"),
-    ).toStrictEqual([]);
+    expect(await fetchLocalModels("lmstudio", baseUrl)).toStrictEqual([]);
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://studio.local:9000/api/v1/models",
+      `${root}/api/v1/models`,
       expect.anything(),
     );
   });
@@ -140,6 +143,17 @@ describe("fetchLocalModels for Ollama", () => {
     serve({ [PS]: { models: [] } });
 
     expect(await fetchLocalModels("ollama", "")).toBeUndefined();
+  });
+
+  it("keeps a path prefix in front of the server's own API", async () => {
+    serve({
+      "https://host/ollama/api/tags": { models: [{ name: "gemma4:12b" }] },
+      "https://host/api/tags": { models: [{ name: "another-service" }] },
+    });
+
+    expect(
+      await fetchLocalModels("ollama", "https://host/ollama/v1"),
+    ).toStrictEqual([{ id: "gemma4:12b", loaded: false }]);
   });
 });
 

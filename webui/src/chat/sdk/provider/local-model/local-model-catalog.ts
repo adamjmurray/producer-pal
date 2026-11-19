@@ -46,22 +46,22 @@ interface OllamaLoaded {
  * unloaded when a different variant of it is selected, so a missing context
  * length means "unknown", never "use the model's maximum".
  * @param provider - Local provider
- * @param baseUrl - The provider's URL setting; only its origin is used
+ * @param baseUrl - The provider's URL setting, with or without `/v1`
  * @returns The models, or undefined when the server can't be read
  */
 export async function fetchLocalModels(
   provider: LocalProvider,
   baseUrl: string | undefined,
 ): Promise<LocalModel[] | undefined> {
-  const origin = serverOrigin(provider, baseUrl);
+  const root = serverRoot(provider, baseUrl);
 
-  if (origin == null) {
+  if (root == null) {
     return undefined;
   }
 
   return provider === "lmstudio"
-    ? await fetchLmStudioModels(origin)
-    : await fetchOllamaModels(origin);
+    ? await fetchLmStudioModels(root)
+    : await fetchOllamaModels(root);
 }
 
 /**
@@ -101,9 +101,9 @@ function modelKey(provider: LocalProvider, id: string): string {
 }
 
 async function fetchLmStudioModels(
-  origin: string,
+  root: string,
 ): Promise<LocalModel[] | undefined> {
-  const body = (await getJson(`${origin}/api/v1/models`)) as
+  const body = (await getJson(`${root}/api/v1/models`)) as
     | { models?: LmStudioModel[] }
     | undefined;
 
@@ -124,13 +124,13 @@ async function fetchLmStudioModels(
 }
 
 async function fetchOllamaModels(
-  origin: string,
+  root: string,
 ): Promise<LocalModel[] | undefined> {
   const [tags, ps] = await Promise.all([
-    getJson(`${origin}/api/tags`) as Promise<
+    getJson(`${root}/api/tags`) as Promise<
       { models?: OllamaTag[] } | undefined
     >,
-    getJson(`${origin}/api/ps`) as Promise<
+    getJson(`${root}/api/ps`) as Promise<
       { models?: OllamaLoaded[] } | undefined
     >,
   ]);
@@ -167,14 +167,18 @@ function withContextLength(
     : model;
 }
 
-function serverOrigin(
+// The URL setting minus a trailing `/v1`, keeping any path prefix a proxy needs.
+function serverRoot(
   provider: LocalProvider,
   baseUrl: string | undefined,
 ): string | undefined {
   try {
-    return new URL(
+    const url = new URL(
       withDefaultUrl(baseUrl, DEFAULT_LOCAL_URLS[provider] as string),
-    ).origin;
+    );
+    const prefix = url.pathname.replace(/\/+$/, "").replace(/\/v1$/, "");
+
+    return `${url.origin}${prefix}`;
   } catch {
     return undefined;
   }
