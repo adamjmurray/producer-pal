@@ -3,9 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
-import { nodeInfo } from "../../node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "../../node-for-max-logger.ts";
 import { markChangedNothing } from "../remote-script/forwarded/changed-nothing.ts";
 import { type RequestOverrides } from "../../helpers/request-overrides/request-overrides.ts";
 import { isWriteCall } from "./write-calls.ts";
@@ -105,10 +106,17 @@ export function withWriteQueue(
     }
 
     // Send the held reads now; the next write also waits for afterWrite.
+    // Never throws, so the turn always passes.
     const finish = (answer: McpResponse | undefined): void => {
       markAnswered();
 
-      const after = afterWrite(tool, args, answer);
+      let after: Promise<void> | undefined;
+
+      try {
+        after = afterWrite(tool, args, answer);
+      } catch (error) {
+        nodeError(`After ${tool}: ${errorMessage(error)}`);
+      }
 
       if (after == null) {
         passTurn();

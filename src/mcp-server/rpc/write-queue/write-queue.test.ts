@@ -18,6 +18,33 @@ import { MIN_RUN_BUDGET_MS, type withWriteQueue } from "./write-queue.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 import { isChangedNothing } from "#src/mcp-server/rpc/remote-script/forwarded/changed-nothing.ts";
 import { markStillRunning } from "./still-running.ts";
+import { nodeError } from "../../node-for-max-logger.ts";
+
+vi.mock(import("../../node-for-max-logger.ts"), () => ({
+  nodeInfo: vi.fn(),
+  nodeError: vi.fn(),
+}));
+
+/**
+ * A timed-out answer that V8 finishes later.
+ * @returns The answer, and a function that delivers V8's late answer
+ */
+function timedOutAnswer(): {
+  timedOut: McpResponse;
+  finishLate: (late: McpResponse | null) => void;
+} {
+  let finishLate = (_late: McpResponse | null): void => {};
+  const timedOut: McpResponse = { content: [], isError: true };
+
+  markStillRunning(
+    timedOut,
+    new Promise((resolve) => {
+      finishLate = resolve;
+    }),
+  );
+
+  return { timedOut, finishLate };
+}
 
 /**
  * Two writes, the second queued behind the first.
@@ -209,15 +236,7 @@ describe("withWriteQueue", () => {
     const first = call(WRITE, {});
     const read = call(READ, {});
     const second = call(WRITE, {});
-    let finishLate = (_late: McpResponse | null): void => {};
-    const timedOut: McpResponse = { content: [], isError: true };
-
-    markStillRunning(
-      timedOut,
-      new Promise((resolve) => {
-        finishLate = resolve;
-      }),
-    );
+    const { timedOut, finishLate } = timedOutAnswer();
 
     await settle();
     sent[0]?.answer(timedOut);
@@ -237,15 +256,7 @@ describe("withWriteQueue", () => {
   it("frees the queue when a timed-out write finishes with no one waiting", async () => {
     const { call, sent } = setup();
     const write = call(WRITE, {});
-    let finishLate = (_late: McpResponse | null): void => {};
-    const timedOut: McpResponse = { content: [], isError: true };
-
-    markStillRunning(
-      timedOut,
-      new Promise((resolve) => {
-        finishLate = resolve;
-      }),
-    );
+    const { timedOut, finishLate } = timedOutAnswer();
 
     await settle();
     sent[0]?.answer(timedOut);
@@ -475,6 +486,38 @@ describe("withWriteQueue afterWrite", () => {
     await expectQueueFree(call, sent);
   });
 
+  it("passes the turn, and logs, when it throws", async () => {
+    const { call, sent } = setup(() => {
+      throw new Error("boom");
+    });
+    const write = call(WRITE, {});
+
+    await settle();
+    sent[0]?.answer();
+    await write;
+    expect(nodeError).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    await expectQueueFree(call, sent);
+  });
+
+  it("passes the turn, and logs, when it throws on a late answer", async () => {
+    vi.mocked(nodeError).mockClear();
+    const { call, sent } = setup(() => {
+      throw new Error("late boom");
+    });
+    const write = call(WRITE, {});
+    const { timedOut, finishLate } = timedOutAnswer();
+
+    await settle();
+    sent[0]?.answer(timedOut);
+    await write;
+    finishLate({ content: [] });
+    await settle();
+    expect(nodeError).toHaveBeenCalledWith(
+      expect.stringContaining("late boom"),
+    );
+    await expectQueueFree(call, sent);
+  });
+
   it("gets undefined when sending threw", async () => {
     const afterWrite = vi.fn(() => undefined);
     const { call, sent } = setup(afterWrite);
@@ -493,15 +536,8 @@ describe("withWriteQueue afterWrite", () => {
 
     for (const finalAnswer of [late, null]) {
       const write = call(WRITE, {});
-      let finishLate = (_late: McpResponse | null): void => {};
-      const timedOut: McpResponse = { content: [], isError: true };
+      const { timedOut, finishLate } = timedOutAnswer();
 
-      markStillRunning(
-        timedOut,
-        new Promise((resolve) => {
-          finishLate = resolve;
-        }),
-      );
       await settle();
       sent.at(-1)?.answer(timedOut);
       await write;
