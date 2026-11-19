@@ -243,10 +243,17 @@ function panRawValue(
     numValue = inputValue;
   }
 
+  // Live ignores a value past the range, so keep to it and say so.
+  const clamped = Math.min(Math.max(numValue, -1), 1);
+  const changed =
+    clamped === numValue
+      ? undefined
+      : `only goes from ${strForValue(param, min)} to ${strForValue(param, max)}, so ${String(inputValue)} was set to the nearest valid value`;
+
   // Convert -1 to 1 → internal range
   return {
-    raw: ((numValue + 1) / 2) * (max - min) + min,
-    report: { requested },
+    raw: ((clamped + 1) / 2) * (max - min) + min,
+    report: { requested, ...(changed != null && { changed }) },
   };
 }
 

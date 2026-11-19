@@ -121,6 +121,25 @@ describe("updateClip - envelope points written as display values", () => {
       },
       methods: { str_for_value: (raw: unknown) => String(raw) },
     });
+    registerMockObject("pan", {
+      type: "DeviceParameter",
+      path: `${livePath.track(0).mixerDevice()} panning`,
+      properties: {
+        name: "Track Panning",
+        original_name: "Track Panning",
+        is_quantized: 0,
+        value: 0,
+        min: -1,
+        max: 1,
+      },
+      methods: {
+        str_for_value: (raw: unknown) => {
+          const pan = Math.round(Number(raw) * 50);
+
+          return pan === 0 ? "C" : `${Math.abs(pan)}${pan < 0 ? "L" : "R"}`;
+        },
+      },
+    });
     // Displays with a colon, as Compressor's Ratio does.
     registerMockObject("ratio", {
       type: "DeviceParameter",
@@ -200,10 +219,57 @@ describe("updateClip - envelope points written as display values", () => {
   });
 
   it.each([
-    [
-      "volume: 1|1 (30 dB)",
-      "not written: (30 dB) is outside the param's range, -60.0 dB to 0.0 dB",
-    ],
+    ["volume: 1|1 (30 dB)", [1], "(30 dB) as 0.0 dB"],
+    ["volume: 1|1 (-90 dB)", [0], "(-90 dB) as -60.0 dB"],
+    ["pan: 1|1 (60R) / 2|1 (25L)", [1, -0.5], "(60R) as 50R"],
+  ])(
+    "writes the nearest end for %s, and says so",
+    async (line, values, clamped) => {
+      const result = await updateClip({ id: "123", envelopes: line });
+      const target = line.slice(0, line.indexOf(":"));
+
+      expect(writtenValues()).toStrictEqual(
+        values.map((value) => expect.closeTo(value, 2)),
+      );
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0/s0",
+        envelopes: 1,
+        detail: `envelope "${target}": past the range, wrote ${clamped}`,
+      });
+    },
+  );
+
+  it("names each value it clamped once, in one note for the line", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes:
+        "volume: 1|1 (-30 dB) / 1|2 (30 dB) / 1|3 (-90 dB) / 1|4 (30 dB)",
+    });
+
+    expect(writtenValues()).toStrictEqual(
+      [0.5, 1, 0, 1].map((value) => expect.closeTo(value, 2)),
+    );
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      envelopes: 1,
+      detail:
+        'envelope "volume": past the range, wrote (30 dB) as 0.0 dB, (-90 dB) as -60.0 dB',
+    });
+  });
+
+  it("says nothing for a value at either end of the range", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes:
+        "volume: 1|1 (-60 dB) / 2|1 (0 dB)\npan: 1|1 (50L) / 2|1 (50R)",
+    });
+
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", envelopes: 2 });
+  });
+
+  it.each([
     [
       "volume: 1|1 (200 Hz)",
       'not written: is measured in dB, so "200 Hz" was not written — send the value in dB',

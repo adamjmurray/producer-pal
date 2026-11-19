@@ -290,7 +290,7 @@ async function writeOneLine(
     return { ok: false, reason: read.reason, available: true };
   }
 
-  const { points, converted } = read;
+  const { points, converted, clamped } = read;
 
   let placed;
 
@@ -331,7 +331,11 @@ async function writeOneLine(
   const outcome =
     points == null
       ? await clearEnvelope(request, call)
-      : await writeEnvelope(request, { points, address, converted }, call);
+      : await writeEnvelope(
+          request,
+          { points, address, converted, clamped },
+          call,
+        );
 
   return placed.mapped == null ? outcome : afterMapping(outcome, placed.mapped);
 }
@@ -340,14 +344,18 @@ async function writeOneLine(
  * Read a line's points for this clip, turning display values into raw ones.
  * @param resolved - The line, with the parameter it reaches
  * @param address - The clip it writes to, and its meter
- * @returns The points (none for a clear) and whether any was converted, or why
- *   the line can't be written
+ * @returns The points (none for a clear), whether any was converted and any
+ *   clamp note, or why the line can't be written
  */
 function readPoints(
   resolved: Exclude<ResolvedEnvelopeLine, { error: string }>,
   address: ClipAddress,
 ):
-  | { points: EnvelopeNotationPoint[] | undefined; converted: boolean }
+  | {
+      points: EnvelopeNotationPoint[] | undefined;
+      converted: boolean;
+      clamped?: string;
+    }
   | { reason: string } {
   const { line } = resolved;
 
@@ -362,10 +370,9 @@ function readPoints(
 
     return {
       // A hosted param's slot may not be mapped yet, so its plug-in is asked.
-      points:
-        "hosted" in resolved
-          ? hostedRawPointValues(written, resolved.hosted)
-          : rawPointValues(written, resolved.target, address.track),
+      ...("hosted" in resolved
+        ? hostedRawPointValues(written, resolved.hosted)
+        : rawPointValues(written, resolved.target, address.track)),
       converted,
     };
   } catch (error) {
@@ -441,6 +448,7 @@ async function clearEnvelope(
  * @param what.points - The parsed points
  * @param what.address - The clip it writes to, and its meter
  * @param what.converted - Whether any value came from a display value
+ * @param what.clamped - Which display values were clamped to the range
  * @param call - The deadline and who is calling
  * @returns Whether it was written
  */
@@ -450,10 +458,11 @@ async function writeEnvelope(
     points: EnvelopeNotationPoint[];
     address: ClipAddress;
     converted: boolean;
+    clamped?: string;
   },
   call: LineCall,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
-  const { points, address, converted } = what;
+  const { points, address, converted, clamped } = what;
   const writePoints = envelopeWritePoints(points);
   const outcome = await envelopeChange<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
@@ -471,6 +480,7 @@ async function writeEnvelope(
         ...outcome,
         note: joinDetails([
           outcome.result.re_enabled ? REENABLED_NOTE : undefined,
+          clamped,
           pastEndNote(points, address),
           // Values converted from display units weren't spelled 0..1.
           converted

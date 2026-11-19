@@ -115,13 +115,27 @@ describe("updateClip - display values on a hosted plug-in's param", () => {
     expect(heardOp(wrapper, "find")).toHaveLength(0);
   });
 
-  it("refuses a value past the param's range, naming the range", async () => {
-    finds(wrapper, [{ value: 1, outside: true }]);
+  it("writes the nearest end for a value past the range, and says so", async () => {
+    finds(wrapper, [
+      { value: 0.5, display: "-24.0 dB" },
+      { value: 1, display: " 12.0 dB ", outside: true },
+    ]);
 
-    await expectRefused(
-      wrapper,
-      "1|1 (24 dB)",
-      "not written: (24 dB) is outside the param's range, -60.0 dB to 12.0 dB",
+    const result = await updateClip({
+      id: "123",
+      envelopes: "t0/d0/h56: 1|1 (-24 dB) / 2|1 (24 dB)",
+    });
+
+    expect(routeArgs(ENVELOPE_ROUTES.write)?.points).toStrictEqual(
+      [0.5, 1].map((value) => expect.objectContaining({ value })),
+    );
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        detail: expect.stringMatching(
+          /^envelope "t0\/d0\/h56": .*; past the range, wrote \(24 dB\) as 12\.0 dB$/,
+        ),
+      }),
     );
   });
 

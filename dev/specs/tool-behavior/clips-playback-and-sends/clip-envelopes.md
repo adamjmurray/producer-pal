@@ -25,8 +25,10 @@ remote script. A line it can't write is a `detail` on that clip's entry
   (`1|1 (-6 dB)`, `(2 kHz)`, `(High-pass)`). A display value is read as
   `ppal-update-device` reads a param value and converted to raw before the line
   is sent; nothing is written to find it. A value the param can't take (wrong
-  unit, unknown option, outside its range) skips the line, saying why; outside
-  the range is refused, not clamped, as a raw value is. A point with both
+  unit, unknown option) skips the line, saying why. One past the range writes
+  the nearest end, as `ppal-update-device` does, and one note for the line names
+  each: `envelope "pan": past the range, wrote (60R) as 50R, (70L) as 50L`. A
+  bare raw value past the range is still refused. A point with both
   (`1|1 0.25 (112 Hz)`, as a read prints it) writes the raw value. A ramp stays
   straight in raw values. For a hosted plug-in's param the wrapper is asked: it
   moves the param to find each value and then puts it back, so the plug-in's

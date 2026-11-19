@@ -15,23 +15,31 @@ import {
 import { hostedValueRequest } from "#src/tools/device/update/helpers/call/hosted-params.ts";
 import { wrapperRefusal } from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
 import { hostedParamId } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
+import {
+  clampedValue,
+  type RawPoints,
+  withClampNote,
+} from "../points/display-point-values.ts";
 import { type HostedTarget } from "./hosted-envelope-target.ts";
 
 /** What the wrapper answers for one display value. */
-type FoundValue = { value: number; outside?: true } | { error: string };
+type FoundValue =
+  | { value: number; display: string; outside?: true }
+  | { error: string };
 
 /**
  * Give every point its raw value, converting the ones written as a display
  * value. A ramp between two converted points is still straight in raw values.
+ * A display value past the range takes the nearest end.
  * @param points - The parsed notation
  * @param hosted - The hosted param the line writes
- * @returns The points, all with raw values
+ * @returns The points, all with raw values, and any clamp note
  * @throws Error saying why a display value stands for no raw value
  */
 export function hostedRawPointValues(
   points: readonly WrittenEnvelopePoint[],
   hosted: Pick<HostedTarget, "deviceId" | "index">,
-): EnvelopeNotationPoint[] {
+): RawPoints {
   const displays = [
     ...new Set(
       points.flatMap((point) => ("display" in point ? [point.display] : [])),
@@ -39,12 +47,11 @@ export function hostedRawPointValues(
   ];
 
   if (displays.length === 0) {
-    return points as EnvelopeNotationPoint[];
+    return { points: points as EnvelopeNotationPoint[] };
   }
 
-  const raw = findRawValues(displays, hosted);
-
-  return points.map((point) => {
+  const { raw, clamped } = findRawValues(displays, hosted);
+  const written = points.map((point) => {
     if (!("display" in point)) {
       return point;
     }
@@ -53,6 +60,8 @@ export function hostedRawPointValues(
 
     return { ...rest, value: raw.get(display) as number };
   });
+
+  return withClampNote(written, clamped);
 }
 
 // --- Helpers below main exports ---
@@ -61,13 +70,13 @@ export function hostedRawPointValues(
  * Ask the wrapper where its param shows each display value.
  * @param displays - The display values, each once
  * @param hosted - The hosted param
- * @returns The raw value of each display value
+ * @returns The raw value of each display value, and each one clamped
  * @throws Error saying why one stands for no raw value
  */
 function findRawValues(
   displays: string[],
   hosted: Pick<HostedTarget, "deviceId" | "index">,
-): Map<string, number> {
+): { raw: Map<string, number>; clamped: string[] } {
   const id = hostedParamId(hosted.index);
   const reply = probePluginHost(hosted.deviceId, "find", {
     index: hosted.index,
@@ -82,6 +91,7 @@ function findRawValues(
   }
 
   const raw = new Map<string, number>();
+  const clamped: string[] = [];
 
   for (const [i, display] of displays.entries()) {
     const value = found[i] as FoundValue;
@@ -90,16 +100,13 @@ function findRawValues(
       throw new Error(`not written: ${value.error}`);
     }
 
-    // The search lands on the nearest end. An envelope refuses instead, as it
-    // does a raw value outside the range.
+    // The search lands on the nearest end.
     if (value.outside) {
-      throw new Error(
-        `not written: (${display}) is outside the param's range, ${String(reply.low).trim()} to ${String(reply.high).trim()}`,
-      );
+      clamped.push(clampedValue(display, value.display));
     }
 
     raw.set(display, value.value);
   }
 
-  return raw;
+  return { raw, clamped };
 }

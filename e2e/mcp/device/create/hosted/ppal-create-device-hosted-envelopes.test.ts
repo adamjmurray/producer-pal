@@ -109,7 +109,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
       expect(shown).toMatch(/^2\.0\d* s$/);
     }, 60_000);
 
-    it("refuses a value past the param's range, mapping no slot", async () => {
+    it("writes the nearest end for a value past the range", async () => {
       const { path, clipId } = await hostWithClip();
       const target = `${path}/${DECAY}`;
       const result = await call<{ envelopes: number; detail?: string }>(
@@ -117,14 +117,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         { id: clipId, envelopes: `${target}: 1|1 (9999 s)` },
       );
 
-      expect(result.envelopes).toBe(0);
+      expect(result.envelopes).toBe(1);
       expect(result.detail).toMatch(
-        /^envelope ".*": not written: \(9999 s\) is outside the param's range, /,
+        /^envelope ".*": .*past the range, wrote \(9999 s\) as \S+ s$/,
       );
-
-      const [param] = (await readDevice(path, DECAY)).parameters ?? [];
-
-      expect(param).not.toHaveProperty("slot");
     }, 60_000);
   },
 );

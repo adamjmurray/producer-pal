@@ -294,14 +294,18 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]);
     });
 
-    it("refuses a display value outside the param's range", async () => {
+    it("writes the nearest end for a display value past the range", async () => {
       const id = await emptyClip();
+      const result = await writeEnvelopes(
+        id,
+        "volume: 1|1 (30 dB)\npan: 1|1 (60R)",
+      );
 
-      expect(await writeEnvelopes(id, "volume: 1|1 (30 dB)")).toStrictEqual(
+      expect(result).toStrictEqual(
         expect.objectContaining({
-          envelopes: 0,
-          detail: expect.stringContaining(
-            "(30 dB) is outside the param's range",
+          envelopes: 2,
+          detail: expect.stringMatching(
+            /envelope "volume": past the range, wrote \(30 dB\) as 6\.0 dB.*envelope "pan": past the range, wrote \(60R\) as 50R/,
           ) as string,
         }),
       );
