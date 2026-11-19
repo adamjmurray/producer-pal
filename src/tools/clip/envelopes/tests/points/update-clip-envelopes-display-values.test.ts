@@ -220,6 +220,7 @@ describe("updateClip - envelope points written as display values", () => {
 
   it.each([
     ["volume: 1|1 (30 dB)", [1], "(30 dB) as 0.0 dB"],
+    ["volume: 1|1 (+3 dB)", [1], "(+3 dB) as 0.0 dB"],
     ["volume: 1|1 (-90 dB)", [0], "(-90 dB) as -60.0 dB"],
     ["pan: 1|1 (60R) / 2|1 (25L)", [1, -0.5], "(60R) as 50R"],
   ])(
