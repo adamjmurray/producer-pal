@@ -70,7 +70,7 @@ function messageToTextOnly(
         return [c];
       }
 
-      if (c.transcript) {
+      if (c.type === "input_audio" && c.transcript) {
         return [{ type: "input_text" as const, text: c.transcript }];
       }
 

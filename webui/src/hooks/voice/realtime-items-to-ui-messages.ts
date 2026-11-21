@@ -12,7 +12,10 @@ type AssistantMessageItem = Extract<
   { type: "message"; role: "assistant" }
 >;
 
-type UserMessageItem = Extract<RealtimeItem, { type: "message"; role: "user" }>;
+export type UserMessageItem = Extract<
+  RealtimeItem,
+  { type: "message"; role: "user" }
+>;
 
 type ToolCallItem = Extract<
   RealtimeItem,
@@ -85,18 +88,19 @@ export function realtimeItemsToUIMessages(items: RealtimeItem[]): UIMessage[] {
 /**
  * Pull the visible text out of a user message item. Voice transcripts arrive
  * as `input_audio.transcript`; typed input comes through as `input_text`.
+ * Other parts (images) carry no text.
  *
  * @param item - The user message item
  * @returns Concatenated text, or empty string if none yet
  */
-function extractUserText(item: UserMessageItem): string {
+export function extractUserText(item: UserMessageItem): string {
   return item.content
     .map((c) => {
       if (c.type === "input_text") {
         return c.text;
       }
 
-      return c.transcript ?? "";
+      return c.type === "input_audio" ? (c.transcript ?? "") : "";
     })
     .filter(Boolean)
     .join(" ");
