@@ -9,8 +9,10 @@
 
 import {
   type EnvelopeNotationPoint,
+  type DisplayEnvelopePoint,
   type WrittenEnvelopePoint,
 } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import { isRawRand } from "#src/notation/barbeat/envelope/envelope-rand.ts";
 import { envelopeParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import { rawValueForParam } from "#src/tools/device/update/helpers/params/param-value-interpretation.ts";
 import { normalizeParamValue } from "#src/tools/device/update/update-device-param-parser.ts";
@@ -23,14 +25,18 @@ import { type EnvelopeTarget } from "../targets/envelope-targets.ts";
 const PARAMETER_TAIL = / parameters \d+$/;
 
 /**
- * Whether any point gives a display value in place of a raw one.
+ * Whether any point gives a display value in place of a raw one, as itself or
+ * as an end of its rand() range.
  * @param points - The parsed notation
  * @returns True when one does
  */
 export function hasDisplayValues(
   points: readonly WrittenEnvelopePoint[],
 ): boolean {
-  return points.some((point) => "display" in point);
+  return points.some(
+    (point) =>
+      "display" in point || ("rand" in point && !isRawRand(point.rand)),
+  );
 }
 
 /** A line's points with raw values, and a note naming any value clamped. */
@@ -51,7 +57,7 @@ export interface RawPoints {
  * @throws Error saying why a display value stands for no raw value
  */
 export function rawPointValues(
-  points: readonly WrittenEnvelopePoint[],
+  points: readonly DisplayEnvelopePoint[],
   target: EnvelopeTarget,
   track: EnvelopeTrack,
 ): RawPoints {

@@ -260,6 +260,32 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(new Set(values).size).toBeGreaterThan(1);
     });
 
+    it("rolls between display values, and refuses a range past the parameter's", async () => {
+      const id = await emptyClip();
+
+      expect(
+        await writeEnvelopes(id, "pan: 1|1x8@n/8 rand((50L), (25R))"),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+
+      const values = (await bareEvents(id))
+        .split(" _ ")
+        .map((point) => Number(point.split(" ")[1]));
+
+      expect(values).toHaveLength(8);
+      expect(values.every((value) => value >= -1 && value <= 0.5)).toBe(true);
+      expect(new Set(values).size).toBeGreaterThan(1);
+
+      // Refused on the range, not on a roll: it never lands.
+      expect(await writeEnvelopes(id, "volume: 1|1 rand()")).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 0,
+          detail: expect.stringContaining(
+            "rand() end -1 is outside the parameter's range 0..1",
+          ) as string,
+        }),
+      );
+    });
+
     it("arrives at each point of a repeat with the connector before it", async () => {
       const id = await emptyClip();
 
@@ -289,8 +315,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       for (const [line, message] of [
         ["pan: 1|1x8 0", "1|1x16@n/16"],
-        ["pan: 1|1 rand(a)", "rand takes plain numbers"],
-        ["pan: 1|1 0 ~rand(-2, 2) 2|1 1", "from -1 to 1"],
+        ["pan: 1|1 rand(a)", "rand takes numbers"],
+        ["pan: 1|1 0 ~rand(-2, 2) 2|1 1", "numbers from -1 to 1"],
       ] as const) {
         const result = await ctx.client!.callTool({
           name: "ppal-update-clip",

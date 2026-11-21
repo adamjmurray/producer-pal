@@ -126,37 +126,39 @@ describe("envelope repeats", () => {
 });
 
 describe("envelope rand()", () => {
-  it("rolls a fresh value for each point of a repeat", () => {
-    vi.spyOn(Math, "random")
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.5)
-      .mockReturnValueOnce(1);
+  it("gives each point of a repeat the range to roll from", () => {
+    const rand = { min: 0.5, max: 1 };
 
     expect(
-      parseEnvelopeNotation("1|1x3@n/16 rand(0.5, 1)", FOUR_FOUR),
+      parseEnvelopeNotation("1|1x2@n/16 rand(0.5, 1)", FOUR_FOUR),
     ).toStrictEqual([
-      { time: 0, value: 0.5, jump: false },
-      { time: 0.25, value: 0.75, jump: true },
-      { time: 0.5, value: 1, jump: true },
+      { time: 0, rand, jump: false },
+      { time: 0.25, rand, jump: true },
     ]);
   });
 
   it("takes the ranges the transforms' rand() takes", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-
-    const lows = parseEnvelopeNotation(
+    const ranges = parseEnvelopeNotation(
       "1|1 rand() / 2|1 rand(4) / 3|1 random(2,3) (a display)",
       FOUR_FOUR,
-    ).map((point) => "value" in point && point.value);
+    ).map((point) => "rand" in point && point.rand);
 
-    expect(lows).toStrictEqual([-1, 0, 2]);
+    expect(ranges).toStrictEqual([
+      { min: -1, max: 1 },
+      { min: 0, max: 4 },
+      { min: 2, max: 3 },
+    ]);
   });
 
-  it("keeps 6 significant digits of a rolled value", () => {
-    vi.spyOn(Math, "random").mockReturnValue(1 / 3);
-
-    expect(parseEnvelopeNotation("1|1 rand(0, 1)", FOUR_FOUR)).toStrictEqual([
-      { time: 0, value: 0.333333, jump: false },
+  it("takes display values as the ends of a range", () => {
+    expect(
+      parseEnvelopeNotation(
+        "1|1 rand((200 Hz), (1/4 [dotted])) / 2|1 rand(0.1, ( 2 kHz ))",
+        FOUR_FOUR,
+      ).map((point) => "rand" in point && point.rand),
+    ).toStrictEqual([
+      { min: { display: "200 Hz" }, max: { display: "1/4 (dotted)" } },
+      { min: 0.1, max: { display: "2 kHz" } },
     ]);
   });
 
@@ -164,15 +166,16 @@ describe("envelope rand()", () => {
     expect(() => checkEnvelopeNotation("1|1 rand(0,\n1)")).not.toThrow();
   });
 
-  it("refuses a rand() end too large to be a number", () => {
-    expect(() => checkEnvelopeNotation("1|1 rand(0, 1e400)")).toThrow(
-      "finite numbers",
-    );
-  });
-
-  it.each(["rand(a)", "rand(1,2,3)", "rand(1,)"])("refuses %s", (value) => {
+  it.each([
+    "rand(a)",
+    "rand(1,2,3)",
+    "rand(1,)",
+    "rand(0, 1e400)",
+    "rand((2 kHz))",
+    "rand((), 1)",
+  ])("refuses %s", (value) => {
     expect(() => checkEnvelopeNotation(`1|1 ${value}`)).toThrow(
-      "rand takes plain numbers",
+      "rand takes numbers, or display values in parentheses",
     );
   });
 
@@ -194,9 +197,10 @@ describe("envelope rand()", () => {
   });
 
   it.each([
-    ["~rand(-2, 1)", "from -1 to 1"],
-    ["~rand(1.5)", "from -1 to 1"],
-    ["~rand(a)", "rand takes plain numbers"],
+    ["~rand(-2, 1)", "plain numbers from -1 to 1"],
+    ["~rand(1.5)", "plain numbers from -1 to 1"],
+    ["~rand(a)", "rand takes numbers"],
+    ["~rand((1 Hz), (2 Hz))", "plain numbers from -1 to 1"],
   ])("refuses the curve %s", (curve, message) => {
     expect(() => checkEnvelopeNotation(`1|1 0 ${curve} 2|1 1`)).toThrow(
       message,

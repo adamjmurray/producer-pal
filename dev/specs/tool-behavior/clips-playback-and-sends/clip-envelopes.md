@@ -63,9 +63,14 @@ remote script. A line it can't write is a `detail` on that clip's entry
   clip in a broadcast gets its own. The connector before a repeat arrives at
   each of its points; a repeat that starts the line holds. A malformed repeat or
   `rand()` refuses the whole call before anything is written. A repeat is at
-  most 1000 points. A rolled value past the parameter's range is refused like
-  any other, so a `rand()` range wider than the parameter's fails on some rolls
-  and not others.
+  most 1000 points. A `rand()` range with a raw end outside the parameter's
+  range is that line's refusal, whatever it would have rolled:
+  `not written: rand() end -1 is outside the parameter's range 0..1`. An end can
+  be a display value, `rand((200 Hz), (2 kHz))`, converted like a point's (one
+  past the range is clamped and noted); the roll is even in raw values. On an
+  option list a range of labels is refused. A hosted plug-in's param can't be
+  asked its range or whether it is an option list, so there a raw end is only
+  checked by the write itself and a range of labels still rolls.
 
 - **Times are read in each clip's meter.** Only the syntax (points, values,
   curves, connectors) is checked before anything is written. Points that run

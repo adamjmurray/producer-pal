@@ -109,6 +109,29 @@ describe("updateClip - display values on a hosted plug-in's param", () => {
     );
   });
 
+  it("asks the wrapper for a rand()'s ends and rolls between them", async () => {
+    finds(wrapper, [{ value: 0.25 }, { value: 0.75 }]);
+    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(1);
+
+    await updateClip({
+      id: "123",
+      envelopes: "t0/d0/h56: 1|1x2@n/4 rand((-30 dB), (-6 dB))",
+    });
+
+    expect(heardOp(wrapper, "find")).toStrictEqual([
+      expect.objectContaining({
+        values: [
+          { text: "-30 dB", number: -30 },
+          { text: "-6 dB", number: -6 },
+        ],
+      }),
+    ]);
+    expect(routeArgs(ENVELOPE_ROUTES.write)?.points).toStrictEqual(
+      [0.25, 0.75].map((value) => expect.objectContaining({ value })),
+    );
+    vi.restoreAllMocks();
+  });
+
   it("asks for a read's square brackets as the round ones shown", async () => {
     finds(wrapper, [{ value: 0.5 }]);
 

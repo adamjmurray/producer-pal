@@ -10,7 +10,7 @@
 import { probePluginHost } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import {
   type EnvelopeNotationPoint,
-  type WrittenEnvelopePoint,
+  type DisplayEnvelopePoint,
 } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { hostedValueRequest } from "#src/tools/device/update/helpers/call/hosted-params.ts";
 import { wrapperRefusal } from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
@@ -37,7 +37,7 @@ type FoundValue =
  * @throws Error saying why a display value stands for no raw value
  */
 export function hostedRawPointValues(
-  points: readonly WrittenEnvelopePoint[],
+  points: readonly DisplayEnvelopePoint[],
   hosted: Pick<HostedTarget, "deviceId" | "index">,
 ): RawPoints {
   const displays = [

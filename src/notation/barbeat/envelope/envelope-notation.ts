@@ -35,12 +35,15 @@ import {
 import {
   type EnvelopeRand,
   ENVELOPE_VALUE,
+  isRawRand,
   readEnvelopeRand,
+  rollEnvelopeRand,
 } from "#src/notation/barbeat/envelope/envelope-rand.ts";
 import {
   type EnvelopeRepeat,
   envelopeRepeatTimes,
   readEnvelopeRepeat,
+  throwIfRepeatMisplaced,
 } from "#src/notation/barbeat/envelope/envelope-repeat.ts";
 import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import {
@@ -49,7 +52,6 @@ import {
   readBarBeat,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { rand } from "#src/notation/transform/transform-waveforms.ts";
 
 /** Two times count as one, within float noise. */
 const EPSILON = 1e-9;
@@ -62,16 +64,7 @@ const CURVE = /^~([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/;
 
 /** "time value", "time value (display)" or "time (display)"; a value may be a rand() call. */
 const POINT =
-  /^(\S+)\s+(?:(rand(?:om)?\([^()]*\)|[^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
-
-/** A repeat's `x<count>@`, wherever it sits. */
-const REPEAT_MARK = /x\s*\d+\s*@/;
-
-/** A point that opens with a well-placed repeat. */
-const OPENS_WITH_REPEAT = /^\S*x\d+@\S+(?:\s|$)/;
-
-/** Rolled values keep this many significant digits: a write has a size limit. */
-const RAND_DIGITS = 6;
+  /^(\S+)\s+(?:(rand(?:om)?\((?:[^()]|\([^()]*\))*\)|[^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
 
 /** The clip meter the times are spelled in. */
 export interface EnvelopeMeter {
@@ -104,11 +97,19 @@ export interface EnvelopeNotationPoint {
 }
 
 /**
- * A point as it was written: its raw value, or the display that stands for one
- * (`(112 Hz)`), which only the parameter can turn into a raw value.
+ * A point with its raw value, or the display that stands for one (`(112 Hz)`),
+ * which only the parameter can turn into a raw value.
  */
-export type WrittenEnvelopePoint = Omit<EnvelopeNotationPoint, "value"> &
+export type DisplayEnvelopePoint = Omit<EnvelopeNotationPoint, "value"> &
   ({ value: number } | { display: string });
+
+/**
+ * A point as it was written: it may also give a range to roll its value from,
+ * which only the parameter can say it takes.
+ */
+export type WrittenEnvelopePoint =
+  | DisplayEnvelopePoint
+  | (Omit<EnvelopeNotationPoint, "value"> & { rand: EnvelopeRand });
 
 /**
  * Write a clip's envelope events as notation.
@@ -411,7 +412,7 @@ function splitOnSpaces(text: string): string[] {
  */
 function readConnector(token: string | null): {
   jump: boolean;
-  curve?: number | EnvelopeRand;
+  curve?: number | EnvelopeRand<number>;
 } {
   if (token == null || token === "/") {
     return { jump: false };
@@ -424,9 +425,13 @@ function readConnector(token: string | null): {
   const range = readEnvelopeRand(token.slice(1));
 
   if (range != null) {
-    if (Math.abs(range.min) > 1 || Math.abs(range.max) > 1) {
+    if (
+      !isRawRand(range) ||
+      Math.abs(range.min) > 1 ||
+      Math.abs(range.max) > 1
+    ) {
       throw new Error(
-        `Invalid envelope curve "${token}": the amount must be from -1 to 1, like "~rand(-0.5, 0.5)"`,
+        `Invalid envelope curve "${token}": the amount is plain numbers from -1 to 1, like "~rand(-0.5, 0.5)"`,
       );
     }
 
@@ -457,17 +462,17 @@ function readConnector(token: string | null): {
  * @param curve - The connector's curve, if it has one
  * @returns The amount, 0 for a straight ramp
  */
-function rollCurve(curve: number | EnvelopeRand | undefined): number {
+function rollCurve(curve: number | EnvelopeRand<number> | undefined): number {
   if (curve == null || typeof curve === "number") {
     return curve ?? 0;
   }
 
-  return rand(curve.min, curve.max);
+  return rollEnvelopeRand(curve.min, curve.max);
 }
 
 /**
  * Read one "time value (display)" segment into its points: one, or one per
- * step of a repeat, each with its own roll of a rand() value.
+ * step of a repeat.
  * @param segment - The text between two connectors
  * @param meter - The clip meter the time is spelled in
  * @returns The points, with their times in Ableton beats
@@ -492,22 +497,9 @@ function parsePoints(
     timeSigDenominator,
   ).map((time) => ({
     time,
-    ...("min" in value
-      ? { value: Number(rand(value.min, value.max).toPrecision(RAND_DIGITS)) }
-      : value),
+    ...("min" in value ? { rand: value } : value),
     jump: false,
   }));
-}
-
-/**
- * The error for a repeat set apart from its time, or written after the value.
- * @param token - The point as written
- * @returns The error, showing where a repeat goes
- */
-function misplacedRepeat(token: string): Error {
-  return new Error(
-    `Invalid envelope point: "${token}". A repeat goes right after the time, with no space, like "1|1x32@n/16 rand(0, 1)"`,
-  );
 }
 
 /** A point as its text spells it, before the clip's meter places it. */
@@ -535,9 +527,7 @@ function readPoint(segment: string): ReadPoint {
   const match = POINT.exec(token);
 
   if (match == null) {
-    if (REPEAT_MARK.test(token) && !OPENS_WITH_REPEAT.test(token)) {
-      throw misplacedRepeat(token);
-    }
+    throwIfRepeatMisplaced(token);
 
     throw new Error(
       `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5" (or a display value in parentheses: "1|1 (-6 dB)")`,
@@ -573,9 +563,7 @@ function readPoint(segment: string): ReadPoint {
   }
 
   if (!ENVELOPE_VALUE.test(valueText)) {
-    if (REPEAT_MARK.test(valueText)) {
-      throw misplacedRepeat(token);
-    }
+    throwIfRepeatMisplaced(token, valueText);
 
     throw new Error(
       `Invalid envelope value: "${valueText}" in "${token}". Expected a number, like 0.5 or -1, or rand(min, max)`,

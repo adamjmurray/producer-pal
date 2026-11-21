@@ -317,4 +317,101 @@ describe("updateClip - envelope points written as display values", () => {
   ])("refuses %s, writing nothing", async (line, why) => {
     await expectRefused(line, why);
   });
+
+  it("rolls each point between the raw values its rand() ends stand for", async () => {
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1 / 3);
+
+    const result = await updateClip({
+      id: "123",
+      envelopes:
+        "volume: 1|1x2@n/4 rand((-60 dB), (-30 dB)) / 2|1 rand(0, (-30 dB))",
+    });
+    const values = writtenValues();
+
+    expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+    expect(values[0]).toBeCloseTo(0, 2);
+    expect(values[1]).toBeCloseTo(0.5, 2);
+    // A rolled value keeps 6 significant digits.
+    expect(String(values[2]).length).toBeLessThanOrEqual(8);
+    expect(values[2]).toBeCloseTo(0.5 / 3, 2);
+    vi.restoreAllMocks();
+  });
+
+  it("keeps each value in place on a line that mixes rand() with other points", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    await updateClip({
+      id: "123",
+      envelopes:
+        "volume: 1|1 (0 dB) / 2|1 rand((-30 dB), (0 dB)) / 3|1 0.25 / 4|1 rand(0.1, 0.2)",
+    });
+
+    const values = writtenValues();
+
+    expect(values).toHaveLength(4);
+    expect(values[0]).toBeCloseTo(1, 2);
+    expect(values[1]).toBeCloseTo(0.5, 2);
+    expect(values[2]).toBe(0.25);
+    expect(values[3]).toBe(0.1);
+    vi.restoreAllMocks();
+  });
+
+  it("never rounds a roll past its range", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9999999);
+
+    await updateClip({
+      id: "123",
+      envelopes: "volume: 1|1 rand(0.12345678, 0.12345679)",
+    });
+
+    expect(writtenValues()).toStrictEqual([0.12345679]);
+    vi.restoreAllMocks();
+  });
+
+  it("rolls a range on a parameter that can't be read, leaving the write to check it", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const result = await updateClip({
+      id: "123",
+      envelopes: "send5: 1|1 rand(0.5, 2)",
+    });
+
+    expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+    expect(writtenValues()).toStrictEqual([0.5]);
+    vi.restoreAllMocks();
+  });
+
+  it("says when a rand() end written as a display value was clamped", async () => {
+    const result = await updateClip({
+      id: "123",
+      envelopes: "volume: 1|1 rand((-30 dB), (6 dB))",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 1,
+        detail: expect.stringContaining("past the range, wrote (6 dB) as"),
+      }),
+    );
+  });
+
+  it.each([
+    [
+      "volume: 1|1 0.5 / 2|1x4@n/4 rand()",
+      "not written: rand() end -1 is outside the parameter's range 0..1",
+    ],
+    [
+      "pan: 1|1 rand(-1, 1.2)",
+      "not written: rand() end 1.2 is outside the parameter's range -1..1",
+    ],
+    [
+      "t0/d0/Filter Type: 1|1 rand((Low-pass), (Notch))",
+      "not written: rand() can't roll between an option list's labels; write each point's option",
+    ],
+  ])("refuses %s whatever it would roll", async (line, why) => {
+    await expectRefused(line, why);
+  });
 });

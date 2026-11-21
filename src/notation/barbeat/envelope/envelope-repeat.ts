@@ -95,3 +95,29 @@ export function envelopeRepeatTimes(
     (_, index) => start + index * step,
   );
 }
+
+/** A repeat's `x<count>@`, wherever it sits. */
+const REPEAT_MARK = /x\s*\d+\s*@/;
+
+/** A point that opens with a well-placed repeat. */
+const OPENS_WITH_REPEAT = /^\S*x\d+@\S+(?:\s|$)/;
+
+/**
+ * Say where a repeat goes when a malformed point set one apart from its time,
+ * or wrote it after the value.
+ * @param token - The point as written
+ * @param value - The point's value text, when only that is malformed
+ * @throws If the point, or the value alone, holds a misplaced repeat
+ */
+export function throwIfRepeatMisplaced(token: string, value?: string): void {
+  const misplaced =
+    value == null
+      ? REPEAT_MARK.test(token) && !OPENS_WITH_REPEAT.test(token)
+      : REPEAT_MARK.test(value);
+
+  if (misplaced) {
+    throw new Error(
+      `Invalid envelope point: "${token}". A repeat goes right after the time, with no space, like "1|1x32@n/16 rand(0, 1)"`,
+    );
+  }
+}

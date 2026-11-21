@@ -30,6 +30,10 @@ import {
 import { envelopeWritePoints } from "./points/envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
 import { narrowRangeNote } from "./points/narrow-range-note.ts";
+import {
+  randomPointValues,
+  targetLimits,
+} from "./points/random-point-values.ts";
 import { type EnvelopeTrack, trackText } from "./envelope-track.ts";
 import {
   findSameParameter,
@@ -369,10 +373,19 @@ function readPoints(
     const converted = hasDisplayValues(written);
 
     return {
-      // A hosted param's slot may not be mapped yet, so its plug-in is asked.
-      ...("hosted" in resolved
-        ? hostedRawPointValues(written, resolved.hosted)
-        : rawPointValues(written, resolved.target, address.track)),
+      ...randomPointValues(
+        written,
+        // A hosted param's slot may not be mapped yet, so its plug-in is asked.
+        (displayPoints) =>
+          "hosted" in resolved
+            ? hostedRawPointValues(displayPoints, resolved.hosted)
+            : rawPointValues(displayPoints, resolved.target, address.track),
+        // Nor can an unmapped slot say what range it takes.
+        () =>
+          "hosted" in resolved
+            ? undefined
+            : targetLimits(resolved.target, address.track),
+      ),
       converted,
     };
   } catch (error) {
