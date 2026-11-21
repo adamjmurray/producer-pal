@@ -15,10 +15,11 @@ import { registerLiveSet } from "#src/tools/clip/update/tests/batch/stacking-tra
 import { setUpLane } from "#src/tools/clip/update/tests/move-order/lane-with-clips-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
-  LIVE_FAILURE,
-  failOnSet,
   afterRenameScenario,
+  failOnSet,
+  LIVE_FAILURE,
   manyScenario,
+  NO_WHOLE_CALL_WRITES,
   registerSlotPastLastScene,
   repeatScenario,
   replaceClipOnCopy,
@@ -54,6 +55,7 @@ export const updateClipAdapter: WriteToolAdapter = {
   tool: "ppal-update-clip",
   run: (args) => updateClip(args),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     newTwice: "updates existing clips; nothing is created",
     countWithDestinations: "takes no count",
   },

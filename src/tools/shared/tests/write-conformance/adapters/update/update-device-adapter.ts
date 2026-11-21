@@ -78,6 +78,8 @@ export const updateDeviceAdapter: WriteToolAdapter = {
   tool: "ppal-update-device",
   run: (args) => updateDevice(args),
   na: {
+    wholeCallThrows:
+      "pitch bend and hosted params are reported on the target's own entry",
     replacedLater:
       "a device moved to a position is inserted there, so nothing is overwritten",
     countWithDestinations: "takes no count",

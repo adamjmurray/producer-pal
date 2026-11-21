@@ -13,7 +13,11 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
-import { LIVE_FAILURE, namedOrder } from "../../write-conformance-fixtures.ts";
+import {
+  LIVE_FAILURE,
+  namedOrder,
+  NO_WHOLE_CALL_WRITES,
+} from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
 
 /**
@@ -52,6 +56,7 @@ export const deleteAdapter: WriteToolAdapter = {
   tool: "ppal-delete",
   run: (args) => deleteObject({ type: "track", ...args }),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     leftBehind: "only removes; makes nothing on the way to a target",
     unparsableDestination:
       "no destination list: path names what is deleted, which the unparsable case covers",

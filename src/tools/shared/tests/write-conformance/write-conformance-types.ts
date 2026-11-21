@@ -29,6 +29,7 @@ export const CASE_IDS = [
   "loneSkipped",
   "leftBehind",
   "settleThrows",
+  "wholeCallThrows",
 ] as const;
 
 export type CaseId = (typeof CASE_IDS)[number];
@@ -89,6 +90,15 @@ export interface LoneScenario {
   detail: string;
 }
 
+/** A call that throws after a step for the whole call already changed Live. */
+export interface WholeCallScenario {
+  args: ToolArgs;
+  /** Part of the message Live throws */
+  message: string;
+  /** What the error calls the change that landed before the throw */
+  landed: string;
+}
+
 /**
  * What the suite needs to know about one write tool. Every hook sets up its
  * own mock objects and returns the call to make; the suite clears the mock
@@ -138,4 +148,10 @@ export interface WriteToolAdapter {
    * `many(2)`; only a tool with no list of targets needs its own.
    */
   settleThrows?: () => Scenario;
+  /**
+   * A call whose step before or after the targets changes Live, then throws
+   * with no target written. A tool that writes nothing in those steps lists
+   * the case under `na`.
+   */
+  wholeCallThrows?: () => WholeCallScenario;
 }

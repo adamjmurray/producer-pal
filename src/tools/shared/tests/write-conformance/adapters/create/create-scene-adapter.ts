@@ -11,9 +11,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import {
-  LIVE_FAILURE,
   failCall,
   failOnCreated,
+  LIVE_FAILURE,
+  NO_WHOLE_CALL_WRITES,
   registerScenes,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -29,6 +30,7 @@ export const createSceneAdapter: WriteToolAdapter = {
   tool: "ppal-create-scene",
   run: (args) => createScene(args),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     unparsableDestination:
       "path is the destination, which the unparsable case covers",
     unappliable:

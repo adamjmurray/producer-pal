@@ -21,6 +21,10 @@ import {
 /** The message every injected Live failure carries. */
 export const LIVE_FAILURE = "Live refused the write";
 
+/** Why the whole-call case can't apply to a tool that only writes per target. */
+export const NO_WHOLE_CALL_WRITES =
+  "the steps before and after its targets write nothing to the Set";
+
 /**
  * Make a mock throw when it is written to, the way Live does when it refuses.
  * @param mock - The registered object

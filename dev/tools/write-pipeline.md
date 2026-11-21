@@ -31,7 +31,7 @@ Refusals (stages 1 to 4a) happen before the first write. Once targets are being
 written, a failed target costs only its own entry; the rest still run. A
 `settle` that throws after any target was written costs nothing either: the
 pipeline returns every entry with a `WARNING:`
-(`Final step failed: ...; results may be incomplete and paths or ids out of date; read them again before relying on them.`).
+(`Final step failed: ...; results may be incomplete or out of date; read them again before relying on them.`).
 With nothing written, the throw ends the call. A tool that fills call-level
 result fields in `settle` (`playing`) must leave them out until then, not
 default them: a placeholder would be reported as fact.
@@ -130,8 +130,10 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   transport) has changed Live. A throw from `before`, or from `settle` when no
   target was written, then ends the call with `; already changed: <phrases>`,
   since no entry can carry it. A target's own throw still becomes that target's
-  entry. Only `ppal-playback` and `ppal-update-live-set` record these so far;
-  the other write tools do not yet.
+  entry. Every tool whose `before` or `settle` writes must call it; one that
+  catches the failure and says it on the target's entry (duplicate's routing)
+  has nothing to record. The conformance suite makes each tool show it or say
+  why not.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.
@@ -220,7 +222,8 @@ the call's other changes.
    (targets and destinations), unappliable, failure midway and after a change,
    wrong list length, refusals write nothing (and change nothing), count with
    destinations, lone skip, a skip that left something behind, final step
-   throws. A case that can't apply is listed under `na` with why.
+   throws, a whole-call step throws after changing Live. A case that can't apply
+   is listed under `na` with why.
 4. Add per-tool tests for what the hooks do. Cover the pipeline's rules through
    the conformance suite, not by re-testing them per tool.
 5. Add a behavior case to `e2e/mcp/` for any change to what the tool does in
