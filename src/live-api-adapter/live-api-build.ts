@@ -66,6 +66,7 @@ import {
   recordLiveApiResolve,
 } from "./live-api-build-stats.ts";
 import { NONEXISTENT_ID } from "./live-api-id-or-path.ts";
+import { guardStale } from "./live-api-stale-check.ts";
 import {
   acquirePooledObject,
   memoizeObject,
@@ -174,7 +175,7 @@ export function buildOrReuse(target: string): LiveAPI {
   recordLiveApiResolve(target);
 
   if (!STABLE_TARGETS.has(target)) {
-    return acquireObject(target);
+    return guardStale(acquireObject(target));
   }
 
   const memoized = memoizedObject(target);
@@ -183,7 +184,8 @@ export function buildOrReuse(target: string): LiveAPI {
     return memoized;
   }
 
-  const api = acquireObject(target);
+  // The memo keeps the wrapper, so repeats hand back the very same object.
+  const api = guardStale(acquireObject(target));
 
   memoizeObject(target, api);
 

@@ -114,7 +114,8 @@ UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`. A meta test
   (`live-api-not-held.test.ts`) catches the module-scope and class-field case
-  only.
+  only; debug builds warn in the Max console when a stale object is used
+  (`live-api-stale-check.ts`).
 
 - **Tool design follows `dev/PRINCIPLES.md`** — addressing, multi-target,
   relocation, partial completion, observability, warnings, destruction,

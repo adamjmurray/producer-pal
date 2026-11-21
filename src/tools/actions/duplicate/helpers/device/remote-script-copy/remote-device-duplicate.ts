@@ -16,6 +16,7 @@ import {
   remoteScriptWait,
 } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { markMayHaveLanded } from "#src/tools/shared/remote-script/remote-script-route.ts";
 
 /**
  * What asking for a copy came to. `unfinished` marks a failure after which Live
@@ -58,6 +59,8 @@ export async function duplicateOnRemoteScript(
 
   // Silence may be a request Live is still working through.
   if (!response.success || response.result == null) {
+    markMayHaveLanded();
+
     return {
       kind: "failed",
       reason: response.error ?? "the remote script returned nothing",
@@ -71,11 +74,17 @@ export async function duplicateOnRemoteScript(
     return { kind: "unavailable" };
   }
 
-  return "error" in result
-    ? {
-        kind: "failed",
-        reason: result.error,
-        unfinished: result.unfinished === true,
-      }
-    : { kind: "copied", index: result.index };
+  if (!("error" in result)) {
+    return { kind: "copied", index: result.index };
+  }
+
+  if (result.unfinished === true) {
+    markMayHaveLanded();
+  }
+
+  return {
+    kind: "failed",
+    reason: result.error,
+    unfinished: result.unfinished === true,
+  };
 }

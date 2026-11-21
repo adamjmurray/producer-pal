@@ -388,5 +388,29 @@ describe("updateDevice - param conversion discriminators", () => {
       // = 0.5. The 50 fallback would read it as full-right (+1 -> internal 1).
       expect(expectValueSet(param)).toBeCloseTo(0.5, 5);
     });
+
+    it.each([
+      ["120R", 1, "120R"],
+      ["-1.5", -1, "-1.5"],
+    ])(
+      "sets %s past the range to the nearest end, and says so",
+      (value, raw, said) => {
+        const result = updateDevice({
+          id: "dev1",
+          params: [{ name: "Pan", value }],
+        });
+
+        expect(expectValueSet(param)).toBe(raw);
+        expect(result).toStrictEqual(
+          expect.objectContaining({
+            params: [
+              expect.objectContaining({
+                detail: `only goes from 30L to 100R, so ${said} was set to the nearest valid value`,
+              }),
+            ],
+          }),
+        );
+      },
+    );
   });
 });

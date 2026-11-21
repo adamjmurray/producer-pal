@@ -23,8 +23,8 @@ half done: two of the three envelopes it was writing.
 - **What counts as a write:** a call to a tool that isn't `readOnlyHint`, unless
   its def's `changesSet` says these args leave the Set alone (a read action, a
   read-only `ppal-live-api` batch, firing clips). `ppal-manage` counts: undo and
-  redo change the Set. The undo-step wrapper uses the same check, minus
-  `ppal-manage`.
+  redo change the Set. Ending the undo step (`endUndoStep`, the queue's
+  `afterWrite`) uses the same check, minus `ppal-manage`.
 - **The timeout counts from arrival.** A call that waited is sent with what is
   left of its timeout, so its V8 deadline shrinks too, and the caller always
   hears back within its timeout, under the MCP client's own. A call that gets
@@ -36,12 +36,16 @@ half done: two of the three envelopes it was writing.
   down as `RequestOverrides.signal`. MCP `notifications/cancelled` aborts
   nothing: POST /mcp builds a new server per request, and the portal doesn't
   forward it. Once a write is in V8 it can't be stopped.
-- **Limits.** The turn passes on when a call answers, a timeout included, so the
-  next write can overlap a timed-out write V8 is still finishing. A user editing
-  Live during a wait can still shift things under a write. A write that arrives
-  after a read can still land while that read waits on the remote script
-  (read-clip envelopes, read-device macros or Simpler), so the read may report
-  part of it; it changes nothing.
+- **A write that times out** answers its caller, but V8 may still be running it.
+  Node keeps listening for V8's late answer, and the write keeps the turn, and
+  the reads behind it, until that answer comes. Node gives up after
+  `MAX_TIMEOUT_MS` (55 s), longer than any single wait inside V8, and frees the
+  queue. A late answer that never comes means V8's script was reloaded while
+  Node stayed up, or V8 is stuck.
+- **Limits.** A user editing Live during a wait can still shift things under a
+  write. A write that arrives after a read can still land while that read waits
+  on the remote script (read-clip envelopes, read-device macros or Simpler), so
+  the read may report part of it; it changes nothing.
 
 Node also ends Live's undo step after each write; see
 [write-pipeline.md](../tools/write-pipeline.md#one-undo-step-per-call).

@@ -53,7 +53,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
   const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
   /** One ppal-create-track call, then a wait for its undo step to close. */
-  const createTrack = (): Promise<void> =>
+  const createTrack = (): Promise<number> =>
     appendTracksInOneCall(ctx.client!, 1);
 
   const manage = (

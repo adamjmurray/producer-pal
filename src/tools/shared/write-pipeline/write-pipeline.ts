@@ -159,7 +159,7 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   const keep = outcomes.includes("written")
     ? (detail: string): void =>
         emitWarning(
-          `Final step failed: ${detail}; results may be incomplete and paths or ids out of date; read them again before relying on them.`,
+          `Final step failed: ${detail}; results may be incomplete or out of date; read them again before relying on them.`,
         )
     : undefined;
 

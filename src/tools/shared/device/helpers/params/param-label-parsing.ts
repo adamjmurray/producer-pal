@@ -38,11 +38,12 @@ const LABEL_PATTERNS: LabelPattern[] = [
   { regex: BARE_THOUSANDS, unit: null, multiplier: 1000 },
   { regex: /^([\d.]+)\s*ms$/i, unit: "ms" },
   { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
-  { regex: /^([\d.-]+)\s*db$/i, unit: "dB" },
+  // Signed units take a "+": models write a boost as "+3 dB".
+  { regex: /^([+-]?[\d.]+)\s*db$/i, unit: "dB" },
   { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
-  { regex: /^([\d.-]+)\s*(?:%|percent)$/i, unit: "%" },
+  { regex: /^([+-]?[\d.]+)\s*(?:%|percent)$/i, unit: "%" },
   {
-    regex: /^([\d.-]+)\s*(?:°|deg|degrees?)$/i,
+    regex: /^([+-]?[\d.]+)\s*(?:°|deg|degrees?)$/i,
     unit: "degrees",
   },
   // Live writes decimals on every one of these: "-1.68 st", "0.00 st".

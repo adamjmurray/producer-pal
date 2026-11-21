@@ -38,16 +38,48 @@ export async function expectVolumeRefused(
   notation: string,
   refusal: string,
 ): Promise<void> {
+  await expectTargetRefused("volume", notation, refusal);
+}
+
+/**
+ * Write one line to clip 123 and expect it refused before any request.
+ * @param target - The line's target
+ * @param notation - The line's points
+ * @param refusal - What the entry says after `envelope "<target>": `
+ */
+export async function expectTargetRefused(
+  target: string,
+  notation: string,
+  refusal: string,
+): Promise<void> {
   const result = await updateClip({
     id: "123",
-    envelopes: `volume: ${notation}`,
+    envelopes: `${target}: ${notation}`,
   });
 
   expect(requestNode).not.toHaveBeenCalled();
   expect(result).toStrictEqual(
     expect.objectContaining({
       envelopes: 0,
-      detail: `envelope "volume": ${refusal}`,
+      detail: `envelope "${target}": ${refusal}`,
+    }),
+  );
+}
+
+/**
+ * Write lines that name one parameter twice to clip 123 and expect the call
+ * refused before any request.
+ * @param envelopes - The lines
+ */
+export async function expectSameParameterRefused(
+  envelopes: string,
+): Promise<void> {
+  const result = await updateClip({ id: "123", envelopes });
+
+  expect(requestNode).not.toHaveBeenCalled();
+  expect(result).toStrictEqual(
+    expect.objectContaining({
+      envelopes: expect.stringContaining("are the same parameter") as string,
     }),
   );
 }

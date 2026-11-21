@@ -61,7 +61,6 @@ import { registerLocalModelProxyRoute } from "./helpers/http/browser/local-model
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
-import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
 import { registerGenUiRoutes } from "./rpc/gen-ui/gen-ui-routes.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
@@ -177,8 +176,7 @@ function applyLiveApiEnabled(next: boolean): void {
  *
  * Notation is also pushed down as a request override (withDefaultOverrides), so
  * the notation the skills teach is the one V8 actually parses and formats notes
- * in. It wraps the inner call, inside the connect-enrichment chain. Write calls
- * also end Live's pending undo step (withUndoStepEnd), so each is one undo.
+ * in. It wraps the inner call, inside the connect-enrichment chain.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
@@ -197,7 +195,7 @@ function buildEnrichedCall(
   getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
   const enriched = enrichConnect(
-    withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
+    withDefaultOverrides(callLiveApi, () => {
       const overrides: RequestOverrides = {
         notation: getNotation(),
         manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),

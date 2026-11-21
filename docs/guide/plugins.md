@@ -39,8 +39,10 @@ parameter's name. See [Automation](#automation) below.
   installed in several formats, Producer Pal uses VST3, then AU, then VST2. Ask
   for a format by name to load that one instead.
 - **Every parameter**, read and set in the plug-in's own units, by number or by
-  the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows is
-  refused, with the values it does show.
+  the text it shows (`"1/16"`, `"-6 dB"`). A value the plug-in never shows, or
+  one in a unit it doesn't use (`"500 ms"` on a frequency), is refused, with
+  what it does show. When a plug-in gives several parameters the same name,
+  Producer Pal numbers the repeats: "Attack", "Attack (2)".
 - **Automation:** the AI can automate the plug-in's parameters on clips. See
   [Automation](#automation) below.
 - **Plug-in window:** the wrapper has an **Open Plug-in** button that opens the
@@ -98,6 +100,9 @@ parameter, and then you can edit its lane by hand.
   its slot. Knobs for unassigned slots are greyed out.
 - **All 128 slots are always listed** in the automation chooser.
 - **Lanes show 0 to 100%**, not the plug-in's units.
+- **Ask in the plug-in's units**, like "ramp the cutoff from 500 Hz to 2 kHz".
+  To find where those values sit, Producer Pal moves the parameter for an
+  instant and puts it back, which you may hear if the Set is playing.
 - **Slots don't follow the plug-in's window.** Turning an automated knob there
   moves the panel's knob but not its slot in Live, so Live shows the slot's old
   value until automation, the panel or Producer Pal moves it.

@@ -37,7 +37,7 @@ export function buildProviderOptions(
       toThinkingEffort(thinking),
     );
 
-    return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
+    return reasoningEffort ? { ollama: { reasoningEffort } } : undefined;
   }
 
   if (provider === "openrouter") {

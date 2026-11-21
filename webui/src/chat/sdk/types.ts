@@ -157,14 +157,20 @@ export interface TokenUsage {
   cacheReadTokens?: number;
   /** Input tokens written to a prompt cache this request */
   cacheWriteTokens?: number;
+  /** Context length the local model was loaded with when this step ran */
+  contextLength?: number;
 }
 
 /**
  * Convert AI SDK LanguageModelUsage to our TokenUsage type.
  * @param sdkUsage - Usage data from the AI SDK
+ * @param contextLength - The local model's loaded context length, if known
  * @returns Token usage summary
  */
-export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
+export function toTokenUsage(
+  sdkUsage: LanguageModelUsage,
+  contextLength?: number,
+): TokenUsage {
   const reasoning = sdkUsage.outputTokenDetails.reasoningTokens;
   const cacheRead = sdkUsage.inputTokenDetails.cacheReadTokens;
   const cacheWrite = sdkUsage.inputTokenDetails.cacheWriteTokens;
@@ -176,6 +182,7 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
     ...(cacheRead != null && cacheRead > 0 && { cacheReadTokens: cacheRead }),
     ...(cacheWrite != null &&
       cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
+    ...(contextLength != null && { contextLength }),
   };
 }
 
@@ -283,6 +290,8 @@ export interface SubagentConfigOverride {
    * orchestrator authored.
    */
   notation?: Notation;
+  /** The preset model's context length lookup; undefined clears the orchestrator's. */
+  lookupContextLength?: () => Promise<number | undefined>;
 }
 
 /** Configuration for the AI SDK client */
@@ -330,4 +339,9 @@ export interface ChatClientConfig {
    * restored conversation spawns workers under whatever preset is selected now.
    */
   subagentConfig?: SubagentConfigOverride;
+  /**
+   * Reads the local model's loaded context length, stored on each step's
+   * usage. Absent for cloud providers.
+   */
+  lookupContextLength?: () => Promise<number | undefined>;
 }

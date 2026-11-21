@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { type CurveCoefficients } from "#src/notation/barbeat/envelope/envelope-curves.ts";
 import {
   type EnvelopeNotationEvent,
+  type EnvelopeNotationPoint,
   formatEnvelopeNotation,
   parseEnvelopeNotation,
 } from "#src/notation/barbeat/envelope/envelope-notation.ts";
@@ -23,7 +24,10 @@ const FOUR_FOUR = { timeSigNumerator: 4, timeSigDenominator: 4 };
  * @returns The write points
  */
 function writePoints(notation: string): ReturnType<typeof envelopeWritePoints> {
-  return envelopeWritePoints(parseEnvelopeNotation(notation, FOUR_FOUR));
+  // Every value here is raw, so no point waits on a display value.
+  return envelopeWritePoints(
+    parseEnvelopeNotation(notation, FOUR_FOUR) as EnvelopeNotationPoint[],
+  );
 }
 
 describe("envelopeWritePoints", () => {
@@ -114,13 +118,11 @@ describe("read, write, read", () => {
     "1|1 0.5 _ 2|1 0.5 ~0.5 3|1 1",
   ])("prints %s again after a write", (notation) => {
     const read = formatEnvelopeNotation(
-      liveEvents(
-        envelopeWritePoints(parseEnvelopeNotation(notation, FOUR_FOUR)),
-      ),
+      liveEvents(writePoints(notation)),
       FOUR_FOUR,
     );
     const again = formatEnvelopeNotation(
-      liveEvents(envelopeWritePoints(parseEnvelopeNotation(read, FOUR_FOUR))),
+      liveEvents(writePoints(read)),
       FOUR_FOUR,
     );
 

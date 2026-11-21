@@ -6,7 +6,7 @@
 import { vi } from "vitest";
 import { type RequestOverrides } from "#src/mcp-server/helpers/request-overrides/request-overrides.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
-import { withWriteQueue } from "./write-queue.ts";
+import { type AfterWrite, withWriteQueue } from "./write-queue.ts";
 
 export const WRITE = "ppal-update-clip";
 export const READ = "ppal-read-clip";
@@ -22,9 +22,10 @@ export interface Sent {
 
 /**
  * A stand-in V8 that holds every call until the test answers it.
+ * @param afterWrite - The queue's afterWrite hook, if any
  * @returns The queued call function and the calls that reached V8
  */
-export function setup(): {
+export function setup(afterWrite?: AfterWrite): {
   call: ReturnType<typeof withWriteQueue>;
   sent: Sent[];
 } {
@@ -48,7 +49,7 @@ export function setup(): {
       }),
   );
 
-  return { call: withWriteQueue(send, () => TIMEOUT_MS), sent };
+  return { call: withWriteQueue(send, () => TIMEOUT_MS, afterWrite), sent };
 }
 
 /** @returns Nothing, once pending promise callbacks have run */

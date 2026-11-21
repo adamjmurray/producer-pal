@@ -8,10 +8,32 @@ Mechanics: [clip-envelopes.md](../../../live-api/clip-envelopes.md).
 remote script. A line it can't write is a `detail` on that clip's entry
 (`envelope "<target>": <why>`), and the other lines still run.
 
-- **A target that isn't an id, a mixer name or a hosted param refuses the
-  call**, before anything is written. When it reads like MIDI controller data
-  (`modwheel`, `Pitch Bend`, `CC1`), the refusal also says to add a CC Control
-  device and use its param ids: that data has no envelope target of its own.
+- **A target that isn't an id, a device path and param name, a mixer name or a
+  hosted param refuses the call**, before anything is written. When it reads
+  like MIDI controller data (`modwheel`, `Pitch Bend`, `CC1`), the refusal also
+  says to add a CC Control device and use its param ids: that data has no
+  envelope target of its own.
+- **A device param is named by id, or by its device's path and its name**
+  (`t0/d0/Filter Freq`). The leading `dN`/`cN` segments are the path and the
+  rest is the name, matched as `ppal-update-device` matches one, so a name may
+  hold a `/` or a `:` (`t0/d1/c0/d0/Dry/Wet`). A line splits at its last colon
+  outside parentheses, since a display value can hold one (`(4.00 : 1)`). A name
+  that matches two params on the device skips the line, naming their ids and
+  ranges; so does a name that matches none. The name and the id of one param in
+  one call are refused, as any two lines on one parameter are.
+- **A point's value is raw, or what Live displays, in parentheses**
+  (`1|1 (-6 dB)`, `(2 kHz)`, `(High-pass)`). A display value is read as
+  `ppal-update-device` reads a param value and converted to raw before the line
+  is sent; nothing is written to find it. A value the param can't take (wrong
+  unit, unknown option) skips the line, saying why. One past the range writes
+  the nearest end, as `ppal-update-device` does, and one note for the line names
+  each: `envelope "pan": past the range, wrote (60R) as 50R, (70L) as 50L`. A
+  bare raw value past the range is still refused. A point with both
+  (`1|1 0.25 (112 Hz)`, as a read prints it) writes the raw value. A ramp stays
+  straight in raw values. For a hosted plug-in's param the wrapper is asked: it
+  moves the param to find each value and then puts it back, so the plug-in's
+  sound can change for an instant, and a number between two values the param
+  shows takes the nearest.
 - **A line that stalls may still have landed; one Live skipped didn't.** When
   the route doesn't answer, or its connection is lost after the request went
   out, the line's `detail` says its points may still have landed (or that it may
@@ -34,6 +56,23 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `~` or an amount outside -1..1 refuses the whole call before anything is
   written, with an example that works. A read prints `/`, `~N` (hundredths) or
   `_`; a curve that rounds to 0, or sits on a flat segment, prints `/`.
+
+- **A point can repeat, and its value can be random.** `1|1x16@n/16 0.5` writes
+  16 points a sixteenth apart; `rand(min, max)` in place of a value, or of a
+  curve amount (`~rand(-0.5, 0.5)`), rolls one per point at write time, so each
+  clip in a broadcast gets its own. The connector before a repeat arrives at
+  each of its points; a repeat that starts the line holds. A malformed repeat or
+  `rand()` refuses the whole call before anything is written. A repeat is at
+  most 1000 points. A `rand()` range with a raw end outside the parameter's
+  range is that line's refusal, whatever it would have rolled:
+  `not written: rand() end -1 is outside the parameter's range 0..1`. An end can
+  be a display value, `rand((200 Hz), (2 kHz))`, converted like a point's (one
+  past the range is clamped and noted); the roll is even in raw values. On an
+  option list it rolls a whole option from one end to the other, each as likely
+  as the next, and the ends can be labels: `rand((Low-pass), (Notch))`. A hosted
+  plug-in's param always takes 0 to 1, so that is the range its raw ends must
+  fit. It can't be asked whether it is an option list, so there an option list
+  rolls fractions.
 
 - **Times are read in each clip's meter.** Only the syntax (points, values,
   curves, connectors) is checked before anything is written. Points that run
@@ -82,9 +121,14 @@ A hosted plug-in's param is an `envelopes` target spelled as its wrapper's
 device path plus its `h` id: `t3/d0/h206`, or `t3/d0/c1/d0/h206` inside a rack.
 Live automates the wrapper's numbered slots ("Slot 001"...), so the line is
 written to a slot's parameter, and the entry reports no slot unless it made one.
-A target that can't be read (`t3/d0/hx`) refuses the call like any other. The
-rest skip that line, as `envelope "<target>": <why>`, and the other lines still
-run:
+The plug-in's own name for the param works in place of the id (`t3/d0/Cutoff`,
+matched exactly, else ignoring case); the wrapper numbers names the plug-in
+repeats in its order ("Attack", "Attack (2)"), so the plain name is the first. A
+name that still reaches several params (only once case is ignored) skips the
+line, listing their ids; one the plug-in doesn't have is left to the wrapper's
+own Live params ("Slot 001", "Device On"). A target that can't be read (`t3/hx`)
+refuses the call like any other. The rest skip that line, as
+`envelope "<target>": <why>`, and the other lines still run:
 
 - **The wrapper must be on the clip's track**, reached by a path that clip
   automation can walk (devices and rack chains, not drum pads or return chains),
@@ -127,7 +171,9 @@ run:
 
 On a read, an envelope on a mapped slot names the plug-in's param:
 `{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Slot 002", ... }`, with no
-`device` (the `id` has it), and `id` works as a write target. An envelope on an
+`device` (the `id` has it), and `id` works as a write target. Its points are raw
+values with no display in parentheses: Live knows only the slot's own 0-1
+number, and a write reads parentheses in the plug-in's units. An envelope on an
 unmapped slot, or on a device that isn't a hosted wrapper, reads as any
 parameter (`parameter: "Slot 002"`, Live's `id`, `device`).
 

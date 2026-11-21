@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
-import { nodeInfo } from "../../node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "../../node-for-max-logger.ts";
 import { markChangedNothing } from "../remote-script/forwarded/changed-nothing.ts";
 import { type RequestOverrides } from "../../helpers/request-overrides/request-overrides.ts";
 import { isWriteCall } from "./write-calls.ts";
+import { whenFinished } from "./still-running.ts";
 
 type SendToolCall = (
   tool: string,
@@ -23,6 +25,18 @@ type SendToV8 = (
   overrides: RequestOverrides,
   queuedMs?: number,
 ) => Promise<McpResponse>;
+
+/**
+ * Runs once V8 is done with a write, with its answer (undefined when sending
+ * threw). A returned promise holds the next write, not the caller or the held
+ * reads, until it settles. Never runs for a timed-out write the adapter gave
+ * up on: V8 may still be running it.
+ */
+export type AfterWrite = (
+  tool: string,
+  args: object,
+  response: McpResponse | undefined,
+) => Promise<void> | undefined;
 
 type Turn = { waitedMs: number } | { notRun: string };
 
@@ -41,7 +55,7 @@ type TrackedWrite = { readers: Set<HeldRead> };
 /** A read waiting on `remaining` writes; `release` sends it. */
 type HeldRead = { remaining: number; release: () => void };
 
-/** Writes that have arrived and not yet answered, oldest first. */
+/** Writes that have arrived and V8 hasn't finished, oldest first. */
 const unanswered = new Set<TrackedWrite>();
 
 /**
@@ -57,18 +71,20 @@ const unanswered = new Set<TrackedWrite>();
  *
  * Waiting counts toward the call's own timeout, so the caller still hears back
  * within it. A call that gets down to MIN_RUN_BUDGET_MS (or half its timeout)
- * before it can run, or whose caller goes away, never runs. A write's turn
- * passes on when it answers, a timeout included, though V8 may still be
- * finishing a timed-out write.
+ * before it can run, or whose caller goes away, never runs. A write that times
+ * out answers its caller, but V8 may still be running it, so it keeps the turn
+ * and the reads behind it until V8 answers late or the adapter gives up.
  *
  * @param send - Sends one call to V8 with how long it queued, and resolves
  *   with its answer
  * @param getTimeoutMs - Reads the default timeout, for calls without an override
+ * @param afterWrite - Runs after each write; see AfterWrite
  * @returns The same call, with writes queued and reads behind them
  */
 export function withWriteQueue(
   send: SendToV8,
   getTimeoutMs: () => number,
+  afterWrite: AfterWrite = () => undefined,
 ): SendToolCall {
   return async (tool, args, overrides) => {
     // The signal is for the queue only; V8 gets the rest.
@@ -82,31 +98,66 @@ export function withWriteQueue(
     }
 
     const markAnswered = trackWrite();
+    // takeTurn marks the write answered itself when it won't run.
+    const turn = await takeTurn(tool, budgetMs, signal, markAnswered);
 
-    try {
-      const turn = await takeTurn(tool, budgetMs, signal, markAnswered);
+    if ("notRun" in turn) {
+      return notRunResponse(turn.notRun);
+    }
 
-      if ("notRun" in turn) {
-        return notRunResponse(turn.notRun);
-      }
+    // Send the held reads now; the next write also waits for afterWrite.
+    // Never throws, so the turn always passes.
+    const finish = (answer: McpResponse | undefined): void => {
+      markAnswered();
+
+      let after: Promise<void> | undefined;
 
       try {
-        return await send(tool, args, rest, turn.waitedMs);
-      } finally {
-        // Release the held reads (sending them) before the next write starts.
-        markAnswered();
-        passTurn();
+        after = afterWrite(tool, args, answer);
+      } catch (error) {
+        nodeError(`After ${tool}: ${errorMessage(error)}`);
       }
-    } finally {
-      markAnswered();
+
+      if (after == null) {
+        passTurn();
+      } else {
+        void after.then(passTurn, passTurn);
+      }
+    };
+
+    let response: McpResponse;
+
+    try {
+      response = await send(tool, args, rest, turn.waitedMs);
+    } catch (error) {
+      finish(undefined);
+      throw error;
     }
+
+    const finished = whenFinished(response);
+
+    if (finished == null) {
+      finish(response);
+    } else {
+      nodeInfo(`${tool} timed out; holding later calls until V8 finishes it`);
+      void finished.then((late) => {
+        if (late == null) {
+          markAnswered();
+          passTurn();
+        } else {
+          finish(late);
+        }
+      });
+    }
+
+    return response;
   };
 }
 
 /**
  * Hold reads that arrive from now on until this write answers.
  * @returns Marks the write answered and sends the reads waiting only on it,
- *   oldest first; does nothing the second time
+ *   oldest first; call it once
  */
 function trackWrite(): () => void {
   const write: TrackedWrite = { readers: new Set() };
@@ -114,9 +165,7 @@ function trackWrite(): () => void {
   unanswered.add(write);
 
   return () => {
-    if (!unanswered.delete(write)) {
-      return;
-    }
+    unanswered.delete(write);
 
     for (const read of write.readers) {
       read.remaining--;

@@ -10,13 +10,14 @@
 
 import { checkEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { CHAIN_MIXER_TARGET } from "./envelope-targets.ts";
+import { parseNameTarget } from "./targets/envelope-name-target.ts";
+import { CHAIN_MIXER_TARGET } from "./targets/envelope-targets.ts";
 import { parseHostedTarget } from "./hosted/hosted-envelope-target.ts";
 
 /** A mixer parameter, as the remote script names it. */
 const MIXER_TARGET = /^(?:volume|pan|send\d+)$/;
 
-/** A Live object id, which is how a device parameter is named. */
+/** A Live object id, one of the two ways to name a device parameter. */
 const ID_TARGET = /^\d+$/;
 
 /** A target that names MIDI controller data, which has no envelope target of its own. */
@@ -29,7 +30,7 @@ const CC_CONTROL_HINT =
 
 /** One line of the `envelopes` param. */
 export interface EnvelopeLine {
-  /** The parameter, as the call named it: an id, volume/pan/send0.., a chain's t0/d0/c1/volume, or a hosted param like t0/d0/h56 */
+  /** The parameter, as the call named it: an id, t0/d0/Filter Freq, volume/pan/send0.., a chain's t0/d0/c1/volume, or a hosted param like t0/d0/h56 */
   target: string;
   /** The points to write, or "" to clear the envelope */
   notation: string;
@@ -79,7 +80,7 @@ export function parseEnvelopeLines(envelopes: string): EnvelopeLine[] {
  * @throws Error naming the line when either half is malformed
  */
 function readLine(line: string): EnvelopeLine {
-  const colon = line.indexOf(":");
+  const colon = findSplitColon(line);
 
   if (colon < 0) {
     throw new Error(
@@ -94,10 +95,11 @@ function readLine(line: string): EnvelopeLine {
     !ID_TARGET.test(target) &&
     !MIXER_TARGET.test(target) &&
     !CHAIN_MIXER_TARGET.test(target) &&
-    parseHostedTarget(target) == null
+    parseHostedTarget(target) == null &&
+    parseNameTarget(target) == null
   ) {
     throw new Error(
-      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param like t0/d0/h56${MIDI_CONTROLLER_NAME.test(target) ? CC_CONTROL_HINT : ""}`,
+      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, a device path and param name like t0/d0/Filter Freq, or volume, pan, send0.. (a rack chain's as t0/d0/c1/volume), or a hosted plug-in's param by name or as t0/d0/h56${MIDI_CONTROLLER_NAME.test(target) ? CC_CONTROL_HINT : ""}`,
     );
   }
 
@@ -106,6 +108,32 @@ function readLine(line: string): EnvelopeLine {
   }
 
   return { target, notation };
+}
+
+/**
+ * Find the colon between target and notation: the last one outside round
+ * brackets, since a param name can hold a colon and so can a display value
+ * (`(4.00 : 1)`). Scanning from the right keeps brackets in a name
+ * (`Attack (2)`) out of the count.
+ * @param line - The line
+ * @returns The colon's index, or -1 when there is none
+ */
+function findSplitColon(line: string): number {
+  let depth = 0;
+
+  for (let i = line.length - 1; i >= 0; i--) {
+    const char = line[i];
+
+    if (char === ")") {
+      depth++;
+    } else if (char === "(") {
+      depth = Math.max(0, depth - 1);
+    } else if (char === ":" && depth === 0) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 /**

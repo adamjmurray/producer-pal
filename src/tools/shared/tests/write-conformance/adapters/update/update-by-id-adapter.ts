@@ -8,10 +8,11 @@ import {
   mockNonExistentObjects,
 } from "#src/test/mocks/mock-registry.ts";
 import {
-  LIVE_FAILURE,
   afterRenameScenario,
   failOnSet,
+  LIVE_FAILURE,
   manyScenario,
+  NO_WHOLE_CALL_WRITES,
   repeatScenario,
 } from "../../write-conformance-fixtures.ts";
 import {
@@ -50,6 +51,7 @@ export function updateByIdAdapter(config: UpdateByIdConfig): WriteToolAdapter {
     tool: config.tool,
     run: config.run,
     na: {
+      wholeCallThrows: NO_WHOLE_CALL_WRITES,
       leftBehind:
         "what it makes on the way (a take lane) keeps the entry, so it is never a skip",
       unparsableDestination:

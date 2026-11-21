@@ -84,9 +84,13 @@ of points, using the same `bar|beat` positions as notes. Points are joined by:
 For example, `1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1` ramps from 0 to 0.8 over two
 bars, holds it until bar 4, jumps to 0.2, then curves up to 1 at bar 5.
 
-- **Values are raw**, usually 0 to 1, not the units Live shows (a filter in Hz,
-  a percentage). Mixer volume 0.85 is 0 dB. Pan runs from -1 (hard left) to 1
-  (hard right).
+- **A plain value is raw**, usually 0 to 1, not the units Live shows (a filter
+  in Hz, a percentage). Mixer volume 0.85 is 0 dB. Pan runs from -1 (hard left)
+  to 1 (hard right).
+- **A value in parentheses is what Live shows**: `1|1 (-12 dB) / 3|1 (0 dB)`,
+  `(2 kHz)`, or an option by name like `(High-pass)`. A ramp between two of them
+  is still a straight line in raw values, so it may not look straight in Live's
+  units.
 - **Mod wheel, pitch bend and other MIDI CCs** are automated through Live's CC
   Control MIDI effect, placed before the instrument. Its values use MIDI's range
   (0 to 127; pitch bend -64 to 64), not 0 to 1.

@@ -56,11 +56,13 @@ export function matchParamsByName(
  * straight back from read-device.
  * @param matches - The params the name resolved to
  * @param device - The device the name was looked up on
+ * @param howToPick - How this caller names one of them by id
  * @returns The reason, or null when the name reached at most one param
  */
 export function ambiguousNameReason(
   matches: LiveAPI[],
   device: LiveAPI,
+  howToPick = "Send {id, value} to pick one.",
 ): string | null {
   if (matches.length < 2) {
     return null;
@@ -73,7 +75,7 @@ export function ambiguousNameReason(
     )
     .join(", ");
 
-  return `names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Send {id, value} to pick one.`;
+  return `names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. ${howToPick}`;
 }
 
 /** A param key that reached a parameter, or the reason it reached none. */

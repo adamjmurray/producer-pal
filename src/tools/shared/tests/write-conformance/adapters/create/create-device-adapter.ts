@@ -14,9 +14,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { registerGrowingRack } from "#src/tools/device/tests/helpers/growing-rack-fixtures.ts";
 import {
-  LIVE_FAILURE,
   failOnSet,
   hookCalls,
+  LIVE_FAILURE,
+  NO_WHOLE_CALL_WRITES,
   registerTracks,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -47,6 +48,7 @@ export const createDeviceAdapter: WriteToolAdapter = {
   tool: "ppal-create-device",
   run: (args) => createDevice({ device: "Reverb", ...args }),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     unparsableDestination:
       "path is the destination, which the unparsable case covers",
     namedTwice: "every entry inserts a new device, so none can repeat another",

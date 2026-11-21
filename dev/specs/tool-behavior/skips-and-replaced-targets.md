@@ -65,15 +65,16 @@ A target the call couldn't carry out keeps its slot as a skip entry:
 - **A throw in the step after the targets keeps the entries.** If any target was
   written, the call still returns every entry, plus a `WARNING:` saying the
   final step failed (with `already changed: ...` for what `call.landed` had
-  recorded) and that the results may be incomplete, with paths or ids out of
-  date, so the caller reads them again. If nothing was written, the call throws,
-  naming what had landed.
-- **`ppal-playback` and `ppal-update-live-set` say what landed when the step
-  before the targets fails partway.** A throw from the step that writes the
-  transport or timeline (playback) or the tempo, time signature and scale
-  (update-live-set) ends the call with `; already changed: ...` naming what had
-  landed (`call.landed`). With nothing landed the error is unchanged. The other
-  write tools don't do this yet.
+  recorded) and that the results may be incomplete or out of date, so the caller
+  reads them again. If nothing was written, the call throws, naming what had
+  landed.
+- **A step for the whole call says what landed when it fails partway.** In every
+  write tool, a throw from a step that writes before the targets ends the call
+  with `; already changed: ...` naming what had landed (`call.landed`): the
+  transport or timeline (playback), or the tempo, time signature and scale
+  (update-live-set). With nothing landed the error is unchanged. A final-step
+  write whose failure is caught says so on its target's entry instead
+  (duplicate's routing, transforms and spare cleanup).
 - **A deadline is no exception, reads included.** When a call stops early
   because the request ran out of time, every target it never reached keeps a
   skip entry with a `detail` saying so and what to re-run. `readFanOut` checks

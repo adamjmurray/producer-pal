@@ -240,16 +240,43 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 `vst~` has no way to turn a 0–1 value into text without setting the param. So
 `write` searches: it sets 129 evenly spaced values and reads the text each
 shows. A sample whose text matches (ignoring case and spaces; or the text in
-brackets, as in `[-17.9 dB]`) wins. Otherwise, given a number, it bisects
-between the two samples that bracket it, comparing the leading number of the
-text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. `number` is
-already in Hz or ms; with `bare` (the text had no unit) it is in the unit the
-param showed before the search, so the wrapper scales it by that (1000 for kHz
-or s) and answers with the `scale` it used. If nothing matches, it puts the
+brackets, as in `[-17.9 dB]`) wins; `-inf` takes the sample showing it.
+Otherwise, given a number, it bisects between the two samples that bracket it,
+comparing the leading number of the text (`kHz` and `s` scaled to Hz and ms),
+and keeps the closest. An end that shows no number (`-inf dB`) brackets
+everything past the number beside it. `number` is already in Hz or ms; with
+`bare` (the text had no unit) it is in the unit the param showed before the
+search, so the wrapper scales it by that (1000 for kHz or s) and answers with
+the `scale` it used. A number whose unit is a different kind from every unit the
+param shows (`ms` on Hz, `%` on dB) is refused, naming the units it shows; an
+unknown unit on either side isn't compared. If nothing matches, it puts the
 param back and says what the param does show. One request covers a whole
 `params` list. It resolves names exactly, then ignoring case and padding; a name
 that matches more than one param is refused; two entries reaching one param
 write the last.
+
+### Params the plug-in names alike
+
+Plug-ins repeat names across modules: two envelopes, each with an "Attack". The
+wrapper gives every repeat a number, in the plug-in's own order: "Attack",
+"Attack (2)", "Attack (3)", skipping a number whose name another param already
+has, so every name is distinct. Reads list those names and writes, slots and the
+panel's knobs match them, so each param can be reached by name. The first keeps
+the plain name, so "Attack" means the first. An Audio Unit also puts its params
+in groups ("ENV1"), which would make a better name, but `vst~` doesn't report
+them.
+
+`lookup` answers which params a name reaches, matched as a write matches one.
+Clip envelopes use it for a target that names a hosted param (`t3/d0/Cutoff`).
+
+`find` runs the same search for one param and a list of values, then puts the
+param back where it was: it answers each value's 0–1 position and saves nothing.
+Clip envelopes use it to turn a display value into the raw value a slot takes.
+The param is sampled once however many values are asked. A number past every
+value the param shows comes back flagged `outside`, with what the param shows at
+0 and 1 (`low`, `high`). The search is short (well under half a second for a
+param) and leaves a playing slot's automation alone, but the plug-in does sweep
+the param while it runs.
 
 ### Naming the plug-in
 

@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   type ClipEnvelopeResult,
+  createTestDeviceAt,
   getToolErrorMessage,
   parseToolResult,
   type ReadClipResult,
@@ -223,6 +224,111 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(events[2]?.coefficients?.[0]).toBeCloseTo(0.625, 2);
     });
 
+    /**
+     * A read-back envelope without Live's display beside each value.
+     * @param id - The clip to read
+     * @returns The clip's one envelope, as bare notation
+     */
+    async function bareEvents(id: string): Promise<string> {
+      const [envelope] = (await readEnvelopes(id)) as ClipEnvelopeResult[];
+
+      return (envelope?.events ?? "").replaceAll(/\s*\([^()]*\)/g, "");
+    }
+
+    it("writes a repeated point as flat steps with a random value each", async () => {
+      const id = await emptyClip();
+
+      expect(
+        await writeEnvelopes(id, "pan: 1|1x8@n/8 rand(-1, 1)"),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+
+      const points = (await bareEvents(id)).split(" _ ");
+      const values = points.map((point) => Number(point.split(" ")[1]));
+
+      expect(points.map((point) => point.split(" ")[0])).toStrictEqual([
+        "1|1",
+        "1|1.5",
+        "1|2",
+        "1|2.5",
+        "1|3",
+        "1|3.5",
+        "1|4",
+        "1|4.5",
+      ]);
+      expect(values.every((value) => value >= -1 && value <= 1)).toBe(true);
+      // Eight rolls that all match would mean one roll was reused.
+      expect(new Set(values).size).toBeGreaterThan(1);
+    });
+
+    it("rolls between display values, and refuses a range past the parameter's", async () => {
+      const id = await emptyClip();
+
+      expect(
+        await writeEnvelopes(id, "pan: 1|1x8@n/8 rand((50L), (25R))"),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+
+      const values = (await bareEvents(id))
+        .split(" _ ")
+        .map((point) => Number(point.split(" ")[1]));
+
+      expect(values).toHaveLength(8);
+      expect(values.every((value) => value >= -1 && value <= 0.5)).toBe(true);
+      expect(new Set(values).size).toBeGreaterThan(1);
+
+      // Refused on the range, not on a roll: it never lands.
+      expect(await writeEnvelopes(id, "volume: 1|1 rand()")).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 0,
+          detail: expect.stringContaining(
+            "rand() end -1 is outside the parameter's range 0..1",
+          ) as string,
+        }),
+      );
+    });
+
+    it("arrives at each point of a repeat with the connector before it", async () => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(
+        id,
+        "pan: 1|1 -1 / 1|2x3@n/4 0.5 ~0.5 2|1x2@1bar -1",
+      );
+
+      expect(await bareEvents(id)).toBe(
+        "1|1 -1 / 1|2 0.5 / 1|3 0.5 / 1|4 0.5 ~0.5 2|1 -1 / 3|1 -1",
+      );
+    });
+
+    it("rolls a curve amount inside its rand() range", async () => {
+      const id = await emptyClip();
+
+      await writeEnvelopes(id, "pan: 1|1 -1 ~rand(0.4, 0.6) 2|1 1");
+
+      const amount = /^1\|1 -1 ~(\S+) 2\|1 1$/.exec(await bareEvents(id))?.[1];
+
+      expect(Number(amount)).toBeGreaterThanOrEqual(0.4);
+      expect(Number(amount)).toBeLessThanOrEqual(0.6);
+    });
+
+    it("refuses a malformed repeat or rand(), and writes nothing", async () => {
+      const id = await emptyClip();
+
+      for (const [line, message] of [
+        ["pan: 1|1x8 0", "1|1x16@n/16"],
+        ["pan: 1|1 rand(a)", "rand takes numbers"],
+        ["pan: 1|1 0 ~rand(-2, 2) 2|1 1", "numbers from -1 to 1"],
+      ] as const) {
+        const result = await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id, envelopes: line },
+        });
+
+        expect(getToolErrorMessage(result)).toContain(message);
+      }
+
+      expect(await readEnvelopes(id)).toStrictEqual([]);
+    });
+
     it("refuses a bare ~ and an amount outside -1..1, and writes nothing", async () => {
       const id = await emptyClip();
 
@@ -255,6 +361,77 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           events: expect.stringMatching(/^1\|1 0\.25/) as string,
         }),
       ]);
+    });
+
+    it("writes a parameter named by its device path and name", async () => {
+      const device = await createTestDeviceAt(ctx.client!, "Reverb", TRACK);
+      const id = await emptyClip();
+
+      // The name holds a slash, which must not read as more path.
+      expect(
+        await writeEnvelopes(id, `${device}/Dry/Wet: 1|1 0.25`),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+      expect((await readEnvelopes(id)) as ClipEnvelopeResult[]).toStrictEqual([
+        expect.objectContaining({
+          parameter: expect.stringContaining("Dry/Wet") as string,
+          events: expect.stringMatching(/^1\|1 0\.25/) as string,
+        }),
+      ]);
+    });
+
+    it("rolls a whole option on an option-list parameter", async () => {
+      const device = await createTestDeviceAt(ctx.client!, "Reverb", TRACK);
+      const id = await emptyClip();
+
+      // Device On is an Off/On list on every device.
+      expect(
+        await writeEnvelopes(id, `${device}/Device On: 1|1x16@n/16 rand(0, 1)`),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+
+      const values = (await bareEvents(id))
+        .split(" _ ")
+        .map((point) => Number(point.split(" ")[1]));
+
+      // A fraction would mean it rolled between the options.
+      expect(values.every((value) => value === 0 || value === 1)).toBe(true);
+      expect(new Set(values).size).toBe(2);
+    });
+
+    it("writes values given as what Live displays", async () => {
+      const id = await emptyClip();
+
+      expect(
+        await writeEnvelopes(
+          id,
+          "volume: 1|1 (-12 dB) / 2|1 (0 dB)\npan: 1|1 (50L) _ 2|1 (25R)",
+        ),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 2 }));
+
+      const events = ((await readEnvelopes(id)) as ClipEnvelopeResult[]).map(
+        (envelope) => envelope.events,
+      );
+
+      expect(events).toStrictEqual([
+        expect.stringMatching(/\(-12\.0 dB\).*\(0\.0 dB\)/) as string,
+        expect.stringMatching(/\(50L\).*\(25R\)/) as string,
+      ]);
+    });
+
+    it("writes the nearest end for a display value past the range", async () => {
+      const id = await emptyClip();
+      const result = await writeEnvelopes(
+        id,
+        "volume: 1|1 (30 dB)\npan: 1|1 (60R)",
+      );
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 2,
+          detail: expect.stringMatching(
+            /envelope "volume": past the range, wrote \(30 dB\) as 6\.0 dB.*envelope "pan": past the range, wrote \(60R\) as 50R/,
+          ) as string,
+        }),
+      );
     });
 
     it("reports a refused line and still writes the others", async () => {

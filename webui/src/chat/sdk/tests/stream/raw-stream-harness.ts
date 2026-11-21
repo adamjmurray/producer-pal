@@ -132,6 +132,7 @@ export interface ChatOptions {
   providerOptions?: ChatClientProviderOptions;
   chatHistory?: ChatMessage[];
   maxSteps?: number;
+  lookupContextLength?: () => Promise<number | undefined>;
 }
 
 type ChatClientProviderOptions = NonNullable<
@@ -154,6 +155,7 @@ export async function startChat(options: ChatOptions): Promise<ChatSdkClient> {
     providerOptions: options.providerOptions,
     chatHistory: options.chatHistory,
     maxSteps: options.maxSteps,
+    lookupContextLength: options.lookupContextLength,
   });
 
   await client.initialize();

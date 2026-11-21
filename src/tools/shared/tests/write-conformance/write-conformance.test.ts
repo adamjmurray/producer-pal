@@ -28,6 +28,9 @@
 //     warns that the results may be incomplete or out of date.
 // 11. A skip that left something in the Set still throws its detail, but the
 //     call no longer counts as changing nothing; a refusal or a plain skip does.
+// 12. A throw from a step for the whole call (before or after the targets),
+//     once that step changed Live and with no target written, ends the call
+//     with `; already changed: ...` naming what landed.
 //
 // A case that can't apply to a tool is listed under `na` in its adapter, with
 // why.
@@ -103,6 +106,7 @@ function hasOwnHook(adapter: WriteToolAdapter, id: CaseId): boolean {
     loneSkipped: adapter.loneSkipped,
     leftBehind: adapter.leftBehind,
     settleThrows: adapter.settleThrows ?? adapter.many,
+    wholeCallThrows: adapter.wholeCallThrows,
   };
   const twin = id === "order" ? "lone" : "order";
   const twinApplies =

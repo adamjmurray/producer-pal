@@ -71,6 +71,14 @@ describe("toTokenUsage", () => {
     });
   });
 
+  it("adds the local model's context length when known", () => {
+    expect(toTokenUsage(makeUsage({ inputTokens: 5 }), 8192)).toStrictEqual({
+      inputTokens: 5,
+      outputTokens: undefined,
+      contextLength: 8192,
+    });
+  });
+
   it("converts nullish values to undefined", () => {
     const raw = makeUsage();
 
