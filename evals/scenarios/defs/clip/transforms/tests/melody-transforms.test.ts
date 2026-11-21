@@ -58,4 +58,28 @@ describe("melodyTransforms graders", () => {
       ),
     ).toBe(true);
   });
+
+  const halved = "durations halved using /= 2 or equivalent";
+
+  it.each([
+    "duration /= 2",
+    "duration *= .5",
+    "duration = duration / 2",
+    "duration = note.duration / 2",
+    "duration = note.duration * 0.5",
+  ])("turn 4 accepts %s", (transforms) => {
+    const calls = [update({ path: "t0/s0", transforms })];
+
+    expect(grader(halved).assert(turnsWithCalls(4, calls))).toBe(true);
+  });
+
+  it("turn 4 fails on a different amount", () => {
+    const calls = [
+      update({ path: "t0/s0", transforms: "duration = note.duration / 3" }),
+    ];
+
+    expect(() => grader(halved).assert(turnsWithCalls(4, calls))).toThrow(
+      "expected duration /= 2 or equivalent",
+    );
+  });
 });

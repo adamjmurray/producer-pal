@@ -141,7 +141,7 @@ export const melodyTransforms: EvalScenario = {
         const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
 
         if (
-          !/duration\s*(?:\/=\s*2|\*=\s*0\.5|=\s*duration\s*\/\s*2)/.test(
+          !/duration\s*(?:\/=\s*2|\*=\s*0?\.5|=\s*(?:note\.)?duration\s*(?:\/\s*2|\*\s*0?\.5))/.test(
             transforms,
           )
         ) {
