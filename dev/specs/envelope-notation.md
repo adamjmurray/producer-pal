@@ -6,8 +6,9 @@ joined by connectors. It is hand-parsed, not a Peggy grammar, so no parity test
 holds it: update this file when the syntax changes.
 
 Code: [src/notation/barbeat/envelope/](../../src/notation/barbeat/envelope/)
-(`envelope-notation.ts`, `envelope-curves.ts`). How the tools answer a call
-(refusals, partial writes, arrangement clips) is in
+(`envelope-notation.ts`, `envelope-curves.ts`, `envelope-repeat.ts`,
+`envelope-rand.ts`). How the tools answer a call (refusals, partial writes,
+arrangement clips) is in
 [tool-behavior](tool-behavior/clips-playback-and-sends/clip-envelopes.md); what
 Live allows is in [clip-envelopes.md](../live-api/clip-envelopes.md).
 
@@ -55,14 +56,39 @@ is the cubic Bezier Live stores on the event that starts the segment
 - A `/` inside a time (`2|1+n/12`) has no spaces around it, so it is not a
   connector.
 
+## Repeats and random values (write only)
+
+```
+1|1x128@n/16 rand(0.5, 1)
+1|1 0 / 1|2x7@n/4 rand()
+```
+
+- **Repeat**: `bar|beat x count @ step` writes `count` points, `step` apart,
+  each with the point's value. The step is a note-value duration as in the notes
+  grammar's [repeat patterns](barbeat/repeat-patterns.md) (`@n/16`, `@1bar`,
+  `@1bar+n/4`) and is always written: an envelope has no duration to default to.
+  The count is 1 to 1000, the most points one write takes. A step that is zero
+  or less in the clip's meter is an error.
+- **Connector**: the connector before a repeat arrives at every one of its
+  points. A repeat that starts the line has none, so its points hold (`_`): flat
+  steps.
+- **`rand(min, max)`** in place of a value is a random raw value, rolled once
+  per point when the envelope is written, so each point of a repeat gets its
+  own. As in transforms, `rand(max)` is 0 to max, `rand()` is -1 to 1, and
+  `random` is accepted. Its arguments are plain numbers. A rolled value keeps 6
+  significant digits. There is no seed.
+- **`~rand(min, max)`** rolls the curve amount the same way, once per point the
+  connector arrives at. Its range must sit inside -1..1.
+- A read never prints any of these: it lists every point.
+
 ## Order
 
 - Points run forwards in time. A point earlier than the one before it is an
   error.
 - Two points at one time are a jump: the second is the value after it. A third
   at that time is an error.
-- Syntax (points, values, curves, connectors) can be checked without a clip
-  (`checkEnvelopeNotation`). Times and order need the clip's meter
+- Syntax (points, values, repeats, curves, connectors) can be checked without a
+  clip (`checkEnvelopeNotation`). Times and order need the clip's meter
   (`parseEnvelopeNotation`).
 - An empty string is no points. On a write that means clear.
 

@@ -22,11 +22,26 @@
 // On write a point may give the display alone, `1|1 (112 Hz)`, for the caller
 // to turn into a raw value; its square brackets turn back into round ones.
 // With both, the raw value is the one written.
+//
+// A write may also repeat a point, `1|1x16@n/16 0.5`, and roll its value,
+// `rand(0.5, 1)`, afresh for each point (a curve amount too:
+// `~rand(-0.5, 0.5)`). The connector before a repeat arrives at every one of
+// its points; a repeat that starts the line holds.
 
 import {
   type CurveCoefficients,
   coefficientsToCurve,
 } from "#src/notation/barbeat/envelope/envelope-curves.ts";
+import {
+  type EnvelopeRand,
+  ENVELOPE_VALUE,
+  readEnvelopeRand,
+} from "#src/notation/barbeat/envelope/envelope-rand.ts";
+import {
+  type EnvelopeRepeat,
+  envelopeRepeatTimes,
+  readEnvelopeRepeat,
+} from "#src/notation/barbeat/envelope/envelope-repeat.ts";
 import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import {
   abletonBeatsToBarBeat,
@@ -34,12 +49,10 @@ import {
   readBarBeat,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { rand } from "#src/notation/transform/transform-waveforms.ts";
 
 /** Two times count as one, within float noise. */
 const EPSILON = 1e-9;
-
-/** A point's value: a plain decimal, or an exponent form we still accept. */
-const VALUE = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
 
 /** A connector token: a straight ramp, a step, or a curve (its amount checked later). */
 const CONNECTOR = /^(?:\/|_|~.*)$/;
@@ -47,8 +60,18 @@ const CONNECTOR = /^(?:\/|_|~.*)$/;
 /** A curve token `~N`: a signed decimal, no space after the `~`. */
 const CURVE = /^~([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/;
 
-/** "bar|beat value", "bar|beat value (display)" or "bar|beat (display)". */
-const POINT = /^(\S+)\s+(?:([^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
+/** "time value", "time value (display)" or "time (display)"; a value may be a rand() call. */
+const POINT =
+  /^(\S+)\s+(?:(rand(?:om)?\([^()]*\)|[^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
+
+/** A repeat's `x<count>@`, wherever it sits. */
+const REPEAT_MARK = /x\s*\d+\s*@/;
+
+/** A point that opens with a well-placed repeat. */
+const OPENS_WITH_REPEAT = /^\S*x\d+@\S+(?:\s|$)/;
+
+/** Rolled values keep this many significant digits: a write has a size limit. */
+const RAND_DIGITS = 6;
 
 /** The clip meter the times are spelled in. */
 export interface EnvelopeMeter {
@@ -114,7 +137,7 @@ export function formatEnvelopeNotation(
  * Read envelope notation back into points.
  * @param text - The notation
  * @param meter - The clip meter the times are spelled in
- * @returns One point per `bar|beat value`, in the order they were written
+ * @returns The points in the order they were written, a repeat as one per step
  * @throws If a point, a value or the time order is malformed
  */
 export function parseEnvelopeNotation(
@@ -129,20 +152,23 @@ export function parseEnvelopeNotation(
 
   for (const segment of splitOnConnectors(text)) {
     const connector = readConnector(segment.connector);
-    const point = parsePoint(segment.text, meter);
-    const previous = points.at(-1);
 
-    checkOrder(points, point, segment.text.trim());
+    for (const [index, point] of parsePoints(segment.text, meter).entries()) {
+      const previous = points.at(-1);
 
-    // Two points at one time are a jump, and a jump has no ramp to curve.
-    const jump =
-      connector.jump || (previous != null && sameTime(previous, point));
+      checkOrder(points, point, segment.text.trim());
 
-    points.push({
-      ...point,
-      jump,
-      ...(connector.curve != null && !jump && { curve: connector.curve }),
-    });
+      // Two points at one time are a jump, and a jump has no ramp to curve. A
+      // repeat with no connector before it holds between its own points.
+      const jump =
+        connector.jump ||
+        (index > 0 && segment.connector == null) ||
+        (previous != null && sameTime(previous, point));
+
+      const curve = jump ? 0 : rollCurve(connector.curve);
+
+      points.push({ ...point, jump, ...(curve !== 0 && { curve }) });
+    }
   }
 
   return points;
@@ -162,7 +188,7 @@ export function checkEnvelopeNotation(text: string): void {
 
   for (const segment of splitOnConnectors(text)) {
     readConnector(segment.connector);
-    readBarBeat(readPoint(segment.text).barBeat);
+    readBarBeat(readPoint(segment.text).repeat.barBeat);
   }
 }
 
@@ -385,7 +411,7 @@ function splitOnSpaces(text: string): string[] {
  */
 function readConnector(token: string | null): {
   jump: boolean;
-  curve?: number;
+  curve?: number | EnvelopeRand;
 } {
   if (token == null || token === "/") {
     return { jump: false };
@@ -393,6 +419,18 @@ function readConnector(token: string | null): {
 
   if (token === "_") {
     return { jump: true };
+  }
+
+  const range = readEnvelopeRand(token.slice(1));
+
+  if (range != null) {
+    if (Math.abs(range.min) > 1 || Math.abs(range.max) > 1) {
+      throw new Error(
+        `Invalid envelope curve "${token}": the amount must be from -1 to 1, like "~rand(-0.5, 0.5)"`,
+      );
+    }
+
+    return { jump: false, curve: range };
   }
 
   const amount = CURVE.exec(token)?.[1];
@@ -415,38 +453,77 @@ function readConnector(token: string | null): {
 }
 
 /**
- * Read one "bar|beat value (display)" segment.
+ * The curve amount for one point: as written, or a fresh roll of its rand().
+ * @param curve - The connector's curve, if it has one
+ * @returns The amount, 0 for a straight ramp
+ */
+function rollCurve(curve: number | EnvelopeRand | undefined): number {
+  if (curve == null || typeof curve === "number") {
+    return curve ?? 0;
+  }
+
+  return rand(curve.min, curve.max);
+}
+
+/**
+ * Read one "time value (display)" segment into its points: one, or one per
+ * step of a repeat, each with its own roll of a rand() value.
  * @param segment - The text between two connectors
  * @param meter - The clip meter the time is spelled in
- * @returns The point, with its time in Ableton beats
- * @throws If the segment isn't a point, or its value isn't a finite number
+ * @returns The points, with their times in Ableton beats
+ * @throws If the segment isn't a point, or its value or repeat is malformed
  */
-function parsePoint(
+function parsePoints(
   segment: string,
   meter: EnvelopeMeter,
-): WrittenEnvelopePoint {
-  const { barBeat, ...value } = readPoint(segment);
+): WrittenEnvelopePoint[] {
+  const { repeat, value } = readPoint(segment);
+  const { timeSigNumerator, timeSigDenominator } = meter;
+  const start = barBeatToAbletonBeats(
+    repeat.barBeat,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
-  return {
-    time: barBeatToAbletonBeats(
-      barBeat,
-      meter.timeSigNumerator,
-      meter.timeSigDenominator,
-    ),
-    ...value,
+  return envelopeRepeatTimes(
+    start,
+    repeat,
+    timeSigNumerator,
+    timeSigDenominator,
+  ).map((time) => ({
+    time,
+    ...("min" in value
+      ? { value: Number(rand(value.min, value.max).toPrecision(RAND_DIGITS)) }
+      : value),
     jump: false,
-  };
+  }));
+}
+
+/**
+ * The error for a repeat set apart from its time, or written after the value.
+ * @param token - The point as written
+ * @returns The error, showing where a repeat goes
+ */
+function misplacedRepeat(token: string): Error {
+  return new Error(
+    `Invalid envelope point: "${token}". A repeat goes right after the time, with no space, like "1|1x32@n/16 rand(0, 1)"`,
+  );
+}
+
+/** A point as its text spells it, before the clip's meter places it. */
+interface ReadPoint {
+  repeat: EnvelopeRepeat;
+  /** The raw value, the display that stands for one, or the range to roll one from */
+  value: { value: number } | { display: string } | EnvelopeRand;
 }
 
 /**
  * Read one segment's time text and value, leaving the time unconverted.
  * @param segment - The text between two connectors
- * @returns The bar|beat text, and the value or the display that stands for it
- * @throws If the segment isn't a point, or its value isn't a finite number
+ * @returns The time as written, and the value or what stands for it
+ * @throws If the segment isn't a point, or its value or repeat is malformed
  */
-function readPoint(
-  segment: string,
-): { barBeat: string } & ({ value: number } | { display: string }) {
+function readPoint(segment: string): ReadPoint {
   const token = segment.trim();
 
   if (token === "") {
@@ -458,12 +535,16 @@ function readPoint(
   const match = POINT.exec(token);
 
   if (match == null) {
+    if (REPEAT_MARK.test(token) && !OPENS_WITH_REPEAT.test(token)) {
+      throw misplacedRepeat(token);
+    }
+
     throw new Error(
       `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5" (or a display value in parentheses: "1|1 (-6 dB)")`,
     );
   }
 
-  const barBeat = match[1] as string;
+  const repeat = readEnvelopeRepeat(match[1] as string);
   const display = match[3]?.trim();
 
   if (display != null) {
@@ -473,20 +554,31 @@ function readPoint(
       );
     }
 
-    validateBarBeatPosition(barBeat);
+    validateBarBeatPosition(repeat.barBeat);
 
     // A read prints a display's round brackets as square ones; undo that.
     return {
-      barBeat,
-      display: display.replaceAll("[", "(").replaceAll("]", ")"),
+      repeat,
+      value: { display: display.replaceAll("[", "(").replaceAll("]", ")") },
     };
   }
 
   const valueText = match[2] as string;
+  const range = readEnvelopeRand(valueText);
 
-  if (!VALUE.test(valueText)) {
+  if (range != null) {
+    validateBarBeatPosition(repeat.barBeat);
+
+    return { repeat, value: range };
+  }
+
+  if (!ENVELOPE_VALUE.test(valueText)) {
+    if (REPEAT_MARK.test(valueText)) {
+      throw misplacedRepeat(token);
+    }
+
     throw new Error(
-      `Invalid envelope value: "${valueText}" in "${token}". Expected a number, like 0.5 or -1`,
+      `Invalid envelope value: "${valueText}" in "${token}". Expected a number, like 0.5 or -1, or rand(min, max)`,
     );
   }
 
@@ -498,9 +590,9 @@ function readPoint(
     );
   }
 
-  validateBarBeatPosition(barBeat);
+  validateBarBeatPosition(repeat.barBeat);
 
-  return { barBeat, value };
+  return { repeat, value: { value } };
 }
 
 /**

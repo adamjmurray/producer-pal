@@ -57,6 +57,16 @@ remote script. A line it can't write is a `detail` on that clip's entry
   written, with an example that works. A read prints `/`, `~N` (hundredths) or
   `_`; a curve that rounds to 0, or sits on a flat segment, prints `/`.
 
+- **A point can repeat, and its value can be random.** `1|1x16@n/16 0.5` writes
+  16 points a sixteenth apart; `rand(min, max)` in place of a value, or of a
+  curve amount (`~rand(-0.5, 0.5)`), rolls one per point at write time, so each
+  clip in a broadcast gets its own. The connector before a repeat arrives at
+  each of its points; a repeat that starts the line holds. A malformed repeat or
+  `rand()` refuses the whole call before anything is written. A repeat is at
+  most 1000 points. A rolled value past the parameter's range is refused like
+  any other, so a `rand()` range wider than the parameter's fails on some rolls
+  and not others.
+
 - **Times are read in each clip's meter.** Only the syntax (points, values,
   curves, connectors) is checked before anything is written. Points that run
   backwards in a clip's meter, or a third point at one time, are that line's
