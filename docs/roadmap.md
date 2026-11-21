@@ -1,22 +1,51 @@
 # Roadmap
 
-## Next (2.6 - Plug-in Control)
+## Next
 
-- Plug-in control: read and set any VST/AU parameter
-- Improved automation: read and write automation envelopes in the units of the
-  underlying parameter
 - Slicing a sample to a drum rack
+- Richer automation notation: generated values and repeat patterns
 
 In consideration:
 
-- Easier, one-click update process
+- A Claude plugin to replace the desktop extension, and plugins for other apps
+  like the ChatGPT desktop app
 - Fetch available local models instead of configuring manually in the built-in
   chat
+- Automation in the units of the parameter (dB, Hz, ms)
+- Moving tracks, scenes and rack chains
+- Session clip launch settings (launch mode, quantization, legato)
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.6 - Plug-in Control, Live 13, Safer by Default (November 2026)
+
+- **Full plug-in control:** add a VST3, AU or VST2 plug-in inside a Producer Pal
+  wrapper and the AI can read and set every parameter in the plug-in's own
+  units, and automate them in clips. Needs the remote script and Live 12.4+. See
+  [Full Plug-in Control](/guide/plugins)
+- **Live 13 support:** envelope clips on return tracks, 32 macros, and Mid-Side
+  and Multiband racks. Step sequencer clips are recognized, but Live doesn't let
+  Producer Pal read or edit their steps yet
+- **Safer by default:** only Live's own computer can connect unless you turn on
+  [Remote Control](/installation/remote-access), and web pages can no longer
+  reach Producer Pal through your browser
+
+Also in this release:
+
+- Changing an arrangement clip's length resizes the clip in place. Before,
+  lengthening a looped clip left a row of copies
+- Clips have their own MIDI scale (Live 12.4.15+)
+- Read, set and automate CC Control, so mod wheel and other MIDI CCs can get
+  clip envelopes
+- Folders in Live's Places replace the custom sample folder setting
+- `ppal-library` pages long search results, and the plug-in list is current with
+  the remote script
+- `ppal-context` reads or deletes several memories in one call
+- `ppal-connect` can re-check versions after an install or update without
+  re-sending the Skills and context
 
 ### 2.5 - Automation (October 2026)
 

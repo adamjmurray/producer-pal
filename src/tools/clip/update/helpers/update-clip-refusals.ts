@@ -5,7 +5,6 @@
 
 import {
   barBeatToAbletonBeats,
-  durationToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
@@ -23,7 +22,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { refuseEmptyLength } from "./clip-beat-positions.ts";
+import { refuseEmptyInEveryMeter } from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { requireDestinationPerSource } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The update-clip params read before any clip is touched. */
@@ -202,7 +201,7 @@ export interface SplitMoveArgs {
  * reaches that first piece and no other, and most of the request silently
  * doesn't happen. A single value is worse, because it reaches every piece:
  * one arrangementStart stacks them all on one bar, and one arrangementLength
- * longer than a piece tiles each piece over the next - the pieces a split
+ * longer than a piece grows each piece over the next - the pieces a split
  * makes are adjacent, so that collision is certain, and a duplicate landing on
  * an arrangement clip destroys it. Nothing here is a reading of the call, so
  * nothing is cut and the caller sends two calls instead.
@@ -376,11 +375,8 @@ function validateValueParams(
   }
 
   for (const duration of everyEntry(length, targetCount, "length")) {
-    durationToAbletonBeats(duration, 4, 4);
-    // A bar only grows with the meter, so a length that spans nothing in the
-    // widest meter spans nothing in any. A meter-dependent one is refused per
-    // clip, in its own meter.
-    refuseEmptyLength(duration, durationToAbletonBeats(duration, 99, 1));
+    // A meter-dependent empty length is refused per clip, in its own meter.
+    refuseEmptyInEveryMeter(duration);
   }
 }
 

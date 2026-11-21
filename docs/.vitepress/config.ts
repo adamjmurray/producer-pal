@@ -28,6 +28,8 @@ export default defineConfig({
           item.url !== "installation/codex-app" &&
           item.url !== "installation/lm-studio" &&
           item.url !== "installation/gemini" &&
+          item.url !== "installation/gemini-cli" &&
+          item.url !== "installation/mistral-le-chat" &&
           item.url !== "installation/openai" &&
           item.url !== "installation/chat-ui-other-providers" &&
           item.url !== "installation/ollama" &&
@@ -145,65 +147,55 @@ export default defineConfig({
         link: "/installation",
         items: [
           {
-            text: "Desktop Apps",
-            link: "/installation/desktop-apps",
+            text: "Use Your AI Subscription",
             items: [
               {
-                text: "Claude Desktop",
-                link: "/installation/claude-desktop",
+                text: "Desktop Apps",
+                link: "/installation/desktop-apps",
+                items: [
+                  {
+                    text: "Claude Desktop",
+                    link: "/installation/claude-desktop",
+                  },
+                  { text: "ChatGPT App", link: "/installation/chatgpt-app" },
+                  {
+                    text: "Google Antigravity",
+                    link: "/installation/antigravity",
+                  },
+                  { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
+                ],
               },
-              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               {
-                text: "Google Antigravity",
-                link: "/installation/antigravity",
+                text: "CLI Coding Agents",
+                link: "/installation/cli",
+                items: [
+                  { text: "Claude Code", link: "/installation/claude-code" },
+                  { text: "Codex CLI", link: "/installation/codex-cli" },
+                  {
+                    text: "Antigravity CLI",
+                    link: "/installation/antigravity-cli",
+                  },
+                  {
+                    text: "Mistral Vibe CLI",
+                    link: "/installation/mistral-vibe-cli",
+                  },
+                ],
               },
-              { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
           {
-            text: "Command Line",
-            link: "/installation/cli",
+            text: "Use API Keys",
             items: [
-              { text: "Claude Code", link: "/installation/claude-code" },
-              { text: "Codex CLI", link: "/installation/codex-cli" },
-              { text: "Gemini CLI", link: "/installation/gemini-cli" },
-              { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
-            ],
-          },
-          {
-            text: "Built-in Chat UI",
-            link: "/installation/chat-ui",
-            items: [
-              { text: "Local AI", link: "/installation/local-ai" },
               { text: "AI Routers", link: "/installation/ai-routers" },
-              { text: "API Keys", link: "/installation/api-keys" },
+              { text: "Provider API Keys", link: "/installation/api-keys" },
             ],
           },
           {
-            text: "Choose by Provider",
-            link: "/installation/choose-by-provider",
+            text: "Use a Local Model",
+            link: "/installation/choose-local",
             items: [
-              {
-                text: "Claude / Anthropic",
-                link: "/installation/choose-claude",
-              },
-              {
-                text: "ChatGPT / OpenAI",
-                link: "/installation/choose-openai",
-              },
-              {
-                text: "Gemini / Google",
-                link: "/installation/choose-gemini",
-              },
-              {
-                text: "Mistral / Mistral AI",
-                link: "/installation/choose-mistral",
-              },
-              { text: "Local / Offline", link: "/installation/choose-local" },
-              {
-                text: "Multi / AI Routers",
-                link: "/installation/choose-multi",
-              },
+              { text: "Built-in Chat UI", link: "/installation/local-ai" },
+              { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
           {
@@ -215,9 +207,39 @@ export default defineConfig({
                 text: "Remote Access",
                 link: "/installation/remote-access",
                 items: [
-                  { text: "claude.ai", link: "/installation/claude-web" },
+                  { text: "Claude Web", link: "/installation/claude-web" },
                   { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
-                  { text: "Le Chat", link: "/installation/mistral-le-chat" },
+                  {
+                    text: "Mistral Vibe Web",
+                    link: "/installation/mistral-vibe-web",
+                  },
+                ],
+              },
+              {
+                text: "Choose by Provider",
+                link: "/installation/choose-by-provider",
+                collapsed: true,
+                items: [
+                  {
+                    text: "Claude / Anthropic",
+                    link: "/installation/choose-claude",
+                  },
+                  {
+                    text: "ChatGPT / OpenAI",
+                    link: "/installation/choose-openai",
+                  },
+                  {
+                    text: "Gemini / Google",
+                    link: "/installation/choose-gemini",
+                  },
+                  {
+                    text: "Mistral / Mistral AI",
+                    link: "/installation/choose-mistral",
+                  },
+                  {
+                    text: "Multi / AI Routers",
+                    link: "/installation/choose-multi",
+                  },
                 ],
               },
             ],
@@ -233,6 +255,7 @@ export default defineConfig({
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Remote Script", link: "/guide/remote-script" },
           { text: "Clip Automation", link: "/guide/automation" },
+          { text: "Full Plug-in Control", link: "/guide/plugins" },
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "Optimizing Cost & Context", link: "/guide/optimizing" },

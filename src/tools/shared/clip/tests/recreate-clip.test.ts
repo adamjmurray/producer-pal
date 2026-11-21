@@ -113,6 +113,7 @@ describe("recreateClip onto the source's own lane", () => {
       undefined,
       color,
       [],
+      {},
     );
   }
 
@@ -210,6 +211,7 @@ describe("recreateClip on a source with a start offset", () => {
       undefined,
       undefined,
       [],
+      {},
     );
 
     const markers = new Set([
@@ -269,6 +271,7 @@ describe("recreateClip and the source's groove", () => {
       undefined,
       undefined,
       losses,
+      {},
     );
 
     return losses;
@@ -335,6 +338,7 @@ describe("recreateClip on an audio source", () => {
       undefined,
       undefined,
       [],
+      {},
     );
 
     expect(lookupMockObject("audio_copy")?.set).toHaveBeenCalledWith(
@@ -372,6 +376,7 @@ describe("recreateClip on an audio source with no sample", () => {
         undefined,
         undefined,
         [],
+        {},
       ),
     ).toThrow("audio clip has no sample file");
     expect(lookupMockObject("audio_lane")?.call).not.toHaveBeenCalled();
@@ -425,6 +430,7 @@ describe("recreateClip when a later step fails after creating", () => {
           undefined,
           "not-a-color", // setColor throws on a malformed hex
           [],
+          {},
         );
       } catch (error) {
         caught = error;
@@ -465,6 +471,7 @@ describe("recreateClip when Live makes no clip", () => {
         undefined,
         undefined,
         [],
+        {},
       ),
     ).toThrow(
       'Live created no clip at t0/l0[5|1] from sampleFile "/samples/loop.wav"',
@@ -490,6 +497,7 @@ describe("recreateClip when Live makes no clip", () => {
         undefined,
         undefined,
         [],
+        {},
       ),
     ).toThrow(
       'Live created no clip at id bare_lane from sampleFile "/samples/loop.wav"',

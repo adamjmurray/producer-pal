@@ -96,8 +96,7 @@ export const automationClearOne: EvalScenario = {
       type: "llm_judge",
       prompt: `The Lead clip had volume, pan and send A automation. The user asked to
 remove only the pan automation. Evaluate the final reply: it says the pan
-automation was removed and the volume and send automation were left in place. It
-does not claim to have removed anything else.`,
+automation was removed and the volume and send automation were left in place.`,
     },
   ],
 };

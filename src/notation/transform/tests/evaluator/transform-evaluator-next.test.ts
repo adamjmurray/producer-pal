@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -69,7 +69,7 @@ describe("next.* variables", () => {
   });
 
   it("skips last note with warning when using next.*", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([
       { start_time: 0, velocity: 80 },
       { start_time: 1, velocity: 100 },
@@ -105,7 +105,7 @@ describe("next.* variables", () => {
     // picks the notes at starts 4 and 5; the note at 8 is outside it. The note
     // at 5 is the last selected one — it has no next-in-selection and is
     // skipped, rather than reaching past the window to the note at 8.
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([
       { start_time: 4 },
       { start_time: 5 },
@@ -175,7 +175,7 @@ describe("legato()", () => {
   });
 
   it("keeps last note's current duration without clip context, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([{ start_time: 0 }, { start_time: 2 }]);
 
     applyTransforms(notes, "duration = legato()", 4, 4);
@@ -316,6 +316,46 @@ describe("legato()", () => {
 function expectDurations(notes: NoteEvent[], expected: number[]): void {
   expect(notes.map((note) => note.duration)).toStrictEqual(expected);
 }
+
+describe("note order after a timing line", () => {
+  const movedNotes = (): NoteEvent[] =>
+    createTestNotes([
+      { pitch: 60, start_time: 0, duration: 0.25 },
+      { pitch: 64, start_time: 0.5, duration: 0.25 },
+    ]);
+
+  it("gives legato() the order the notes are in now", () => {
+    const notes = movedNotes();
+
+    applyTransforms(notes, "C3: timing += 1\nduration = legato()", 4, 4);
+
+    // E3 (0.5) now comes first and reaches C3 (1). C3 is last and keeps its
+    // duration; before the fix it measured back to E3 and was deleted.
+    expect(
+      notes.map(({ pitch, start_time, duration }) => [
+        pitch,
+        start_time,
+        duration,
+      ]),
+    ).toStrictEqual([
+      [64, 0.5, 0.5],
+      [60, 1, 0.25],
+    ]);
+  });
+
+  it("counts note.index in the order the notes are in now", () => {
+    const notes = movedNotes();
+
+    applyTransforms(notes, "C3: timing += 1\nvelocity = 10 + note.index", 4, 4);
+
+    expect(notes.map(({ pitch, velocity }) => [pitch, velocity])).toStrictEqual(
+      [
+        [64, 10],
+        [60, 11],
+      ],
+    );
+  });
+});
 
 /**
  * Runs `duration = legato()` in 4/4 over two notes two beats apart (starts 0

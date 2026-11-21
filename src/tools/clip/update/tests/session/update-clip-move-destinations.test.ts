@@ -5,7 +5,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  type ClipPath,
+  type ReturnSlotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import { registerLiveVersion } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { resolveMoveDestinations } from "../../helpers/move/move-destinations.ts";
 
 describe("resolveMoveDestinations", () => {
@@ -18,7 +23,7 @@ describe("resolveMoveDestinations", () => {
     toPath: string | undefined,
     toSlot: string | undefined,
     clipCount: number,
-  ): Array<ClipPath | null> =>
+  ): Array<ClipPath | ReturnSlotPath | null> =>
     resolveMoveDestinations(toPath, toSlot, clipCount).destinations;
 
   it("reads a slot from toPath", () => {
@@ -33,6 +38,26 @@ describe("resolveMoveDestinations", () => {
       { kind: "take-lane", trackIndex: 4, laneIndex: 0 },
       { kind: "take-lane", trackIndex: 6, laneIndex: 1 },
     ]);
+  });
+
+  it("reads a return track's slot from toPath on Live 13", () => {
+    clearMockRegistry();
+    registerLiveVersion("13.0");
+
+    expect(moveLanes("rt1/s3,t0/s1", undefined, 2)).toStrictEqual([
+      { kind: "return-slot", returnIndex: 1, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 0, sceneIndex: 1 },
+    ]);
+  });
+
+  it("names Live 13 for a return track's slot on Live 12", () => {
+    clearMockRegistry();
+    registerLiveVersion("12.4.15");
+
+    const moves = resolveMoveDestinations("rt1/s3", undefined, 1);
+
+    expect(moves.destinations).toStrictEqual([null]);
+    expect(moves.refusals[0]).toContain("return-track clips need Live 13");
   });
 
   it("still reads the deprecated toSlot", () => {

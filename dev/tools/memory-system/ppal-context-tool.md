@@ -8,11 +8,11 @@ The action verbs are uniform across scopes — `read` / `write` / `delete` — a
 their meaning is driven by `scope`, so there is one verb set to learn rather
 than scope-specific verbs:
 
-| Scope     | Storage                                       | Actions                                                                                         |
-| --------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace, guarded)                                                              |
-| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace, guarded)                                                              |
-| `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entry by `name`, or the index if no `name`), `write` (upsert `name`), `delete` (`name`) |
+| Scope     | Storage                                       | Actions                                                                                                         |
+| --------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace, guarded)                                                                              |
+| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace, guarded)                                                                              |
+| `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entries by `name` list, or the index if no `name`), `write` (upsert one `name`), `delete` (`name` list) |
 
 `scope` defaults to `project`; `action` defaults to `read`. `read` on `memory`
 with no `name` returns the whole index (there is no separate `list` action).
@@ -83,16 +83,20 @@ filesystem):
   **restore** (also updates Node's `config.projectContext` mirror directly, so a
   restore during `ppal-connect` shows in that response's injected block — the
   Max round-trip that re-persists the param can't be relied on to land in time);
-  otherwise ⇒ **clear** (delete the sidecar). Otherwise a no-op.
+  otherwise, on a genuine write (`isEdit`) ⇒ **clear** (delete the sidecar).
+  Otherwise a no-op.
 
 **Restore vs. clear.** An empty param means either "device was upgraded, param
 wiped" (restore) or "the user cleared the context"
 (`ppal-context write content:""`, an explicit supported clear). Only a device
 (re)load wipes the param, and that resets V8's module-level memo, so restore is
 gated on `allowRestore = !memo.syncedOnce` — allowed only on the session's first
-sync. After that first sync, an empty param is a deliberate clear, and the route
-_deletes_ the sidecar so the clear sticks and isn't resurrected by a restore on
-the next load.
+sync. After that first sync an empty param is never restored. It is a clear only
+when a genuine write emptied it (`isEdit`, below): the route then _deletes_ the
+sidecar so the clear sticks and isn't resurrected by a restore on the next load.
+A sync that merely sees an empty param deletes nothing — it may be a Set with no
+context saved into a folder that has notes (Save As), and those notes belong to
+the folder's other Sets.
 
 The tool-call sync is the primary trigger, but a **manual edit** (device-UI
 textedit or webui `POST /config`) changes the context without invoking a tool,
@@ -164,13 +168,13 @@ opening a previous version of a Set in the folder replaced the project's current
 notes with that Set's stale ones, with no context write and no user intent.
 
 The rule now enforced: create a _missing_ sidecar always (covering a first save,
-a Save-As, and a moved folder), but overwrite an _existing, differing_ one only
+a Save-As, and a moved folder), but overwrite or delete an _existing_ one only
 on a real project-context write. An `isEdit` flag on the sync request is what
 separates them, and each V8 entry point knows which kind it is:
 
 - `syncProjectContextBackup` runs before every tool call and only _observes_ the
   param, so it always sends `isEdit: false`. It can still create a missing
-  sidecar; it can never replace a differing one.
+  sidecar; it can never replace a differing one or delete one.
 - `backupProjectContextOnEdit` is only ever reached by a genuine write, so it
   sends `isEdit: true` — except while the device may have loaded wiped (no sync
   yet and no load echo with content), where even a write waits its turn.
@@ -204,15 +208,19 @@ The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project
 folder using a path the Live API supplied.
 
-`memory` also round-trips to Node, via sibling RPC ops (`memory.read` /
-`memory.remember` / `memory.forget` / `memory.list` in
+`memory` also round-trips to Node, via sibling RPC ops (`memory.remember` /
+`memory.list` / `memory.readMany` / `memory.forgetMany`, registered in
 `helpers/memory/memory-node-routes.ts`), which call directly into the store in
-`helpers/memory/memory-store.ts`. The wire route names still read
-`remember`/`forget`/`list` — internal identifiers that predate the verb
-unification and never reach the AI; the tool's `write`/`delete`/`read`(no-name)
-actions map onto them. Every mutating route echoes back the freshly regenerated
-index, so the tool result always reflects the current memory list even for a
-client that never re-connects.
+`helpers/memory/memory-store.ts`. The route names are internal and never reach
+the AI; the tool's `write`, `read` (no name, which lists) and `delete` actions
+map onto them. A write echoes back the freshly regenerated index, so the tool
+result reflects the current memory list even for a client that never
+re-connects.
+
+A read or delete of named entries goes through `memory.readMany` and
+`memory.forgetMany` (one name or several), which answer one entry per name and
+echo no index (see
+[specs/tool-behavior/ppal-context.md](../../specs/tool-behavior/ppal-context.md)).
 
 ## Small-model mode
 

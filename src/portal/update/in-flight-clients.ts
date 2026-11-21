@@ -13,7 +13,7 @@ import { logger } from "../file-logger.ts";
  * would read as the device being gone while the device still acts on them.
  */
 export class InFlightClients {
-  private busy = new Map<Client, number>();
+  private busy = new Map<Client, { calls: number }>();
   private retired = new Set<Client>();
 
   /**
@@ -23,16 +23,17 @@ export class InFlightClients {
    * @returns Whatever the request answers
    */
   async run<T>(client: Client, request: () => Promise<T>): Promise<T> {
-    this.busy.set(client, (this.busy.get(client) ?? 0) + 1);
+    const slot = this.busy.get(client) ?? { calls: 0 };
+
+    slot.calls++;
+    this.busy.set(client, slot);
 
     try {
       return await request();
     } finally {
-      const left = (this.busy.get(client) ?? 1) - 1;
+      slot.calls--;
 
-      if (left > 0) {
-        this.busy.set(client, left);
-      } else {
+      if (slot.calls === 0) {
         this.busy.delete(client);
 
         if (this.retired.has(client)) {

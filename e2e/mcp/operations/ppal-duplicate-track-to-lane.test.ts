@@ -493,4 +493,38 @@ describe("ppal-duplicate take lane to a main lane", () => {
       mainLaneClips(await readTrackClips(`t${AUDIO_TRACK}`), `t${AUDIO_TRACK}`),
     ).toHaveLength(0);
   });
+
+  // Live copies a track's take lanes with it, and no clip on one can be deleted.
+  it("lists the take-lane clips a track copy carries, withoutClips or not", async () => {
+    await stackOnSourceLane();
+
+    const copyOf = async (withoutClips: boolean): Promise<LaneCopyResult> =>
+      parseToolResult<LaneCopyResult>(
+        await ctx.client!.callTool({
+          name: "ppal-duplicate",
+          arguments: { type: "track", path: SOURCE, withoutClips },
+        }),
+      );
+
+    const full = await copyOf(false);
+    const lanePaths = (entry: LaneCopyResult): string[] =>
+      entry.clips
+        .map((clip) => clip.path ?? "")
+        .filter((path) => /^t\d+\/l0\[/.test(path));
+
+    // The copy lands after its source, so it isn't the source's own lane.
+    expect(lanePaths(full)).toHaveLength(2);
+    expect(lanePaths(full)).not.toContain(`${SOURCE}/l0[1|1]`);
+    expect(full.clips).toHaveLength(4);
+    expect(full.detail).toBeUndefined();
+
+    await sleep(100);
+
+    // Without clips only the take-lane ones are left, and the entry says so.
+    const bare = await copyOf(true);
+
+    expect(lanePaths(bare)).toHaveLength(2);
+    expect(bare.clips).toHaveLength(2);
+    expect(bare.detail).toContain("2 take-lane clips are still there");
+  });
 });

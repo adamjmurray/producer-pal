@@ -10,6 +10,10 @@ import {
   type ToolCall,
 } from "../../../../types.ts";
 import { legatoTransforms } from "../legato-transforms.ts";
+import {
+  turnsWithCalls as turnsOf,
+  updateClipCall as update,
+} from "./transform-grader-test-helpers.ts";
 
 /** Each turn's grader, and args it accepts. */
 const TURNS: Record<number, [string, Record<string, unknown>]> = {
@@ -31,30 +35,12 @@ const grader = (description: string): CustomAssertion =>
   ) as CustomAssertion;
 
 const turnsWith = (turn: number, call: ToolCall): EvalTurnResult[] =>
-  Array.from({ length: 6 }, (_, i) => ({
-    turnIndex: i,
-    userMessage: "u",
-    assistantResponse: "a",
-    toolCalls: i === turn ? [call, call] : [],
-    durationMs: 1,
-  }));
+  turnsOf(6, turn, [call, call]);
+
+const turnsWithCalls = (turn: number, calls: ToolCall[]): EvalTurnResult[] =>
+  turnsOf(6, turn, calls);
 
 describe("legatoTransforms graders with a follow-up fix in the same turn", () => {
-  const update = (args: Record<string, unknown>, noteCount = 24): ToolCall => ({
-    name: "ppal-update-clip",
-    args,
-    result: `{id:"1",noteCount:${noteCount}}`,
-  });
-
-  const turnsWithCalls = (turn: number, calls: ToolCall[]): EvalTurnResult[] =>
-    Array.from({ length: 6 }, (_, i) => ({
-      turnIndex: i,
-      userMessage: "u",
-      assistantResponse: "a",
-      toolCalls: i === turn ? calls : [],
-      durationMs: 1,
-    }));
-
   it("grades the humanizing call, not the fix-up that clamps start times", () => {
     const calls = [
       update({ transforms: "timing += rand(-0.05, 0.05)" }),
@@ -95,11 +81,7 @@ describe("legatoTransforms graders with a follow-up fix in the same turn", () =>
 describe("legatoTransforms graders", () => {
   for (const [turn, [description, args]] of Object.entries(TURNS)) {
     const index = Number(turn);
-    const call: ToolCall = {
-      name: "ppal-update-clip",
-      args,
-      result: '{id:"1",noteCount:24}',
-    };
+    const call = update(args);
 
     it(`turn ${turn} passes when the call succeeded`, () => {
       expect(grader(description).assert(turnsWith(index, call))).toBe(true);

@@ -24,7 +24,7 @@ import {
 import {
   ARRANGEMENT_CLIP_TESTS_PATH,
   assertLengthenedInPlace,
-  assertLengthenedToFullLength,
+  assertLoopedResizedInPlace,
   type LengthenResult,
   NO_MORE_CONTENT,
   testLengthenClipTo4Bars,
@@ -94,8 +94,9 @@ const assertInPlaceRanOut = (
 ): void => assertLengthenedInPlace(result, expected, NO_MORE_CONTENT);
 
 describe("MIDI Looped Clips Lengthening (t0-t8)", () => {
+  // One looping clip, resized in place: no copies.
   it.each(midiLoopedTestCases)("lengthens t$track: $name", ({ track }) =>
-    expectLengthenedTo4Bars(track, "midi", assertLengthenedToFullLength),
+    expectLengthenedTo4Bars(track, "midi", assertLoopedResizedInPlace),
   );
 });
 
@@ -110,7 +111,7 @@ describe("MIDI Unlooped Clips Lengthening (t9-t14)", () => {
 
 describe("Audio Looped Warped Clips Lengthening (t15-t23)", () => {
   it.each(audioLoopedWarpedTestCases)("lengthens t$track: $name", ({ track }) =>
-    expectLengthenedTo4Bars(track, "audio", assertLengthenedToFullLength),
+    expectLengthenedTo4Bars(track, "audio", assertLoopedResizedInPlace),
   );
 });
 

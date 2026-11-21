@@ -30,7 +30,8 @@ current source.
   `max-for-live-device/chat-ui.html`), `**/mcp` (a minimal JSON-RPC
   `initialize`/`tools/list` stub so the status reads "connected"), `**/config`,
   and `**/update`; and seeds a "configured" Gemini text-chat provider in
-  `localStorage` to skip the first-run settings screen.
+  `localStorage` to skip the first-run settings screen (pass
+  `{ chatSetUp: false }` to get a first visit instead).
 - **`seedConversations(page, records)`** — writes fixture records into the
   `producer-pal-conversations` IndexedDB store.
 - **`readConversationsFromDb(page)`** — reads them back to assert persistence.
@@ -45,11 +46,17 @@ Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
   rename, star/unstar, delete (all backed by assertions against IndexedDB).
 - `conversation-branching.spec.ts`, `assistant-markdown.spec.ts` — edit/retry
   forks and assistant markdown rendering.
-- `chat-image-attachments.spec.ts` — attaching an image to the composer with the
-  file picker, and removing it again.
-- `chat-tab-order.spec.ts` — Tab reaches the composer before the transcript, a
-  closed history panel stays out of the tab path, and the composer still renders
-  below the transcript.
+- `chat/chat-image-attachments.spec.ts` — attaching an image to the composer
+  with the file picker, and removing it again.
+- `chat/chat-tab-order.spec.ts` — Tab reaches the composer before the
+  transcript, a closed history panel stays out of the tab path, and the composer
+  still renders below the transcript.
+
+Generative UI (hidden `?view=gen` panel; served from the `ENABLE_GEN_UI` build
+that `ui:test` makes with `ui:build:gen`):
+
+- `gen/gen-app-host.spec.ts` — an app runs in the sandboxed frame, can't reach
+  the host page or the network, and can't leak data by navigating its frame.
 
 Subagents (`subagent/subagent-test-helpers.ts`, scripted-LLM-backed) — the only
 specs here that drive the chat path:
@@ -74,6 +81,10 @@ model request and every `/subagent-briefing` request for assertions.
 
 Settings modal (`settings/settings-test-helpers.ts`, localStorage-backed):
 
+- `settings/settings-first-run.spec.ts` — Settings before chat is set up:
+  closable, "Set up chat" and the blocked composer, what a Save does and doesn't
+  set up, an Installation deep link, and the Installation tab's Save/Close
+  footer.
 - `settings/presets.spec.ts` — the Presets tab: create → persists across reload
   → re-select, blank/duplicate-name rejection, delete, description edits, and
   the Subagent-preset picker. Presets write to localStorage on click rather than

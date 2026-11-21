@@ -10,8 +10,8 @@
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { EPSILON } from "./arrangement-tiling-clips.ts";
 import { type ArrangementTrack } from "./take-lanes.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 const OVERWROTE = "overwrote the clip at ";
 const SHORTENED = "shortened the clip at ";
@@ -91,13 +91,16 @@ function effectOnClip(
 ): string | undefined {
   const inside = tails.filter(
     (clip) =>
-      clip.start > was.start + EPSILON && clip.start < was.end - EPSILON,
+      clip.start > was.start + SAME_TIME_EPSILON &&
+      clip.start < was.end - SAME_TIME_EPSILON,
   );
 
   if (now == null) {
     // A write starting exactly where a clip starts re-creates what is left of
     // it under a new id, ending where the old clip did.
-    const rest = inside.find((clip) => Math.abs(clip.end - was.end) <= EPSILON);
+    const rest = inside.find(
+      (clip) => Math.abs(clip.end - was.end) <= SAME_TIME_EPSILON,
+    );
 
     return rest == null
       ? `${OVERWROTE}${arrangementPositionPath(lane, was.start)}`
@@ -112,8 +115,8 @@ function effectOnClip(
   }
 
   if (
-    Math.abs(now.start - was.start) > EPSILON ||
-    Math.abs(now.end - was.end) > EPSILON
+    Math.abs(now.start - was.start) > SAME_TIME_EPSILON ||
+    Math.abs(now.end - was.end) > SAME_TIME_EPSILON
   ) {
     return `${SHORTENED}${arrangementPositionPath(lane, now.start)}`;
   }

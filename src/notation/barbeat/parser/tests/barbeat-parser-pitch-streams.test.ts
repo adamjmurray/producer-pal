@@ -131,7 +131,7 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
         {
           stream: {
             param: "velocity",
-            values: [{ velocityMin: 40, velocityMax: 80 }, { velocity: 100 }],
+            values: [{ velocityStart: 40, velocityEnd: 80 }, { velocity: 100 }],
           },
         },
       ]);

@@ -9,7 +9,7 @@ import {
   type EnvelopeLine,
   parseEnvelopeLines,
 } from "#src/tools/clip/envelopes/envelope-lines.ts";
-import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/splitting/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   LEGACY_SPLIT_MODE,
@@ -32,6 +32,7 @@ import {
   foldTargetParams,
   targetCount,
   targetParamLabel,
+  type FoldedTargets,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type ArrangementBeats,
@@ -51,6 +52,10 @@ import {
   refuseRegionWithDuplicateLoop,
   refuseUnreadableCall,
 } from "../update-clip-refusals.ts";
+import {
+  type ScaleRequest,
+  parseScaleRequests,
+} from "#src/tools/shared/schema/scale/scale-parsing.ts";
 import { type ClipUpdateArgs } from "./clip-update-args.ts";
 
 /** Where a split cuts, and how its positions are read. */
@@ -70,6 +75,8 @@ export interface ClipCall {
   labels: PairedLabels;
   /** The other per-target strings for the target at an index */
   valuesAt: (index: number) => ClipValueArgs;
+  /** The scale each target is asked to take, already read */
+  scales: Array<ScaleRequest | undefined>;
   /** The `envelopes` param, already read into lines and checked */
   envelopeLines?: EnvelopeLine[];
   /** The split the call asks for, if it asks for one */
@@ -106,7 +113,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
   const named = namedTargets(folded);
 
   if (named.length === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   refuseNoWrite(args, "clips");
@@ -127,6 +134,8 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
     color: args.color,
   });
   const valuesAt = clipValuesAt(args, named.length);
+  // Read now, so a scale Live can't hold refuses the call with nothing written.
+  const scales = parseScaleRequests(args.scale, named.length);
   const { toPath, toSlot, arrangementLength } = args;
 
   // Before the first Live read, so a call there is no reading of changes
@@ -175,6 +184,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
     named,
     labels,
     valuesAt,
+    scales,
     envelopeLines,
     split,
     moves,
@@ -195,7 +205,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
  * @returns The lists to compare
  */
 function listArgs(
-  folded: TargetParams,
+  folded: FoldedTargets,
   args: ClipUpdateArgs,
 ): Parameters<typeof validateListLengths>[0] {
   return [
@@ -203,6 +213,7 @@ function listArgs(
     { param: "name", value: args.name },
     { param: "color", value: args.color },
     { param: "timeSignature", value: args.timeSignature },
+    { param: "scale", value: args.scale },
     { param: "start", value: args.start },
     { param: "length", value: args.length },
     { param: "firstStart", value: args.firstStart },

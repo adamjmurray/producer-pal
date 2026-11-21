@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
@@ -12,11 +12,11 @@ import {
   musicalBeatsToBarBeat,
 } from "../barbeat-time.ts";
 
-// Mock console.warn to capture out-of-range beat warnings
+// Mock emitWarning to capture out-of-range beat warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  log: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 describe("barbeat-time utilities", () => {
@@ -146,13 +146,13 @@ describe("barbeat-time utilities", () => {
 
     describe("out-of-range beat warning", () => {
       beforeEach(() => {
-        vi.mocked(console.warn).mockClear();
+        vi.mocked(emitWarning).mockClear();
       });
 
       it("warns when a beat overflows past the next bar's downbeat", () => {
         barBeatToMusicalBeats("1|9", 4);
 
-        expect(console.warn).toHaveBeenCalledWith(
+        expect(emitWarning).toHaveBeenCalledWith(
           "Beat 9 exceeds the bar (beatsPerBar=4); it will land in a later bar — did you mean a higher bar number?",
         );
       });
@@ -161,7 +161,7 @@ describe("barbeat-time utilities", () => {
         // beat 5 is fine in 4/4 but overflows in 3/4
         barBeatToMusicalBeats("1|5", 3);
 
-        expect(console.warn).toHaveBeenCalledWith(
+        expect(emitWarning).toHaveBeenCalledWith(
           "Beat 5 exceeds the bar (beatsPerBar=3); it will land in a later bar — did you mean a higher bar number?",
         );
       });
@@ -171,7 +171,7 @@ describe("barbeat-time utilities", () => {
         barBeatToMusicalBeats("1|4.5", 4); // sub-beat within bar
         barBeatToMusicalBeats("1|5", 4); // next bar's downbeat (beatsPerBar+1)
 
-        expect(console.warn).not.toHaveBeenCalled();
+        expect(emitWarning).not.toHaveBeenCalled();
       });
     });
 

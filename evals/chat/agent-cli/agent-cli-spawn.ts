@@ -5,11 +5,17 @@
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
-import { createStepBudgetWatcher } from "./agent-cli-step-budget.ts";
+import { agentCliCommand } from "./agent-cli-command.ts";
+import {
+  createStepBudgetWatcher,
+  StepBudgetError,
+  STEP_BUDGET_STOP_PHRASE,
+} from "./agent-cli-step-budget.ts";
 import {
   type AgentCliTransport,
   scrubAgentCliEnv,
 } from "./agent-cli-transport.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 /** Grace period between SIGTERM and SIGKILL when a turn is cut off. */
@@ -48,10 +54,11 @@ export function spawnAgentCli(
   const stepBudget = options.stepBudget ?? MAX_TOOL_STEPS;
   const sigkillGraceMs = options.sigkillGraceMs ?? DEFAULT_SIGKILL_GRACE_MS;
   const executable = process.env[transport.binEnvVar] ?? transport.bin;
+  const [command, commandArgs] = agentCliCommand(executable, args);
   const env = scrubAgentCliEnv(process.env, transport.strippedEnvVars);
 
   return new Promise<string>((resolve, reject) => {
-    const child: ChildProcessWithoutNullStreams = spawn(executable, args, {
+    const child: ChildProcessWithoutNullStreams = spawn(command, commandArgs, {
       cwd: options.cwd,
       env: env,
     });
@@ -114,9 +121,10 @@ export function spawnAgentCli(
 
       if (overBudget) {
         reject(
-          new Error(
-            `${transport.label} hit the step budget of ${stepBudget} steps ` +
+          new StepBudgetError(
+            `${transport.label} ${STEP_BUDGET_STOP_PHRASE} ${stepBudget} steps ` +
               `and was stopped. The model was probably looping.`,
+            stdout,
           ),
         );
       } else if (timedOut) {
@@ -198,7 +206,7 @@ function exitError(
   try {
     transport.parseStream(stdout);
   } catch (error) {
-    streamError = error instanceof Error ? error.message : String(error);
+    streamError = errorMessage(error);
   }
 
   if (streamError !== "") {

@@ -135,7 +135,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
-  // How duplicate numbers each tile of a copy by its copy.
+  // How duplicate numbers each clip by its copy.
   it("takes clip.index/clip.count from the caller when it numbers the clips", async () => {
     await updateClip(
       {
@@ -214,7 +214,7 @@ describe("updateClip - transforms name the clip they warn about", () => {
   });
 });
 
-describe("updateClip - transforms read the Live Set's scale", () => {
+describe("updateClip - transforms read the Live Set's scale where clips have none", () => {
   let mocks: UpdateClipMocks;
 
   // snap() only moves a note when the clip context carries the Set's scale

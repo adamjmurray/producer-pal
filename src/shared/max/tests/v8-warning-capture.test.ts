@@ -10,6 +10,7 @@ import {
   capturedWarnings,
   changedNothing,
   clearCapturedWarnings,
+  currentRequestId,
   detachWarningCapture,
   endWarningCapture,
   MAX_CAPTURED_WARNINGS,
@@ -28,6 +29,22 @@ describe("v8-warning-capture", () => {
     expect(recordWarning("first")).toBe(true);
     expect(recordWarning("second")).toBe(true);
     expect(endWarningCapture(capture)).toStrictEqual(["first", "second"]);
+  });
+
+  it("numbers each request, and has none in flight outside one", () => {
+    const first = beginWarningCapture();
+    const firstId = currentRequestId();
+
+    beginWarningCapture();
+
+    expect(firstId).toBe(first.id);
+    expect(currentRequestId()).toBe(first.id + 1);
+
+    resumeWarningCapture(first);
+    expect(currentRequestId()).toBe(first.id);
+
+    resetWarningCapture();
+    expect(currentRequestId()).toBeNull();
   });
 
   it("refuses a warning when no request is in flight", () => {

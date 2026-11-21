@@ -302,8 +302,8 @@ describe("Transform Evaluator - quant()", () => {
   });
 
   describe("error handling", () => {
-    it("throws for grid <= 0", () => {
-      expectTransformError("timing = quant(-1)");
+    it("throws at run time for a grid <= 0 only known per note", () => {
+      expectTransformError("timing = quant(0 * note.pitch)");
     });
   });
 });

@@ -115,6 +115,26 @@ describe("useChat handleEdit", () => {
     expect((userPart as { content: string }).content).toBe("Edited message");
   });
 
+  it("keeps the conversation's thinking level, not the settings default", async () => {
+    const { result } = renderHook(() => useChat(defaultProps));
+
+    await act(async () => {
+      await result.current.handleSend("Original message", { thinking: "High" });
+    });
+
+    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
+
+    await act(async () => {
+      await result.current.handleEdit(userIdx, "Edited message");
+    });
+
+    expect(mockAdapter.createClient).toHaveBeenLastCalledWith("test-key", {
+      model: "test-model",
+      thinking: "High",
+    });
+    expect(result.current.activeThinking).toBe("High");
+  });
+
   it("sets isAssistantResponding to false after completion", async () => {
     const { result } = renderHook(() => useChat(defaultProps));
 

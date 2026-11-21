@@ -39,10 +39,10 @@ describe("updateTrack by path", () => {
   });
 
   it("reaches a return track and the main track", () => {
-    const result = updateTrack({ path: "rt1,mt", color: "#FF0000" });
+    const result = updateTrack({ path: "rt1,mt", color: "#FF3636" });
 
-    expect(returnTrack.set).toHaveBeenCalledWith("color", 16711680);
-    expect(mainTrack.set).toHaveBeenCalledWith("color", 16711680);
+    expect(returnTrack.set).toHaveBeenCalledWith("color", 16725558);
+    expect(mainTrack.set).toHaveBeenCalledWith("color", 16725558);
     expect(result).toStrictEqual([
       { id: "r1", path: "rt1" },
       { id: "m", path: "mt" },

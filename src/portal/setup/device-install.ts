@@ -4,36 +4,26 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { randomUUID } from "node:crypto";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import {
   copyIntoLibrary,
   isLibraryFolder,
-  listLibraryFolder,
-  makeLibraryFolder,
-  removeFromLibrary,
-  renameInLibrary,
-  setLibraryFileMode,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
-import { isStaleLeftover } from "#src/mcp-server/rpc/remote-script/user-library/stale-leftover.ts";
+import { forgetDeviceFile } from "./device-file/device-file-facts.ts";
 import {
   DEVICE_FILE_NAME,
   type DeviceFileStatus,
   type DeviceState,
   deviceFileStatus,
-} from "./device-file-status.ts";
-
-// Temp files this code names, and nothing a user might name.
-const LEFTOVER = new RegExp(
-  `^${DEVICE_FILE_NAME.replace(".", "\\.")}\\.tmp-[\\da-f]{8}(-[\\da-f]{4}){3}-[\\da-f]{12}$`,
-);
-
-const INSTALLED_MODE = 0o644;
+} from "./device-file/device-file-status.ts";
+import {
+  type ReplaceFailure,
+  isInUseFailure,
+  removeStaleTempFiles,
+  replaceViaTemp,
+} from "./device-file/replace-via-temp.ts";
 
 const DEFAULT_SOURCE_NAME = "the bundled one";
-
-// Windows refuses to replace a file that Live has open.
-const IN_USE_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
 
 export type DeviceInstallOutcome =
   | "installed"
@@ -177,23 +167,19 @@ function copyDevice(
   state: DeviceState,
 ): CopyOutcome {
   const folder = dirname(path);
-  const temp = `${path}.tmp-${randomUUID()}`;
   const missing = missingFolders(folder);
 
-  removeLeftovers(folder);
+  removeStaleTempFiles(folder, DEVICE_FILE_NAME);
 
-  let step: "prepare" | "rename" = "prepare";
+  const failed = replaceViaTemp(path, (temp) =>
+    copyIntoLibrary(sourceFile, temp),
+  );
 
-  try {
-    makeLibraryFolder(folder);
-    copyIntoLibrary(sourceFile, temp);
-    // The bundled file may be read-only, and a copy keeps that.
-    setLibraryFileMode(temp, INSTALLED_MODE);
-    step = "rename";
-    renameInLibrary(temp, path);
-  } catch (error) {
-    return failure(error, temp, missing, step === "rename");
+  if (failed != null) {
+    return failure(failed, missing);
   }
+
+  forgetDeviceFile(path);
 
   return {
     outcome: state === "not-installed" ? "installed" : "updated",
@@ -207,27 +193,19 @@ function copyDevice(
 }
 
 /**
- * Describe a failed copy and clean up after it.
+ * Describe a failed copy.
  *
- * @param error - What threw
- * @param temp - The temp file, which may or may not exist
+ * @param failed - What the replace reported
  * @param missing - Folders that were missing before the copy, outermost first
- * @param renaming - Whether the failing step was the rename into place
  * @returns The outcome fields for a failure
  */
-function failure(
-  error: unknown,
-  temp: string,
-  missing: string[],
-  renaming: boolean,
-): CopyOutcome {
-  const code = (error as NodeJS.ErrnoException | undefined)?.code;
-  const tempFileLeft = deleteTemp(temp);
+function failure(failed: ReplaceFailure, missing: string[]): CopyOutcome {
+  const { error, tempFileLeft } = failed;
   const parts = [
     "Couldn't install the device. The device file was not changed.",
   ];
 
-  if (renaming && code != null && IN_USE_CODES.has(code)) {
+  if (isInUseFailure(failed)) {
     parts.push(
       "It may be open in Live: close any Set that uses Producer Pal, or quit Live, and try again.",
     );
@@ -255,20 +233,6 @@ function failure(
 }
 
 /**
- * @param temp - The temp file to delete
- * @returns The temp file's path when it couldn't be deleted
- */
-function deleteTemp(temp: string): string | undefined {
-  try {
-    removeFromLibrary(temp);
-
-    return undefined;
-  } catch {
-    return temp;
-  }
-}
-
-/**
  * @param folder - A folder that may not exist
  * @returns The folders from it up that don't exist yet, outermost first
  */
@@ -282,24 +246,4 @@ function missingFolders(folder: string): string[] {
   }
 
   return missing;
-}
-
-/**
- * Best-effort removal of temp files from earlier installs that went wrong.
- * Young ones are left, since another install may be writing them.
- *
- * @param folder - The folder holding the device
- */
-function removeLeftovers(folder: string): void {
-  try {
-    for (const name of listLibraryFolder(folder)) {
-      const path = join(folder, name);
-
-      if (LEFTOVER.test(name) && isStaleLeftover(path)) {
-        deleteTemp(path);
-      }
-    }
-  } catch {
-    // A leftover is harmless; this install's temp file has a unique name.
-  }
 }

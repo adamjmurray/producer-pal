@@ -18,16 +18,30 @@ export const OUT_DIR = new URL("../../../../docs/public/img/", import.meta.url)
 const USER_LIBRARY = "/Users/you/Music/Ableton/User Library";
 const DEVICE_PATH = `${USER_LIBRARY}/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`;
 
+// Without a prerelease suffix: the docs go live with the release.
 export const VERSION = (
   JSON.parse(
     readFileSync(new URL("../../../../package.json", import.meta.url), "utf8"),
   ) as { version: string }
-).version;
+).version.replace(/-.*$/, "");
 
 /** Any 39 characters; the field only ever shows dots. */
 export const FAKE_KEY = "x".repeat(39);
 
 type Body = Record<string, unknown>;
+
+/**
+ * The two plug-in wrapper devices, both in one state.
+ * @param state - "current" once installed, "missing" before
+ * @returns The /device-install `pluginHost` list
+ */
+export function pluginHostWrappers(state: "current" | "missing"): Body[] {
+  return ["PPal Plug-in Effect", "PPal Plug-in Instrument"].map((name) => ({
+    name,
+    path: `${USER_LIBRARY}/Presets/${name}.amxd`,
+    state,
+  }));
+}
 
 /**
  * Device install status: the User Library copy, unless overridden.
@@ -49,6 +63,7 @@ export function deviceStatus(overrides: Body = {}): Body {
       allowed: false,
       reason: "This device is already the User Library copy.",
     },
+    pluginHost: pluginHostWrappers("current"),
     ...overrides,
   };
 }
@@ -119,12 +134,12 @@ const BASE_STORAGE: Body = {
   producer_pal_current_provider: "gemini",
   producer_pal_provider_gemini: {
     apiKey: FAKE_KEY,
-    model: "gemini-3.8-flash",
+    model: "gemini-4-carbon",
     thinking: "Default",
   },
   producer_pal_provider_openai: {
     apiKey: FAKE_KEY,
-    model: "gpt-6.1-sol",
+    model: "gpt-6.2-sol",
     thinking: "Default",
   },
 };

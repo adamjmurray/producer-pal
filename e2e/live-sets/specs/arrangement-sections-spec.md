@@ -190,9 +190,9 @@ with `node e2e/live-sets/samples/generate-drum-loop.mjs`, which also renders
 `drum-loop-1bar.wav` for `e2e-test-set` and asserts both frame counts.
 
 **An 8-bar audio clip has to come from an 8-bar sample.** `arrangementLength` on
-a looping audio clip tiles copies rather than stretching one clip, and
-`end_time` is read-only on an arrangement clip — a `set` returns success and the
-value does not move. That is why this fixture exists.
+a looping audio clip repeats its loop rather than playing on into more audio,
+and `end_time` is read-only on an arrangement clip — a `set` returns success and
+the value does not move. That is why this fixture exists.
 
 ## What this Set covers that no other does
 

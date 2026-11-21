@@ -156,7 +156,11 @@ export function CustomSkillEditor(
         canSave={canSave}
         createLabel="Create skill"
         onSave={() => void handleSave()}
-        onDelete={() => void confirmDelete(collection, entry, onDeleted)}
+        onDelete={
+          entry == null
+            ? undefined
+            : () => void confirmDelete(collection, entry, onDeleted)
+        }
       />
     </CollectionEditorShell>
   );
@@ -165,21 +169,16 @@ export function CustomSkillEditor(
 // --- Helpers below main export ---
 
 /**
- * Confirm, then delete this skill and notify the parent. A new draft has
- * nothing to delete.
+ * Confirm, then delete this skill and notify the parent.
  * @param collection - The collection hook (owns deleteEntry)
- * @param entry - The skill being edited, or null when creating a new one
+ * @param entry - The skill being edited
  * @param onDeleted - Called after a successful delete
  */
 async function confirmDelete(
   collection: UseCustomSkillsCollectionReturn,
-  entry: CustomSkillView | null,
+  entry: CustomSkillView,
   onDeleted: () => void,
 ): Promise<void> {
-  if (entry == null) {
-    return;
-  }
-
   if (!confirmEntryDelete("custom skill", entry.name)) {
     return;
   }

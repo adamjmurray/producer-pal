@@ -19,6 +19,11 @@
  * still needs a restart, as does a change to a bootstrap file
  * (see remote-script/README.md).
  *
+ * Installs what the matching device build embeds: the experimental generative
+ * UI's Python files only with ENABLE_GEN_UI=true (see
+ * src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts). Install with the same flag as the device
+ * build, or the installed script and the device disagree about its build.
+ *
  * Uses ABLETON_USER_LIBRARY from .env if set (see .env.example), else the User
  * Library Live is using. The device installs the same files from its own
  * bundle; this is the dev shortcut. Live only scans Remote Scripts at startup,

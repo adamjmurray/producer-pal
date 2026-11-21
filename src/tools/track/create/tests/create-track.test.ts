@@ -10,14 +10,14 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 describe("createTrack", () => {
@@ -38,12 +38,12 @@ describe("createTrack", () => {
     const result = createTrack({
       trackIndex: 1,
       name: "New MIDI Track",
-      color: "#FF0000",
+      color: "#FF3636",
     });
 
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", 1);
     expect(track.set).toHaveBeenCalledWith("name", "New MIDI Track");
-    expect(track.set).toHaveBeenCalledWith("color", 16711680);
+    expect(track.set).toHaveBeenCalledWith("color", 16725558);
     expect(result).toStrictEqual({
       id: "midi_track_1",
       path: "t1",
@@ -92,7 +92,7 @@ describe("createTrack", () => {
       trackIndex: 2,
       count: 3,
       name: "Drum",
-      color: "#00FF00",
+      color: "#1AFF2F",
     });
 
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_midi_track", 2);
@@ -366,9 +366,9 @@ describe("createTrack", () => {
     it("should create return track with color", () => {
       const track = registerMockObject("return_track_0", {});
 
-      createTrack({ type: "return", name: "Reverb", color: "#0000FF" });
+      createTrack({ type: "return", name: "Reverb", color: "#1A2F96" });
 
-      expect(track.set).toHaveBeenCalledWith("color", 255);
+      expect(track.set).toHaveBeenCalledWith("color", 1716118);
     });
 
     // The trackIndex and type deprecations both already say to use "rt+", so a
@@ -382,7 +382,7 @@ describe("createTrack", () => {
         name: "Ignored Index",
       });
 
-      expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
         'type "return" is deprecated and will be removed; use path "rt+" instead',
       );
       // Should still create the track
@@ -557,7 +557,7 @@ describe("createTrack", () => {
           trackIndex: 0,
           count: 4,
           name: "Track",
-          color: "#FF0000,#00FF00",
+          color: "#FF3636,#1AFF2F",
         }),
       ).toThrow("count names 4 tracks but color names 2 entries");
     });
@@ -569,13 +569,13 @@ describe("createTrack", () => {
         trackIndex: 0,
         count: 3,
         name: "Track",
-        color: "#FF0000,#00FF00,#0000FF",
+        color: "#FF3636,#1AFF2F,#1A2F96",
       });
 
       expectTrackColors(tracks, [
-        16711680, // #FF0000
-        65280, // #00FF00
-        255, // #0000FF
+        16725558, // #FF3636 -> #FF3636
+        1769263, // #1AFF2F -> #1AFF2F
+        1716118, // #1A2F96 -> #1A2F96
       ]);
     });
 
@@ -587,9 +587,9 @@ describe("createTrack", () => {
           trackIndex: 0,
           count: 1,
           name: "Track",
-          color: "#FF0000,#00FF00",
+          color: "#FF3636,#1AFF2F",
         }),
-      ).toThrow('invalid color "#FF0000,#00FF00" - expected "#RRGGBB"');
+      ).toThrow('invalid color "#FF3636,#1AFF2F" - expected "#RRGGBB"');
     });
 
     it("should trim whitespace around comma-separated colors", () => {
@@ -599,12 +599,12 @@ describe("createTrack", () => {
         trackIndex: 0,
         count: 2,
         name: "Track",
-        color: " #FF0000 , #00FF00 ",
+        color: " #FF3636 , #1AFF2F ",
       });
 
       expectTrackColors(tracks, [
-        16711680, // #FF0000
-        65280, // #00FF00
+        16725558, // #FF3636 -> #FF3636
+        1769263, // #1AFF2F -> #1AFF2F
       ]);
     });
   });

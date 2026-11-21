@@ -9,13 +9,13 @@ import {
   expectExtendedInPlace,
   mockContext,
   setupArrangementClipPath,
-  setupArrangementMidiClipMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { makeResizable } from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 // Unlooped MIDI clip lengthening uses loop_end to extend arrangement length
 // directly. end_marker is extended so notes are visible in the extended region.
-// No tiling, no holding area — returns a single clip.
+// No holding area — returns a single clip.
 
 function setupClipMock(clipId: string) {
   const clips = setupArrangementClipPath(0, [clipId]);
@@ -31,7 +31,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     const clipId = "800";
     const clip = setupClipMock(clipId);
 
-    setupArrangementMidiClipMock(clip, {
+    makeResizable(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -54,7 +54,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     // loop_end set: loopStart(0) + target(14) = 14.0
     expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
 
-    // Single clip returned (extended in place, no tiles)
+    // Single clip returned (extended in place)
     // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
@@ -63,7 +63,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     const clipId = "820";
     const clip = setupClipMock(clipId);
 
-    setupArrangementMidiClipMock(clip, {
+    makeResizable(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -86,7 +86,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     // loop_end set: loopStart(1) + target(14) = 15.0
     expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
-    // Single clip returned (extended in place, no tiles)
+    // Single clip returned (extended in place)
     // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
@@ -95,7 +95,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     const clipId = "830";
     const clip = setupClipMock(clipId);
 
-    setupArrangementMidiClipMock(clip, {
+    makeResizable(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,

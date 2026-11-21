@@ -21,8 +21,13 @@ import {
   warnInapplicableClipParams,
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+  isReturnTrackClip,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /**
  * Resolves the comma-separated arrangementStart list to beats. Shared by clip
@@ -104,9 +109,7 @@ export function refuseDuplicatePositionsPastCap(
     ),
   ];
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
+  const { numerator, denominator } = songMeter();
 
   for (const { position, param } of named) {
     refuseArrangementPositionPastCap(
@@ -182,14 +185,21 @@ export function resolveDestinationTargets(
   sourceClip: LiveAPI,
   targets: (DuplicateArrangementTarget | null)[],
 ): ResolvedDestinations {
+  // An envelope clip has no arrangement to go to: every entry is refused.
+  if (isReturnTrackClip(sourceClip)) {
+    const count = Math.max(targets.length, 1);
+
+    return {
+      destinations: Array.from({ length: count }, () => null),
+      refusals: Array.from(
+        { length: count },
+        () => ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+      ),
+    };
+  }
+
   const ownTrack = (): ArrangementTrack => {
-    const sourceTrackIndex = sourceClip.trackIndex;
-
-    if (sourceTrackIndex == null) {
-      throw new Error(`no track for clip ${targetLabel(sourceClip)}`);
-    }
-
-    return { trackIndex: sourceTrackIndex, takeLane: null };
+    return { trackIndex: requireTrackIndex(sourceClip), takeLane: null };
   };
 
   if (targets.length === 0) {
@@ -258,6 +268,8 @@ interface DestinationParams {
   laneCopy: boolean;
   /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
+  /** The param the caller wrote the positions in */
+  startParam?: string;
 }
 
 /**
@@ -279,7 +291,12 @@ export function resolveDestinationAndWarn(
   const destination =
     clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
-  validateDestinationParameter(type, destination, params.laneCopy);
+  validateDestinationParameter(
+    type,
+    destination,
+    params.laneCopy,
+    params.startParam,
+  );
   warnUnusedArrangementLength(type, destination, arrangementLength);
 
   // takeLane and takeLaneName only apply to arrangement-destination clips (and

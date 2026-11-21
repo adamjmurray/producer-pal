@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { copyText } from "#webui/lib/utils/copy-text";
 
 interface CopyButtonProps {
   /** The text written to the clipboard on click. */
@@ -12,45 +13,47 @@ interface CopyButtonProps {
   label?: string;
   /** Label shown briefly after a successful copy (default "Copied"). */
   copiedLabel?: string;
+  /** Label shown briefly when the copy fails (default "Copy failed"). */
+  failedLabel?: string;
   /** Button className — styling stays with the caller. */
   className?: string;
 }
 
-/** How long the "Copied" confirmation stays up after a successful copy. */
-const COPIED_FEEDBACK_MS = 1500;
+/** How long the "Copied" or "Copy failed" label stays up. */
+const FEEDBACK_MS = 1500;
 
 /**
- * A copy-to-clipboard button that confirms with a brief "Copied" label and
- * swallows a failed clipboard write (denied permission / insecure context)
- * instead of leaking an unhandled rejection. Styling is the caller's via
- * `className`, so it drops into the existing copy affordances unchanged.
+ * A copy-to-clipboard button that confirms with a brief "Copied" label, or
+ * "Copy failed" when no way of copying works. Works on plain-HTTP pages, where
+ * the async clipboard API is missing. Styling is the caller's via `className`,
+ * so it drops into the existing copy affordances unchanged.
  * @param props - Button props
  * @returns Button element
  */
 export function CopyButton(props: CopyButtonProps): preact.JSX.Element {
-  const { text, label = "Copy", copiedLabel = "Copied", className } = props;
-  const [copied, setCopied] = useState(false);
+  const {
+    text,
+    label = "Copy",
+    copiedLabel = "Copied",
+    failedLabel = "Copy failed",
+    className,
+  } = props;
+  const [feedback, setFeedback] = useState<"copied" | "failed" | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
+
+  const labels = { copied: copiedLabel, failed: failedLabel };
 
   // Clear a pending reset if the button unmounts mid-confirmation.
   useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
   const onCopy = useCallback(() => {
-    void (async () => {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(
-          () => setCopied(false),
-          COPIED_FEEDBACK_MS,
-        );
-      } catch {
-        // Clipboard write denied; leave the label untouched rather than throw.
-      }
-    })();
+    void copyText(text).then((ok) => {
+      setFeedback(ok ? "copied" : "failed");
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setFeedback(null), FEEDBACK_MS);
+    });
   }, [text]);
 
   return (
@@ -60,7 +63,7 @@ export function CopyButton(props: CopyButtonProps): preact.JSX.Element {
       className={className}
       aria-live="polite"
     >
-      {copied ? copiedLabel : label}
+      {feedback == null ? label : labels[feedback]}
     </button>
   );
 }

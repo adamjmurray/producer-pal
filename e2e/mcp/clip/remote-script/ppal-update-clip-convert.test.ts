@@ -12,7 +12,7 @@
  * at t4@17|1, and a MIDI clip at t0/s0.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-convert
+ * Run with: npm run e2e:mcp -- clip/remote-script/ppal-update-clip-convert
  */
 import { describe, expect, it } from "vitest";
 import {

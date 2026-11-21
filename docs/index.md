@@ -76,7 +76,7 @@ features:
 <div class="get-started-wrapper">
   <section class="get-started-container">
     <h2 class="get-started-title">Get Started Now</h2>
-    <p class="get-started-subtitle">Choose your setup:</p>
+    <p class="get-started-subtitle">Choose your AI:</p>
     <div class="get-started-arrows">
       <svg viewBox="0 0 600 80" preserveAspectRatio="xMidYMid meet">
         <path class="arrow-path" d="M300,10 Q180,45 80,70" />
@@ -94,14 +94,15 @@ features:
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
-          <h3 class="card-title"><a href="/installation/desktop-apps">Desktop Apps</a></h3>
+          <h3 class="card-title"><a href="/installation#option-1-use-your-subscription">Your AI Subscription</a></h3>
         </div>
-        <p class="card-description">Dedicated AI apps</p>
+        <p class="card-description">No extra cost</p>
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
           <li><a href="/installation/antigravity">Google Antigravity</a></li>
-          <li><a href="/installation/bionic">Bionic / LM Studio</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/mistral-vibe">Mistral Vibe</a></li>
+          <li><a href="/installation/cli">CLI coding agents</a></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -111,35 +112,35 @@ features:
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
-          <h3 class="card-title"><a href="/installation/chat-ui">Built-in Chat UI</a></h3>
+          <h3 class="card-title"><a href="/installation#option-2-use-api-keys">API Keys</a></h3>
         </div>
-        <p class="card-description">Browser-based chat</p>
+        <p class="card-description">Pay as you go, try any AI</p>
         <ul class="card-links">
-          <li><a href="/installation/choose-local">Local AI</a> <span class="tag">offline</span></li>
           <li><a href="/installation/ai-routers#openrouter">OpenRouter</a></li>
           <li><a href="/installation/ai-routers#vercel-ai-gateway">Vercel AI Gateway</a></li>
-          <li><a href="/installation/chat-ui">Your own API key</a></li>
+          <li><a href="/installation/api-keys">Provider API keys</a></li>
         </ul>
       </div>
       <div class="get-started-card card-tertiary">
         <div class="card-header">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+              <rect x="9" y="9" width="6" height="6" />
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3" />
             </svg>
           </div>
-          <h3 class="card-title"><a href="/extending">Agents &amp; Code</a></h3>
+          <h3 class="card-title"><a href="/installation#option-3-use-a-local-model">Local Model</a></h3>
         </div>
-        <p class="card-description">Coding agents and your own code</p>
+        <p class="card-description">Free and offline, on a powerful computer</p>
         <ul class="card-links">
-          <li><a href="/guide/skills">Agent Skill</a> <span class="tag">no MCP</span></li>
-          <li><a href="/guide/rest-api">REST API</a> <span class="tag">no AI</span></li>
-          <li><a href="/installation/cli">Command Line Tools</a></li>
-          <li><a href="/installation">Web apps &amp; more</a></li>
+          <li><a href="/installation/local-ai">Built-in Chat UI</a></li>
+          <li><a href="/installation/bionic">Bionic / LM Studio</a></li>
+          <li><a href="/installation/choose-local">Is my computer powerful enough?</a></li>
         </ul>
       </div>
     </div>
+    <p class="get-started-footnote">Writing code? See <a href="/extending">Agents &amp; Code</a> for the Agent Skill and REST API.</p>
   </section>
 </div>
 
@@ -206,7 +207,9 @@ features:
   ([written guide](/installation/api-keys#gemini)). _Note: the free use shown
   here is now very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users). _Note: the free use shown here is now very limited._
+  (for command line users). _Note: Gemini CLI is now
+  [Antigravity CLI](/installation/antigravity-cli), and the free use shown here
+  is now very limited._
 
 ## About Producer Pal
 
@@ -221,7 +224,7 @@ models via Ollama or Bionic / LM Studio. The AI is optional. The same device
 exposes an open [REST API](/guide/rest-api), so anything that can make an HTTP
 request (scripts, coding agents, your own tools) can read and edit a Live Set
 with no AI involved. There's also a portable [Agent Skill](/guide/skills) for
-Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime.
+Claude Code, Codex CLI, Antigravity CLI, and any SKILL.md-compatible runtime.
 
 Producer Pal is free, open-source (MIT), and developed in the open, with updates
 for new Ableton Live features.

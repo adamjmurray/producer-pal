@@ -109,6 +109,27 @@ export function isNewerVersion(current: string, latest: string): boolean {
 }
 
 /**
+ * Whether a running Live is at least a version. Live labels betas without a
+ * dash ("12.4.15b7"), which `isNewerVersion` doesn't see as pre-release. Any
+ * letter suffix ("b", "rc", "d") marks one. Here a pre-release of `min` itself
+ * counts as older than `min`, since it may not have what the release does; a
+ * pre-release of any later version counts as at least `min`.
+ * @param version - The Live version string, like "12.4.15b7"
+ * @param min - The oldest version that has the feature, like "12.4.15"
+ * @returns True when the running Live is `min` or later
+ */
+export function isLiveVersionAtLeast(version: string, min: string): boolean {
+  if (isNewerVersion(version, min)) {
+    return false;
+  }
+
+  const release = version.trim().replace(/[a-z]+\d*$/i, "");
+
+  // Same numbers as `min` but a pre-release: the release is still to come.
+  return release === version.trim() || isNewerVersion(min, release);
+}
+
+/**
  * Whether an installed copy is behind a build: different from it, and not newer.
  * An unreadable version counts as behind. Differs-from is the test, not
  * `isNewerVersion`, which can't order every pair of pre-release tags (beta vs
@@ -259,14 +280,20 @@ export interface InstallIncompleteInput {
    * been read yet.
    */
   remoteScriptCurrent: boolean | null;
+  /**
+   * Whether both plug-in wrapper devices in the User Library match this build.
+   * Null when there is no User Library to look in, or it hasn't been read yet.
+   */
+  wrappersCurrent: boolean | null;
 }
 
 /**
  * Whether the installation is unfinished: the User Library has no copy of this
  * device or an older one (only a frozen device can be copied; a newer or
- * different copy is the user's call), or its remote script is missing or behind
- * this build. The one definition the device's notice and the chat UI's
- * Installation tab dot both go by.
+ * different copy is the user's call), its remote script is missing or behind
+ * this build, or a plug-in wrapper device is missing or differs from this
+ * build. The one definition the device's notice and the chat UI's Installation
+ * tab dot both go by.
  *
  * @param input - The device copy and remote script facts
  * @returns Whether something in the User Library is missing or out of date
@@ -276,6 +303,54 @@ export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
     input.problem == null &&
     (input.state === "not-installed" || input.state === "installed-older");
 
+  const wrappersBehind =
+    input.wrappersCurrent === false && wrappersAreOursToInstall(input);
+
   // With no User Library there is nothing to compare, so nothing to nag about.
-  return copyBehind || input.remoteScriptCurrent === false;
+  return copyBehind || wrappersBehind || input.remoteScriptCurrent === false;
 }
+
+/**
+ * Whether a wrapper that is missing or differs is this build's to install. The
+ * wrappers ride the device install: a newer or different device copy means the
+ * User Library may belong to another build, whose wrappers would differ too. A
+ * development device can't be copied, but its wrappers install alone. The
+ * install notice and ppal-connect's wrapper line both go by this.
+ *
+ * @param device - Why the device can't be copied, and how its copy compares
+ * @param device.problem - Why the device can't be copied, or null when it can
+ * @param device.state - The User Library copy compared with the device
+ * @returns Whether to report such a wrapper
+ */
+export function wrappersAreOursToInstall(device: {
+  problem: string | null;
+  state: string | null;
+}): boolean {
+  return device.problem == null
+    ? device.state !== "installed-newer" && device.state !== "different"
+    : device.problem === "not-frozen";
+}
+
+/**
+ * @param version - A version a status reported, or null
+ * @returns The version to show, never "vnull"
+ */
+export function versionText(version: string | null): string {
+  return version == null ? "an unknown version" : `v${version}`;
+}
+
+// Version check wording, shared with the portal: keep imports portal-safe.
+
+/** The call that re-checks versions without re-sending the Skills and context. */
+export const VERSION_CHECK_CALL = "ppal-connect with versionCheck: true";
+
+/** Follows the check where the chat may not have called ppal-connect yet (it needs Skills). */
+export const VERSION_CHECK_NEVER_CONNECTED =
+  "(If this chat hasn't called ppal-connect yet, call it without versionCheck.)";
+
+/** Added where a connect result tells the user to restart Live. */
+export const AFTER_RESTART_CHECK = `Once they have, call ${VERSION_CHECK_CALL}.`;
+
+/** Ends a version check that found nothing to fix. */
+export const UP_TO_DATE_NEW_CHAT =
+  "Everything is up to date. If this chat only connected and updated Producer Pal, tell the user to start a new chat: this one loaded its skills and tools before the update.";

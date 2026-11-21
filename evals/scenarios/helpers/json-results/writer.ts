@@ -25,12 +25,21 @@ export async function writeJsonResult(result: JsonEvalResult): Promise<string> {
   await mkdir(dir, { recursive: true });
 
   const stored = await externalizeInjectedBlocks(result, dir);
-  const filename = buildResultFilename(result);
-  const filePath = join(dir, filename);
+  const filePath = resultFilePath(result);
 
   await writeFile(filePath, JSON.stringify(stored, null, 2) + "\n");
 
   return filePath;
+}
+
+/**
+ * Where a result is saved.
+ *
+ * @param result - The eval result
+ * @returns Path to its file
+ */
+export function resultFilePath(result: JsonEvalResult): string {
+  return join(RESULTS_DIR, result.runId, buildResultFilename(result));
 }
 
 /**

@@ -24,10 +24,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CONNECT = "ppal-connect";
-const TOOL_UPDATE_TRACK = "ppal-update-track";
-const TOOL_READ_TRACK = "ppal-read-track";
+const TOOL_CONNECT = TOOLS.connect;
 /** Every read tool shares this prefix. */
 const READ_PREFIX = "ppal-read-";
 
@@ -61,11 +60,11 @@ function assertNoReadBack(): EvalAssertion {
       // Failed calls count: a read-back that errored is still a read-back.
       const calls = getAllToolCalls(turns, ASK_TURN);
       const wrote = calls.findLastIndex(
-        (call) => call.name === TOOL_UPDATE_TRACK && !toolCallFailed(call),
+        (call) => call.name === TOOLS.updateTrack && !toolCallFailed(call),
       );
 
       if (wrote < 0) {
-        throw new Error(`no successful ${TOOL_UPDATE_TRACK} call`);
+        throw new Error(`no successful ${TOOLS.updateTrack} call`);
       }
 
       const readBacks = calls
@@ -107,12 +106,12 @@ export const writeTrustSilentResult: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
+    { type: "tool_called", tool: TOOLS.updateTrack, turn: ASK_TURN },
     assertNoReadBack(),
 
     {
       type: "state",
-      tool: TOOL_READ_TRACK,
+      tool: TOOLS.readTrack,
       args: { trackIndex: BASS },
       expect: (result) => (result as TrackRead).name === NEW_NAME,
       explain: (result) =>

@@ -12,10 +12,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { FAILED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { saveConversation } from "#webui/lib/conversation-db";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
   createConversationsProps as createProps,
-  waitForEffects,
   setupConversationsHook as setupHook,
   resetConversationsTestState,
   useConversationsWithUndo,
@@ -71,17 +71,18 @@ describe("useConversations restore", () => {
     const { props } = createProps();
 
     renderHook(() => useConversationsWithUndo(props));
-    await waitForEffects();
 
-    expect(restoredHistory(props)[0]?.toolResults).toStrictEqual([
-      {
-        id: "call-1",
-        name: "ppal-create-clip",
-        args: {},
-        result: FAILED_TOOL_RESULT_TEXT,
-        isError: false,
-      },
-    ]);
+    await waitForHookState(() => {
+      expect(restoredHistory(props)[0]?.toolResults).toStrictEqual([
+        {
+          id: "call-1",
+          name: "ppal-create-clip",
+          args: {},
+          result: FAILED_TOOL_RESULT_TEXT,
+          isError: false,
+        },
+      ]);
+    });
   });
 
   it("backfills a dangling tool call when switching conversations", async () => {

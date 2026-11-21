@@ -42,6 +42,24 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+The install POSTs (here and under `/device-install`) write into the User
+Library, so a browser request must name the server by `localhost` or an IP
+address (`rejectRebindableOriginWrite`). A DNS name can be rebound to this
+machine by another site, which makes its `Origin` and `Host` match; an IP
+literal can't. A chat UI reached through a tunnel's DNS name can read the
+Installation tab but not install. Content writes (memory, skills) keep the
+looser same-origin rule, so a remote chat UI can still save them.
+
+Every request also passes `rebindingGuard` first. Unless the Host is localhost,
+an IP literal, or a known tunnel domain, only `/mcp` answers, and not to a
+browser (`Origin` or `Sec-Fetch-Site`). Headers alone can't pass a GET: over
+plain http a browser's same-origin GET carries neither. A one-word name or a
+`.local`, `.lan`, `.home.arpa` or `.internal` name also passes, but only while
+"Remote Control" is on: the local network decides how those resolve, so with it
+off someone on the Wi-Fi could point one at 127.0.0.1. The guard reads the live
+listening state (`network-access-state.ts`) per request. It allows tunnel names
+the install gate refuses, so that gate stays.
+
 The script updates separately from the device, so it drifts. Both the chat UI
 header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
 `src/shared/version-check.ts`): **update** when the installed copy differs from
@@ -67,9 +85,11 @@ build, so it is never offered an update.
   `remoteScript:` line after the portal line: not installed, behind this build,
   installed but not running, needing a Live restart, or just the running
   version. It points at `ppal-manage` to install when the caller has it, else at
-  the Chat UI. It shares the skills' `/ping` for the connect
-  (`connect-ping.ts`), reads the installed version off disk, and gives up after
-  1.5 s. A status that fails or times out adds no line.
+  the Chat UI. Small-model mode doesn't manage versions, so a copy that is only
+  behind, or a Live running another copy, reads as the plain running line there.
+  It shares the skills' `/ping` for the connect (`connect-ping.ts`), reads the
+  installed version off disk, and gives up after 1.5 s. A status that fails or
+  times out adds no line.
 
 ## The device install
 
@@ -105,14 +125,18 @@ device depends on the files beside it. `GET /device-install` and
 `POST /device-install/install` serve the chat UI's Installation tab, the same
 way `/remote-script` does. The install is `installDevice` from the portal, with
 `force` needed for a newer or unorderable copy.
+`POST /device-install/plugin-host` installs only the plug-in wrapper devices,
+which a development device can do.
 
 The device shows a "Finish installation…" notice (in the update notice's spot,
 no `×`) when `installIncomplete` says so: the User Library has no copy of a
-frozen device or an older one, or its remote script is missing or behind this
-build. `syncDeviceInstallNotice` is the one place that decides. The notice also
-needs the global setting `warnIfInstallIncomplete` (default on, set from the
-Installation tab) and no update notice: it asks `getUpdate()`, which already
-folds in the update check setting and its dismissal. Node sends
+frozen device or an older one, its remote script is missing or behind this
+build, or a plug-in wrapper device is missing or differs from this build (not
+counted when the copy is newer or can't be ordered: that User Library may belong
+to another build). `syncDeviceInstallNotice` is the one place that decides. The
+notice also needs the global setting `warnIfInstallIncomplete` (default on, set
+from the Installation tab) and no update notice: it asks `getUpdate()`, which
+already folds in the update check setting and its dismissal. Node sends
 `config installNotice 1|0` (`tab-main` routes it), and re-sends it whenever an
 input changes: the device reports its path, an install, a remote script install,
 the update notice's dismissal or check being turned off, the warning setting,
@@ -125,7 +149,10 @@ User Library copy through the remote script's `/replace-producer-pal`, the route
 the portal's update uses (`requestWithBrowserRetry`, `mayHaveSwapped`). The
 server refuses first, with a 409 and a plain reason (`device-swap-check.ts`): no
 copy, an older copy, already running from the copy, or no new-enough remote
-script. `GET /device-install` carries the same check as `swap`.
+script. `GET /device-install` carries the same check as `swap`. It is polled
+every few seconds during a swap, so the device files (~10 MB each) are read once
+and recalled while their size, modified time and identity are unchanged
+(`device-file-facts.ts`); an install here drops what it wrote.
 
 Live unloads the old device inside the swap, so the server that sent the request
 usually dies before the remote script answers. A dropped connection is therefore
@@ -199,6 +226,8 @@ always matches the portal's version:
 - **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
   same plugin the device bundle uses. The portal never reads `remote-script/`
   from disk.
+- **The plug-in host wrappers** (two ~240 KB `.amxd` files) are embedded as
+  base64 by `embedPluginHost()`.
 - **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
   `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
   embedded: base64 in the bundle would be parsed on every start for a feature
@@ -209,7 +238,7 @@ always matches the portal's version:
 
 Only `npm run release:mcpb` puts the device there, because it exists only after
 the freeze. Every other build (dev, CI, e2e) removes any copy and runs in "no
-device bundled" mode. See `dev/process/releasing/build-and-pre-release.md`.
+device bundled" mode. See `dev/process/releasing.md`.
 
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats

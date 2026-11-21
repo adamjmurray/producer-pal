@@ -16,7 +16,7 @@ import {
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   resolvePathToLiveApi,
   type ResolvedPath,
@@ -34,7 +34,7 @@ const DEVICE_TAIL = / devices \d+$/;
 
 export interface RackSelection {
   selectedDrumPad?: { id: string; path: string };
-  selectedChain?: { id: string; path: string };
+  selectedChain?: { id: string; path?: string };
 }
 
 /**
@@ -117,7 +117,7 @@ export function selectRackTarget(
 
   return isPad
     ? { selectedDrumPad: { id: target.id, path: drumPadPath(target) } }
-    : { selectedChain: { id: target.id, path: chainPath(target) } };
+    : { selectedChain: { id: target.id, ...pathField(target) } };
 }
 
 // --- Helpers below main exports ---
@@ -236,13 +236,4 @@ function enclosingChain(device: LiveAPI): LiveAPI | null {
   const parentPath = device.path.replace(DEVICE_TAIL, "");
 
   return CHAIN_TAIL.test(parentPath) ? LiveAPI.from(parentPath) : null;
-}
-
-/**
- * The path spelling of a selected chain.
- * @param chain - The chain
- * @returns The chain path, e.g. "t0/d0/c1"
- */
-function chainPath(chain: LiveAPI): string {
-  return extractDevicePath(chain.path) as string;
 }

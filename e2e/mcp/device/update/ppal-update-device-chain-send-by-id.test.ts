@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";
@@ -32,7 +33,7 @@ import {
 
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
 
-describe("update-device sendReturn by id", () => {
+describe("update-device sends by return chain id", () => {
   // Clap, whose sends carry no macro mapping, so a refused write can't be
   // mistaken for a failed match.
   const CLAP = `${KIT}/pE1`;
@@ -46,7 +47,7 @@ describe("update-device sendReturn by id", () => {
     const { warnings } = await callWithWarnings(
       ctx.client!,
       "ppal-update-device",
-      { path: CLAP, sendGainDb: -14, sendReturn: reverb!.id },
+      { path: CLAP, sends: [{ return: reverb!.id, gainDb: -14 }] },
     );
 
     expect(warnings).toStrictEqual([]);
@@ -62,7 +63,9 @@ describe("update-device sendReturn by id", () => {
     const kit = await readKitPads(ctx.client!);
 
     // The send was all the call asked, so nothing landed and it fails.
-    const message = await sendRefusal({ sendGainDb: -3, sendReturn: kit.id });
+    const message = await sendRefusal({
+      sends: [{ return: kit.id, gainDb: -3 }],
+    });
 
     expect(message).toContain(
       `no send landed — "${kit.id}": no return chain matching "${kit.id}"`,
@@ -131,17 +134,51 @@ describe("update-device sendReturn by id", () => {
   });
 
   // One send has one shape in the result, whichever param spelled it — here,
-  // no shape at all.
-  it("says nothing about the sendGainDb/sendReturn pair either", async () => {
+  // no shape at all. The deprecated pair still writes, and says to use sends.
+  it("still writes the deprecated sendGainDb/sendReturn pair, and says to use sends", async () => {
     const returns = await readReturnChains(ctx.client!);
     const reverb = returns.find((rc) => rc.name === "B Reverb");
-    const { reported, after } = await writeClapSends({
-      sendGainDb: -11,
-      sendReturn: reverb!.id,
+    const { data, warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      { path: CLAP, sendGainDb: -11, sendReturn: reverb!.id },
+    );
+
+    expect(data.sends).toBeUndefined();
+
+    for (const param of ["sendGainDb", "sendReturn"]) {
+      expect(warnings).toContain(
+        `WARNING: param "${param}" is deprecated and will be removed; use "sends" instead. ` +
+          `Replace sendGainDb and sendReturn with sends: [{"return":"${reverb!.id}","gainDb":-11}]`,
+      );
+    }
+
+    const after = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
+
+    expect(after.find((s) => s.return === "B Reverb")?.gainDb).toBe(-11);
+  });
+
+  it("refuses sends sent with the deprecated pair, writing nothing", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        path: CLAP,
+        name: "Never written",
+        sendGainDb: -3,
+        sendReturn: "A",
+        sends: [{ return: "B", gainDb: -5 }],
+      },
     });
 
-    expect(reported).toBeUndefined();
-    expect(after.find((s) => s.return === "B Reverb")?.gainDb).toBe(-11);
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "sends names the send on its own - don't send sendGainDb or sendReturn with it",
+    );
+
+    const clap = padChain(await readKitPads(ctx.client!), "Clap");
+
+    expect(clap.name).toBe("Clap");
+    expect(clap.sends?.find((s) => s.return === "B Reverb")?.gainDb).toBe(-11);
   });
 
   it("refuses a lone send whose return name matches none", async () => {

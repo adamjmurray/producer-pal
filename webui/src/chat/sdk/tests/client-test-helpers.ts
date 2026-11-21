@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { streamText } from "ai";
-import { type vi } from "vitest";
+import { expect, it, type vi } from "vitest";
+import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { type ChatMessage, type ChatClientConfig } from "#webui/chat/sdk/types";
 
 /**
@@ -41,6 +42,28 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
     stream: iterate(),
   });
+}
+
+/**
+ * Send a message through a new client whose mocked stream yields `parts`.
+ * @param parts - Stream parts to emit
+ * @param config - Client config
+ * @returns Final chat history
+ */
+export async function sendWithParts(
+  parts: Record<string, unknown>[],
+  config: ChatClientConfig = createConfig(),
+): Promise<ChatMessage[]> {
+  mockStreamParts(parts);
+
+  const client = new ChatSdkClient("key", config);
+  let last: ChatMessage[] = [];
+
+  for await (const history of client.sendMessage("Hello")) {
+    last = history;
+  }
+
+  return last;
 }
 
 /**
@@ -144,4 +167,91 @@ export function toolStepHistory(prompt: string): ChatMessage[] {
       ],
     },
   ];
+}
+
+const START_STEP = { type: "start-step" };
+
+/**
+ * The part that ends a step.
+ * @param finishReason - Why the step ended
+ * @returns The finish-step part
+ */
+function finishStep(finishReason: string): Record<string, unknown> {
+  return { type: "finish-step", finishReason };
+}
+
+/**
+ * The parts that end a step and the reply on one finish reason.
+ * @param finishReason - Why the reply ended
+ * @returns The finish-step and finish parts
+ */
+function finishParts(finishReason: string): Record<string, unknown>[] {
+  return [finishStep(finishReason), { type: "finish", finishReason }];
+}
+
+/** Stream parts for a step that calls one tool and gets its result back. */
+export const TOOL_STEP_PARTS: Record<string, unknown>[] = [
+  START_STEP,
+  {
+    type: "tool-call",
+    toolCallId: "t1",
+    toolName: "ppal-read-live-set",
+    input: {},
+  },
+  {
+    type: "tool-result",
+    toolCallId: "t1",
+    toolName: "ppal-read-live-set",
+    input: {},
+    output: "ok",
+  },
+];
+
+/**
+ * Tests shared by every finish reason that appends an error notice after the
+ * reply: the notice follows partial text, and only the final step adds one.
+ * @param finishReason - The finish reason that raises the notice
+ * @param entry - The expected notice entry
+ */
+export function itAddsFinishNotice(
+  finishReason: string,
+  entry: Record<string, unknown>,
+): void {
+  it(`keeps partial text and adds the notice after it (${finishReason})`, async () => {
+    const history = await sendWithParts([
+      START_STEP,
+      { type: "text-delta", text: "Here is the start" },
+      ...finishParts(finishReason),
+    ]);
+
+    expect(history).toHaveLength(3);
+    expect(history[1]?.content).toBe("Here is the start");
+    expect(history[1]?.isError).toBeUndefined();
+    expect(history[2]).toStrictEqual(entry);
+  });
+
+  it(`adds exactly one notice when the step after a tool step ends on ${finishReason}`, async () => {
+    const history = await sendWithParts([
+      ...TOOL_STEP_PARTS,
+      finishStep("tool-calls"),
+      START_STEP,
+      ...finishParts(finishReason),
+    ]);
+
+    expect(history.filter((m) => m.isError)).toStrictEqual([entry]);
+    expect(history.at(-1)).toStrictEqual(entry);
+  });
+
+  it(`adds nothing when only an earlier step ended on ${finishReason}`, async () => {
+    const history = await sendWithParts([
+      ...TOOL_STEP_PARTS,
+      finishStep(finishReason),
+      START_STEP,
+      { type: "text-delta", text: "All done." },
+      ...finishParts("stop"),
+    ]);
+
+    expect(history.some((m) => m.isError)).toBe(false);
+    expect(history.at(-1)?.content).toBe("All done.");
+  });
 }

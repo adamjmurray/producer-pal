@@ -20,6 +20,21 @@ describe("haltedToolStatus", () => {
     );
   });
 
+  it("still reads the placeholder older saved chats hold as stopped", () => {
+    expect(
+      haltedToolStatus(
+        JSON.stringify("Canceled by the user before this tool finished."),
+      ),
+    ).toBe("stopped");
+  });
+
+  // Stop only stops waiting: the call may already have reached Live.
+  it("does not tell the model a stopped call never ran", () => {
+    expect(CANCELED_TOOL_RESULT_TEXT).toBe(
+      "Stopped by the user before this tool returned; it may still have run.",
+    );
+  });
+
   it("reads a failed placeholder as interrupted", () => {
     expect(haltedToolStatus(JSON.stringify(FAILED_TOOL_RESULT_TEXT))).toBe(
       "interrupted",

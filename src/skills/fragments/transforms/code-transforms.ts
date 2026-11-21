@@ -31,12 +31,12 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 - \`start\`: musical beats from clip start
 - \`duration\`: musical beats (default: 1)
 - \`velocity\`: 1-127 (default: 100)
-- \`velocityDeviation\`: 0-127 (default: 0)
+- \`velocityDeviation\`: -127 to 127 (default: 0)
 - \`probability\`: 0-1 (default: 1)
 
 **Context properties:**
 - \`track\`: { index, name, type, color }
-- \`clip\`: { id, name, length, timeSignature, looping, index, count } (length in musical beats)
+- \`clip\`: { id, name, length, timeSignature, looping, scale?, index, count } (length in musical beats; scale is the clip's own, like "C Major", left out when off)
 - \`location\`: { view, path?, arrangementStartBeats? } - an arrangement path carries where the clip starts, e.g. \`t0[5|1]\`; \`arrangementStartBeats\` is that same position as a number, for arithmetic
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number (musical beats per bar)

@@ -1,0 +1,66 @@
+# Mistral Vibe Web App
+
+Use Producer Pal in your web browser at
+[chat.mistral.ai](https://chat.mistral.ai/), the Mistral Vibe web app (formerly
+Le Chat).
+
+<!--@include: ../_partials/web-chat-warning.md-->
+
+## Requirements
+
+<!--@include: ../_partials/live-requirement.md-->
+
+- [Mistral account](https://chat.mistral.ai) (admin privileges required to
+  create connectors)
+- [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
+
+## Installation Steps
+
+<!--@include: ../_partials/install-device.md-->
+
+### 2. Set Up a Web Tunnel
+
+Set up [a web tunnel](./remote-access#web-tunnels) to expose your local Producer
+Pal server.
+
+For example:
+
+```bash
+cloudflared tunnel --url http://localhost:3350
+```
+
+will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
+
+![Cloudflare web tunnel](/img/cloudflare-tunnel.png)
+
+### 3. Add Custom MCP Connector
+
+1. In Vibe, open the side panel and go to **Intelligence** → **Connectors**
+2. Click **+ Add Connector** and switch to the **Custom MCP Connector** tab
+3. Fill in the details:
+   - **Connector name:** `producer-pal` (no spaces or special characters)
+   - **Connection server:** Your tunnel URL + `/mcp` (e.g.
+     `https://abc-xyz.trycloudflare.com/mcp`)
+   - **Authentication method:** No Authentication
+4. Click **Connect**
+
+<img src="/img/le-chat-setup.png" alt="Mistral Vibe custom MCP connector setup" width="450"/>
+
+### 4. Enable the Connector
+
+When starting a new conversation, click the **+** button and go to
+**Connectors**. Make sure **producer-pal** is checked:
+
+![Enabling the Producer Pal connector](/img/le-chat-enable-connector.png)
+
+### 5. Start Using Producer Pal
+
+Start a conversation with "connect to ableton":
+
+![Mistral Vibe successfully connected to Producer Pal](/img/le-chat-success.png)
+
+<!--@include: ../_partials/check-it-works.md-->
+
+## Troubleshooting
+
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

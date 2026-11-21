@@ -26,7 +26,9 @@ export interface PlaybackState {
  * @param sceneIndex - Scene index to play
  * @returns Updated playback state
  */
-export function handlePlayScene(sceneIndex: number | undefined): PlaybackState {
+export function handlePlayScene(
+  sceneIndex: number | null | undefined,
+): PlaybackState {
   const scene = sceneToPlay(sceneIndex);
 
   scene.call("fire");
@@ -44,7 +46,7 @@ export function handlePlayScene(sceneIndex: number | undefined): PlaybackState {
  * @returns The scene
  * @throws Error when no scene is named, or none is there
  */
-export function sceneToPlay(sceneIndex: number | undefined): LiveAPI {
+export function sceneToPlay(sceneIndex: number | null | undefined): LiveAPI {
   if (sceneIndex == null) {
     throw new Error(
       `path "s<scene>" or a scene id is required for action "play-scene"`,

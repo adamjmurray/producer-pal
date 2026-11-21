@@ -3,8 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { STANDARD_TOOL_DEFS } from "../../create-mcp-server.ts";
+import {
+  OPT_IN_TOOL_DEFS,
+  STANDARD_TOOL_DEFS,
+} from "../../create-mcp-server.ts";
 
 type ChangesSet = (args: Record<string, unknown>) => boolean;
 
@@ -13,7 +15,7 @@ type ChangesSet = (args: Record<string, unknown>) => boolean;
  * says whether a given call can change the Set.
  */
 const WRITE_TOOLS: ReadonlyMap<string, ChangesSet> = new Map(
-  [...STANDARD_TOOL_DEFS, toolDefLiveApi]
+  [...STANDARD_TOOL_DEFS, ...OPT_IN_TOOL_DEFS]
     .filter((def) => def.toolOptions.annotations?.readOnlyHint !== true)
     .map((def): [string, ChangesSet] => [
       def.toolName,

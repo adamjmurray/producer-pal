@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "./transform-warning-label.ts";
+import { clipDetail } from "./transform-warning-label.ts";
 import {
   computePhase,
   evaluateArgs,
@@ -29,6 +29,7 @@ import {
   evaluateQuant,
   evaluateSwing,
 } from "./helpers/functions/timing-functions.ts";
+import { GRID_EPSILON } from "./helpers/note-ops/note-cuts.ts";
 import { type EvalContext } from "./helpers/transform-context.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
 import * as waveforms from "./transform-waveforms.ts";
@@ -145,9 +146,7 @@ function evaluateWaveform(
       // gracefully to clip-relative (phase resets at clip start) instead of
       // skipping the whole assignment — mirrors the clip.position variable
       // fallback. effectivePosition stays at the clip-relative position.
-      console.clipDetail(
-        "sync ignored: session clip, so the LFO is clip-relative",
-      );
+      clipDetail("sync ignored: session clip, so the LFO is clip-relative");
     } else {
       effectivePosition = position + origin;
     }
@@ -166,6 +165,10 @@ function evaluateWaveform(
 
   const phase = basePhase + phaseOffset;
 
+  // Float noise from position / period, in cycles, for the waveforms with a jump.
+  // An exact edge (e.g. a n/12 step) can land a hair short and read the wrong side.
+  const edgeTolerance = period === 0 ? 0 : GRID_EPSILON / Math.abs(period);
+
   // Call the waveform function
   switch (name) {
     case "cos":
@@ -178,7 +181,7 @@ function evaluateWaveform(
       return waveforms.tri(phase);
 
     case "saw":
-      return waveforms.saw(phase);
+      return waveforms.saw(phase, edgeTolerance);
 
     case "square": {
       // Optional third argument: pulseWidth
@@ -188,7 +191,7 @@ function evaluateWaveform(
         pulseWidth = ctx.evaluateExpression(args[2] as ExpressionNode, ctx);
       }
 
-      return waveforms.square(phase, pulseWidth);
+      return waveforms.square(phase, pulseWidth, edgeTolerance);
     }
 
     default:

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   formatDeviceSegment,
   formatObjectPath,
@@ -228,11 +228,27 @@ describe("parseObjectPath", () => {
   });
 
   it("rejects a scene segment anywhere a slot can't be", () => {
-    for (const path of ["rt0/s1", "mt/s1", "mt/d0/s1"]) {
+    for (const path of ["mt/s1", "mt/d0/s1"]) {
       expect(() => parseObjectPath(path)).toThrow(
-        'a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes',
+        'a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); the main track has no clip slots',
       );
     }
+  });
+
+  // Live 13 return tracks have a clip slot per scene.
+  it("parses a return track's clip slot, and refuses what can't follow it", () => {
+    expect(parseObjectPath("rt1/s2")).toStrictEqual({
+      kind: "return-slot",
+      returnIndex: 1,
+      sceneIndex: 2,
+    });
+    expect(formatObjectPath(parseObjectPath("rt1/s2"))).toBe("rt1/s2");
+    expect(() => parseObjectPath("rt0/s1/d0")).toThrow(
+      '"d0" can\'t follow a clip slot; a path ends at the slot',
+    );
+    expect(() => parseObjectPath("rt0/d0/s1")).toThrow(
+      "clip slots belong to a track, not a device",
+    );
   });
 
   it("rejects a take lane anywhere a track's lanes can't be", () => {
@@ -407,7 +423,7 @@ describe("parseObjectPath", () => {
     // A model pasting back what a result told it made a well-founded guess, so
     // honor it and warn — the same trade already taken on hidden params.
     it("reads trackIndex/sceneIndex as a clip slot", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("0/3")).toStrictEqual({
         kind: "slot",
@@ -420,7 +436,7 @@ describe("parseObjectPath", () => {
     });
 
     it("reads a bare index as a track", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("7", "toPath")).toStrictEqual({
         kind: "track",
@@ -432,7 +448,7 @@ describe("parseObjectPath", () => {
     });
 
     it("reads both spellings without a warning when quiet", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("0/3", "path", true)).toStrictEqual({
         kind: "slot",

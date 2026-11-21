@@ -38,16 +38,18 @@ afterEach(() => {
 });
 
 /**
- * A probe that answers 3349 with this kind and every other port with "none".
+ * A probe that answers 3349 with one kind and every other port with another.
  * @param kind - How 3349 answers
+ * @param others - How any other port answers
  * @returns The probe
  */
 function probeWith(
   kind: ProbeResult<string>["kind"],
+  others: ProbeResult<string>["kind"] = "ours",
 ): (port: number) => Promise<ProbeResult<string>> {
   return vi.fn((port: number) =>
     Promise.resolve<ProbeResult<string>>({
-      kind: port === 3349 ? kind : "none",
+      kind: port === 3349 ? kind : others,
       info: `ping ${port}`,
     }),
   );
@@ -98,24 +100,58 @@ describe("resolveRemoteScriptPort", () => {
   });
 
   it.each(["none", "other"] as const)(
-    "uses the file's port when 3349 is %s",
+    "uses the file's port when 3349 is %s and the script answers there, with its ping",
     async (kind) => {
       fileState.port = 3351;
 
       const found = await resolveRemoteScriptPort(probeWith(kind));
 
-      expect(found).toStrictEqual({ port: 3351, info: null });
+      expect(found).toStrictEqual({ port: 3351, info: "ping 3351" });
+    },
+  );
+
+  it("uses the file's port when it is slow, without keeping it", async () => {
+    fileState.port = 3351;
+
+    const found = await resolveRemoteScriptPort(probeWith("none", "slow"));
+    const later = await resolveRemoteScriptPort(probeWith("ours"));
+
+    expect(found.port).toBe(3351);
+    expect(later.port).toBe(3349);
+  });
+
+  it.each(["none", "other"] as const)(
+    "is 3349, not kept, when the file's port is %s: the file is left over",
+    async (kind) => {
+      fileState.port = 3351;
+
+      const found = await resolveRemoteScriptPort(probeWith("none", kind));
+      const later = await resolveRemoteScriptPort(probeWith("ours"));
+
+      expect(found).toStrictEqual({ port: 3349, info: "ping 3349" });
+      expect(later.port).toBe(3349);
     },
   );
 
   it.each(["none", "other"] as const)(
     "is 3349 when it is %s and there is no file, with the ping that showed it",
     async (kind) => {
-      const found = await resolveRemoteScriptPort(probeWith(kind));
+      const probe = probeWith(kind);
+      const found = await resolveRemoteScriptPort(probe);
 
       expect(found).toStrictEqual({ port: 3349, info: "ping 3349" });
+      expect(probe).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("doesn't probe the file's port when it is 3349", async () => {
+    fileState.port = 3349;
+    const probe = probeWith("none");
+
+    await resolveRemoteScriptPort(probe);
+
+    expect(probe).toHaveBeenCalledTimes(1);
+  });
 
   it("uses 3349 when it is slow, even with a file naming another port", async () => {
     fileState.port = 3351;

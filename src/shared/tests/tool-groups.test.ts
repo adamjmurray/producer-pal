@@ -8,6 +8,8 @@ import {
   ALL_TOOL_IDS,
   CONNECT_TOOL_ID,
   LIVE_API_TOOL_ID,
+  MANAGE_TOOL_ID,
+  manageToolOffered,
   READ_ONLY_ALIAS,
   READ_ONLY_TOOLS,
   resolveToolNames,
@@ -140,5 +142,23 @@ describe("resolveToolNames", () => {
 
   it("reports the item as the user spelled it", () => {
     expect(resolve(" NoneSuch ").unknown).toStrictEqual(["NoneSuch"]);
+  });
+});
+
+describe("manageToolOffered", () => {
+  it("offers ppal-manage to a caller with the full toolset", () => {
+    expect(manageToolOffered(false)).toBe(true);
+    expect(manageToolOffered(false, [MANAGE_TOOL_ID, CONNECT_TOOL_ID])).toBe(
+      true,
+    );
+  });
+
+  it("withholds it in small-model mode, whatever the toolset", () => {
+    expect(manageToolOffered(true)).toBe(false);
+    expect(manageToolOffered(true, [MANAGE_TOOL_ID])).toBe(false);
+  });
+
+  it("withholds it from a toolset that leaves it out", () => {
+    expect(manageToolOffered(false, [CONNECT_TOOL_ID])).toBe(false);
   });
 });

@@ -14,9 +14,11 @@ import {
   type DeviceState,
   deviceFilePath,
   deviceFileStatus,
-  readDeviceVersion,
-} from "#src/portal/setup/device-file-status.ts";
-import { findOtherDeviceCopies } from "#src/portal/setup/other-device-copies.ts";
+} from "#src/portal/setup/device-file/device-file-status.ts";
+import { readDeviceVersion } from "#src/portal/setup/device-file/device-version.ts";
+import { findOtherDeviceCopies } from "#src/portal/setup/device-file/other-device-copies.ts";
+import { pluginHostStatus } from "#src/portal/setup/plugin-host/plugin-host-install.ts";
+import { type PluginHostSource } from "#src/portal/setup/plugin-host/plugin-host-wrappers.ts";
 import { findRemoteScriptLeftovers } from "./remote-script-leftovers.ts";
 
 const VS_RELEASE: Record<DeviceState, string> = {
@@ -32,16 +34,31 @@ const VS_RELEASE: Record<DeviceState, string> = {
  *
  * @param library - Absolute path to the User Library
  * @param releaseFile - Where `npm run release:amxd` puts the device
+ * @param wrapperSource - The repo's plug-in host wrappers, to compare with
  * @returns Lines to print
  */
 export function installStatusLines(
   library: string,
   releaseFile: string,
+  wrapperSource: PluginHostSource,
 ): string[] {
   return [
     ...deviceLines(library, releaseFile),
     ...remoteScriptLines(remoteScriptPath(library)),
+    ...pluginHostLines(library, wrapperSource),
   ];
+}
+
+const WRAPPER_STATE: Record<string, string> = {
+  missing: "not installed",
+  current: "installed, identical to the repo's",
+  differs: "installed, differs from the repo's",
+};
+
+function pluginHostLines(library: string, source: PluginHostSource): string[] {
+  return pluginHostStatus(library, source).map(
+    ({ name, path, state }) => `${name}: ${WRAPPER_STATE[state]} (${path})`,
+  );
 }
 
 function deviceLines(library: string, releaseFile: string): string[] {

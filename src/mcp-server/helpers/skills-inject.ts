@@ -8,7 +8,7 @@ import {
   type BuildSkillsOptions,
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeWarn } from "../node-for-max-logger.ts";
 import {
   remoteScriptPing,
   type RemoteScriptPing,
@@ -49,7 +49,7 @@ export function withSkills(
     buildSkills(
       await withRemoteScriptAnswer(getContext(), getPing),
       readSkillOverrides(),
-      (message) => console.warn(`Producer Pal Skills: ${message}`),
+      (message) => nodeWarn(`Producer Pal Skills: ${message}`),
     ),
   );
 }

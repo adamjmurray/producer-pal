@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { countTransforms } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 /** Eight 8th notes on the beat grid. */
 function eighths(count = 8): NoteEvent[] {
@@ -35,7 +35,7 @@ function runTransform(
   transformed: number | undefined;
   warnings: string[];
 } {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
 
   try {
     const { transformed } = countTransforms(

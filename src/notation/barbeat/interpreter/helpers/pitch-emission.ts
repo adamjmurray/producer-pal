@@ -8,8 +8,9 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 import {
   type PitchState,
@@ -21,6 +22,20 @@ import {
   applyStreamOverrides,
   streamValueAt,
 } from "./value-streams.ts";
+
+// Far below any musical distance, far above float drift from summed steps.
+const BAR_LINE_EPSILON = 1e-9;
+
+/**
+ * The 0-based bar a time falls in. A time a hair under a bar line (float drift
+ * from summed repeat steps) counts as on it.
+ * @param time - Time from the clip start; may be negative
+ * @param barLength - Bar length, in the same unit
+ * @returns 0-based bar index
+ */
+function barIndexAt(time: number, barLength: number): number {
+  return Math.floor(time / barLength + BAR_LINE_EPSILON);
+}
 
 export interface RepeatPattern {
   start: number;
@@ -73,7 +88,7 @@ function expandRepeatPattern(
   }
 
   if (times > 100) {
-    console.warn(
+    emitWarning(
       `Repeat pattern generates ${times} notes, which may be excessive`,
     );
   }
@@ -97,15 +112,12 @@ function expandRepeatPattern(
   let absoluteBeats = startBeats;
 
   for (let i = 0; i < times; i++) {
-    const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
-    // Floored modulo (not bare `%`): JS `%` is truncated, keeping the dividend's
-    // sign, so a negative absoluteBeats (a repeat landing before the clip start,
-    // e.g. `1|1-n/8x2`) would decompose into a {bar, beat} that no longer
-    // recomposes to the same time in emitPitchAtPosition — placing the note bars
-    // away from where it belongs. The grammar's borrowBars wraps sub-1 beats the
-    // same (floored) way; match it so the round-trip is exact.
-    const beat =
-      (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
+    // Bar and beat both come from one bar index, so they always recompose to
+    // the same time. Taking them separately (floor for the bar, modulo for the
+    // beat) let a sum just under a bar line become bar 1, beat 1.
+    const barIndex = barIndexAt(absoluteBeats, beatsPerBar);
+    const bar = barIndex + 1;
+    const beat = Math.max(0, absoluteBeats - barIndex * beatsPerBar) + 1;
 
     positions.push({ bar, beat });
     absoluteBeats +=
@@ -158,6 +170,7 @@ function emitPitchAtPosition(
     velocity_deviation: pitchState.velocityDeviation,
   };
 
+  checkNotationLimit(events.length + 1, "Note count");
   events.push(noteEvent);
   trackForBarCopy(noteEvent, beatsPerBar, timeSigDenominator, notesByBar);
 }
@@ -180,7 +193,7 @@ export function trackForBarCopy(
     timeSigDenominator != null
       ? beatsPerBar * (4 / timeSigDenominator)
       : beatsPerBar;
-  const actualBar = Math.floor(noteEvent.start_time / barDuration) + 1;
+  const actualBar = barIndexAt(noteEvent.start_time, barDuration) + 1;
   const barStartAbletonBeats = (actualBar - 1) * barDuration;
   let barNotes = notesByBar.get(actualBar);
 
@@ -191,7 +204,7 @@ export function trackForBarCopy(
 
   barNotes.push({
     ...noteEvent,
-    relativeTime: noteEvent.start_time - barStartAbletonBeats,
+    relativeTime: Math.max(0, noteEvent.start_time - barStartAbletonBeats),
     originalBar: actualBar,
   });
 }
@@ -286,9 +299,9 @@ export function buildPitchState(
   let velocity: number;
   let velocityDeviation: number;
 
-  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
-    velocity = state.currentVelocityMin;
-    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
+  if (state.currentVelocityStart != null && state.currentVelocityEnd != null) {
+    velocity = state.currentVelocityStart;
+    velocityDeviation = state.currentVelocityEnd - state.currentVelocityStart;
   } else {
     velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
     velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
@@ -346,7 +359,7 @@ export function calculatePositions(
  */
 function warnIfBeforeClipStart(absoluteBeats: number): void {
   if (absoluteBeats < 0) {
-    console.warn(
+    emitWarning(
       "Note position resolves before the clip start (negative time): it sits before 1|1.",
     );
   }
@@ -387,11 +400,11 @@ export function handlePitchEmission(
     if (positions.length === 1) {
       const pos = assertDefined(positions[0], "single position");
 
-      console.warn(`Time position ${pos.bar}|${pos.beat} has no pitches`);
+      emitWarning(`Time position ${pos.bar}|${pos.beat} has no pitches`);
     } else if (positions.length > 0) {
       const pos = assertDefined(positions[0], "first position");
 
-      console.warn(
+      emitWarning(
         `Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,
       );
     }
@@ -400,7 +413,7 @@ export function handlePitchEmission(
   }
 
   if (state.stateChangedSinceLastPitch) {
-    console.warn(
+    emitWarning(
       "velocity/duration/probability set after the note(s) but before the time position has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
     );
   }

@@ -10,7 +10,7 @@ import { type ActionResult } from "#src/tools/shared/device/specialized/speciali
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { type WrittenContainer } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { withChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
-import { moveDeviceToPath } from "./move-device.ts";
+import { checkMoveDestination, moveDeviceToPath } from "./move-device.ts";
 import { moveDrumChainToPath } from "./move-drum-chain.ts";
 import { type PresetOutcome } from "./call/device-presets.ts";
 import { type SettledParams } from "./call/simpler-pitch-bend.ts";
@@ -239,13 +239,11 @@ function moveDevice(
   toPath: string,
   notes: TargetNotes,
 ): TargetMove {
-  const { outcome, reason, created, madeChains } = moveDeviceToPath(
-    device,
-    toPath,
-    device,
-    toPath,
-    notes,
-  );
+  // Checked before the move resolves toPath, which would make chains the
+  // refusal then leaves behind.
+  const { outcome, reason, created, madeChains } =
+    checkMoveDestination(device, toPath) ??
+    moveDeviceToPath(device, toPath, device, toPath, notes);
 
   // The move is skipped either way, and the rest of this update — and of the
   // batch — carries on.

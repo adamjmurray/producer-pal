@@ -87,6 +87,50 @@ describe("CORS on the MCP Express app", () => {
       },
     );
 
+    // `*` doesn't cover Authorization, which only the dev server's page sends
+    // (to the local model proxy). Release builds never list it.
+    describe("Authorization in Allow-Headers", () => {
+      const allowHeaders = async (
+        origin: string,
+        devBuild: boolean,
+      ): Promise<string | null> => {
+        vi.stubEnv("ENABLE_LIVE_API", devBuild ? "true" : undefined);
+
+        try {
+          const answer = await ask({ origin });
+
+          return answer.allowHeaders;
+        } finally {
+          vi.stubEnv("ENABLE_LIVE_API", undefined);
+        }
+      };
+
+      it("is listed for the dev server's origin in a dev build", async () => {
+        expect(await allowHeaders("http://localhost:5173", true)).toBe(
+          "*, Authorization",
+        );
+      });
+
+      it.each([
+        [
+          "the dev server's origin in a release build",
+          "http://localhost:5173",
+          false,
+        ],
+        [
+          "another localhost origin in a dev build",
+          "http://localhost:8080",
+          true,
+        ],
+      ])("is not listed for %s", async (_what, origin, devBuild) => {
+        expect(await allowHeaders(origin, devBuild)).toBe("*");
+      });
+
+      it("is not sent to a foreign origin in a dev build", async () => {
+        expect(await allowHeaders("https://evil.example", true)).toBeNull();
+      });
+    });
+
     it("also echoes a localhost origin on an ordinary request", async () => {
       const answer = await ask({
         method: "GET",

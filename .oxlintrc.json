@@ -805,9 +805,49 @@
           "error",
           {
             "name": "console",
-            "message": "Import a Max-aware console wrapper (e.g. `import * as console from \"#src/shared/max/v8-max-console.ts\"`) \u2014 the built-in global console is not relayed to the LLM."
+            "message": "The built-in console is not relayed to the LLM. In V8 code import { emitWarning } from \"#src/shared/max/v8-max-console.ts\"; in src/mcp-server import { nodeError } (or nodeLog/nodeInfo/nodeWarn) from \"#src/mcp-server/node-for-max-logger.ts\"."
           }
         ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "child_process",
+                "message": "Shipped src/ code must not shell out (child_process is exec). Dev-only process launching belongs in scripts/."
+              },
+              {
+                "name": "node:child_process",
+                "message": "Shipped src/ code must not shell out (child_process is exec). Dev-only process launching belongs in scripts/."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/v8-max-console.ts", "**/node-for-max-logger.ts"],
+                "importNames": ["*"],
+                "message": "Import the logger functions by name. A namespace import named `console` hides a forgotten import: the output goes to the native console, not the response or the Max console."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    // Tests keep a namespace import of the console module so they can vi.spyOn
+    // it. Restated without the namespace-import pattern above; keep the paths
+    // in step with the block above.
+    {
+      "files": [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/*-test-cases.ts",
+        "src/**/*-test-helpers.ts",
+        "src/**/*-test-helpers.tsx",
+        "src/**/test/**",
+        "src/**/tests/**",
+        "src/**/test-cases/**",
+        "src/**/test-utils/**"
+      ],
+      "rules": {
         "no-restricted-imports": [
           "error",
           {
@@ -1306,7 +1346,7 @@
       "files": [
         "e2e/mcp/mcp-test-helpers.ts",
         "scripts/stats/test-stats.ts",
-        "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
+        "src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts",
         "src/test/meta/test-file-classification.test.ts",
         "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts"
       ],

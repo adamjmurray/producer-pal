@@ -49,6 +49,8 @@ gives you this shape.
   simplified skills and schemas for less capable models.
 - Call it first when a model is driving Producer Pal. That's how the AI learns
   the notation and conventions. A plain REST script can skip it.
+- Re-check versions after an install or update with `versionCheck`, without
+  re-sending the Skills and context
 
 <!--@include: ../_generated/ppal-connect-schema.md-->
 
@@ -59,6 +61,7 @@ gives you this shape.
 - Read and write the three [context layers](/guide/context): project context
   (notes about this Live Set), global context (preferences that apply to every
   project), and memory (facts AI records about you as you work)
+- Read or delete several memory entries in one call
 
 <!--@include: ../_generated/ppal-context-schema.md-->
 
@@ -66,8 +69,9 @@ gives you this shape.
 
 ### Manage (`ppal-manage`) {#ppal-manage}
 
-- Install the [Producer Pal remote script](/guide/remote-script) into your User
-  Library, without opening the Chat UI. Restart Live afterwards.
+- Install the [Producer Pal remote script](/guide/remote-script) and the
+  Producer Pal device into your User Library, without opening the Chat UI.
+  Restart Live afterwards.
 - Add the Producer Pal device to the open Live Set, on a new MIDI track, and
   install it in your User Library first if needed. Works while Producer Pal
   isn't running yet, through `npx producer-pal` or the Claude Desktop extension.
@@ -114,13 +118,15 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin, plug-in preset
-  folders, or your sample folder). The other files in plug-in preset folders
-  (`Audio/Presets`), such as sample libraries, are hidden by Live's browser and
-  left out unless you ask for them; plug-in presets there stay listed under
-  Plugin
-- Also includes the user-configured sample folder when set, with results merged
-  and de-duplicated against Live's library
+  source category (User Library, Pack, Built-in, Cloud, Plugin, or plug-in
+  preset folders). The other files in plug-in preset folders (`Audio/Presets`),
+  such as sample libraries, are hidden by Live's browser and left out unless you
+  ask for them; plug-in presets there stay listed under Plugin
+- Finds the files in any folder you add to Places in Live's browser, listed
+  under User. A folder or file added while Live is running may not show up until
+  Live restarts
+- Long results come in pages: a search that hit its `limit` (200 at most)
+  returns `nextOffset`, to pass back as `offset`
 - Sort by `use-count` (Live's persistent usage counter, which surfaces what you
   actually use most), `mod-date`, or `name`
 - Enumerate available tags with `action: "list-tags"` so the AI can discover the
@@ -180,7 +186,7 @@ Live, or make sure your standalone Max is up to date. See
   - A clip slot past the last scene creates the scenes up to it, reported as
     `created`
   - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
+  - Lengthen or shorten a copy to fit an arrangement duration, as one clip
   - A session clip's automation is written onto the track's lane over the copy's
     span, replacing what that parameter's lane held there (see
     [Clip Automation](/guide/automation#arrangement-clips))
@@ -345,6 +351,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   Live warps it with `warping` (see [Audio Clips](#audio-clips))
 - Create the scenes up to a clip slot past the last one, reporting them as
   `created`
+- Give a MIDI clip its own scale with `scale` (Live 12.4.15 or later). A new
+  clip starts with the Live Set's scale otherwise
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 
@@ -356,6 +364,11 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Read MIDI notes in [custom notation](/features#custom-music-notation) (C3,
   D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
+- See a MIDI clip's own `scale` when it differs from the Live Set's (Live
+  12.4.15 or later)
+- Live 13: envelope clips on return tracks (`rt0/s0`) read as
+  `type: "envelope"`. Step sequencer clips read as `type: "step-sequencer"`, but
+  Live doesn't let their steps be read or edited yet
 - Read a session clip's automation envelopes with `include: ["envelopes"]`
   (needs the [remote script](/guide/remote-script)). A clip read shows
   `envs: true` when it has some. An arrangement clip's automation is the track's
@@ -368,6 +381,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 ### Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
+- Set a MIDI clip's own scale with `scale`, or `""` to turn it off (Live 12.4.15
+  or later). [Transforms](/features#transforms) like `snap` use it
 - Add/remove MIDI notes using [custom notation](/features#custom-music-notation)
 - Apply [transforms](/features#transforms) to modify existing notes and audio
   properties (use `clip.index`/`clipseq()` for per-clip variation when updating
@@ -426,7 +441,7 @@ markers from beats to seconds when warping is off, and reports an unwarped
 session clip's `length` as though it were still warped. Producer Pal measures
 the region from the markers instead, so a 1.2-second one-shot reads as the beats
 it really occupies at your tempo rather than as 1.2 beats. That's also what
-keeps [Duplicate](#ppal-duplicate) from tiling copies over audio that's still
+keeps [Duplicate](#ppal-duplicate) from laying copies over audio that's still
 sounding.
 
 ## Device Tools
@@ -437,6 +452,8 @@ sounding.
 - Add VST/AU plug-ins and Max for Live devices by name (needs the
   [remote script](/guide/remote-script)). The AI finds them with
   [Library](#ppal-library)
+- Add a VST3, AU or VST2 plug-in with [full control](/guide/plugins), so every
+  parameter can be read and set (needs the remote script and Live 12.4+)
 - Place devices on any track type: MIDI, audio, return, or the main track
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
@@ -457,11 +474,14 @@ sounding.
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
-- List device parameter names and values (the state of knobs, dials, etc)
+- List device parameter names and values (the state of knobs, dials, etc). Page
+  through a device with many parameters using `paramOffset`
 - See a rack chain's own volume, pan, and sends when they're not at default
 - See which parameters have arrangement automation. Left out, with a reason,
   while the track plays from Session
 - See which of a rack's macros are mapped (needs the remote script)
+- See `maxChains` on a rack with fixed chains (Live 13's Mid-Side and Multiband
+  racks)
 - Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
   parameters (needs the remote script)
 
@@ -477,6 +497,7 @@ sounding.
 - Move devices anywhere else in the Live Set, including into racks / wrapping in
   a new rack
 - Create, load, delete, revert, and randomize rack macro variations
+- Set how many macros a rack shows with `macroCount` (up to 32 on Live 13)
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Set a rack chain's own volume, pan, and send levels, several sends at once
@@ -534,10 +555,10 @@ arrangement clip at the same position. Only the active take plays.
   and a warped audio clip comes back with the sample's default warp markers. The
   response says which applied.
 - Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
-  Live past that still work. A take-lane clip can't be split, resized, or
-  deleted through tools, and Producer Pal can't pick the active take or comp
-  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
-  header to see them.
+  Live past that still work. A take-lane clip can't be split or deleted through
+  tools, and Producer Pal can't pick the active take or comp lanes. All of that
+  stays in Live's UI. Expand the take-lane arrow on a track header to see them.
+  A lengthened take-lane clip stops at the next clip on its lane.
 
 ## Advanced Tools
 

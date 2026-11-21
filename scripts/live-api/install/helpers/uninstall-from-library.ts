@@ -8,8 +8,12 @@ import {
   libraryPathExists,
   removeFromLibrary,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
-import { deviceFilePath } from "#src/portal/setup/device-file-status.ts";
-import { findOtherDeviceCopies } from "#src/portal/setup/other-device-copies.ts";
+import { deviceFilePath } from "#src/portal/setup/device-file/device-file-status.ts";
+import { findOtherDeviceCopies } from "#src/portal/setup/device-file/other-device-copies.ts";
+import {
+  PLUGIN_HOST_WRAPPERS,
+  pluginHostPath,
+} from "#src/portal/setup/plugin-host/plugin-host-wrappers.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { findRemoteScriptLeftovers } from "./remote-script-leftovers.ts";
 
@@ -20,6 +24,8 @@ export interface UninstallOptions {
   remoteScript: boolean;
   /** With `device`: also remove every other Producer_Pal .amxd copy */
   otherCopies: boolean;
+  /** Remove the plug-in host wrapper devices */
+  pluginHost: boolean;
 }
 
 export interface UninstallResult {
@@ -38,8 +44,8 @@ export interface UninstallResult {
 /**
  * Delete Producer Pal's files from a User Library. Each path is tried even if
  * an earlier one fails. Only the installed device, the remote script folder,
- * our own temp/backup folders, and (with `otherCopies`) other Producer_Pal
- * .amxd copies are ever deleted.
+ * our own temp/backup folders, the plug-in host wrappers, and (with
+ * `otherCopies`) other Producer_Pal .amxd copies are ever deleted.
  *
  * @param library - Absolute path to the User Library
  * @param options - What to remove
@@ -67,7 +73,11 @@ export function uninstallFromLibrary(
     scriptPaths.push(...collectRemoteScript(library, result));
   }
 
-  for (const path of [...devicePaths, ...scriptPaths]) {
+  const wrapperPaths = options.pluginHost
+    ? collectPluginHost(library, result)
+    : [];
+
+  for (const path of [...devicePaths, ...scriptPaths, ...wrapperPaths]) {
     try {
       remove(path);
       result.removed.push(path);
@@ -99,6 +109,22 @@ function collectDevice(
     paths.push(...others);
   } else {
     result.keptCopies.push(...others);
+  }
+
+  return paths;
+}
+
+function collectPluginHost(library: string, result: UninstallResult): string[] {
+  const paths: string[] = [];
+
+  for (const wrapper of PLUGIN_HOST_WRAPPERS) {
+    const path = pluginHostPath(library, wrapper);
+
+    if (libraryPathExists(path)) {
+      paths.push(path);
+    } else {
+      result.absent.push(path);
+    }
   }
 
   return paths;

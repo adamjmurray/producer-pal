@@ -19,6 +19,10 @@ export const MAX_SPLIT_POINTS = 32;
 export const MAX_TAKE_LANES = 10;
 // Enforced with boundedString(), not z.string().max() — see ADR-0021.
 export const MAX_CODE_LENGTH = 10_000;
+// Longest project or global context, for ppal-context writes and the chat UI
+// editor (POST /config). Keep it at or under 10,922: Max cuts a message atom
+// at 32,767 bytes, and a UTF-16 unit is at most 3 UTF-8 bytes.
+export const MAX_CONTEXT_CONTENT_LENGTH = 10_000;
 
 export const MIN_TEMPO = 20;
 export const MAX_TEMPO = 999;

@@ -1,6 +1,7 @@
 # ChatGPT Web App
 
-Use Producer Pal in your web browser with OpenAI's chat web app.
+Use Producer Pal in your web browser at [chatgpt.com](https://chatgpt.com/),
+OpenAI's ChatGPT web app.
 
 <!--@include: ../_partials/web-chat-warning.md-->
 

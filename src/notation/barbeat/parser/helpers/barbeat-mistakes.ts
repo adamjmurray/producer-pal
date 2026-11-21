@@ -54,6 +54,7 @@ const CHECKS: MistakeCheck[] = [
   missingBeat,
   badPositionSuffix,
   spacedPipe,
+  strayPipe,
   detachedToken,
   badBarCopy,
   commaBetweenItems,
@@ -240,6 +241,18 @@ function spacedPipe(line: FailedLine): string | null {
   const end = text.length - after.length + word.length;
 
   return `no spaces around the pipe in a position: write ${before.slice(start)}|${word}, not "${text.slice(start, end)}".`;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a pipe that no single fix explains (`1|1 | 3`, `C3 | 1`,
+ *   `1|1|3`). Names the rule and guesses no fix. Goes after `spacedPipe`,
+ *   which covers the pipes that have one.
+ */
+function strayPipe(line: FailedLine): string | null {
+  return line.rest.startsWith("|")
+    ? "a position is one bar|beat, with no spaces around the pipe (1|1); this | isn't part of one."
+    : null;
 }
 
 /**

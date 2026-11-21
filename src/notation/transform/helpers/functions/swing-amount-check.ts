@@ -71,7 +71,7 @@ function checkSwingCall(
       ? { value: DEFAULT_SWING_GRID }
       : evaluateNumericArg(gridArg, numerator, denominator);
 
-  // A grid of 0 or less is swing()'s own error, raised as it runs.
+  // A grid of 0 or less is refused first (see checkTimingGrids).
   if (!("value" in amount) || !("value" in grid) || grid.value <= 0) {
     return;
   }

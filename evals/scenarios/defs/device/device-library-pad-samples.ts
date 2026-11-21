@@ -6,10 +6,9 @@
 /**
  * Scenario: find drum sounds in the library and put each on its own pad.
  *
- * `device-drum-kit` builds a kit from the eval samples folder. This one has no
- * sample folder: the sounds come from Live's own library, so the model has to
- * search it, pick a kick, a snare, a closed hat and a clap, and load them on
- * the pads the user names.
+ * `device-drum-kit` builds a two-pad kit. This one is bigger: the model has to
+ * search Live's own library, pick a kick, a snare, a closed hat and a clap, and
+ * load them on the pads the user names.
  *
  * Library content differs per machine, so no file name is pinned. Each pad is
  * graded by keyword: its sample's name has to read as the sound asked for.
@@ -27,6 +26,7 @@ import {
 import { argText } from "../arg-text.ts";
 import { lastSuccessfulToolCall } from "../../assertions/index.ts";
 import { firstResultPath, newTrackPath } from "../helpers/new-track-path.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** One pad the user asked for, and what its sample's name should read as. */
 interface PadSpec {
@@ -65,7 +65,7 @@ interface PadRead {
  * @returns The rack's path
  */
 function drumRackPath(turns: EvalTurnResult[]): string {
-  const rackCall = lastSuccessfulToolCall(turns, "any", "ppal-create-device");
+  const rackCall = lastSuccessfulToolCall(turns, "any", TOOLS.createDevice);
   const rackPath =
     rackCall != null &&
     /drum ?rack/i.test(
@@ -122,7 +122,7 @@ function padProblems(result: unknown): string[] {
 function assertPadSamples(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-device",
+    tool: TOOLS.readDevice,
     args: (turns) => ({
       path: PADS.map(
         (spec) => `${drumRackPath(turns)}/p${spec.pad}/c0/d0`,
@@ -152,7 +152,7 @@ export const deviceLibraryPadSamples: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
+    { type: "tool_called", tool: TOOLS.library, turn: 1 },
     assertPadSamples(),
 
     { type: "token_usage", maxTokens: 8_000 },

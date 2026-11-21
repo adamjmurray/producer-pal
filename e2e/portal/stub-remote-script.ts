@@ -14,6 +14,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { closeServer, reservePort } from "./local-server";
+import { VERSION } from "#src/shared/config.ts";
 
 /** What a route answers. */
 export interface StubReply {
@@ -143,7 +144,7 @@ async function replyTo(
       body: {
         ok: true,
         live_version: "12.4.0",
-        script_version: "2.5.0",
+        script_version: VERSION,
         port,
         ...(options.userLibrary === undefined
           ? {}

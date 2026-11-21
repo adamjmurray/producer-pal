@@ -8,9 +8,9 @@ import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { ignoredText, warnIgnored } from "#src/shared/max/ignored-wording.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 describe("ignoredText", () => {
@@ -31,7 +31,7 @@ describe("warnIgnored", () => {
   it("warns with the same text", () => {
     warnIgnored(["trackIndex", "sceneIndex"], '"path" names the clip');
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       'trackIndex, sceneIndex ignored: "path" names the clip',
     );
   });

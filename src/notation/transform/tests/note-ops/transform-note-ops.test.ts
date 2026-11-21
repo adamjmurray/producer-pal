@@ -385,6 +385,23 @@ describe("note-count operations (ratchet/merge)", () => {
         );
       });
 
+      it("merge(0) glues notes that touch apart from float drift", () => {
+        // Triplet-grid notes: start + duration lands a hair off the next start.
+        const notes = createTestNotes(
+          [0, 1, 2, 3, 4, 5].map((k) => ({
+            pitch: 60,
+            start_time: k / 3,
+            duration: 1 / 3,
+          })),
+        );
+
+        applyTransforms(notes, "merge(0)", 4, 4);
+
+        expect(notes).toHaveLength(1);
+        expect(notes[0]!.start_time).toBe(0);
+        expect(notes[0]!.duration).toBeCloseTo(2, 9);
+      });
+
       it("merge(0) still merges overlapping notes", () => {
         expectTransformedNotes(
           [

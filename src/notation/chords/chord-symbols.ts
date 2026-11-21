@@ -23,7 +23,7 @@
  * tones below it (a `9` chord includes its `7`). `""` = a bare major triad.
  */
 
-import { clampMidi, pitchClassToNumber } from "#src/shared/pitch.ts";
+import { pitchClassToNumber } from "#src/shared/pitch.ts";
 
 /** A chord symbol resolved to register-independent pitch material. */
 export interface ResolvedChord {
@@ -44,7 +44,8 @@ export interface ResolvedChord {
  * @param bass - Slash-bass pitch-class name (e.g. "B"), or null
  * @param registerRoot - MIDI value a bare-C root maps to (the voicing floor)
  * @param octaveShift - Whole-chord octave displacement (from octave marks)
- * @returns Ascending, de-duplicated MIDI pitches, or null when unrealizable
+ * @returns Ascending, de-duplicated pitches (not all of them in MIDI range), or
+ *   null when unrealizable
  */
 export function chordSymbolPitches(
   root: string,
@@ -106,11 +107,12 @@ export function resolveChordSymbol(
  * Voice a resolved chord into MIDI pitches: stack the intervals up from the root
  * at `registerRoot + rootPc + 12·octaveShift`; place any slash bass at the
  * highest octave strictly below the root (a chord tone becomes an inversion,
- * otherwise an added bottom). Clamp to 0–127, de-duplicate, sort ascending.
+ * otherwise an added bottom). De-duplicate, sort ascending. A pitch outside
+ * 0–127 is left as it is, for the caller to skip.
  * @param chord - The resolved chord
  * @param registerRoot - MIDI value a bare-C root maps to
  * @param octaveShift - Whole-chord octave displacement
- * @returns Ascending, de-duplicated MIDI pitches
+ * @returns Ascending, de-duplicated pitches, not all of them in MIDI range
  */
 export function realizeChordSymbol(
   chord: ResolvedChord,
@@ -131,9 +133,7 @@ export function realizeChordSymbol(
     pitches.unshift(bassMidi);
   }
 
-  const clamped = pitches.map((p) => clampMidi(p));
-
-  return [...new Set(clamped)].toSorted((a, b) => a - b);
+  return [...new Set(pitches)].toSorted((a, b) => a - b);
 }
 
 /**

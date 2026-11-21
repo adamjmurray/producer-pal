@@ -56,6 +56,21 @@ export const CONTEXT_TOOL_ID = "ppal-context";
  */
 export const MANAGE_TOOL_ID = "ppal-manage";
 
+/**
+ * Whether a caller can use ppal-manage: small-model mode never offers it, and a
+ * toolset that leaves it out withholds it.
+ *
+ * @param smallModelMode - Whether small-model mode is on for the caller
+ * @param tools - The tools the caller can call; omitted ⇒ no gating
+ * @returns True when a message may point the caller at the tool
+ */
+export function manageToolOffered(
+  smallModelMode: boolean,
+  tools?: readonly string[],
+): boolean {
+  return !smallModelMode && (tools == null || tools.includes(MANAGE_TOOL_ID));
+}
+
 /** The `ppal-` prefix every server tool name carries. */
 export const TOOL_NAME_PREFIX = "ppal-";
 

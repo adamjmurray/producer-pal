@@ -5,14 +5,15 @@
 
 /**
  * End-to-end coverage that librarySearch and listTags surface the stale-WAL
- * advisory through their real findLiveFilesDbPath -> detectStalenessRisk path.
+ * note through their real findLiveFilesDbPath -> stalenessNote path.
  *
- * Deliberately does NOT mock node:fs/promises so detectStalenessRisk stats the
+ * Deliberately does NOT mock node:fs/promises so stalenessNote stats the
  * real fixture .db and a real `-wal` sidecar we write next to it.
  */
 
 import { utimesSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { STALENESS_NOTE } from "../../db-staleness.ts";
 import { librarySearch } from "../../query/library-search.ts";
 import { listCategories } from "../../list-categories.ts";
 import { listPlugins } from "../../list-plugins.ts";
@@ -32,9 +33,18 @@ vi.mock(import("../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
+vi.mock(
+  import("../../../rpc/remote-script/browser/browser-plugins.ts"),
+  () => ({
+    listBrowserPlugins: vi.fn(),
+  }),
+);
 
-describe("library stale-WAL advisory (end-to-end)", () => {
+const dbPathMod = await import("../../live-db-path.ts");
+const browserMod =
+  await import("../../../rpc/remote-script/browser/browser-plugins.ts");
+
+describe("library staleness note (end-to-end)", () => {
   let fixture: LibraryFixture | undefined;
 
   afterEach(() => {
@@ -68,29 +78,23 @@ describe("library stale-WAL advisory (end-to-end)", () => {
     }
   }
 
-  it("librarySearch flags wal-pending with the full payload", async () => {
+  it("librarySearch carries the staleness note", async () => {
     setup({ sizeBytes: 18_000_000, dbSeconds: 1_000, walSeconds: 15_400 });
 
     const result = await librarySearch({ kind: "audio" });
 
-    expect(result.stalenessRisk).toStrictEqual({
-      kind: "wal-pending",
-      dbMtime: 1_000_000,
-      walMtime: 15_400_000,
-      walSizeMb: 18,
-      ageSeconds: 14_400,
-    });
+    expect(result.stalenessNote).toBe(STALENESS_NOTE);
     // Still returns the data alongside the advisory.
     expect(result.items.length).toBeGreaterThan(0);
   });
 
-  it("librarySearch flags wal-pending on the inFolder-not-found path", async () => {
+  it("librarySearch carries the staleness note on the inFolder-not-found path", async () => {
     setup({ sizeBytes: 1_000_000, dbSeconds: 1_000, walSeconds: 2_000 });
 
     const result = await librarySearch({ inFolder: "/no/such/folder" });
 
     expect(result.items).toHaveLength(0);
-    expect(result.stalenessRisk?.kind).toBe("wal-pending");
+    expect(result.stalenessNote).toBe(STALENESS_NOTE);
   });
 
   it("librarySearch omits the flag when there is no -wal sidecar", async () => {
@@ -98,7 +102,7 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
     const result = await librarySearch({ kind: "audio" });
 
-    expect(result.stalenessRisk).toBeUndefined();
+    expect(result.stalenessNote).toBeUndefined();
   });
 
   it("librarySearch omits the flag when the -wal is older than the .db", async () => {
@@ -106,21 +110,15 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
     const result = await librarySearch({ kind: "audio" });
 
-    expect(result.stalenessRisk).toBeUndefined();
+    expect(result.stalenessNote).toBeUndefined();
   });
 
-  it("listTags flags wal-pending with the full payload", async () => {
+  it("listTags carries the staleness note", async () => {
     setup({ sizeBytes: 9_500_000, dbSeconds: 2_000, walSeconds: 2_300 });
 
     const result = await listTags();
 
-    expect(result.stalenessRisk).toStrictEqual({
-      kind: "wal-pending",
-      dbMtime: 2_000_000,
-      walMtime: 2_300_000,
-      walSizeMb: 9.5,
-      ageSeconds: 300,
-    });
+    expect(result.stalenessNote).toBe(STALENESS_NOTE);
     expect(result.tags.length).toBeGreaterThan(0);
   });
 
@@ -129,15 +127,15 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
     const result = await listTags();
 
-    expect(result.stalenessRisk).toBeUndefined();
+    expect(result.stalenessNote).toBeUndefined();
   });
 
-  it("listCategories flags wal-pending alongside the overview payload", async () => {
+  it("listCategories carries the staleness note alongside the overview payload", async () => {
     setup({ sizeBytes: 5_000_000, dbSeconds: 1_000, walSeconds: 1_120 });
 
     const result = await listCategories();
 
-    expect(result.stalenessRisk?.kind).toBe("wal-pending");
+    expect(result.stalenessNote).toBe(STALENESS_NOTE);
     expect(result.categories?.length).toBeGreaterThan(0);
   });
 
@@ -145,13 +143,14 @@ describe("library stale-WAL advisory (end-to-end)", () => {
     let pluginsFixture: PluginsFixture | undefined;
 
     afterEach(() => {
+      vi.mocked(browserMod.listBrowserPlugins).mockReset();
       pluginsFixture?.cleanup();
       pluginsFixture = undefined;
     });
 
     /**
      * Point findLivePluginsDbPath at a plugins DB and write a `-wal` sidecar
-     * next to it so detectStalenessRisk has a real file to stat.
+     * next to it so stalenessNote has a real file to stat.
      *
      * @param wal - WAL setup, or null to leave no sidecar
      * @param wal.sizeBytes - WAL file size in bytes
@@ -176,7 +175,8 @@ describe("library stale-WAL advisory (end-to-end)", () => {
       }
     }
 
-    it("flags wal-pending with the full payload", async () => {
+    it("carries the staleness note when the browser can't answer", async () => {
+      vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(null);
       setupPlugins({
         sizeBytes: 4_200_000,
         dbSeconds: 1_000,
@@ -185,14 +185,21 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
       const result = await listPlugins();
 
-      expect(result.stalenessRisk).toStrictEqual({
-        kind: "wal-pending",
-        dbMtime: 1_000_000,
-        walMtime: 1_600_000,
-        walSizeMb: 4.2,
-        ageSeconds: 600,
-      });
+      expect(result.stalenessNote).toBe(STALENESS_NOTE);
       expect(result.plugins.length).toBeGreaterThan(0);
+    });
+
+    it("omits the note when the browser answered, since it covers new installs", async () => {
+      vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([]);
+      setupPlugins({
+        sizeBytes: 4_200_000,
+        dbSeconds: 1_000,
+        walSeconds: 1_600,
+      });
+
+      const result = await listPlugins();
+
+      expect(result.stalenessNote).toBeUndefined();
     });
 
     it("omits the flag when there is no -wal sidecar", async () => {
@@ -200,7 +207,7 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
       const result = await listPlugins();
 
-      expect(result.stalenessRisk).toBeUndefined();
+      expect(result.stalenessNote).toBeUndefined();
     });
   });
 });

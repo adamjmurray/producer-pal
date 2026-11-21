@@ -6,11 +6,10 @@
 /**
  * E2E tests that clip envelopes survive both arrangementLength routes.
  *
- * docs/features/limitations.md makes two envelope claims: tiling is the default
- * *because* each tile is a real copy, so envelopes come along; and the
- * single-clip route (`looping: false` + notes) keeps them because the clip keeps
- * its ID. A regression in either would silently destroy a user's envelopes, and
- * nothing else would catch it.
+ * Both routes resize the clip in place: a looping clip stays looping, and
+ * `looping: false` + notes unloops it. Either way the clip keeps its ID, and
+ * with it the envelope. A regression would silently destroy a user's envelopes,
+ * and nothing else would catch it.
  *
  * The Live API can't create an envelope, so the fixture has to be saved into the
  * Set: every MIDI clip in arrangement-clip-tests carries a pitch-bend clip
@@ -72,32 +71,32 @@ describe("arrangementLength preserves clip envelopes", () => {
     expect(parseToolResult<object>(result)).not.toHaveProperty("envs");
   });
 
-  it("keeps the envelope on every tile when lengthening a looping clip", async () => {
+  it("keeps the envelope on the looping clip it resizes", async () => {
     const { id } = await duplicateClipToArrangement(
       ctx.client!,
       await fixtureClipId(),
       "101|1",
     );
 
-    await callTool(ctx.client!, "ppal-update-clip", {
+    const result = await callTool(ctx.client!, "ppal-update-clip", {
       id: id,
       arrangementLength: "4bar",
     });
+
     await sleep(200);
 
-    const tiles = clipsInBarRange(await readEnvelopeTrackClips(), 101, 104);
+    expect(parseToolResult<{ id: string }>(result).id).toBe(id);
 
-    expect(tiles).toHaveLength(4);
+    const clips = clipsInBarRange(await readEnvelopeTrackClips(), 101, 104);
 
-    const flags = await Promise.all(
-      tiles.map((tile) => hasEnvelopes(tile.id!)),
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toStrictEqual(
+      expect.objectContaining({ id, looping: true, arrangementLength: "4bar" }),
     );
-
-    // Every tile, not just the first — a partial copy would still tile.
-    expect(flags).toStrictEqual([true, true, true, true]);
+    expect(await hasEnvelopes(id)).toBe(true);
   });
 
-  it("keeps the envelope on the single clip from the looping:false route", async () => {
+  it("keeps the envelope on the clip the looping:false route unloops", async () => {
     const { id } = await duplicateClipToArrangement(
       ctx.client!,
       await fixtureClipId(),

@@ -10,6 +10,7 @@ import { playback } from "#src/tools/session/playback.ts";
 import { readStartTime } from "#src/tools/session/helpers/playback/arrangement-playback.ts";
 import {
   expectLiveSetProperty,
+  setupMultiClipMocks,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
 
@@ -187,5 +188,27 @@ describe("playback - arrangement start position", () => {
         wroteLoop: false,
       }),
     ).toBe("9|1");
+  });
+
+  // Live's stop_playing moves the start position back to 1|1.
+  it("keeps the start position when several clips restart the transport", () => {
+    const { liveSet: multi } = setupMultiClipMocks();
+
+    multi.properties.start_time = 16;
+
+    playback({ action: "play-session-clips", id: "clip1,clip2" });
+
+    const order = multi.call.mock.invocationCallOrder;
+    const stop = multi.call.mock.calls.findIndex(
+      ([name]) => name === "stop_playing",
+    );
+    const start = multi.call.mock.calls.findIndex(
+      ([name]) => name === "start_playing",
+    );
+    const restored = multi.set.mock.invocationCallOrder[0] as number;
+
+    expect(multi.set).toHaveBeenCalledExactlyOnceWith("start_time", 16);
+    expect(restored).toBeGreaterThan(order[stop] as number);
+    expect(restored).toBeLessThan(order[start] as number);
   });
 });

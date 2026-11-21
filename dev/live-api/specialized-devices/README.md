@@ -129,6 +129,7 @@ Everything below documents **deltas** from this baseline.
 | [instruments/](instruments/README.md)                | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
 | [drum-racks.md](drum-racks.md)                       | How a Drum Rack is modeled: pads are slots, chains are layers, and what each tool does with them                            |
 | [audio-effects.md](audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
+| [live-13-devices.md](live-13-devices.md)             | Live 13's new devices: Drum Synth and Transient Shaper (mode-gated), Clipper, the fixed-chain racks, Softube                |
 
 Read only the one you need — each catalog is long.
 
@@ -175,6 +176,15 @@ Read only the one you need — each catalog is long.
    Spectrum drops `is_using_compare_preset_b`; Tuner doesn't. This suggests
    specialization is added device-by-device on an as-needed basis rather than
    systematically.
+
+---
+
+# Live 13 devices
+
+New in the Live 13 beta, with their class names: Drum Synth (`DrumSynth`),
+Clipper (`Clipper`), Transient Shaper (`TransientShaper`), Mid-Side Rack
+(`AudioEffectMidSideGroupDevice`), Multiband Rack
+(`AudioEffectMultibandGroupDevice`).
 
 ---
 
@@ -249,3 +259,10 @@ What each device exposes:
 **Not implemented — Shifter.** Small surface (`pitch_bend_range`,
 `pitch_mode_index`) with no companion `_list` for `pitch_mode_index`. Deferred
 unless there's explicit demand.
+
+**Known gap — Multiband Rack (Live 13).** `Low-Mid Crossover` and
+`Mid-High Crossover` are readable and settable as ordinary params, but Live
+doesn't expose the crossover mode, so the tools can't read or set it. Its three
+chains, like the Mid-Side Rack's two, are fixed: no tool can add one (see the
+fixed-chain note in the
+[path catalog](../../specs/tool-behavior/object-paths/path-catalog.md)).

@@ -9,7 +9,10 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { beforeEach } from "vitest";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import {
+  isLiveVersionAtLeast,
+  isNewerVersion,
+} from "#src/shared/version-check.ts";
 import {
   type McpTestContext,
   parseToolResult,
@@ -53,13 +56,21 @@ export async function readConnectSkills(client: Client): Promise<string> {
  *
  * @param client - Connected MCP client
  * @param min - The oldest version that passes, like "12.4"
+ * @param options - `release: true` counts a beta of `min` itself as older, as
+ *   the code under test does when a beta may lack the feature
+ * @param options.release - Count a beta of `min` itself as older
  * @returns True when Live is `min` or later
  */
 export async function liveVersionAtLeast(
   client: Client,
   min: string,
+  options?: { release?: boolean },
 ): Promise<boolean> {
-  return !isNewerVersion(await readLiveVersion(client), min);
+  const version = await readLiveVersion(client);
+
+  return options?.release === true
+    ? isLiveVersionAtLeast(version, min)
+    : !isNewerVersion(version, min);
 }
 
 /**
@@ -69,16 +80,19 @@ export async function liveVersionAtLeast(
  * @param ctx - The describe's MCP test context
  * @param min - The oldest Live the tests run on, like "12.4"
  * @param reason - What the older Live lacks
+ * @param options - `release: true` also skips on a beta of `min` itself
+ * @param options.release - Also skip on a beta of `min` itself
  */
 export function skipBeforeLive(
   ctx: McpTestContext,
   min: string,
   reason: string,
+  options?: { release?: boolean },
 ): void {
   let supported: boolean | undefined;
 
   beforeEach(async ({ skip }) => {
-    supported ??= await liveVersionAtLeast(ctx.client!, min);
+    supported ??= await liveVersionAtLeast(ctx.client!, min, options);
     skip(!supported, `needs Live ${min} or later: ${reason}`);
   });
 }

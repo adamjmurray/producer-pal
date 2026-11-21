@@ -18,7 +18,9 @@ import {
   setupArrangementClipMocks,
 } from "../create-clip-test-helpers.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 const CLIPS = 8;
 

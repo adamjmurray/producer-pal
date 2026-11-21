@@ -11,7 +11,7 @@ import {
   expectExtendedInPlace,
   mockContext,
   setupArrangementAudioClip,
-  setupSessionTilingMock,
+  setupSessionBoundaryMock,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 
 // Warped unlooped audio clip lengthening uses loop_end to extend in place.
@@ -48,12 +48,12 @@ function warpedAudioOpts(
 }
 
 /**
- * Set up a warped audio clip with session tiling mock and run updateClip.
+ * Set up a warped audio clip with session boundary mock and run updateClip.
  * Combines the common setup-execute-assert pattern used across audio arrangement tests.
  * @param clipId - Clip ID
  * @param sourceEndTime - End time for the source clip
  * @param name - Clip name
- * @param fileBoundary - File content boundary for session tiling mock
+ * @param fileBoundary - File content boundary for session boundary mock
  * @param arrangementLength - Target arrangement length ([<count>bar+]n<fraction> notation)
  * @returns clip mock, updateClip result, mockCreate spy, and clipSlot mock
  */
@@ -70,7 +70,7 @@ async function runWarpedAudioLengthening(
     warpedAudioOpts(sourceEndTime, name),
   );
 
-  const { mockCreate, clipSlot } = setupSessionTilingMock(fileBoundary);
+  const { mockCreate, clipSlot } = setupSessionBoundaryMock(fileBoundary);
 
   const result = await updateClip(
     { id: clipId, arrangementLength },
@@ -142,7 +142,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
         cId,
         warpedAudioOpts(sourceEndTime as number, name as string),
       );
-      const { mockCreate } = setupSessionTilingMock(8);
+      const { mockCreate } = setupSessionBoundaryMock(8);
 
       // File boundary = 8, target = 14 → nothing to add, and nothing else asked
       await expect(
@@ -158,7 +158,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
 
   it("keeps the entry, with the reason, when a rename lands beside it", async () => {
     setupArrangementAudioClip(0, "661", warpedAudioOpts(8.0, "No Hidden"));
-    const { mockCreate } = setupSessionTilingMock(8);
+    const { mockCreate } = setupSessionBoundaryMock(8);
 
     const result = await updateClip(
       { id: "661", arrangementLength: "3bar+n/2", name: "Renamed" },
@@ -200,7 +200,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       // Source clip end_marker extended: startMarker(0) + effectiveTarget(8) = 8.0
       assertSourceClipEndMarker(clip, 8.0);
 
-      // Single clip returned (extended in place via loop_end, no tiles)
+      // Single clip returned (extended in place via loop_end)
       // A lone target returns its entry unwrapped
       expect(result).toStrictEqual({
         id: cId,
@@ -229,7 +229,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
     // Source end_marker extended to target: 0 + 14 = 14
     assertSourceClipEndMarker(clip, 14.0);
 
-    // Single clip returned (extended in place via loop_end, no tiles)
+    // Single clip returned (extended in place via loop_end)
     // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: "661", path: "t0[1|1]" });
     mockCreate.mockRestore();
@@ -249,7 +249,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     );
 
     // File boundary = 40, target = 14 → sufficient
-    const { mockCreate } = setupSessionTilingMock(40.0);
+    const { mockCreate } = setupSessionBoundaryMock(40.0);
 
     const result = await updateClip(
       { id: clipId, arrangementLength: "3bar+n/2" },

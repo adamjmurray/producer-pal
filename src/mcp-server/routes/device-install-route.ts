@@ -7,11 +7,19 @@
 // Library, where Live Sets and the remote script can find it.
 
 import { type Express, type Request, type Response } from "express";
+import {
+  UI_RETRY,
+  describePluginHostParts,
+  installPluginHostParts,
+  pluginHostStates,
+} from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { installRunningDevice } from "../rpc/device-install/device-install.ts";
+import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import { deviceInstallStatus } from "../rpc/device-install/device-install-status.ts";
 import { deviceSwapCheck } from "../rpc/device-install/device-swap-check.ts";
 import { swapForLibraryCopy } from "../rpc/device-install/device-swap.ts";
 import { remoteScriptPing } from "../rpc/remote-script/remote-script-client.ts";
+import { resolveUserLibraryFolder } from "../rpc/remote-script/user-library/user-library-folder.ts";
 import {
   answerUserLibraryError,
   readUserLibraryPost,
@@ -20,13 +28,20 @@ import {
 const ROUTE = "/device-install";
 
 /**
- * Register GET /device-install (status), POST /device-install/install, and
+ * Register GET /device-install (status, plus each plug-in wrapper device's
+ * state), POST /device-install/install, POST /device-install/plugin-host, and
  * POST /device-install/swap.
  *
  * The install is a same-origin write, like the remote script's. A refused
  * install (a development device, or a newer copy without `force`) is a 409; a
  * failed one is a 500 with what it changed; a User Library path that isn't an
- * existing absolute folder is a 400.
+ * existing absolute folder is a 400. Once the device is in, the plug-in host
+ * wrappers go in beside it. They never fail the install: what happened to them
+ * is in `pluginHost`, and the `detail` says so.
+ *
+ * `/plugin-host` installs only the wrappers, which don't need a frozen device.
+ * It answers 200 with `{ detail, pluginHost }` even when a wrapper failed (that
+ * part has `ok: false`).
  *
  * A swap replaces the running device, so this server usually dies before it can
  * answer: the chat UI treats a dropped connection as the swap happening and
@@ -44,11 +59,18 @@ export function registerDeviceInstallRoutes(app: Express): void {
     const status = await deviceInstallStatus();
     const { allowed, reason } = await deviceSwapCheck(status, remoteScriptPing);
 
-    res.json({ ...status, swap: { allowed, reason } });
+    // Null when there is no User Library to check them in.
+    const pluginHost = pluginHostStates(status.userLibrary);
+
+    res.json({
+      ...status,
+      swap: { allowed, reason },
+      ...(pluginHost == null ? {} : { pluginHost }),
+    });
   });
 
   app.post("/device-install/install", (req: Request, res: Response): void => {
-    const posted = readUserLibraryPost(req, res, ROUTE);
+    const posted = readUserLibraryPost(req, res);
 
     if (posted == null) {
       return;
@@ -61,7 +83,21 @@ export function registerDeviceInstallRoutes(app: Express): void {
       );
 
       if (install.status === "done") {
-        res.json(install.result);
+        const pluginHost = installPluginHostParts(install.library, UI_RETRY);
+
+        // The notice counts the wrappers, which are only now in.
+        void syncDeviceInstallNotice();
+        const { result } = install;
+
+        res.json(
+          pluginHost.length === 0
+            ? result
+            : {
+                ...result,
+                detail: `${result.detail} ${describePluginHostParts(pluginHost)}`,
+                pluginHost,
+              },
+        );
 
         return;
       }
@@ -75,9 +111,37 @@ export function registerDeviceInstallRoutes(app: Express): void {
   });
 
   app.post(
+    "/device-install/plugin-host",
+    (req: Request, res: Response): void => {
+      const posted = readUserLibraryPost(req, res);
+
+      if (posted == null) {
+        return;
+      }
+
+      try {
+        const library = resolveUserLibraryFolder(posted.userLibrary);
+        const pluginHost = installPluginHostParts(library, UI_RETRY);
+
+        // The device's "Finish installation" notice may be done with.
+        void syncDeviceInstallNotice();
+
+        res.json({
+          detail:
+            describePluginHostParts(pluginHost) ||
+            "This build has no plug-in wrapper devices to install.",
+          pluginHost,
+        });
+      } catch (error) {
+        answerUserLibraryError(error, res);
+      }
+    },
+  );
+
+  app.post(
     "/device-install/swap",
     async (req: Request, res: Response): Promise<void> => {
-      const posted = readUserLibraryPost(req, res, ROUTE);
+      const posted = readUserLibraryPost(req, res);
 
       if (posted == null) {
         return;

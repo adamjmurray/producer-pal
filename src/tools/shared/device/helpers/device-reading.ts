@@ -5,11 +5,14 @@
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import {
+  formatParamName,
   readParameter,
   readParameterBasic,
   trimmedParamName,
 } from "./param-reading.ts";
+import { isUnusedHiddenMacro } from "./params/hidden-macros.ts";
 import { processDrumPads } from "./drum-pads-from-chains.ts";
+import { MAX_READ_PARAMS } from "./params/param-read-cap.ts";
 import { buildChainInfo } from "./chain-info.ts";
 import { buildChainPath, buildReturnChainPath } from "./path/insertion-path.ts";
 import {
@@ -44,8 +47,12 @@ export interface ProcessChainsOptions {
 export interface ReadDeviceParametersOptions {
   includeValues?: boolean;
   search?: string;
+  /** Matches to skip before the page. */
+  offset?: number;
   /** False when the device's track plays from Session; no `automation` flags. */
   showAutomation?: boolean;
+  /** Leave out the macros beyond this number (a rack with nothing mapped). */
+  hideMacrosAbove?: number;
 }
 
 /**
@@ -160,7 +167,14 @@ function processRegularChains(
 
     deviceInfo.chains = chains.map((chain, index) =>
       chainsHidden
-        ? hiddenChainInfo(chain, depth, maxDepth, readDeviceFn, deviceOptions)
+        ? hiddenChainInfo(
+            chain,
+            devicePath ? buildChainPath(devicePath, index) : null,
+            depth,
+            maxDepth,
+            readDeviceFn,
+            deviceOptions,
+          )
         : buildChainAtDepth(
             chain,
             devicePath ? buildChainPath(devicePath, index) : null,
@@ -183,6 +197,7 @@ function processRegularChains(
  * search descends into. Skipping buildChainInfo skips the chain mixer, which
  * is a mixer, a volume, a pan and one send per return chain, per chain.
  * @param chain - Chain LiveAPI object
+ * @param chainPath - Resolved chain path
  * @param depth - Current depth
  * @param maxDepth - Max depth for device expansion
  * @param readDeviceFn - readDevice function for recursive expansion
@@ -191,6 +206,7 @@ function processRegularChains(
  */
 function hiddenChainInfo(
   chain: LiveAPI,
+  chainPath: string | null,
   depth: number,
   maxDepth: number,
   readDeviceFn: ReadDeviceFn,
@@ -200,10 +216,16 @@ function hiddenChainInfo(
     return {};
   }
 
+  // Thread the path down, as a shown chain does: a kit found below is named
+  // by it, and leaving a device to spell its own costs a build per chain
+  // above it.
   return {
-    devices: chain
-      .getChildren("devices")
-      .map((device) => readDeviceFn(device, deviceOptions)),
+    devices: chain.getChildren("devices").map((device, deviceIndex) =>
+      readDeviceFn(device, {
+        ...deviceOptions,
+        parentPath: chainPath ? `${chainPath}/d${deviceIndex}` : null,
+      }),
+    ),
   };
 }
 
@@ -435,18 +457,30 @@ export function readABCompare(device: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Read all parameters for a device
+ * Read a page of a device's parameters, at most `MAX_READ_PARAMS` of them
  * @param device - LiveAPI device object
  * @param options - Reading options
- * @returns Array of parameter info objects
+ * @returns The parameter info objects, and how many parameters matched
  */
 export function readDeviceParameters(
   device: LiveAPI,
   options: ReadDeviceParametersOptions = {},
-): Record<string, unknown>[] {
-  const { includeValues = false, search, showAutomation = true } = options;
+): { parameters: Record<string, unknown>[]; total: number } {
+  const {
+    includeValues = false,
+    search,
+    offset = 0,
+    showAutomation = true,
+    hideMacrosAbove,
+  } = options;
 
   let parameters = device.getChildren("parameters");
+
+  if (hideMacrosAbove != null) {
+    parameters = parameters.filter(
+      (p) => !isUnusedHiddenMacro(formatParamName(p), hideMacrosAbove),
+    );
+  }
 
   // Filter by search string if provided
   if (search) {
@@ -457,8 +491,13 @@ export function readDeviceParameters(
     );
   }
 
+  // Cut before the values are read: reading them is the cost.
+  const total = parameters.length;
+
+  parameters = parameters.slice(offset, offset + MAX_READ_PARAMS);
+
   if (!includeValues) {
-    return parameters.map(readParameterBasic);
+    return { parameters: parameters.map(readParameterBasic), total };
   }
 
   // Read once per device: it only names the device for the recorded-unit
@@ -466,7 +505,10 @@ export function readDeviceParameters(
   // argument, which readParameter would read as the device name.
   const deviceName = device.getProperty("class_display_name") as string;
 
-  return parameters.map((param) =>
-    readParameter(param, deviceName, showAutomation),
-  );
+  return {
+    parameters: parameters.map((param) =>
+      readParameter(param, deviceName, showAutomation),
+    ),
+    total,
+  };
 }

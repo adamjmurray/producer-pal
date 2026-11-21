@@ -104,10 +104,13 @@ export const standardDriver = `${HEADER}
  * carve exists for, and at this size the authoring half is a third of the
  * document.
  *
- * The three remaining `## Rules` bullets stay inline as a DECISION, not an
- * oversight: their natural gates are the clip writers, the read tools, and
- * everyone, and each is one line, so a fragment apiece is more include line and
- * more permanent slot name than the text it would save.
+ * Three `## Rules` bullets stay inline as a DECISION, not an oversight: their
+ * natural gates are the clip writers, the read tools, and everyone, and each is
+ * one line, so a fragment apiece is more include line and more permanent slot
+ * name than the text it would save.
+ *
+ * The copy bullet is a fragment (`duplicate-basic`, no slot), because it names a
+ * tool: inline, a caller without ppal-duplicate was told to use it.
  *
  * The audio bullet left, because its axis isn't size. "Say so if asked" is
  * conversation-only — the one thing NO toolset can decide — and inline driver
@@ -131,6 +134,7 @@ export const basicDriver = `${HEADER}
 ## Rules
 
 - Set clip length explicitly: \`4bar\`, \`1bar\`, \`n/4\`.
+@include "./duplicate-basic.md"
 - Read the set/track/clip to get IDs, indices, scale, and drum map — don't ask the user for what you can look up, and never guess a track.
 - If a tool call errors, read the message, fix the arguments, retry — don't claim it's unsupported.
 

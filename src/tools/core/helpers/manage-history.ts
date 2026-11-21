@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { remoteScriptChange } from "#src/tools/shared/remote-script/remote-script-route.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type HistoryAction,
   type HistoryResult,
@@ -43,7 +43,9 @@ export async function stepHistory(
     MANAGE_ROUTES[action],
     steps == null ? {} : { steps },
     deadline,
-    `${action} needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+    `${action} needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`,
+    // The caller just called ppal-manage.
+    true,
   );
 
   if (outcome.ok) {

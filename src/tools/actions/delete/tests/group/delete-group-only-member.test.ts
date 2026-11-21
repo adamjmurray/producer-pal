@@ -12,12 +12,25 @@ import {
   LONE_IN_NESTED,
   PAIR,
   PAIR_IN_NESTED,
+  putClipInSlot,
   setUpGroupSet,
 } from "./delete-group-test-helpers.ts";
 
 // Live ignores a delete of the only track in a group track without saying so.
 // The target is skipped at its turn, just before the Live call, naming the
 // group to delete instead.
+
+// What `path: "t2,t0"` answers when t2 is the only track in group t1 and t0 is
+// a plain track.
+const SKIP_ONLY_MEMBER_DELETE_REST = [
+  {
+    path: "t2",
+    ok: false,
+    detail:
+      "Live won't delete the only track in a group track; delete group track t1 (id g) instead, which deletes both; that track is now t1 (id a)",
+  },
+  { id: "w", deletedPath: "t0" },
+];
 
 describe("deleteObject of the only track in a group track", () => {
   it("skips it and names the group, which takes both", () => {
@@ -39,15 +52,22 @@ describe("deleteObject of the only track in a group track", () => {
       { id: "a", group: "g" },
     ]);
 
-    expect(deleteObject({ path: "t2,t0", type: "track" })).toStrictEqual([
-      {
-        path: "t2",
-        ok: false,
-        detail:
-          "Live won't delete the only track in a group track; delete group track t1 (id g) instead, which deletes both",
-      },
-      { id: "w", deletedPath: "t0" },
+    expect(deleteObject({ path: "t2,t0", type: "track" })).toStrictEqual(
+      SKIP_ONLY_MEMBER_DELETE_REST,
+    );
+  });
+
+  it("lists no clips for the skipped track", () => {
+    setUpGroupSet([
+      { id: "w" },
+      { id: "g", foldable: true },
+      { id: "a", group: "g", clipSlots: ["a-slot"] },
     ]);
+    putClipInSlot("a-slot", 2);
+
+    expect(deleteObject({ path: "t2,t0", type: "track" })).toStrictEqual(
+      SKIP_ONLY_MEMBER_DELETE_REST,
+    );
   });
 
   it("goes up to the first group that can be deleted", () => {

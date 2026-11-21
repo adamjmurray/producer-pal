@@ -57,14 +57,29 @@ describe("LiveAPI extensions - color methods", () => {
       api.set = vi.fn();
     });
 
-    it("converts hex colors to Live color format", () => {
-      api.setColor("#FF0000");
-      expect(api.set).toHaveBeenCalledWith("color", 16711680);
+    it("converts palette colors to Live color format", () => {
+      api.setColor("#FF3636");
+      expect(api.set).toHaveBeenCalledWith("color", 16725558);
     });
 
-    it("handles black", () => {
+    it("writes the nearest palette entry for a color off the palette", () => {
+      api.setColor("#800080");
+      expect(api.set).toHaveBeenCalledWith("color", 0x624bad);
+    });
+
+    it("writes the color as given when raw", () => {
+      api.setColor("#800080", true);
+      expect(api.set).toHaveBeenCalledWith("color", 0x800080);
+    });
+
+    it("accepts lower-case hex", () => {
+      api.setColor("#ff3636");
+      expect(api.set).toHaveBeenCalledWith("color", 16725558);
+    });
+
+    it("snaps black to the darkest palette gray", () => {
       api.setColor("#000000");
-      expect(api.set).toHaveBeenCalledWith("color", 0);
+      expect(api.set).toHaveBeenCalledWith("color", 0x3c3c3c);
     });
 
     it("handles white", () => {
@@ -72,14 +87,14 @@ describe("LiveAPI extensions - color methods", () => {
       expect(api.set).toHaveBeenCalledWith("color", 16777215);
     });
 
-    it("handles green", () => {
+    it("snaps green to the palette green", () => {
       api.setColor("#00FF00");
-      expect(api.set).toHaveBeenCalledWith("color", 65280);
+      expect(api.set).toHaveBeenCalledWith("color", 0x1aff2f);
     });
 
-    it("handles blue", () => {
+    it("snaps blue to the palette blue", () => {
       api.setColor("#0000FF");
-      expect(api.set).toHaveBeenCalledWith("color", 255);
+      expect(api.set).toHaveBeenCalledWith("color", 0x1a2f96);
     });
 
     // Assert the specific message: a bare toThrow() can't tell the format guard
@@ -122,13 +137,13 @@ describe("LiveAPI extensions - color methods", () => {
     });
 
     it("forms a bidirectional conversion with getColor", () => {
-      const originalColor = 16711680; // Red
+      const originalColor = 16725558; // #FF3636, a palette color
 
       api.getProperty = vi.fn().mockReturnValue(originalColor);
 
       const cssColor = api.getColor();
 
-      expect(cssColor).toBe("#FF0000");
+      expect(cssColor).toBe("#FF3636");
 
       api.setColor(cssColor!);
       expect(api.set).toHaveBeenCalledWith("color", originalColor);

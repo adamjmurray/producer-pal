@@ -17,27 +17,25 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_LIBRARY = "ppal-library";
-const TOOL_CONNECT = "ppal-connect";
+const TOOL_LIBRARY = TOOLS.library;
 /** The turn carrying the request under test; turn 0 is always connect. */
 const ASK_TURN = 1;
 /** Every scenario here opens by connecting. */
 const MSG_CONNECT = "Connect to Ableton Live";
 
-/** Shared by every scenario here: read-only, and the same tiny sample folder. */
+/** Shared by every scenario here: read-only. */
 const LIBRARY_SCENARIO = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
   // Reads the library and writes nothing to the Set.
   reuseLiveSet: true,
-  config: { sampleFolder: resolveSamplesPath("samples") },
 } as const;
 
 /**
@@ -120,7 +118,7 @@ export const libraryKindMidi: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "searched MIDI content instead of the audio default",
@@ -148,7 +146,7 @@ export const libraryTypeOneshot: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "filtered to one-shots rather than searching by name alone",
@@ -175,7 +173,7 @@ export const libraryTagDiscovery: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "enumerated tags instead of running a search",
@@ -207,7 +205,7 @@ export const libraryDiscoveryActions: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     assertLibraryArgs(
       "browsed the category taxonomy",
       (args) => args.action === "list-categories",

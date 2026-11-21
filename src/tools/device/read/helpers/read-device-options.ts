@@ -17,4 +17,5 @@ export interface ReadOptions {
   chainsHidden: boolean;
   maxDepth: number;
   paramSearch?: string;
+  paramOffset?: number;
 }

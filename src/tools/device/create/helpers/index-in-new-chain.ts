@@ -9,30 +9,17 @@ import {
   peekContainer,
 } from "#src/tools/shared/device/helpers/path/insertion-order.ts";
 import { resolveDeviceTypeSegments } from "#src/tools/shared/device/helpers/path/device-type-segments.ts";
-import {
-  requireDeviceContainer,
-  type DeviceContainerPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { requireDeviceContainer } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
- * Refuse an index past the end of a chain the path would have to make first. A
- * chain that doesn't exist holds no devices, so only index 0 (or `d+`) is in
- * range there. Checked before any chain is made: resolving the path creates
- * them, and a refusal after that would leave chains behind.
- * @param path - One path entry
+ * Refuse an index past the end of a chain a path would make. For drum-pad
+ * paths, whose chains the dry walk doesn't read.
+ * @param path - A path checkCreationPath has already parsed
  * @throws Error when the path names a slot past the end of a chain it creates
  */
 export function refuseIndexInNewChain(path: string): void {
-  let parsed: DeviceContainerPath;
-
-  try {
-    parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
-  } catch {
-    // Unparsable paths were refused before this runs. This is a path that
-    // names something a device doesn't go in (a scene); its write skips it.
-    return;
-  }
+  const parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
 
   const { segments, namesNothing } = resolveDeviceTypeSegments(
     parsed.root,

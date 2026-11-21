@@ -18,6 +18,7 @@ import { createReadline, runChatLoop } from "../shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "../shared/types.ts";
 import { requireAgentCliTransport } from "./agent-cli-registry.ts";
 import { createAgentCliSession } from "./agent-cli-session.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface AgentCliChatOptions extends ChatOptions {
   /** Carried only so the ignored-flag warning can name it. */
@@ -85,7 +86,7 @@ export async function runAgentCliChat(
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     console.error("Error:", message);
     // Not process.exit(): that would skip the finally below and leave the

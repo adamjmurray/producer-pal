@@ -28,6 +28,7 @@ import {
   requireSuccessfulToolCall,
 } from "../../assertions/index.ts";
 import { type EvalAssertion, type ToolCall } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Hidden location params across the toolset — never graded, only reported. */
 const HIDDEN_LOCATION_PARAMS = new Set([
@@ -241,7 +242,7 @@ export function assertSlotOccupancy(
 
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { path: trackPath, include: ["session-clips"] },
     expect: (result) => (slotClipId(result, path) != null) === occupied,
     explain: (result) =>
@@ -409,7 +410,7 @@ export function assertArrangementClipNamed(options: {
 
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex, include: ["arrangement-clips"] },
     expect: (result) => arrangementClipNames(result).includes(name),
     explain: (result) =>

@@ -13,11 +13,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  DISABLED_TOOLS_HEADER,
   LIVE_API_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
-import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
+import { LIVE_API_TOOL_ID, MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { TOOL_NAMES } from "../../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
@@ -209,6 +210,40 @@ describe("REST API per-request small-model-mode header", () => {
       await createTrackHasMute({ [SMALL_MODEL_MODE_HEADER]: "true" });
 
       expect(await createTrackHasMute({})).toBe(true);
+    });
+  });
+
+  describe("V8 request override", () => {
+    it("tells V8 the caller can use ppal-manage by default", async () => {
+      const context = await callToolRequestContext("ppal-read-clip", {});
+
+      expect(context.manageAvailable).toBe(true);
+    });
+
+    it("tells V8 a small-model caller can't", async () => {
+      const context = await callToolRequestContext("ppal-read-clip", {
+        [SMALL_MODEL_MODE_HEADER]: "true",
+      });
+
+      expect(context.manageAvailable).toBe(false);
+    });
+
+    it("tells V8 a caller whose toolset leaves it out can't", async () => {
+      const context = await callToolRequestContext("ppal-read-clip", {
+        [DISABLED_TOOLS_HEADER]: MANAGE_TOOL_ID,
+      });
+
+      expect(context.manageAvailable).toBe(false);
+    });
+
+    it("does not leak one request's answer onto the next", async () => {
+      await callToolRequestContext("ppal-read-clip", {
+        [SMALL_MODEL_MODE_HEADER]: "true",
+      });
+
+      const context = await callToolRequestContext("ppal-read-clip", {});
+
+      expect(context.manageAvailable).toBe(true);
     });
   });
 

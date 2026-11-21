@@ -352,6 +352,26 @@ describe("updateLiveSet - locator targets", () => {
       await expectOnlyVersePart2Deleted("Verse\\, part 2");
     });
 
+    it("trims the whole value, as create and rename do", async () => {
+      await expectOnlyVersePart2Deleted(" Verse, part 2 ");
+    });
+
+    it("trims a name with no comma in it", async () => {
+      const set = simulateLocators(liveSet, INTRO_VERSE);
+
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorName: " Verse ",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "delete",
+        count: 1,
+        name: "Verse",
+      });
+      expect(set.locators()).toStrictEqual([{ time: 0, name: "Intro" }]);
+    });
+
     it("splits a list only at the commas not written \\,", async () => {
       const set = simulateLocators(liveSet, [
         { time: 0, name: "A" },

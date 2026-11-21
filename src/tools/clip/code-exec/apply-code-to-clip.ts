@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
 import {
   type AppliedNotes,
   applyNotesToClip,

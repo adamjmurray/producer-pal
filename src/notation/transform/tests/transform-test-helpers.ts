@@ -6,7 +6,7 @@
 import { expect, type MockInstance, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
   createTestNotes,
@@ -102,7 +102,7 @@ export function expectNotePieces(
 }
 
 /**
- * Silence console.warn and build the notes a warn-and-skip test runs against.
+ * Silence maxConsole.emitWarning and build the notes a warn-and-skip test runs against.
  * Restore the spy when the test is done.
  *
  * @param noteOverrides - Per-note property overrides for the input notes
@@ -112,7 +112,7 @@ export function warnSpyWithNotes(noteOverrides: Partial<NoteEvent>[]): {
   warn: MockInstance;
   notes: NoteEvent[];
 } {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
 
   return { warn, notes: createTestNotes(noteOverrides) };
 }
@@ -127,7 +127,7 @@ export function warnSpyWithNote(overrides: Partial<NoteEvent> = {}): {
   warn: MockInstance;
   notes: NoteEvent[];
 } {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
 
   return { warn, notes: createTestNote(overrides) };
 }

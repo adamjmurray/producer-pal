@@ -20,6 +20,8 @@ Write a dense summary that lets the assistant pick up exactly where it left off.
 - What has been built so far, and what is still pending or requested.
 - Concrete examples of any notation or syntax the assistant used (e.g. bar|beat note strings), exactly as written — these teach the assistant the dialect to keep using.
 
+The transcript may open with a summary of the earlier conversation. Carry everything still relevant in it forward: it is the only record of those turns.
+
 The current Live Set state can always be re-read with the tools, so capture intent and decisions rather than copying large tool-result dumps. Write the summary as notes to your future self, not as a message to the user. Do not add any commentary before or after the summary.`;
 
 const SUMMARIZE_INSTRUCTION =
@@ -54,15 +56,23 @@ export async function summarizeHistory(
 /**
  * Render chat history to a plain-text transcript for summarization, including
  * tool calls and results so the summary reflects what the assistant actually
- * did.
+ * did. Starts at the most recent compaction summary: the turns before it are
+ * already in that summary, and sending them again costs the context the
+ * compaction is meant to save.
  * @param history - Chat messages to render (oldest first)
  * @returns Plain-text transcript
  */
 export function renderTranscript(history: ChatMessage[]): string {
   const lines: string[] = [];
+  const lastSummary = history.findLastIndex((msg) => msg.isCompactionSummary);
 
-  for (const msg of history) {
+  for (const msg of lastSummary > 0 ? history.slice(lastSummary) : history) {
     if (msg.isError) {
+      continue;
+    }
+
+    if (msg.isCompactionSummary) {
+      lines.push(`SUMMARY OF THE EARLIER CONVERSATION: ${msg.content}`);
       continue;
     }
 

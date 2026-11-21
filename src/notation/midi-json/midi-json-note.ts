@@ -25,7 +25,7 @@ export interface CodeNote {
   start: number; // musical beats from clip start
   duration: number; // musical beats
   velocity: number; // 1-127 (0 only as MIDI JSON's delete marker, see validateAndSanitizeNote)
-  velocityDeviation: number; // 0-127
+  velocityDeviation: number; // -127 to 127
   probability: number; // 0.0-1.0
 }
 
@@ -126,6 +126,13 @@ export interface ValidateNoteOptions {
    * play, and Live rejects velocity 0.
    */
   allowVelocityZero?: boolean;
+  /**
+   * Drop a note whose pitch is outside 0-127 instead of clamping it: a clamped
+   * pitch is a note nobody wrote. On for MIDI JSON, whose drops are warned. Off
+   * by default: user code's invalid notes are dropped without a word, and a
+   * clamped note there is at least heard.
+   */
+  skipPitchOutOfRange?: boolean;
 }
 
 /**
@@ -190,10 +197,13 @@ export function validateAndSanitizeNote(
   // A marker names a note that already exists, so an out-of-range pitch names
   // nothing — clamping it into 0-127 would delete a note the caller never
   // mentioned. Rounding is still fine: p:127.4 means 127.
-  if (isDeleteMarker && !isValidMidi(Math.round(n.pitch))) {
+  if (
+    (isDeleteMarker || options.skipPitchOutOfRange === true) &&
+    !isValidMidi(Math.round(n.pitch))
+  ) {
     return {
       valid: false,
-      reason: `delete marker pitch ${n.pitch} is outside 0-127`,
+      reason: `${isDeleteMarker ? "delete marker " : ""}pitch ${n.pitch} is outside 0-127`,
     };
   }
 
@@ -205,7 +215,10 @@ export function validateAndSanitizeNote(
     velocity: isDeleteMarker
       ? 0
       : Math.max(1, Math.min(127, Math.round(velocity))),
-    velocityDeviation: clampMidi(Math.round(Number(n.velocityDeviation) || 0)),
+    velocityDeviation: Math.max(
+      -127,
+      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
+    ),
     probability: Math.max(0, Math.min(1, probability)),
   };
 

@@ -14,6 +14,11 @@ import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/prese
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
 import {
+  openLiveSet,
+  serverIsAnswering,
+} from "#evals/scenarios/open-live-set.ts";
+import {
+  LIVE_SET_PATH,
   callToolAndSettle,
   parseToolResult,
   sleep,
@@ -24,8 +29,11 @@ import {
   skipTestBeforeLive,
 } from "../../workflow/helpers/server-capability-test-helpers";
 
-/** Whether the suites that need the remote script run at all. */
-export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT === "true";
+/**
+ * Whether the suites that need the remote script run. On unless
+ * E2E_REMOTE_SCRIPT=false, so a missing script fails them instead of skipping.
+ */
+export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT !== "false";
 
 /**
  * Long enough for the end-undo-step request, which a write call doesn't wait
@@ -50,16 +58,25 @@ export async function appendTracksInOneCall(
   await sleep(END_LANDS_MS);
 }
 
+/** How long a just-opened Live gets for the remote script to answer. */
+const SCRIPT_START_MS = 15_000;
+
 /**
- * Fail the suite, rather than skip it, when E2E_REMOTE_SCRIPT is set but the
- * remote script isn't answering. Call it ahead of setupMcpTestContext, so it
- * fails before any Live Set opens.
+ * Fail the suite, rather than skip it, when the remote script isn't answering.
+ * Call it ahead of setupMcpTestContext, so a running Live without the script
+ * fails before any Set opens. With Live closed, it opens the test Set first:
+ * the script only starts with Live.
  */
 export function requireRemoteScript(): void {
   beforeAll(async () => {
+    if (!(await remoteScriptAnswers()) && !(await serverIsAnswering())) {
+      await openLiveSet(LIVE_SET_PATH);
+      await waitForRemoteScript();
+    }
+
     if (!(await remoteScriptAnswers())) {
       throw new Error(
-        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
+        `The Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md), or set E2E_REMOTE_SCRIPT=false to skip these suites.`,
       );
     }
   });
@@ -140,6 +157,31 @@ export async function readDevice(
   );
 }
 
+/** The ppal-library kind that finds .adg racks. */
+const DEVICE_GROUP = "device-group";
+
+/**
+ * Search ppal-library.
+ * @param client - Connected MCP client
+ * @param args - Its args
+ * @returns The items it found
+ */
+async function searchLibrary(
+  client: Client,
+  args: Record<string, unknown>,
+): Promise<Preset[]> {
+  const items =
+    parseToolResult<{ items?: Array<Omit<Preset, "name">> }>(
+      await callToolAndSettle(client, "ppal-library", { limit: 200, ...args }),
+    ).items ?? [];
+
+  // Search items carry no `name`: it is the path's last segment.
+  return items.map((item) => ({
+    ...item,
+    name: item.path.split("/").at(-1) ?? "",
+  }));
+}
+
 /**
  * A pack's drum kit whose name nothing else in the library shares, found with
  * ppal-library. Installed packs differ per machine, so a test picks one at run
@@ -158,27 +200,25 @@ export async function packDrumKitOrSkip(
   await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
 
   const search = async (kind: string, query: string): Promise<Preset[]> =>
-    parseToolResult<{ items?: Preset[] }>(
-      await callToolAndSettle(client, "ppal-library", {
-        kind,
-        query,
-        source: "pack",
-        limit: 200,
-      }),
-    ).items ?? [];
+    searchLibrary(client, { kind, query, source: "pack" });
 
-  const kits = (await search("device-group", "Kit")).filter(
+  const kits = (await search(DEVICE_GROUP, "Kit")).filter(
     ({ name, path }) => name.endsWith(".adg") && path.includes("/Drums/"),
   );
 
   for (const kit of kits) {
-    if (!(await presetFileIsFor(kit.path, "Drum Rack"))) {
+    // Skip kits saved as an Instrument Rack around a Drum Rack: they load as
+    // instrument-rack, and their own test covers them.
+    if (
+      !(await presetFileIsFor(kit.path, "Drum Rack")) ||
+      (await presetFileIsFor(kit.path, "Instrument Rack"))
+    ) {
       continue;
     }
 
     const name = presetName(kit.name).toLowerCase();
     const same = [
-      ...(await search("device-group", presetName(kit.name))),
+      ...(await search(DEVICE_GROUP, presetName(kit.name))),
       ...(await search("preset", presetName(kit.name))),
     ].filter((item) => presetName(item.name).toLowerCase() === name);
 
@@ -188,6 +228,72 @@ export async function packDrumKitOrSkip(
   }
 
   return skip();
+}
+
+/**
+ * The Wasted Space pack's `Transmission.adv`, a Max device preset sharing its
+ * name with a Shifter preset that Live's browser lists. Not every machine has
+ * the pack, so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when the pack or the library is
+ *   missing
+ * @returns The preset's absolute path
+ */
+export async function wastedSpaceTransmissionOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<string> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const found = await searchLibrary(client, {
+    kind: "preset",
+    query: "Transmission",
+    source: "pack",
+  });
+  const file = found.find(
+    ({ name, path }) =>
+      name === "Transmission.adv" && path.includes("Wasted Space"),
+  );
+
+  return file?.path ?? skip("the Wasted Space pack isn't installed");
+}
+
+/**
+ * The Core Library's `Vibraphone.adg` and a pack's, which share one browser
+ * path. Live's browser lists each under every device the rack is built around,
+ * so only the library tells them apart. Not every machine has a pack with one,
+ * so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when no pack has one or Live has no
+ *   library
+ * @returns Both files' absolute paths
+ */
+export async function vibraphoneFilesOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<{ core: string; pack: string }> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const search = async (source?: string): Promise<Preset[]> =>
+    searchLibrary(client, {
+      kind: DEVICE_GROUP,
+      query: "Vibraphone",
+      ...(source == null ? {} : { source }),
+    });
+  const vibraphones = (items: Preset[]): string[] =>
+    items
+      .filter(({ name }) => name === "Vibraphone.adg")
+      .map(({ path }) => path);
+  const core = vibraphones(await search()).find((path) =>
+    path.includes("Core Library"),
+  );
+  const pack = vibraphones(await search("pack")).find(
+    (path) => !path.includes("Core Library"),
+  );
+
+  return core != null && pack != null
+    ? { core, pack }
+    : skip("no pack besides the Core Library has a Vibraphone rack");
 }
 
 // Puts the rack preset holding Producer Pal where Live can load it. Live only
@@ -277,4 +383,13 @@ function pointFileRef(xml: string, file: string, folder: string): string {
       `<Path Value="${file}" />${middle}` +
       `<OriginalFileSize Value="0" />${c}<OriginalCrc Value="0" />`,
   );
+}
+
+/** Poll the remote script until it answers or SCRIPT_START_MS passes. */
+async function waitForRemoteScript(): Promise<void> {
+  const until = Date.now() + SCRIPT_START_MS;
+
+  while (!(await remoteScriptAnswers()) && Date.now() < until) {
+    await sleep(500);
+  }
 }

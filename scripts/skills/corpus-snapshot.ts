@@ -66,7 +66,7 @@ export function parseSnapshotArgs(
     values.set(arg, path.resolve(value));
   }
 
-  const outDir = values.get("--out") ?? defaultDir;
+  const outDir = values.get("--out") ?? path.resolve(defaultDir);
   const diffDir = values.get("--diff") ?? null;
 
   if (diffDir != null && diffDir === outDir) {

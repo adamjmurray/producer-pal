@@ -38,13 +38,18 @@ describe("deviceActions install", () => {
     expect(actions().install).toStrictEqual({
       label: "Copy",
       disabled: false,
+      wrappersOnly: false,
     });
   });
 
   it("offers Update for an older copy", () => {
     expect(
       actions({ state: "installed-older", installedVersion: "1.1.0" }).install,
-    ).toStrictEqual({ label: "Update copy", disabled: false });
+    ).toStrictEqual({
+      label: "Update copy",
+      disabled: false,
+      wrappersOnly: false,
+    });
   });
 
   it.each(["installed-newer", "different"] as const)(
@@ -64,7 +69,7 @@ describe("deviceActions install", () => {
     expect(
       actions({ state: "same" }, { path: "/elsewhere", isDetected: false })
         .install,
-    ).toStrictEqual({ label: "Copy", disabled: false });
+    ).toStrictEqual({ label: "Copy", disabled: false, wrappersOnly: false });
   });
 
   it("is off with no path, and while installing", () => {
@@ -72,19 +77,73 @@ describe("deviceActions install", () => {
     expect(actions({}, { installing: true }).install).toStrictEqual({
       label: "Installing…",
       disabled: true,
+      wrappersOnly: false,
     });
   });
 
-  it("is off for a development build", () => {
-    expect(
-      actions({ problem: "not-frozen", state: null, path: null }).install,
-    ).toStrictEqual({ label: "Copy", disabled: true });
+  describe("for a development build", () => {
+    const dev = { problem: "not-frozen" as const, state: null, path: null };
+    const wrapper = (state: "missing" | "current" | "differs") => ({
+      name: "PPal Plug-in Effect",
+      path: "/p",
+      state,
+    });
+
+    it.each(["missing", "differs"] as const)(
+      "installs only the wrappers when one is %s",
+      (state) => {
+        expect(
+          actions({ ...dev, pluginHost: [wrapper(state)] }).install,
+        ).toStrictEqual({
+          label: "Install the plug-in wrapper devices",
+          disabled: false,
+          wrappersOnly: true,
+        });
+      },
+    );
+
+    it("is a disabled Copy when the wrappers are current, or unknown", () => {
+      const off = { label: "Copy", disabled: true, wrappersOnly: false };
+
+      expect(
+        actions({ ...dev, pluginHost: [wrapper("current")] }).install,
+      ).toStrictEqual(off);
+      expect(actions(dev).install).toStrictEqual(off);
+    });
+
+    it("offers the wrappers for a typed path the status doesn't describe", () => {
+      const typed = { path: "/elsewhere", isDetected: false };
+
+      expect(
+        actions({ ...dev, pluginHost: [wrapper("current")] }, typed).install,
+      ).toStrictEqual({
+        label: "Install the plug-in wrapper devices",
+        disabled: false,
+        wrappersOnly: true,
+      });
+      expect(
+        actions(dev, { path: "", isDetected: false }).install?.disabled,
+      ).toBe(true);
+    });
+
+    it("is off while installing", () => {
+      expect(
+        actions(
+          { ...dev, pluginHost: [wrapper("missing")] },
+          { installing: true },
+        ).install,
+      ).toStrictEqual({
+        label: "Installing…",
+        disabled: true,
+        wrappersOnly: true,
+      });
+    });
   });
 
   it("works with no User Library found, once a path is typed", () => {
     expect(
       actions({ problem: "no-user-library", state: null }).install,
-    ).toStrictEqual({ label: "Copy", disabled: false });
+    ).toStrictEqual({ label: "Copy", disabled: false, wrappersOnly: false });
   });
 
   it.each(["unknown-source", "unreadable-source"] as const)(

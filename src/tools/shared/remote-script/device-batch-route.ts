@@ -121,6 +121,9 @@ async function askAboutChunk<Result, Answer extends object>(
       { devicePaths: devices.map((device) => device.path) },
       deadline,
       batch.missing,
+      // A per-device note, only reached if the script changed mid-call: it
+      // points at the human path rather than a tool the caller may lack.
+      false,
       maxWaitMs,
     );
 

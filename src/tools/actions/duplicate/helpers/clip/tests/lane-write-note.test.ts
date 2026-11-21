@@ -22,10 +22,9 @@ describe("the lane-write note, at the clip's own length", () => {
     ["warped audio", { is_midi_clip: 0, warping: 1 }],
   ])("is on a copy of %s with automation", async (_name, source) => {
     const world = registerStampWorld({ source });
-    const clips = await copyAtLength(world, 4);
+    const copy = await copyAtLength(world, 4);
 
-    expect(clips).toHaveLength(1);
-    expect(clips[0]?.detail).toBe(LANE_WRITE_NOTE);
+    expect(copy?.detail).toBe(LANE_WRITE_NOTE);
   });
 
   it.each([
@@ -34,9 +33,10 @@ describe("the lane-write note, at the clip's own length", () => {
     ["an arrangement clip", { is_arrangement_clip: 1 }],
   ])("is not on a copy of %s", async (_name, source) => {
     const world = registerStampWorld({ source });
-    const clips = await copyAtLength(world, 3);
+    const copy = await copyAtLength(world, 3);
 
-    expect(clips[0]?.detail).toBeUndefined();
+    expect(copy).toBeDefined();
+    expect(copy?.detail).toBeUndefined();
   });
 });
 
@@ -44,26 +44,20 @@ describe("the lane-write note, at another length", () => {
   it.each([
     ["shorter", 3],
     ["longer", 10],
-  ])(
-    "is said once on a %s copy that stamped the lane",
-    async (_name, beats) => {
-      const world = registerStampWorld();
-      const clips = await copyAtLength(world, beats);
+  ])("is on a %s copy that stamped the lane", async (_name, beats) => {
+    const world = registerStampWorld();
+    const copy = await copyAtLength(world, beats);
 
-      expect(clips[0]?.detail).toBe(LANE_WRITE_NOTE);
-      expect(clips.slice(1).map((clip) => clip.detail)).not.toContain(
-        LANE_WRITE_NOTE,
-      );
-    },
-  );
+    expect(copy?.detail).toBe(LANE_WRITE_NOTE);
+  });
 
   it("is on a warped audio copy too", async () => {
     const world = registerStampWorld({
       source: { is_midi_clip: 0, warping: 1 },
     });
-    const clips = await copyAtLength(world, 6);
+    const copy = await copyAtLength(world, 6);
 
-    expect(clips[0]?.detail).toBe(LANE_WRITE_NOTE);
+    expect(copy?.detail).toBe(LANE_WRITE_NOTE);
   });
 
   it("gives way to the partial note when stamping stops early", async () => {
@@ -71,10 +65,10 @@ describe("the lane-write note, at another length", () => {
 
     world.declinesCopy = (count) => count === 1;
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).not.toContain(LANE_WRITE_NOTE);
-    expect(clips[0]?.detail).toContain("automation written for the first 4");
+    expect(copy?.detail).not.toContain(LANE_WRITE_NOTE);
+    expect(copy?.detail).toContain("automation written for the first 4");
   });
 });
 

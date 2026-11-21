@@ -25,6 +25,7 @@ import {
   startsAtBeats,
 } from "./arrangement-lane-view.ts";
 import { isTakeLaneClip } from "./take-lanes.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** Where a complete path lands, and what is there. */
 export interface ArrangementPositionTarget {
@@ -145,13 +146,13 @@ function positionBeats(
   paramName: string,
 ): number {
   try {
+    const { numerator, denominator } = songMeter();
+
     return songPositionToBeats(liveSet, path.position, {
       paramName,
       reframed: true,
-      timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-      timeSigDenominator: liveSet.getProperty(
-        "signature_denominator",
-      ) as number,
+      timeSigNumerator: numerator,
+      timeSigDenominator: denominator,
     });
   } catch (error) {
     throw pathError(paramName, formatObjectPath(path), errorMessage(error));

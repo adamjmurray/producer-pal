@@ -27,15 +27,16 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type JSONValue } from "ai";
 import { extractToolResultText } from "#evals/chat/mcp.ts";
-import { mcpResultWarnings } from "#evals/chat/shared/mcp-result-text.ts";
+import { mcpResultExtras } from "#evals/chat/shared/mcp-result-text.ts";
 import { type EvalSession } from "../../eval-session.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** The opening message shared by nearly every scenario. */
 export const CONNECT_MESSAGE = "Connect to Ableton Live";
 
 /** The tool a connect turn calls. */
-export const CONNECT_TOOL = "ppal-connect";
+export const CONNECT_TOOL = TOOLS.connect;
 
 /**
  * The assistant's closing line for a seeded connect turn.
@@ -90,7 +91,6 @@ export async function seedConnectTurn(
 ): Promise<EvalTurnResult> {
   const startTime = Date.now();
   const output = await callConnect(session.mcpClient);
-  const warnings = mcpResultWarnings(output);
 
   session.seedTurn({
     userMessage: message,
@@ -105,15 +105,15 @@ export async function seedConnectTurn(
     userMessage: message,
     assistantResponse: SEEDED_CONNECT_REPLY,
     toolCalls: [
-      // The recorded string is the first text block and the warnings are carried
-      // beside it, matching what the streaming path records for a real call —
-      // grading and the judge transcript read the same thing either way. History
-      // gets the whole array; see `seeded-turn.ts`.
+      // The recorded string is the first text block; the warnings and injected
+      // blocks (skills, memory index) ride beside it, as the streaming path
+      // records a real call — grading and the judge transcript read the same
+      // thing either way. History gets the whole array; see `seeded-turn.ts`.
       {
         name: CONNECT_TOOL,
         args: {},
         result: extractToolResultText(output),
-        ...(warnings.length > 0 ? { warnings } : {}),
+        ...mcpResultExtras(output),
       },
     ],
     durationMs: Date.now() - startTime,

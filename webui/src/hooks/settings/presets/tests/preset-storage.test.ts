@@ -6,10 +6,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
-  createPresetId,
   loadPresets,
   PRESETS_STORAGE_KEY,
   presetMatchesFields,
@@ -91,24 +90,6 @@ describe("preset-storage", () => {
     savePresets([withExtras]);
 
     expect(loadPresets()).toStrictEqual([withExtras]);
-  });
-
-  it("generates unique ids", () => {
-    const a = createPresetId();
-    const b = createPresetId();
-
-    expect(a).toBeTruthy();
-    expect(a).not.toBe(b);
-  });
-
-  it("falls back to a timestamp-and-random id without crypto.randomUUID", () => {
-    vi.stubGlobal("crypto", {});
-
-    try {
-      expect(createPresetId()).toMatch(/^preset-[a-z0-9]+-[a-z0-9]+$/);
-    } finally {
-      vi.unstubAllGlobals();
-    }
   });
 
   describe("presetMatchesFields", () => {

@@ -7,7 +7,7 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { readGlobalSettings } from "../../helpers/config-store/global-settings-store.ts";
 import { getUpdate } from "../../helpers/http/update-check.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import { deviceInstallStatus } from "./device-install-status.ts";
 import { installIncomplete } from "./install-incomplete.ts";
 
@@ -29,8 +29,6 @@ export async function syncDeviceInstallNotice(): Promise<void> {
     // needs the same "name value" shape as the other settings.
     void Max.outlet("config", "installNotice", show ? 1 : 0);
   } catch (error) {
-    console.warn(
-      `Could not check the device installation: ${errorMessage(error)}`,
-    );
+    nodeWarn(`Could not check the device installation: ${errorMessage(error)}`);
   }
 }

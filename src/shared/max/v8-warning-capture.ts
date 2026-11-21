@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Per-request buffering for console.warn(), so a warning lands on the response of
+// Per-request buffering for emitWarning(), so a warning lands on the response of
 // the request that produced it.
 //
 // Warnings used to be buffered in the Max patch: a `list.group` fed by v8 outlet
@@ -43,6 +43,8 @@
 
 /** Warnings collected for one in-flight request. */
 export interface WarningCapture {
+  /** Which request this is; rises with every capture begun. */
+  id: number;
   messages: string[];
   dropped: number;
   /**
@@ -69,6 +71,8 @@ export const MAX_CAPTURED_WARNINGS = 1000;
 
 let activeCapture: WarningCapture | null = null;
 
+let lastRequestId = 0;
+
 /**
  * How many times any request has parked on a suspendWarningCapture promise.
  * Every such park lets Max run another request, so anything a request cached
@@ -91,6 +95,7 @@ export function suspensionCount(): number {
  */
 export function beginWarningCapture(): WarningCapture {
   activeCapture = {
+    id: ++lastRequestId,
     messages: [],
     dropped: 0,
     ended: false,
@@ -111,6 +116,14 @@ export function beginWarningCapture(): WarningCapture {
  */
 export function resumeWarningCapture(capture: WarningCapture): void {
   activeCapture = capture;
+}
+
+/**
+ * @returns The id of the request in flight, or null with none. Tool code only
+ *   runs inside a request, so null means a call from outside one.
+ */
+export function currentRequestId(): number | null {
+  return activeCapture?.id ?? null;
 }
 
 /**

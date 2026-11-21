@@ -480,7 +480,8 @@ describe("liveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]).toBe("#00FF00");
-      expect(LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00");
+      // raw: the tool passes the color to Live untouched
+      expect(LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00", true);
     });
 
     it("should throw error for setColor without value", () => {

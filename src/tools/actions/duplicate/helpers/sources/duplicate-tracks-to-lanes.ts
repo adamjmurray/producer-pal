@@ -332,9 +332,13 @@ function clipsFitTrack(
   }
 
   if (!source.recreatable) {
+    const stepSequencer = source.clips.some((clip) => clip.isStepSequencerClip);
+
     return (
       `${source.label} has no clip a lane copy can re-create: ` +
-      `each is an audio clip with no sample`
+      (stepSequencer
+        ? "each is a step sequencer clip or an audio clip with no sample"
+        : "each is an audio clip with no sample")
     );
   }
 

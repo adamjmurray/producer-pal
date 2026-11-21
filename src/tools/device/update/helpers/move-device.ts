@@ -15,17 +15,21 @@ import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import {
   loadedDeviceKind,
   misfitReason,
+  newChainMisfitReason,
 } from "#src/tools/shared/device/helpers/path/device-fit.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
   isInstrumentTyped,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
+  checkInsertionPath,
   pastTheEndReason,
   type InsertionPathResolution,
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type DryWalk } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /** What a device move did. The caller words "no-destination" and "refused":
@@ -75,7 +79,11 @@ export function moveDeviceToPath(
   reportPath: string = toPath,
   notes?: TargetNotes,
 ): DeviceMove {
-  const destination = resolveMoveDestination(toPath, reportPath);
+  const destination = resolveMoveDestination(
+    toPath,
+    reportPath,
+    resolveInsertionPath,
+  );
 
   if ("reason" in destination) {
     return { outcome: "unresolvable", reason: destination.reason };
@@ -98,6 +106,60 @@ export function moveDeviceToPath(
   return destination.createdChains == null
     ? move
     : { ...move, created: destination.createdChains };
+}
+
+/**
+ * Whether a device could be moved to a path, found out without making
+ * anything: no chain is made and nothing moves. Answers what moveDeviceToPath
+ * would, in the same words, for what is known beforehand: a path naming no
+ * place, a chain that can't be made, an index past the end, and a kind of device
+ * the place won't take (when Live gives the device a kind). Left to the move: a
+ * second instrument, which only Live's refusal shows, and a chain on a drum pad,
+ * which only a write can tell about.
+ * @param device - The device to move, or the one copied
+ * @param toPath - Target path
+ * @returns Why the move would not happen, or null when nothing says it won't
+ */
+export function checkMoveDestination(
+  device: LiveAPI,
+  toPath: string,
+): DeviceMove | null {
+  const destination = resolveMoveDestination(
+    toPath,
+    toPath,
+    checkInsertionPath,
+  );
+
+  if ("reason" in destination) {
+    return { outcome: "unresolvable", reason: destination.reason };
+  }
+
+  const { container, position } = destination;
+
+  if (destination.undetermined) {
+    return null;
+  }
+
+  // A chain the path would make holds nothing, and takes what its rack takes.
+  if (destination.makesChain) {
+    return refusalOf(
+      pastTheEndReason(position, 0, toPath) ??
+        newChainMisfit(device, destination.newChain),
+    );
+  }
+
+  if (!container?.exists()) {
+    return { outcome: "no-destination" };
+  }
+
+  return refusalOf(
+    pastTheEndReason(
+      position,
+      container.getChildIds("devices").length,
+      toPath,
+    ) ??
+      (loadedDeviceKind(device) == null ? null : misfitOf(device, container)),
+  );
 }
 
 /**
@@ -182,15 +244,17 @@ export function moveDeviceIntoContainer(
  * Rack, a device that isn't a rack — so catch it here and hand the reason back.
  * @param toPath - Target path, as handed to the move
  * @param reportPath - How to spell it back to the caller
+ * @param resolve - How to resolve it: making what it needs, or only checking
  * @returns The destination, or why the path didn't resolve
  */
-function resolveMoveDestination(
+function resolveMoveDestination<T extends InsertionPathResolution>(
   toPath: string,
   reportPath: string,
-): InsertionPathResolution | { reason: string } {
+  resolve: (path: string, label: string) => T,
+): T | { reason: string } {
   try {
     // Every caller here got the path from a `toPath` param, so name it that.
-    const destination = resolveInsertionPath(toPath, "toPath");
+    const destination = resolve(toPath, "toPath");
 
     return destination.namesNothing == null
       ? destination
@@ -234,15 +298,66 @@ function refusalReason(
   device: LiveAPI,
   container: LiveAPI,
 ): string | undefined {
-  const name =
-    (device.getProperty("class_display_name") as string | undefined) ??
-    device.getName();
-
   return (
-    misfitReason(name, loadedDeviceKind(device), container) ??
+    misfitOf(device, container) ??
     (isInstrumentTyped(device) &&
     container.someChild("devices", isInstrumentTyped)
       ? ONE_INSTRUMENT_PER_CHAIN
       : undefined)
   );
+}
+
+/**
+ * Why a place takes only some kinds of device, when this one isn't among them.
+ * @param device - The device that is headed there
+ * @param container - Where it is headed
+ * @returns The reason, or null when the place takes it
+ */
+function misfitOf(device: LiveAPI, container: LiveAPI): string | null {
+  return misfitReason(
+    deviceNameOf(device),
+    loadedDeviceKind(device),
+    container,
+  );
+}
+
+// What a misfit calls a device: its class name, else the name it has.
+function deviceNameOf(device: LiveAPI): string {
+  return (
+    (device.getProperty("class_display_name") as string | undefined) ??
+    device.getName()
+  );
+}
+
+/**
+ * Why a chain not yet made won't take a device, when its rack won't have it.
+ * @param device - The device that is headed there
+ * @param newChain - The rack the chain would be made in, and its index
+ * @returns The reason, or null when it would take it, or the device has no kind
+ */
+function newChainMisfit(
+  device: LiveAPI,
+  newChain: DryWalk["newChain"],
+): string | null {
+  const kind = loadedDeviceKind(device);
+
+  if (newChain == null || kind == null) {
+    return null;
+  }
+
+  return newChainMisfitReason(
+    deviceNameOf(device),
+    kind,
+    newChain.rack,
+    `${pathPrefix(newChain.rack)}/c${newChain.index}`,
+  );
+}
+
+/**
+ * A move refused for a reason, or no refusal when there is none.
+ * @param reason - Why the move would be refused
+ * @returns The refusal, or null
+ */
+function refusalOf(reason: string | null): DeviceMove | null {
+  return reason == null ? null : { outcome: "refused", reason };
 }

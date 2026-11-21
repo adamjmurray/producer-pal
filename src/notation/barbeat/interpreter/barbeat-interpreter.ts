@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import {
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
@@ -18,8 +18,9 @@ import {
   type StreamPitch,
 } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   clearCarriedStreams,
@@ -61,7 +62,7 @@ interface InterpretOptions {
    * Notes already in the clip, placed before the string's own: bar copy can
    * copy them and `v0` can delete them, and new notes still start from the
    * defaults. The survivors come back as the same objects, so fields bar|beat
-   * can't spell (release velocity, a downward velocity range) are kept.
+   * can't spell (mute, release velocity) are kept.
    */
   existingNotes?: NoteEvent[];
 }
@@ -126,14 +127,15 @@ function processStreamElement(
       // Defensive today (applyStreamOverrides always wins while a stream is
       // active), but it stops a stale range from leaking if that ever changes.
       state.currentVelocity = null;
-      state.currentVelocityMin = null;
-      state.currentVelocityMax = null;
+      state.currentVelocityStart = null;
+      state.currentVelocityEnd = null;
       break;
     case "duration":
       state.currentDurationStream = buildDurationStream(
         stream.values,
         beatsPerBar,
         timeSigDenominator,
+        state.currentDuration,
       );
       state.durationStreamCursor = 0;
       break;
@@ -299,8 +301,8 @@ function processElementInLoop(
   } else if (element.velocity !== undefined) {
     processVelocityUpdate(element, state);
   } else if (
-    element.velocityMin !== undefined &&
-    element.velocityMax !== undefined
+    element.velocityStart !== undefined &&
+    element.velocityEnd !== undefined
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
@@ -331,7 +333,8 @@ export function interpretNotation(
 
   // Bar copy tracking: Map bar number -> array of note metadata
   const notesByBar = new Map<number, BarCopyNote[]>();
-  const events: NoteEvent[] = [...existingNotes];
+  // The string's own notes only, so the note limit doesn't count the clip's.
+  const events: NoteEvent[] = [];
 
   for (const note of existingNotes) {
     trackForBarCopy(note, beatsPerBar, timeSigDenominator, notesByBar);
@@ -343,8 +346,8 @@ export function interpretNotation(
     currentVelocity: DEFAULT_VELOCITY,
     currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
     currentProbability: DEFAULT_PROBABILITY,
-    currentVelocityMin: null,
-    currentVelocityMax: null,
+    currentVelocityStart: null,
+    currentVelocityEnd: null,
     currentPitches: [],
     currentPitchStreams: [],
     pitchStreamCursor: 0,
@@ -376,13 +379,13 @@ export function interpretNotation(
   const buffered = countBufferedPitches(state);
 
   if (buffered > 0 && !state.pitchesEmitted) {
-    console.warn(
+    emitWarning(
       `${buffered} pitch(es) buffered but no time position to emit them`,
     );
   }
 
   // Apply v0 deletions as final post-processing step
-  return applyV0Deletions(events);
+  return applyV0Deletions([...existingNotes, ...events]);
 }
 
 /**
@@ -399,12 +402,14 @@ export function parseNotation(
     return [];
   }
 
+  let ast: ASTElement[];
+
   try {
     // Pass the denominator so the grammar can resolve `±n` beat offsets
     // (whole-note fractions) into musical beats during the parse, and
     // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
     // position earlier than beat 1 (e.g. `2|1-n/12`).
-    return parser.parse(barBeatExpression, {
+    ast = parser.parse(barBeatExpression, {
       timeSigDenominator: options.timeSigDenominator,
       beatsPerBar: parseBeatsPerBar(options),
     });
@@ -417,5 +422,28 @@ export function parseNotation(
     }
 
     throw error;
+  }
+
+  checkExpansionCounts(ast);
+
+  return ast;
+}
+
+// Refuse a repeat or bar range too large to expand, before any note is made.
+function checkExpansionCounts(ast: ASTElement[]): void {
+  for (const { beat, destination, source } of ast) {
+    if (typeof beat === "object") {
+      checkNotationLimit(beat.times, `Repeat x${beat.times}`);
+    }
+
+    const sourceRange = typeof source === "object" ? source.range : undefined;
+
+    for (const range of [destination?.range, sourceRange]) {
+      if (range != null) {
+        const [start, end] = range;
+
+        checkNotationLimit(end - start + 1, `Bar range ${start}-${end}`);
+      }
+    }
   }
 }

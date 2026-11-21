@@ -24,7 +24,10 @@ standard setup. It adds:
   devices by name, like "add Pro-Q 4 to the bass track". The AI finds them with
   the [Library](/features/tools#ppal-library) tool. Without the script,
   [Create Device](/features/tools#ppal-create-device) only adds Live's native
-  devices.
+  devices. [Full plug-in control](/guide/plugins) needs it too. When a plug-in
+  is installed in several formats, its name loads the VST3, then the AU, then
+  the VST2. To get another one, give the AI its path in Live's browser, like
+  `Plug-Ins/AUv2/FabFilter/Pro-Q 4`.
 - **Presets**: create a device or rack from a preset (`.adv` or `.adg`),
   including drum kits from your Packs, or swap a preset onto a device with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
@@ -64,8 +67,9 @@ Installation**.
    `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`. One
    copy there serves all your projects, and lets a coding agent or the Claude
    Desktop extension add Producer Pal to a new project.
-3. **Remote script:** click **Install** (or **Update**). The script is written
-   to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
+3. **Control Surface remote script:** click **Install** (or **Update**). The
+   script is written to `<User Library>/Remote Scripts/Producer_Pal`, replacing
+   any older copy.
 
 ### Swap the running device for the User Library copy
 
@@ -79,7 +83,8 @@ Library copy.
 ### The reminder
 
 The device's Main tab shows **Finish installation…** while the User Library copy
-is missing or older, or the remote script is missing or out of date. It stays
+is missing or older, the remote script is missing or out of date, or a
+[plug-in wrapper device](/guide/plugins) is missing or out of date. It stays
 hidden while **Update available** is showing. To turn it off, untick **Warn when
 installation is incomplete** in **Settings → Installation**.
 

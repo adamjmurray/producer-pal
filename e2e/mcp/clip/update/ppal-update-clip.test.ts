@@ -329,23 +329,22 @@ describe("ppal-update-clip", () => {
       arguments: { id: movedClip.id, arrangementLength: "4bar" },
     });
 
-    // arrangementLength can return multiple clips if it tiles
-    const lengthUpdatedClips = parseToolResult<
-      { id: string } | Array<{ id: string }>
-    >(lengthUpdateResult);
-    const firstUpdatedClip = Array.isArray(lengthUpdatedClips)
-      ? lengthUpdatedClips[0]
-      : lengthUpdatedClips;
+    // The clip is resized in place: one entry, the same clip.
+    const lengthUpdatedClip = parseToolResult<{ id: string }>(
+      lengthUpdateResult,
+    );
+
+    expect(lengthUpdatedClip.id).toBe(movedClip.id);
 
     await sleep(200);
 
     const verifyLength = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { id: firstUpdatedClip!.id, include: ["timing"] },
+      arguments: { id: movedClip.id, include: ["timing"] },
     });
     const lengthClipResult = parseToolResult<ReadClipResult>(verifyLength);
 
-    expect(lengthClipResult.arrangementLength).toBeDefined();
+    expect(lengthClipResult.arrangementLength).toBe("4bar");
   });
 
   it("updates multiple clips in batch", async () => {

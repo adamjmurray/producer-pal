@@ -16,32 +16,24 @@
 
 import { join } from "node:path";
 import { installDevice } from "#src/portal/setup/device-install.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
 import { resolveInstallLibraryOrExit } from "./helpers/install-library.ts";
 import {
   describeDeviceInstall,
   requireReleaseDevice,
 } from "./helpers/release-device.ts";
+import { runInstallReport } from "./run-install-report.ts";
 
 const rootDir = join(import.meta.dirname, "../../..");
 const force = process.argv.includes("--force");
 
-try {
+await runInstallReport(async () => {
   const releaseFile = requireReleaseDevice(rootDir);
   const library = await resolveInstallLibraryOrExit();
-  const { lines, ok } = describeDeviceInstall(
+
+  return describeDeviceInstall(
     installDevice(library.path, releaseFile, {
       force,
       sourceName: "the release build",
     }),
   );
-
-  for (const line of lines) {
-    console.log(line);
-  }
-
-  process.exitCode = ok ? 0 : 1;
-} catch (error) {
-  console.error(errorMessage(error));
-  process.exitCode = 1;
-}
+});

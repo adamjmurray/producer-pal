@@ -609,38 +609,38 @@ G4-G5: velocity += 20`;
       );
     });
 
-    it("uses variable as waveform period", () => {
+    it("uses a non-constant function as waveform period", () => {
       const result = evaluateTransform(
-        "velocity += cos(note.duration)",
-        createContext({ position: 0.25 }), // quarter way through period
+        "velocity += cos(rand(4, 4))",
+        createContext({ position: 2 }), // halfway through the period
         noteProps,
       );
 
-      // noteProps.duration = 0.5, so position 0.25 / period 0.5 = phase 0.5
+      // position 2 / period 4 = phase 0.5
       // cos(0.5) = -1
       expect(result.velocity!.value).toBeCloseTo(-1.0, 5);
     });
 
-    it("uses expression as waveform period", () => {
+    it("uses a non-constant expression as waveform period", () => {
       const result = evaluateTransform(
-        "velocity += cos(note.duration * 2)",
-        createContext({ position: 0.5 }),
+        "velocity += cos(rand(4, 4) / 2)",
+        createContext({ position: 1 }),
         noteProps,
       );
 
-      // noteProps.duration * 2 = 0.5 * 2 = 1.0
-      // position 0.5 / period 1.0 = phase 0.5 → cos(0.5) = -1
+      // rand(4, 4) / 2 = 2
+      // position 1 / period 2 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity!.value).toBeCloseTo(-1.0, 5);
     });
 
-    it("takes a zero variable period as phase 0", () => {
+    it("takes a zero non-constant period as phase 0", () => {
       const result = evaluateTransform(
-        "velocity += cos(note.duration - 0.5)",
+        "velocity += cos(rand(0, 0))",
         createContext(),
         noteProps,
       );
 
-      // noteProps.duration - 0.5 = 0, so every note samples phase 0
+      // rand(0, 0) = 0, so every note samples phase 0
       expect(result.velocity!.value).toBe(1);
     });
   });

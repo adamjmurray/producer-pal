@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { safeJson } from "#webui/hooks/voice/helpers/safe-json";
+
 /** What the browser needs to open a Live connection. */
 export interface GeminiVoiceCredential {
   /** The apiKey to pass to GoogleGenAI — a raw key (passthrough) or, once the
@@ -60,18 +62,4 @@ export async function fetchGeminiToken(
   }
 
   return { value: json.value, ephemeral: json.ephemeral === true };
-}
-
-/**
- * Best-effort JSON read; returns null on failure.
- *
- * @param response - Fetch response
- * @returns Parsed JSON or null
- */
-async function safeJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
 }

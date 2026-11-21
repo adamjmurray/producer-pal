@@ -29,7 +29,11 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
-import { parseClipDestinationList } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import {
+  parseClipDestinationList,
+  refuseReturnSlotDestinations,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { returnSlotCreateRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type Call } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
@@ -91,6 +95,13 @@ interface SplitDestinations {
   /** Where the call named each clip slot, alongside the arrangement ones. */
   slotOrdinals: number[];
   tracks: ArrangementTrackTarget[];
+}
+
+/** How the call named its arrangement lanes, so a refusal quotes that. */
+interface SentLane {
+  param: "path" | "trackIndex";
+  /** The takeLane alias as sent, or null when it named no lane. */
+  takeLane: number | string | null;
 }
 
 /** An arrangement clip, still carrying the destination ordinal it came from. */
@@ -160,6 +171,12 @@ export function resolveCreateClipDestinations(
         splitPathEntries(path).length > 1,
       starts:
         arrangementStart != null && splitEntries(arrangementStart).length > 1,
+    },
+    {
+      param: path != null ? "path" : "trackIndex",
+      takeLane: isTakeLaneRequested(params.takeLane)
+        ? (params.takeLane as number | string)
+        : null,
     },
   );
 
@@ -234,8 +251,11 @@ function splitPathDestinations(path: string): SplitDestinations {
   const clipSlots: ClipSlotPosition[] = [];
   const slotOrdinals: number[] = [];
   const tracks: ArrangementTrackTarget[] = [];
+
   // The lane is settled before the locators are resolved, so a refusal quotes
   // the position the caller wrote rather than the bar|beat it names.
+  refuseReturnSlotDestinations(path, "path", returnSlotCreateRefusal);
+
   const entries = parseClipDestinationList(path, "path").map((entry) => ({
     position: entry.position,
     lane: entry.lane ?? noTrack(entry.position),
@@ -440,6 +460,7 @@ function sessionOnly(slots: ClipSlotPosition[]): SplitDestinations {
  * @param listed - Whether each side was written as a list
  * @param listed.tracks - Whether the path was a list of tracks alone
  * @param listed.starts - Whether arrangementStart had a comma
+ * @param sent - How the call named the lanes, for a refusal
  * @returns One entry per arrangement clip
  * @throws Error when both are lists and the counts differ
  */
@@ -447,6 +468,7 @@ function pairTracksWithStarts(
   tracks: ArrangementTrackTarget[],
   arrangementStarts: string[],
   listed: { tracks: boolean; starts: boolean },
+  sent: SentLane,
 ): OrderedArrangementPosition[] {
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
@@ -461,12 +483,12 @@ function pairTracksWithStarts(
   if (tracks.some((track) => track.position != null)) {
     return tracks.map(({ position, ...track }) => ({
       ...track,
-      arrangementStart: position ?? noPosition(track),
+      arrangementStart: position ?? noPosition(track, sent),
     }));
   }
 
   if (arrangementStarts.length === 0) {
-    noPosition(tracks[0] as ArrangementTrack);
+    noPosition(tracks[0] as ArrangementTrack, sent);
   }
 
   if (
@@ -509,17 +531,52 @@ function entryAt<T>(list: T[], index: number): T {
  * Refuses a lane the call named no position on. A bare track names two places
  * at once — its arrangement and its clip slots — and guessing between them is
  * how a clip lands on top of something. A take lane names only one, but still
- * needs a position on it.
+ * needs a position on it. Quotes the params the caller sent, and teaches the
+ * path form as the fix.
  * @param track - The lane with no position
+ * @param sent - How the call named the lane
  * @returns Never — always throws
  */
-function noPosition(track: ArrangementTrack): never {
+function noPosition(track: ArrangementTrack, sent: SentLane): never {
   const { trackIndex, takeLane } = track;
   const lane = arrangementPath(trackIndex, takeLane);
-  const fix =
-    takeLane == null
-      ? `add one, as "${lane}[5|1]", or use "t${trackIndex}/s<scene>" for a clip slot`
-      : `add one, as "${lane}[5|1]"; take lanes hold arrangement clips`;
+  const ownPath = sent.param === "path" && sent.takeLane == null;
+  const slot = `"t${trackIndex}/s<scene>" for a clip slot`;
+  let fix = ownPath ? `add one, as "${lane}[5|1]"` : `use path "${lane}[5|1]"`;
 
-  throw new Error(`path "${lane}" names no position; ${fix}`);
+  if (takeLane != null) {
+    fix += "; take lanes hold arrangement clips";
+  } else {
+    fix += ownPath ? `, or use ${slot}` : ` for the arrangement, or ${slot}`;
+  }
+
+  throw new Error(
+    `${sentLaneLabel(trackIndex, lane, sent)} names no position; ${fix}`,
+  );
+}
+
+/**
+ * Spells a lane the way the call named it.
+ * @param trackIndex - The lane's track
+ * @param lane - The lane's path, take lane included
+ * @param sent - How the call named the lane
+ * @returns E.g. `path "t0/l1"`, `trackIndex 0 with takeLane 2`
+ */
+function sentLaneLabel(
+  trackIndex: number,
+  lane: string,
+  sent: SentLane,
+): string {
+  if (sent.takeLane == null) {
+    return sent.param === "path"
+      ? `path "${lane}"`
+      : `trackIndex ${trackIndex}`;
+  }
+
+  const track =
+    sent.param === "path"
+      ? `path "t${trackIndex}"`
+      : `trackIndex ${trackIndex}`;
+
+  return `${track} with takeLane ${sent.takeLane}`;
 }

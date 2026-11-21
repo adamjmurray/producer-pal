@@ -11,6 +11,7 @@ import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/h
 import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** The song's meter, read once per call — every clip's positions share it. */
 export interface SongMeter {
@@ -93,15 +94,14 @@ export function resolveClipTimingContext(
 
 /**
  * Read the song's meter, once for the whole call.
- * @param liveSet - The live_set LiveAPI object
  * @returns The song time signature
  */
-export function readSongMeter(liveSet: LiveAPI): SongMeter {
+export function readSongMeter(): SongMeter {
+  const { numerator, denominator } = songMeter();
+
   return {
-    songTimeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    songTimeSigDenominator: liveSet.getProperty(
-      "signature_denominator",
-    ) as number,
+    songTimeSigNumerator: numerator,
+    songTimeSigDenominator: denominator,
   };
 }
 
@@ -116,12 +116,14 @@ export function readSongMeter(liveSet: LiveAPI): SongMeter {
  * @param arrangementPositions - Resolved arrangement destinations
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
+ * @param param - The param the caller wrote the positions in
  * @throws When a position isn't a usable bar|beat, or is past Live's last
  */
 export function validateArrangementPositions(
   arrangementPositions: ArrangementPosition[],
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
+  param: string,
 ): void {
   for (const { arrangementStart } of arrangementPositions) {
     // The 1-indexing steer first, then the format error the conversion raises.
@@ -134,6 +136,7 @@ export function validateArrangementPositions(
       ),
       songTimeSigNumerator,
       songTimeSigDenominator,
+      param,
     );
   }
 }

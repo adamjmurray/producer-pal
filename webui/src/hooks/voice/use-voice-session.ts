@@ -12,12 +12,13 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
 import { fetchEphemeralToken } from "#webui/hooks/voice/helpers/ephemeral-token";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/response-failure";
-import {
-  bailIfStale,
-  seedInitialHistory,
-} from "#webui/hooks/voice/helpers/voice-session-setup";
+import { seedInitialHistory } from "#webui/hooks/voice/helpers/voice-session-setup";
 import { applyLiveVolume } from "#webui/hooks/voice/helpers/playback-audio-element";
-import { releaseVoiceSessionResources } from "#webui/hooks/voice/helpers/voice-session-teardown";
+import {
+  type OwnedVoiceResources,
+  releaseOwnedVoiceResources,
+  releaseVoiceSessionResources,
+} from "#webui/hooks/voice/helpers/voice-session-teardown";
 import { createWiredSession } from "#webui/hooks/voice/helpers/voice-session-wiring";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";
@@ -244,6 +245,10 @@ export function useVoiceSession(
 
       connectingRef.current = true;
       const myGen = connectGenRef.current;
+      const stale = (): boolean => connectGenRef.current !== myGen;
+      // A stale connect releases only what it made itself; cleanup() would
+      // tear down the newer connect's refs and bump the generation again.
+      const owned: OwnedVoiceResources = {};
 
       intentionalCloseRef.current = false;
       setStatus("connecting");
@@ -258,13 +263,16 @@ export function useVoiceSession(
           enabledTools,
         );
 
-        mcpClientRef.current = mcpClient;
+        owned.mcpClient = mcpClient;
 
         // Torn down during MCP setup (e.g. unmounted while "Connecting…")? Bail
         // before building the session so we never open a peer connection + mic.
-        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) {
-          return;
+        if (stale()) {
+          return await releaseOwnedVoiceResources(owned);
         }
+
+        mcpClientRef.current = mcpClient;
+        owned.mcpClient = undefined; // teardown closes it via the ref now
 
         const session = createWiredSession(
           { model, voice, speed, volume, thinking, turnDetection, language },
@@ -273,6 +281,7 @@ export function useVoiceSession(
             audioElementRef,
             setHistory,
             intentionalCloseRef,
+            isStale: stale,
             cleanup,
             onConnectionLost: () => {
               setStatus("error");
@@ -292,6 +301,7 @@ export function useVoiceSession(
           },
         );
 
+        owned.session = session;
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
         sessionRef.current = session;
 
@@ -302,9 +312,9 @@ export function useVoiceSession(
         );
 
         // Torn down during the token fetch? Bail before session.connect() opens
-        // the mic (cleanup() already closed the stored session).
-        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) {
-          return;
+        // the mic.
+        if (stale()) {
+          return await releaseOwnedVoiceResources(owned);
         }
 
         await session.connect({ apiKey: token });
@@ -316,10 +326,8 @@ export function useVoiceSession(
         // directly and bail before publishing "connected"/history that nothing
         // is left to manage. The two checks above can't cover this window: they
         // run before the peer connection exists.
-        if (
-          await bailIfStale(connectGenRef.current !== myGen, cleanup, session)
-        ) {
-          return;
+        if (stale()) {
+          return await releaseOwnedVoiceResources(owned);
         }
 
         // The WebRTC transport has attached the remote stream to our element by
@@ -332,6 +340,12 @@ export function useVoiceSession(
         seedInitialHistory(session, initialHistory);
         setStatus("connected");
       } catch (err) {
+        // A superseded connect's failure (often caused by the teardown itself)
+        // must not overwrite the user's state.
+        if (stale()) {
+          return await releaseOwnedVoiceResources(owned);
+        }
+
         setStatus("error");
         setError(extractErrorMessage(err));
         await cleanup();

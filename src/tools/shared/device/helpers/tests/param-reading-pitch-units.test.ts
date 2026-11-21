@@ -12,7 +12,7 @@
 // number unconverted.
 
 import { describe, expect, it } from "vitest";
-import { parseLabel } from "../param-label-parsing.ts";
+import { parseLabel } from "../params/param-label-parsing.ts";
 
 describe("parseLabel pitch units", () => {
   describe("semitones (st)", () => {

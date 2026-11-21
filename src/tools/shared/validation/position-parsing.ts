@@ -13,6 +13,23 @@ export interface ClipSlotPosition {
   sceneIndex: number;
 }
 
+/** A clip slot on a Live 13 return track. */
+export interface ReturnSlotPosition {
+  returnIndex: number;
+  sceneIndex: number;
+}
+
+/**
+ * Whether a slot position is on a return track.
+ * @param position - A slot position
+ * @returns True for a return track's slot
+ */
+export function isReturnSlotPosition(
+  position: ClipSlotPosition | ReturnSlotPosition,
+): position is ReturnSlotPosition {
+  return "returnIndex" in position;
+}
+
 /**
  * Parses a single slot string into track and scene indices
  * @param input - Slot string (e.g., "0/3")

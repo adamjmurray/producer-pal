@@ -5,18 +5,14 @@
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
+  buildAnthropicProviderOptions,
   getGeminiOffThinkingConfig,
-  getThinkingOffType,
-  isAlwaysOnThinkingModel,
-  isLegacyNonThinkingModel,
-  isLegacyThinkingModel,
   isOpenAIReasoningModel,
-  mapThinkingToAnthropicEffort,
   mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
-} from "#webui/hooks/settings/config-builders";
-import { getThinkingBudget } from "#webui/lib/config";
+} from "#webui/chat/sdk/provider/thinking-effort";
+import { getThinkingBudget, toThinkingEffort } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -37,25 +33,23 @@ export function buildProviderOptions(
   }
 
   if (provider === "ollama") {
-    const reasoningEffort = mapThinkingToOllamaEffort(thinking);
+    const reasoningEffort = mapThinkingToOllamaEffort(
+      toThinkingEffort(thinking),
+    );
 
     return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
   }
 
   if (provider === "openrouter") {
-    const effort = mapThinkingToOpenRouterEffort(thinking);
+    const effort = mapThinkingToOpenRouterEffort(toThinkingEffort(thinking));
 
-    if (effort) {
-      return {
-        openrouter: {
-          reasoning: {
-            effort,
-          },
-        },
-      };
-    }
-
-    return undefined;
+    // Default names no effort. `enabled` still turns reasoning on, which
+    // models like Claude need to think (and to keep their replayed reasoning).
+    return {
+      openrouter: {
+        reasoning: effort ? { effort } : { enabled: true },
+      },
+    };
   }
 
   if (provider === "openai") {
@@ -74,10 +68,8 @@ export function buildProviderOptions(
 }
 
 /**
- * Build Anthropic-specific provider options for extended thinking.
- * Uses adaptive thinking with effort for most models, falls back to legacy
- * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet, and
- * omits the `thinking` field entirely for pre-3.7 models that don't support it.
+ * Build Anthropic-specific provider options for extended thinking. The direct
+ * route leaves Off and `display` to its request rewrite (provider-factories).
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
  * @returns Anthropic provider options or undefined
@@ -86,48 +78,10 @@ function buildAnthropicOptions(
   thinking: string,
   model: string,
 ): ProviderOptions | undefined {
-  // Pre-3.7 Anthropic models (reachable only via the free-text "Other..." input)
-  // reject ANY `thinking` field with a 400, so never send one regardless of the
-  // UI thinking level — otherwise the default adaptive payload 400s on first send.
-  if (isLegacyNonThinkingModel(model)) {
-    return undefined;
-  }
-
-  // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
-  if (isLegacyThinkingModel(model)) {
-    const budgetTokens = getThinkingBudget(thinking);
-
-    if (budgetTokens === 0) {
-      return undefined;
-    }
-
-    return {
-      anthropic: {
-        thinking: {
-          type: "enabled",
-          budgetTokens: budgetTokens === -1 ? 10240 : budgetTokens,
-        },
-      },
-    };
-  }
-
-  // Adaptive thinking with effort for Sonnet 4.6+, Opus 4.6+
-  const effort = mapThinkingToAnthropicEffort(thinking);
-
-  if (effort == null) {
-    // Always-on models can't turn thinking off (and 400 on a `thinking` field),
-    // so Off asks for the least of it instead.
-    return isAlwaysOnThinkingModel(model)
-      ? { anthropic: { effort: "low" } }
-      : undefined;
-  }
-
-  return {
-    anthropic: {
-      thinking: { type: "adaptive" },
-      effort,
-    },
-  };
+  return buildAnthropicProviderOptions(toThinkingEffort(thinking), model, {
+    explicitOff: false,
+    summarized: false,
+  });
 }
 
 /**
@@ -142,7 +96,10 @@ function buildOpenAIOptions(
   model: string,
   direct = false,
 ): ProviderOptions | undefined {
-  const effort = mapThinkingToReasoningEffort(thinking, model);
+  const effort = mapThinkingToReasoningEffort(
+    toThinkingEffort(thinking),
+    model,
+  );
   // Off asks for no reasoning summaries, even on models that still reason.
   const reasoningSummary =
     thinking !== "Off" && isOpenAIReasoningModel(model) ? "auto" : undefined;
@@ -183,8 +140,15 @@ function buildGeminiOptions(
     return thinkingConfig ? { google: { thinkingConfig } } : undefined;
   }
 
+  // Default sends no budget (-1), so Gemini picks its own; only the thought
+  // summaries are requested.
   return {
-    google: { thinkingConfig: { thinkingBudget, includeThoughts: true } },
+    google: {
+      thinkingConfig: {
+        ...(thinkingBudget >= 0 ? { thinkingBudget } : {}),
+        includeThoughts: true,
+      },
+    },
   };
 }
 
@@ -239,11 +203,9 @@ function buildGatewayUpstreamOptions(
 }
 
 /**
- * Anthropic options through the gateway. The direct provider gets these two
- * from its request rewrite, which can't reach the gateway's wire format:
- * summarized thinking (adaptive thinking shows nothing without it), and an
- * explicit off type for "Off" (omitting `thinking` runs adaptive thinking on
- * Sonnet 5+).
+ * Anthropic options through the gateway. The direct provider gets summarized
+ * thinking and an explicit "Off" type from its request rewrite, which can't
+ * reach the gateway's wire format, so ask for both here.
  * @param thinking - Thinking level from UI settings
  * @param model - Anthropic model id
  * @returns Anthropic provider options or undefined
@@ -252,25 +214,8 @@ function buildGatewayAnthropicOptions(
   thinking: string,
   model: string,
 ): ProviderOptions | undefined {
-  const options = buildAnthropicOptions(thinking, model);
-  const anthropic = options?.anthropic as
-    | { thinking?: { type: string } }
-    | undefined;
-
-  if (anthropic?.thinking?.type === "adaptive") {
-    return {
-      anthropic: {
-        ...anthropic,
-        thinking: { ...anthropic.thinking, display: "summarized" },
-      },
-    };
-  }
-
-  const offType = options == null ? getThinkingOffType(model) : undefined;
-
-  if (offType != null) {
-    return { anthropic: { thinking: { type: offType } } };
-  }
-
-  return options;
+  return buildAnthropicProviderOptions(toThinkingEffort(thinking), model, {
+    explicitOff: true,
+    summarized: true,
+  });
 }

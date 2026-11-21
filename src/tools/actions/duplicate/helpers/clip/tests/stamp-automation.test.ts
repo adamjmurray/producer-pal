@@ -40,7 +40,7 @@ describe("a session clip with automation, copied at another length", () => {
     );
   });
 
-  it("stamps a lengthened copy over its whole span, with a partial last tile", async () => {
+  it("stamps a lengthened copy over its whole span, with a partial last stamp", async () => {
     const world = registerStampWorld();
 
     await copyAtLength(world, 10);

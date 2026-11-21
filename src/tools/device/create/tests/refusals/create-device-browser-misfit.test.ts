@@ -7,7 +7,7 @@
 // load when its kind is known, after it when only the loaded device shows it.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -22,10 +22,13 @@ import {
   TEMP_TRACK,
 } from "../browser/temp-track-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const REFUSED =
   'group track t0 (id group) takes only audio effects; "Pro-Q 4" ';
@@ -122,5 +125,48 @@ describe("createDevice — a browser device the place can't take", () => {
     await expect(
       createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
     ).rejects.toThrow(/^could not insert "Pro-Q 4" at end in path "t0\/d\+"$/);
+  });
+});
+
+describe("createDevice — a browser device a rack's return chain can't take", () => {
+  beforeEach(() => {
+    liveSet = mockWorkingDeviceMoves();
+    liveSet.methods.delete_track = vi.fn();
+    registerMockObject("t0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        type: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        return_chains: children("rc0"),
+      },
+    });
+    registerMockObject("rc0", {
+      path: livePath.track(0).device(0).returnChain(0),
+      type: "Chain",
+      properties: { devices: [] },
+    });
+    ({ tempTrack } = registerTempTrack(liveSet));
+  });
+
+  it.each([
+    ["instrument", "an instrument"],
+    ["midi-effect", "a MIDI effect"],
+  ])("refuses %s before the temp track or the load", async (type, what) => {
+    answerRemoteScript(type);
+
+    await expect(
+      createDevice({ device: "Pro-Q 4", path: "t0/d0/rc0/d+" }),
+    ).rejects.toThrow(
+      `return chain t0/d0/rc0 (id rc0) takes only audio effects; "Pro-Q 4" is ${what}`,
+    );
+    expect(liveSet.methods.create_midi_track).not.toHaveBeenCalled();
+    expect(requestNode).not.toHaveBeenCalledWith(
+      REMOTE_SCRIPT_ROUTES.load,
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });

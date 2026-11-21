@@ -77,6 +77,10 @@ Returns the copy's `name` and `index`. Live puts it right after the original
 for a rack, its chains and macros. Works on tracks, rack chains and drum chains,
 including return and main tracks.
 
+Before Live 12.4.15, Max reads no name or class for a CC Control, so when one of
+two adjacent CC Controls is copied, Producer Pal's check of the copy can't tell
+them apart and may match the neighbour.
+
 - **Instruments are a 409**: Live raises `Can not duplicate instrument.` for an
   instrument, an instrument rack, a drum rack, and an instrument inside a chain.
   The client copies those another way.
@@ -101,6 +105,20 @@ curl -s -X POST localhost:3349/device/macros -d '{"device_paths": ["live_set tra
 
 Lowering a rack's macro count hides macros but keeps their mappings, so a hidden
 macro can still be mapped.
+
+## `POST /device/basics`
+
+A device's `name` and `is_active` (on/off), which Max for Live's LOM can't read
+on a CC Control before Live 12.4.15 (it lists no members for it). Takes
+`device_paths` (up to 200, as for `/device/macros`) and answers
+`{devices: [...]}`, one entry per path in order: `{name, is_active}`, or
+`{error}` when the path names nothing or Live can't read it. One bad path
+doesn't fail the rest. Producer Pal asks only about CC Controls, and only on
+Live before 12.4.15.
+
+```sh
+curl -s -X POST localhost:3349/device/basics -d '{"device_paths": ["live_set tracks 0 devices 0"]}'
+```
 
 ## `POST /device/simpler/read`, `/device/simpler/write`
 

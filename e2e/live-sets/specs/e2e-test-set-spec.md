@@ -70,9 +70,9 @@ Comprehensive Live Set for MCP e2e testing.
 
 **Arrangement Clips:**
 
-| Position | Name     | Clip Length | Arr Length | Looping | Notes                                      |
-| -------- | -------- | ----------- | ---------- | ------- | ------------------------------------------ |
-| 1\|1     | Arr Beat | 4 bars      | 8 bars     | Yes     | Includes Eb1 clap; tiled 2x in arrangement |
+| Position | Name     | Clip Length | Arr Length | Looping | Notes                                           |
+| -------- | -------- | ----------- | ---------- | ------- | ----------------------------------------------- |
+| 1\|1     | Arr Beat | 4 bars      | 8 bars     | Yes     | Includes Eb1 clap; loop plays 2x in arrangement |
 
 ---
 
@@ -357,7 +357,7 @@ _Note: Track is intentionally unnamed; Live auto-generates "9-MIDI"_
 | Gain modified                 | t5/s0 (-2.31 dB)                |
 | Velocity variation            | t0/s0, t3/s1                    |
 | Probability <100%             | t2/s0 (p=0.69)                  |
-| Loop tiling in arrangement    | t0 arrangement (4-bar → 8-bar)  |
+| Loop repeating in arrangement | t0 arrangement (4-bar → 8-bar)  |
 | Drum Rack                     | t0/d0                           |
 | Drum pad paths                | t0/d0/pC1, pD1, pEb1, pGb1      |
 | Drum Rack return chain        | t0/d0/rc0                       |

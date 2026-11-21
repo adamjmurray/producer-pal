@@ -44,19 +44,23 @@ duplicate handles neither direction: `TakeLane` has no duplicate API, and
 `Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a
 take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
 (promote) by rebuilding the clip from its notes, or from its sample for audio;
-envelope automation is dropped, and a warped audio clip's markers reset. A MIDI
-copy keeps the source's arrangement length even when its loop is shorter; an
-audio copy can't (Live sets no end on `create_audio_clip`), so its entry reports
-the length it got. A `duplicate` with `type: "track"` and a lane destination
-copies a whole lane the same way — clips only, so the devices, routing, mixer
-settings and session clips a new-track copy carries stay behind. Its source is a
-track (`t2`, its main lane) or a lane (`t2/l0`, or that lane's id); `t2/l+`
-names no source, and a lane can't copy onto itself. A lane source with a bare
-track destination (`t2`, its own track or another) promotes the whole lane onto
-that track's main lane, replacing the clips already at those positions; it makes
-no lane, so its entry reports the track's path with no `created`. A track source
-has no such destination — a bare `toPath` there is the new-track copy's, and is
-ignored.
+envelope automation is dropped, and a warped audio clip's markers reset. A copy
+keeps the source's arrangement length even when its loop is shorter (an audio
+copy is resized to it, since `create_audio_clip` takes no length). Promoted to a
+main lane, the copy overwrites the clips in that span like any duplicate, and
+its entry names them. A lane can't be cleared, so there the copy stops at the
+next clip: `length is 2bar, not 4bar: the next clip on the lane starts there`.
+If Live stops it short for a reason of its own, the entry reports the length it
+got. An `arrangementLength` resizes the copy afterward, exactly as `update-clip`
+would. A `duplicate` with `type: "track"` and a lane destination copies a whole
+lane the same way — clips only, so the devices, routing, mixer settings and
+session clips a new-track copy carries stay behind. Its source is a track (`t2`,
+its main lane) or a lane (`t2/l0`, or that lane's id); `t2/l+` names no source,
+and a lane can't copy onto itself. A lane source with a bare track destination
+(`t2`, its own track or another) promotes the whole lane onto that track's main
+lane, replacing the clips already at those positions; it makes no lane, so its
+entry reports the track's path with no `created`. A track source has no such
+destination — a bare `toPath` there is the new-track copy's, and is ignored.
 
 **A lane is one-way**: nothing removes a take lane or a clip on one. A move of a
 lane clip gets as close as Live allows — `update-clip` copies the content to the
@@ -64,10 +68,16 @@ destination (a new position on the same lane, another lane, another track, or a
 session slot) and then empties the original in place, leaving a muted
 `(moved) ...` placeholder the clip's own result entry says to delete. MIDI
 really empties — the notes go. Audio can't: a clip's sample can't be swapped,
-and writing a silent clip over it fails too, because an arrangement clip's
-extent can't be stretched from the LOM (`end_marker` and `loop_end` accept the
-write, `end_time` doesn't follow). So an audio take is only muted. Everything
-else that needs the original gone still refuses it: `arrangementSplit` and
-`arrangementLength` report a `detail` on the clip's entry and change nothing,
-and `ppal-delete` reports the clip `ok: false`. Deleting and comping stay in
-Live's UI.
+and a silent clip laid over it can't grow past what's left of the take. So an
+audio take is only muted. Everything else that needs the original gone still
+refuses it: `arrangementSplit` reports a `detail` on the clip's entry and
+changes nothing, and `ppal-delete` reports the clip `ok: false`. Deleting and
+comping stay in Live's UI.
+
+**`arrangementLength` resizes a lane clip**, in place or after a move onto a
+lane, but can't clear the lane: a lengthen stops at the next clip on the lane,
+and the entry says
+`arrangementLength landed at 3bar: the next clip on the lane starts there`. A
+clip whose neighbor starts right where it ends is left as it is, with
+`arrangementLength unchanged: the next clip on the lane starts where this one ends`
+(`ok: false` when the call asked for nothing else).

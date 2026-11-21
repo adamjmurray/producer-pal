@@ -8,7 +8,12 @@
 // a throw partway keeps the entry for the clip that exists by then.
 
 import { type AudioReadBack } from "#src/tools/clip/helpers/audio-clip-properties.ts";
-import { notesLandedOutsideNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { clipScaleIgnoredText } from "#src/tools/shared/schema/scale/call-scale.ts";
+import {
+  notesLandedOutsideNote,
+  notesShortenedNote,
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
+import { countShortenedNotes } from "#src/tools/clip/helpers/notes/same-pitch-overlap.ts";
 import { countStartingOutside } from "#src/tools/shared/clip/clip-notes.ts";
 import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { type SlotWork } from "#src/tools/clip/helpers/clip-results.ts";
@@ -29,6 +34,7 @@ import {
 import {
   configureAudioClip,
   configureMidiClip,
+  type ScaleOutcome,
 } from "./configure-created-clip.ts";
 import { type CreatePayload } from "./create-clip-targets.ts";
 import { type CreateRun } from "./create-run.ts";
@@ -78,8 +84,13 @@ export async function writeCreatedClip(
   for (const note of [
     ...payload.transform.details,
     notesLandedOutsideNote(outsideRegion(made.clip, payload)),
+    // Code replaces these notes, and says what it did to its own
+    args.code == null
+      ? notesShortenedNote(shortenedCount(made.clip, payload))
+      : null,
     ...payload.skippedTransforms,
     ignoredParamsNote(...unusableParams(step.checked, payload)),
+    scaleIgnoredNote(step.checked, payload),
   ]) {
     if (note != null) {
       appendDetail(entry, note);
@@ -126,6 +137,18 @@ function outsideRegion(clip: LiveAPI, payload: CreatePayload): number {
 }
 
 /**
+ * How many of the notes written to a new MIDI clip Live cut short.
+ * @param clip - The clip, with its notes written
+ * @param payload - The target's payload
+ * @returns The count, 0 for an audio clip
+ */
+function shortenedCount(clip: LiveAPI, payload: CreatePayload): number {
+  return payload.plan.sampleFile
+    ? 0
+    : countShortenedNotes(clip, payload.transform.notes);
+}
+
+/**
  * Give the new clip what the call asked for and build its entry.
  * @param step - The call's state for this target
  * @param made - The clip
@@ -142,11 +165,12 @@ function fillClip(
   const { timing } = plan;
 
   let audioKept: AudioReadBack = {};
+  let scale: ScaleOutcome = {};
 
   if (plan.sampleFile) {
     audioKept = configureAudioClip(step, made.clip, payload);
   } else {
-    configureMidiClip(step, made.clip, payload);
+    scale = configureMidiClip(step, made.clip, payload);
   }
 
   const entry = buildClipResult(
@@ -185,6 +209,14 @@ function fillClip(
 
   if (keptDetail != null) {
     appendDetail(entry, keptDetail);
+  }
+
+  if (scale.scale != null) {
+    entry.scale = scale.scale;
+  }
+
+  if (scale.detail != null) {
+    appendDetail(entry, scale.detail);
   }
 
   if (made.slotWork != null) {
@@ -228,11 +260,13 @@ function settleLane(
   made: MadeClip,
   payload: CreatePayload,
 ): string | undefined {
-  const { lane, laneApi, clip } = made;
+  const { arrangement, clip } = made;
 
-  if (lane == null) {
+  if (arrangement == null) {
     return undefined;
   }
+
+  const { lane, api } = arrangement;
 
   try {
     const { position } = payload;
@@ -252,9 +286,7 @@ function settleLane(
       },
     );
 
-    return run.ledger.afterWrite(lane, [clip.id], {
-      api: laneApi ?? undefined,
-    });
+    return run.ledger.afterWrite(lane, [clip.id], { api });
   } catch (error) {
     // The lane may have changed unseen, so what is known of it is no good.
     run.ledger.forget(lane);
@@ -319,4 +351,22 @@ function unusableParams(
         },
         CLIP_IS_MIDI,
       ];
+}
+
+/**
+ * Why the clip didn't take the `scale` it was asked for, when it didn't.
+ * @param call - The create-clip call
+ * @param payload - The target's payload
+ * @returns The note for the clip's entry, or null
+ */
+function scaleIgnoredNote(
+  call: CreateClipCall,
+  payload: CreatePayload,
+): string | null {
+  return call.scales[payload.index] == null
+    ? null
+    : clipScaleIgnoredText(
+        Boolean(payload.plan.sampleFile),
+        call.callScale.supported(),
+      );
 }

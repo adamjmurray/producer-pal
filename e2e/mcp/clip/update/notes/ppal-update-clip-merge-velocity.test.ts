@@ -7,16 +7,20 @@
  * E2E tests for ppal-update-clip with velocity transforms and merge
  * Tests the bug fix for "Invalid velocity range" error when merging clips
  * with high velocity values that would exceed MIDI max 127, and the low end:
- * Live drops a note written under velocity 1.
+ * Live drops a note written under velocity 1. Also a descending range (v100-80,
+ * a negative velocity deviation) surviving a read and a rewrite.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- --testPathPattern update-clip-merge-velocity
  */
 import { describe, expect, it } from "vitest";
+import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts";
 import {
   parseToolResult,
   type ReadClipResult,
+  resetConfig,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../../mcp-test-helpers.ts";
@@ -170,5 +174,39 @@ describe("ppal-update-clip velocity merge", () => {
     expect(notes).toContain("C3");
     expect(notes).toContain("D3");
     expect(notes?.match(/v\d+/g)).toStrictEqual(["v1"]);
+  });
+
+  it("keeps a descending velocity range through a read and a rewrite", async () => {
+    const readNotes = async (id: string): Promise<string> => {
+      const result = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id, include: ["notes"] },
+      });
+
+      return parseToolResult<ReadClipResult>(result).notes ?? "";
+    };
+
+    const clipId = await createClip(4, "v100-80 C3 1|1", "1bar");
+    const firstRead = await readNotes(clipId);
+
+    expect(firstRead).toContain("v100-80");
+
+    // Write back what the read returned: the deviation must not be lost.
+    await updateClip(clipId, { notes: firstRead });
+    await sleep(100);
+
+    expect(await readNotes(clipId)).toContain("v100-80");
+
+    // The stored deviation is -20 (MIDI JSON shows the raw value).
+    try {
+      await setConfig({ notation: "midi-json" });
+
+      const [event] = interpretMidiJson(await readNotes(clipId));
+
+      expect(event?.velocity).toBe(100);
+      expect(event?.velocity_deviation).toBe(-20);
+    } finally {
+      await resetConfig();
+    }
   });
 });

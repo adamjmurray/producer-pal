@@ -82,10 +82,20 @@ function classifyFallback(
     };
   }
 
+  // One call of plain notes: the merge overwrites what sits at the same pitch
+  // and start, which is a whole rewrite when the new notes cover the old ones.
+  if (notes.trim() !== "") {
+    return {
+      path: "single-merge",
+      updateCalls: 1,
+      evidence: `single call, notes merged over the region: ${notes.slice(0, 80)}`,
+    };
+  }
+
   return {
     path: "unrecognized",
     updateCalls: calls.length,
-    evidence: `single call, no recognized clear strategy. notes: ${notes.slice(0, 80)}`,
+    evidence: "single call with no notes and no preTransforms",
   };
 }
 

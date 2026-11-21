@@ -23,4 +23,4 @@ pricing.
 ## Model Notes
 
 - GPT-6.1 Terra recommended by default
-- Also available: GPT-6.1 Sol, GPT-6 Astra, GPT-6 Luna
+- Also available: GPT-6.2 Sol, GPT-6.2 Astra, GPT-6 Luna

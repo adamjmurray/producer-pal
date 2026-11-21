@@ -64,14 +64,16 @@ export function tri(phase: number): number {
 /**
  * Sawtooth wave generator
  * @param phase - Phase in cycles (0.0-1.0)
+ * @param edgeTolerance - Cycles of float noise to forgive at the jump
  * @returns Value in range [-1.0, 1.0]
  */
-export function saw(phase: number): number {
+export function saw(phase: number, edgeTolerance = 0): number {
   // Wrap into [0, 1) so a negative phase stays in [-1, 1] (see normalizePhase).
   const normalizedPhase = normalizePhase(phase);
 
-  // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0
-  if (normalizedPhase < 0.5) {
+  // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0.
+  // A phase within the tolerance below 0.5 is on the jump, so it takes the low side.
+  if (normalizedPhase < 0.5 - edgeTolerance) {
     return 2.0 * normalizedPhase;
   }
 
@@ -82,27 +84,36 @@ export function saw(phase: number): number {
  * Square wave generator
  * @param phase - Phase in cycles (0.0-1.0)
  * @param pulseWidth - Duty cycle (0.0-1.0), default 50%
+ * @param edgeTolerance - Cycles of float noise to forgive at the edges
  * @returns Value in range [-1.0, 1.0]
  */
-export function square(phase: number, pulseWidth = 0.5): number {
+export function square(
+  phase: number,
+  pulseWidth = 0.5,
+  edgeTolerance = 0,
+): number {
   // Wrap into [0, 1) so a negative phase picks the correct half (see normalizePhase).
-  const normalizedPhase = normalizePhase(phase);
+  let normalizedPhase = normalizePhase(phase);
 
-  // Starts high (1.0) for first pulseWidth fraction, then low (-1.0)
-  return normalizedPhase < pulseWidth ? 1.0 : -1.0;
+  // A phase just short of a whole cycle is the start of the next one.
+  if (1 - normalizedPhase <= edgeTolerance) {
+    normalizedPhase = 0;
+  }
+
+  // Starts high (1.0) for first pulseWidth fraction, then low (-1.0). A phase
+  // within the tolerance below the edge is on the edge, so it reads low.
+  return normalizedPhase < pulseWidth - edgeTolerance ? 1.0 : -1.0;
 }
 
 /**
  * Ramp generator - linearly interpolates from start to end
- * @param phase - Phase in cycles (0.0-1.0)
+ * @param phase - Position in the range, clamped to 0.0-1.0
  * @param start - Starting value
  * @param end - Ending value
  * @returns Interpolated value between start and end
  */
 export function ramp(phase: number, start: number, end: number): number {
-  const clampedPhase = Math.min(phase, 1.0);
-
-  return start + (end - start) * clampedPhase;
+  return start + (end - start) * clampPhase(phase);
 }
 
 /**
@@ -129,7 +140,7 @@ export function choose(options: number[]): number {
 
 /**
  * Curve generator - exponentially interpolates from start to end
- * @param phase - Phase in cycles (0.0-1.0)
+ * @param phase - Position in the range, clamped to 0.0-1.0
  * @param start - Starting value
  * @param end - Ending value
  * @param exponent - Curve exponent (must be > 0, which evaluateCurve enforces; >1: slow start, <1: fast start, 1: linear)
@@ -141,13 +152,23 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
-  const clampedPhase = Math.min(phase, 1.0);
-  const curvedPhase = Math.pow(clampedPhase, exponent);
+  const curvedPhase = Math.pow(clampPhase(phase), exponent);
 
   return start + (end - start) * curvedPhase;
 }
 
 // --- Helpers ---
+
+/**
+ * Hold a ramp's phase inside its range. A note can sit before the range start
+ * (float drift at a selector's edge, or an earlier line moved it), and a
+ * negative phase raised to a fractional exponent is NaN.
+ * @param phase - Position in the range, where 0 is its start and 1 its end
+ * @returns The phase, no lower than 0 and no higher than 1
+ */
+function clampPhase(phase: number): number {
+  return Math.min(Math.max(phase, 0), 1);
+}
 
 /**
  * Map any real phase into [0, 1). Plain `phase % 1.0` keeps the sign in JS, so a
@@ -156,7 +177,7 @@ export function curve(
  * and return a value outside [-1, 1] (e.g. tri(-0.5) = -2.0). That out-of-range
  * value can drive a velocity negative, after which the note is silently dropped
  * by the survivor filter. cos/sin are immune (Math.cos/sin are periodic) and
- * keep the bare modulo. swing() uses it too, so pickup notes get the right half.
+ * keep the bare modulo.
  * @param phase - Phase in cycles (any real number)
  * @returns Phase wrapped into [0, 1)
  */

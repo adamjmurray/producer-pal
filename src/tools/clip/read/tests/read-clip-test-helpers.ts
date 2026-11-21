@@ -312,3 +312,20 @@ export function inOneRequest(reads: () => void): void {
     endLiveApiScope();
   }
 }
+
+/**
+ * Run one read inside its own request scope, as every real request is. What a
+ * request derives (the Live version, the drum-mode walk) is shared only inside
+ * one, so a test without this measures a request per fact.
+ * @param read - The read to make
+ * @returns What the read answered
+ */
+export async function inOneRequestAsync<T>(read: () => Promise<T>): Promise<T> {
+  beginLiveApiScope();
+
+  try {
+    return await read();
+  } finally {
+    endLiveApiScope();
+  }
+}

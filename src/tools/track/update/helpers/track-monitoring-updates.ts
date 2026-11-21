@@ -41,8 +41,8 @@ export function validateMonitoringState(
 }
 
 /**
- * Apply monitoring state to a track. Monitoring exists only on armable tracks,
- * so it is refused on the rest.
+ * Apply monitoring state to a track. Monitoring exists only on armable tracks
+ * that aren't returns, so it is refused on the rest.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off), already
  *   checked by {@link validateMonitoringState}
@@ -57,7 +57,7 @@ export function applyMonitoringState(
     return;
   }
 
-  if (!canBeArmed(track)) {
+  if (!hasMonitoring(track)) {
     refuseTargetWork(
       notes,
       ["monitoringState"],
@@ -69,4 +69,14 @@ export function applyMonitoringState(
 
   track.set("current_monitoring_state", MONITORING_VALUES[monitoringState]);
   noteLanded(notes, "monitoringState");
+}
+
+/**
+ * Whether the track has a monitoring switch. Live 13 lets a return track be
+ * armed, but it still has no monitoring: Live ignores a write to it.
+ * @param track - Track object
+ * @returns True when monitoring can be set
+ */
+export function hasMonitoring(track: LiveAPI): boolean {
+  return canBeArmed(track) && track.category !== "return";
 }

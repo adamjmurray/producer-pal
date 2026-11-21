@@ -6,6 +6,7 @@
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
+import { validateCount } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   type ParamHome,
@@ -36,12 +37,10 @@ export function validateBasicInputs(
   // `id` and `path` name different objects and add up, so either will do and
   // both together are a longer source list, not a conflict.
   if (id == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired(type));
   }
 
-  if (count < 1) {
-    throw new Error("count must be at least 1");
-  }
+  validateCount(count);
 }
 
 /**
@@ -83,11 +82,13 @@ export function validateAndConfigureRouteToSource(
  * @param type - Type of object being duplicated
  * @param destination - Inferred destination
  * @param laneCopy - Whether the call copies clips lane to lane
+ * @param startParam - The param the caller wrote the positions in
  */
 export function validateDestinationParameter(
   type: string,
   destination: string | undefined,
   laneCopy = false,
+  startParam = "arrangementStart",
 ): void {
   if (type !== "track" || destination !== "arrangement") {
     return;
@@ -97,7 +98,7 @@ export function validateDestinationParameter(
   // since every clip keeps the one it has.
   throw new Error(
     laneCopy
-      ? "arrangementStart doesn't apply to a lane copy: every clip keeps its own position; drop it"
+      ? `${startParam} doesn't apply to a lane copy: every clip keeps its own position; drop it`
       : "tracks cannot be duplicated to arrangement",
   );
 }

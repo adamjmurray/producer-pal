@@ -19,6 +19,19 @@ import {
 import { requireDeviceContainer } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
+  FIXED_RACKS,
+  liveVersion,
+  registerFixedChainRack,
+  registerLive12Rack,
+} from "#src/tools/device/tests/helpers/fixed-chain-rack-fixtures.ts";
+import {
+  fullRackChainLimit,
+  refuseChainsPastLimit,
+  refuseFixedChains,
+} from "../path/rack-chain-limit.ts";
+import {
+  type DryWalk,
+  refuseChainAppend,
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "../chain-auto-creation.ts";
@@ -517,5 +530,190 @@ describe("resolveOrCreateDrumPadChain", () => {
     // Only creating the catch-all chain is impossible. Once one exists, a path
     // through it is an ordinary nested pad.
     expectInnerRackCreatesChain("*", ["c0", "d0", "pD1"], -1);
+  });
+});
+
+const FIXED_RACK = "live_set tracks 0 devices 0";
+
+describe("rack chain limit", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it.each(["midSide", "multiband"] as const)(
+    "reads the %s rack's limit from Live 13",
+    (kind) => {
+      registerFixedChainRack(0, kind);
+
+      expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBe(
+        FIXED_RACKS[kind].chains.length,
+      );
+    },
+  );
+
+  it("names the limit and the chains in the refusal", () => {
+    registerFixedChainRack(0, "multiband");
+
+    expect(() => {
+      refuseFixedChains(LiveAPI.from(FIXED_RACK));
+    }).toThrow(
+      "Multiband Rack (id rack) has a fixed 3 chains (Low, Mid, High), so it can't take another",
+    );
+  });
+
+  it("leaves an unnamed chain out of the refusal", () => {
+    registerFixedChainRack(0, "multiband");
+    registerMockObject("chain-1", { properties: { name: "" } });
+
+    expect(() => {
+      refuseFixedChains(LiveAPI.from(FIXED_RACK));
+    }).toThrow("(Low, High)");
+  });
+
+  it("trusts a limit on a Live 13 beta", () => {
+    registerFixedChainRack(0, "midSide");
+    liveVersion("13.0b25");
+
+    expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBe(2);
+  });
+
+  it.each([1, [1] as [1]])(
+    "ignores the 1 Live 12 answers for the property it lacks (%j)",
+    (answer) => {
+      registerLive12Rack(0, 2, answer);
+
+      const rack = LiveAPI.from(FIXED_RACK);
+
+      expect(fullRackChainLimit(rack)).toBeNull();
+      expect(() => {
+        refuseFixedChains(rack);
+      }).not.toThrow();
+    },
+  );
+
+  it("takes no limit from a rack that reads none", () => {
+    const rack = registerFixedChainRack(0, "midSide");
+
+    delete rack.properties.max_num_chains;
+
+    expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBeNull();
+  });
+
+  it.each([0, -1, 2.5, "2"])("treats %j as no limit", (value) => {
+    const rack = registerFixedChainRack(0, "midSide");
+
+    rack.properties.max_num_chains = value;
+
+    expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBeNull();
+  });
+
+  // Live 13 reads an unlimited rack's limit as INT_MAX.
+  it("treats an unlimited rack's huge limit as no limit", () => {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.max_num_chains = 2147483647;
+
+    expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBeNull();
+  });
+
+  it("treats a limit the rack hasn't reached as no limit", () => {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.max_num_chains = 4;
+
+    expect(fullRackChainLimit(LiveAPI.from(FIXED_RACK))).toBeNull();
+  });
+});
+
+describe("a path past a fixed-chain rack's limit", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  /**
+   * A Multiband Rack (limit 3) holding only Low and Mid.
+   * @returns The rack mock
+   */
+  function registerPartialMultiband(): RegisteredMockObject {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.chains = ["id", "chain-0", "id", "chain-1"];
+
+    return rack;
+  }
+
+  /**
+   * Walk a path to a chain, with or without making anything.
+   * @param path - Device path
+   * @param dry - Passed to the walk when checking only
+   * @returns The resolved container
+   */
+  function walk(path: string, dry?: DryWalk): LiveAPI {
+    const { root, segments } = requireDeviceContainer(parseObjectPath(path));
+
+    return resolveContainerWithAutoCreate(
+      root,
+      segments.filter(
+        (segment) =>
+          segment.kind !== "drum-pad" && segment.kind !== "device-by-type",
+      ),
+      path,
+      undefined,
+      dry,
+    );
+  }
+
+  it("is refused before any chain is made", () => {
+    const rack = registerPartialMultiband();
+
+    expect(() => walk("t0/d0/c5")).toThrow(
+      "Multiband Rack (id rack) has a fixed 3 chains (Low, Mid), so it can't take chain c5",
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("is refused by the dry walk too, without noting a chain", () => {
+    registerPartialMultiband();
+
+    const dry: DryWalk = { makesChain: false, undetermined: false };
+
+    expect(() => walk("t0/d0/c3", dry)).toThrow("can't take chain c3");
+    expect(dry.makesChain).toBe(false);
+  });
+
+  it("still lets the dry walk note the one chain the rack has room for", () => {
+    registerPartialMultiband();
+
+    const dry: DryWalk = { makesChain: false, undetermined: false };
+
+    expect(() => walk("t0/d0/c2", dry)).not.toThrow();
+    expect(dry.makesChain).toBe(true);
+    expect(dry.newChain?.index).toBe(2);
+  });
+
+  it("lets c+ append the one chain the rack has room for", () => {
+    registerPartialMultiband();
+
+    expect(() => {
+      refuseChainAppend(LiveAPI.from(FIXED_RACK), "t0/d0/c+");
+    }).not.toThrow();
+  });
+
+  it("refuses c+ on a full rack", () => {
+    registerFixedChainRack(0, "multiband");
+
+    expect(() => {
+      refuseChainAppend(LiveAPI.from(FIXED_RACK), "t0/d0/c+");
+    }).toThrow("can't take another");
+  });
+
+  it("reaches no limit on a rack whose chains aren't fixed", () => {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    rack.properties.max_num_chains = 2147483647;
+
+    expect(() => {
+      refuseChainsPastLimit(LiveAPI.from(FIXED_RACK), 9);
+    }).not.toThrow();
   });
 });

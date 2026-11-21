@@ -96,15 +96,15 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Default: 1.0
   - Requires whitespace separation from following elements
 
-- **Velocity (`v<0–127>` or `v<min>-<max>`)**
+- **Velocity (`v<0–127>` or `v<start>-<end>`)**
   - Sets velocity for following notes until changed
   - Single value: `v100` (fixed velocity)
-  - Range: `v80-120` or `v120-80` (random velocity between min and max,
-    auto-ordered)
-  - Range lower bound must be ≥1: a 0 lower bound (`v0-N`, `vN-0`, `v0-0`) is a
-    parse error — `vA-B` desugars to base velocity `min`, and a base velocity of
-    0 is the delete sentinel, so the range would silently delete every note it
-    touches. The `min === 0` check catches both orderings and equal bounds.
+  - Range: `v80-120` (random velocity between the two ends). The order is kept:
+    velocity = start, deviation = end − start, so `v100-80` is velocity 100 with
+    deviation −20 (a downward range).
+  - Both ends must be ≥1: a 0 on either side (`v0-N`, `vN-0`, `v0-0`) is a parse
+    error — a base velocity of 0 is the delete sentinel, so `v0-N` would
+    silently delete every note it touches, and `vN-0` has no valid meaning.
   - Special: `v0` deletes earlier notes with matching pitch and time (see Note
     Deletion section)
   - Default: 100
@@ -292,13 +292,12 @@ The parser warns about incomplete or inefficient notation:
 - Time positions with no pitches
 - State changes after pitches but before time positions (wasted state)
 
-The interpreter also warns (without throwing) on out-of-range values, matching
-the transforms and code-exec paths:
+The interpreter also warns (without throwing) on out-of-range values:
 
 - Velocity / velocity-range / probability outside their valid range are
   **clamped + warned** (velocity to 0–127, probability to 0.0–1.0)
 - An out-of-range pitch is **skipped + warned** (the note is dropped, not
-  clamped)
+  clamped), as in MIDI JSON and Stark
 
 These are console warnings, not errors - parsing completes successfully.
 
@@ -307,7 +306,7 @@ These are console warnings, not errors - parsing completes successfully.
 All components are stateful:
 
 - **Probability**: Set with `p<value>`, applies to following notes until changed
-- **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following
+- **Velocity**: Set with `v<value>` or `v<start>-<end>`, applies to following
   notes until changed
 - **Duration**: Set with `n<value>`, applies to following notes until changed
 

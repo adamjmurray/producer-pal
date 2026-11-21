@@ -70,7 +70,9 @@ export const contextWriteLayerProject: EvalScenario = {
     MSG_CONNECT,
     "This tune is a 124 BPM deep house track in A minor. The arrangement goes " +
       "intro, build, drop, breakdown, drop, outro.",
-    "Yes, please save that.",
+    // Stands on its own: the model may not have offered anything in turn 1.
+    // Says what and which project, not which tool or layer.
+    "Go ahead and save those details about this tune for this project.",
   ],
 
   assertions: [

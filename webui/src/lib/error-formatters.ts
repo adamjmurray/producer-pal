@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorPayloadMessage } from "#src/shared/error-message";
+
 /**
  * Normalizes an error into a string message with "Error:" prefix
  * @param {unknown} error - Error object or message
@@ -49,9 +51,7 @@ function describeErrorPayload(payload: Record<string, unknown>): string {
     return describeErrorPayload(nested as Record<string, unknown>);
   }
 
-  const message = [payload.message, nested, payload.detail].find(
-    (value): value is string => typeof value === "string" && value !== "",
-  );
+  const message = errorPayloadMessage(payload);
 
   if (message == null) {
     return stringifyPayload(payload);

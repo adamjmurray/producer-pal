@@ -11,6 +11,7 @@
  */
 
 import { type jsonSchema } from "ai";
+import { LIST_WORDING_VARIANTS } from "./list-wording-variants.ts";
 
 export type JsonSchemaInput = Parameters<typeof jsonSchema>[0];
 export type Args = Record<string, unknown>;
@@ -24,6 +25,10 @@ export interface Variant {
   prompt: string;
   /** Structural correctness of the model's tool-call input. */
   check: (input: Args) => boolean;
+  /** Tool description; a generic one when absent. */
+  description?: string;
+  /** Left out of a default run; select with `--variant=id` or `--variant=prefix*`. */
+  optIn?: boolean;
 }
 
 /**
@@ -283,6 +288,7 @@ export const VARIANTS: Variant[] = [
       "with id 27 to 0.5.",
     check: (i) => isNameOrIdEntries(i.params),
   },
+  ...LIST_WORDING_VARIANTS,
 ];
 
 /**
@@ -332,12 +338,14 @@ export function selectedVariants(): Variant[] {
     .map((a) => a.slice("--variant=".length));
 
   if (wanted.length === 0) {
-    return VARIANTS;
+    return VARIANTS.filter((v) => v.optIn !== true);
   }
 
-  const chosen = VARIANTS.filter((v) => wanted.includes(v.id));
+  const matches = (v: Variant, w: string): boolean =>
+    w.endsWith("*") ? v.id.startsWith(w.slice(0, -1)) : v.id === w;
+  const chosen = VARIANTS.filter((v) => wanted.some((w) => matches(v, w)));
 
-  if (chosen.length !== wanted.length) {
+  if (!wanted.every((w) => VARIANTS.some((v) => matches(v, w)))) {
     const known = VARIANTS.map((v) => v.id).join(", ");
 
     throw new Error(`Unknown --variant. Known variants: ${known}`);

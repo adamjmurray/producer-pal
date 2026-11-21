@@ -21,7 +21,13 @@ import {
 } from "../assertions/index.ts";
 import { type EvalSession } from "../eval-session.ts";
 import { assertionLabel } from "../helpers/json-results/assertion-label.ts";
-import { isProviderRefusal } from "../helpers/trials/provider-refusal.ts";
+import {
+  isStepBudgetStop,
+  StoppedTurnError,
+} from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
+import { isContextOverflow } from "./context-overflow.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
+import { type TurnResult } from "#evals/chat/shared/types.ts";
 import { isQuietMode } from "../helpers/quiet-mode.ts";
 import {
   seedConnectTurn,
@@ -33,6 +39,30 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../types.ts";
+
+/**
+ * A turn that ended in a transport or provider error (refused, bad key, server
+ * failure, dropped connection). The model never answered, so the run is an
+ * infra error, not a graded fail.
+ */
+export class TurnTransportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TurnTransportError";
+  }
+}
+
+/**
+ * A turn the model server refused because the input outgrew its context
+ * window. Not a transport error: the model's doing, so the run is a graded
+ * fail.
+ */
+export class ContextOverflowError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ContextOverflowError";
+  }
+}
 
 /**
  * Run the scenario's message turns, appending one result per turn.
@@ -72,24 +102,59 @@ export async function runMessageTurns(
     }
 
     const turnStart = Date.now();
-    const turnResult = await session.sendMessage(message, i + 1);
+    let turnResult: TurnResult;
 
-    turns.push({
-      turnIndex: i,
-      userMessage: message,
-      assistantResponse: turnResult.text,
-      toolCalls: turnResult.toolCalls,
-      durationMs: Date.now() - turnStart,
-      stepUsages: turnResult.stepUsages,
-      stepTimings: turnResult.stepTimings,
-    });
+    try {
+      turnResult = await session.sendMessage(message, i + 1);
+    } catch (error) {
+      // Keep what a stopped turn did, so the result shows why it ran away.
+      if (error instanceof StoppedTurnError) {
+        turns.push(toEvalTurn(i, message, error.turn, turnStart));
+      }
 
-    // The AI SDK reports a refused request as a turn error, not a throw. Later
-    // turns would be refused too, and grading them would score an outage.
-    if (turnResult.error != null && isProviderRefusal(turnResult.error)) {
-      throw new Error(turnResult.error);
+      throw error;
+    }
+
+    turns.push(toEvalTurn(i, message, turnResult, turnStart));
+
+    // The AI SDK reports a failed request as a turn error, not a throw. Later
+    // turns would fail too, and grading them would score an outage. Only the
+    // agent CLIs report a step-budget stop (the model looping), and they throw.
+    // A context overflow stops the run too (later turns would overflow), but it
+    // is the model's doing, so it is not a transport error.
+    if (turnResult.error != null && !isStepBudgetStop(turnResult.error)) {
+      throw isContextOverflow(turnResult.error)
+        ? new ContextOverflowError(turnResult.error)
+        : new TurnTransportError(turnResult.error);
     }
   }
+}
+
+/**
+ * Record one model turn for grading.
+ *
+ * @param turnIndex - The turn's index in the scenario
+ * @param userMessage - The message the turn answered
+ * @param turnResult - What the session returned
+ * @param turnStart - When the turn started (ms since epoch)
+ * @returns The turn as the runner stores it
+ */
+function toEvalTurn(
+  turnIndex: number,
+  userMessage: string,
+  turnResult: TurnResult,
+  turnStart: number,
+): EvalTurnResult {
+  return {
+    turnIndex,
+    userMessage,
+    assistantResponse: turnResult.text,
+    toolCalls: turnResult.toolCalls,
+    durationMs: Date.now() - turnStart,
+    stepUsages: turnResult.stepUsages,
+    stepTimings: turnResult.stepTimings,
+    ...reasoningFields(turnResult),
+  };
 }
 
 /**

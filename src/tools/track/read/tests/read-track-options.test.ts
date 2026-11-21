@@ -313,6 +313,33 @@ describe("readOneTrack", () => {
           outputId: "26",
         });
       });
+
+      // Live 13 lets a return track be armed; it still has no monitoring.
+      it("omits monitoringState for a return track Live can arm", () => {
+        setupTrackPathMappedMocks({
+          trackPath: String(livePath.returnTrack(0)),
+          trackId: "return_track_1",
+          objects: {
+            Track: createBareTrackProperties({
+              name: "Return A",
+              can_be_armed: 1,
+              current_monitoring_state: [1],
+              ...createOutputOnlyRoutingMock(),
+              input_routing_channel: null,
+              input_routing_type: null,
+            }),
+          },
+        });
+
+        const result = readOneTrack({
+          trackIndex: 0,
+          trackType: "return",
+          include: ["routings"],
+        });
+
+        expect(result.outputRoutingType).toBeDefined();
+        expect(result.monitoringState).toBeUndefined();
+      });
     });
 
     describe("master track", () => {

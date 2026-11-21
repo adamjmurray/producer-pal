@@ -1,6 +1,7 @@
-# claude.ai Web App
+# Claude Web App
 
-Use Producer Pal in your web browser with Anthropic's chat web app.
+Use Producer Pal in your web browser at [claude.ai](https://claude.ai/),
+Anthropic's Claude web app.
 
 <!--@include: ../_partials/web-chat-warning.md-->
 

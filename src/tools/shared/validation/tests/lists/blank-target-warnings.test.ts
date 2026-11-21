@@ -146,6 +146,19 @@ describe("blank id or path on every tool that takes both", () => {
     },
   );
 
+  // "null" is not blank: it has its own warning, which must not repeat as the
+  // call is read again, nor be joined by a blank-id one.
+  it.each(TOOLS)(
+    'a coerced id "null" beside a path warns once on $tool',
+    async ({ path, setup, call }) => {
+      setup();
+
+      await call({ id: "null", path });
+
+      expect(capturedWarnings()).toStrictEqual(['id "null" names nothing']);
+    },
+  );
+
   it.each(TOOLS)(
     "$tool says nothing when it is refused",
     async ({ path, setup, refusal, refused }) => {

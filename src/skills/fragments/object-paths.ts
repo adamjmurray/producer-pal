@@ -26,11 +26,13 @@ A write's entry says only what you don't already know: a value that landed as yo
 
 A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a return track and on the main track, whose \`path\` is what identifies them.
 
+On Live 13 a return track has a clip slot per scene (\`rt0/s1\`), holding envelope clips (\`type: "envelope"\`: automation only, no notes or sample). They can be renamed, recolored, looped, launched and deleted; they move and copy only to another return slot. Their automation reads and writes like any session clip's (\`envelopes\`, on the return track's own mixer and devices). No notes, and you can't create one.
+
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
 Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value; with several, write it as \`\\,\` (\`Verse\\, take 2\`). Leave backslashes out of names: Live keeps them, but they read back dropped (macOS) or as a slash (Windows).
 
-A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). If the device is then refused, the error names the empty chains left behind (\`left 2 empty chains: c1-c2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
+A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). A device the path can't take is refused before any chain is made; if a failure still leaves empty chains behind, the error names them (\`left 2 empty chains: c1-c2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
 
 A track's take lanes are \`ppal-update-track\`'s: \`t2/l+\` appends one (each \`l+\` in the list its own), and \`t2/l<n>\` names an existing lane, creating the lanes up to it. \`name\` is the only param a lane takes, and \`ppal-read-track\` reads a lane path too.`;
 

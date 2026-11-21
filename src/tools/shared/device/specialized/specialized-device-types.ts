@@ -118,6 +118,12 @@ export interface ActionDef {
 export interface SpecializedDeviceSpec {
   /** `class_display_name` value(s) this spec handles (e.g. ["Roar"]). */
   displayNames: string[];
+  /**
+   * `class_name` value(s) this spec handles, for a device matched by class
+   * instead of display name (e.g. Live 13's ["DrumSynth"]). A display name wins
+   * when both match. Leave `displayNames` empty for such a device.
+   */
+  classNames?: string[];
   /** Writable / read-only pseudo-params (empty array if the device has none). */
   params: PseudoParam[];
   /** Action definitions, keyed by action name (matched case-insensitively). */
@@ -151,4 +157,14 @@ export interface InactiveWhenRule {
   controller: string;
   /** Controller display value → param names that are inactive at that value. */
   cases: Record<string, string[]>;
+  /**
+   * For a controller whose value picks a family of params that share a name
+   * prefix (Drum Synth's models): controller value → the prefix, or prefixes, of
+   * the params that apply at that value, or null when none do. Every param that starts
+   * with any listed prefix (followed by a space) is inactive unless it starts
+   * with the active one. A controller value missing here is a value this rule
+   * knows nothing about, so every listed prefix goes inactive. Params with no
+   * listed prefix are never touched. Works alongside `cases`.
+   */
+  prefixes?: Record<string, string | readonly string[] | null>;
 }

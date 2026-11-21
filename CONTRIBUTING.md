@@ -81,7 +81,7 @@ it together:
   especially when they come out of real experiments showing better LLM behavior.
 - **Coding-agent skills.** Producer Pal ships a portable
   [Agent Skill](https://producer-pal.org/guide/skills) (the `SKILL.md`
-  convention used by Claude Code, Codex CLI, Gemini CLI, and others) in
+  convention used by Claude Code, Codex CLI, Antigravity CLI, and others) in
   `examples/skills/`. I'd love more examples covering different workflows and
   agents — and I'm happy to feature good ones on the website.
 - **MIDI notation and transforms.** Experiments with alternative MIDI notation

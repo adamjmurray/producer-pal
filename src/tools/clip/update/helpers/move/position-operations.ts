@@ -7,7 +7,10 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  type ClipPath,
+  type ReturnSlotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   type ArrangementTrack,
   takeLaneFromPath,
@@ -24,14 +27,17 @@ import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
 } from "../slot-move/clip-slot-move.ts";
+import { handleReturnSlotMove } from "../slot-move/return-slot-move.ts";
 import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface HandlePositionOperationsArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   destination?: ClipPath | null;
+  /** The return track slot an envelope clip moves to. */
+  returnDestination?: ReturnSlotPath | null;
   /** A clip slot sent beside an arrangement start or length: noted, not used. */
-  ignoredDestination?: ClipPath | null;
+  ignoredDestination?: ClipPath | ReturnSlotPath | null;
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
@@ -70,6 +76,21 @@ export function handlePositionOperations(
         "a clip slot is off the arrangement timeline the other position params name",
       ),
     );
+  }
+
+  if (args.returnDestination != null) {
+    handleReturnSlotMove({
+      clip,
+      toSlot: {
+        returnIndex: args.returnDestination.returnIndex,
+        sceneIndex: args.returnDestination.sceneIndex,
+      },
+      updatedClips: args.updatedClips,
+      noteResult: args.noteResult,
+      reasons: args.reasons,
+    });
+
+    return;
   }
 
   if (destination?.kind === "slot") {

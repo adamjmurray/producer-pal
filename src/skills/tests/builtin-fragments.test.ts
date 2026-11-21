@@ -106,6 +106,7 @@ describe("builtinFragments", () => {
 
     expect(nonSlots).toStrictEqual([
       "code-transforms",
+      "duplicate-basic",
       "midi-json-standard-write",
       "midi-json-basic-write",
     ]);

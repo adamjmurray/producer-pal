@@ -127,7 +127,7 @@ describe("a looping clip re-created on or off a take lane", () => {
 });
 
 // read-clip rounds the length it reports, so echoing it back is a hair off the
-// real one. That once tiled the clip into one clip per loop.
+// real one. That must count as no change.
 describe("arrangementLength equal to the current length", () => {
   it("leaves a looping audio clip as the one clip it was", async () => {
     const audioTrack = 4;
@@ -146,6 +146,9 @@ describe("arrangementLength equal to the current length", () => {
     expect(clipsAfter.map(({ id }) => id)).toStrictEqual(
       clipsBefore.map(({ id }) => id),
     );
+    expect(
+      (await readClipFully(ctx.client!, { id: before.id })).arrangementLength,
+    ).toBe(before.arrangementLength);
   });
 });
 

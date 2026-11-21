@@ -258,8 +258,8 @@ pitch += clipseq(0, 5, 7)             // per-copy transposition
 - **Expressions** are arithmetic over the current values, with LFO waveforms
   (`sin`, `cos`, `tri`, `saw`, `square`), `ramp` and `curve` for interpolation,
   `rand` and `choose` for randomness, `seq` to cycle through values, scale
-  functions like `snap` (to the Live Set's scale), timing functions like
-  `legato`, and general math functions.
+  functions like `snap` (to the clip's scale), timing functions like `legato`,
+  and general math functions.
 - **Note-count operations** change how many notes exist: `ratchet(4)` rolls a
   note into four, `repeat(n/8, 3)` echoes it, `split` cuts at explicit
   positions, and `merge()` fuses same-pitch notes into one sustained note.

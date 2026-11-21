@@ -8,9 +8,9 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CONNECT = "ppal-connect";
-const TOOL_CONTEXT = "ppal-context";
+const TOOL_CONNECT = TOOLS.connect;
 
 export const projectContextWorkflow: EvalScenario = {
   id: "project-context-workflow",
@@ -37,15 +37,15 @@ export const projectContextWorkflow: EvalScenario = {
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
     // Turn 1: Write project context
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1 },
+    { type: "tool_called", tool: TOOLS.context, turn: 1 },
 
-    // Turn 2: Read project context
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2 },
+    // Turn 2 needs no ppal-context call: the project context is already in the
+    // model's context, so the response and state checks below carry it.
 
     // The outcome, not the prose: the note is really in the project context.
     {
       type: "state",
-      tool: TOOL_CONTEXT,
+      tool: TOOLS.context,
       args: { action: "read", scope: "project" },
       expect: (result) => {
         const content = (result as { content?: string }).content ?? "";

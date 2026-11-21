@@ -6,7 +6,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import { nodeWarn } from "#src/mcp-server/node-for-max-logger.ts";
 import {
   unreadableWays,
   useTempConfigDir,
@@ -23,10 +23,10 @@ import {
 } from "../custom-skills-store.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 vi.mock(import("node:fs"), async (importOriginal) => {
@@ -303,7 +303,9 @@ describe.each(unreadableWays)(
 
         expect(listCustomSkills().map((e) => e.name)).toStrictEqual(["good"]);
         expect(regenerateSkillsIndex()).toContain("`good`");
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked.md"));
+        expect(nodeWarn).toHaveBeenCalledWith(
+          expect.stringContaining("locked.md"),
+        );
       },
     );
   },

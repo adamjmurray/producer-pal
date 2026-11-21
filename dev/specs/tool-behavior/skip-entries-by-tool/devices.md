@@ -14,6 +14,21 @@ Part of [Skip entries, tool by tool](README.md).
   since a replaced device makes the answer moot. The question is asked before
   the write, so nothing can fail after the count has changed. A rack Live won't
   take below 1 macro says where the count landed.
+- **update-device's `macroCount` follows Live's own steps.** Live 12 steps the
+  count by 2 up to 16; Live 13 steps unevenly up to 32. So the write adds or
+  removes one macro step at a time and reads the count after each, until it
+  reaches or passes the target or stops moving. An odd count is rounded up to
+  the next even one (`macroCount rounded from 3 to 4 (macros come in pairs)`),
+  except 1, which lands on 1 with nothing to report. The entry says where it
+  landed (`macroCount landed at 14, not 16`); a throw after the count moved is
+  the same entry with `Live said: <error>` added. A count above the rack's own
+  macro total (the highest "Macro N" among its params) is refused with that
+  limit.
+- **update-device's skip can name a chain a pad move re-numbered.** A drum chain
+  move changes which chain `pD1/c0` names, so a skipped chain's entry adds
+  `that chain is now <path> (id N)`; see
+  [Tool Behavior](../skips-and-replaced-targets.md). A bare pad path is its
+  note, which no move changes, so it gets no clause.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes
@@ -33,6 +48,159 @@ Part of [Skip entries, tool by tool](README.md).
   to re-run. Where the sync param write is all there is (create-device, a rack's
   `pC1/d0/` shortcut) the entry says to use update-device on the Simpler's own
   path.
+- **update-device's `params` on a hosted plug-in go to the plug-in.** A wrapper
+  (a Max device that answers as a Producer Pal plug-in host) takes the plug-in's
+  own params by name or `h<number>` id, in the units the plug-in displays; the
+  whole list is one request to the wrapper, ahead of the target's other writes.
+  The wrapper finds the value that displays as asked, so a number or the
+  plug-in's text works. A bare number is in the unit the param shows when the
+  write starts (3 is 3 kHz on a param reading `2.50 kHz`, 0.8 is 0.8 s on
+  `0.50 s`); a number with a unit (`3000 Hz`, `800 ms`) is as written. Entries
+  answer as any param's do: `{ id, name }` for a bare number that displays as
+  asked, otherwise the display text as `value` (with a `detail` when a bare
+  number landed elsewhere, such as a clamp), and always the text when text was
+  sent. `ok: false` says why: a Live param id (not an `h` id) is refused unsent;
+  no such param (`not found on <target>`); a name more than one param has lists
+  the ids and asks for an `id`; no value displays as asked (`not set:` plus what
+  it does show), and the param is left as it was. Two entries reaching one
+  param, by name and by id, write the last. A wrapper that doesn't answer may
+  have written: the entries say `may have changed` and the hosted devices after
+  it say they weren't tried. A list too big for one request (a few hundred
+  entries; Max cuts a message near 30 KB) is refused unsent, each entry
+  `not set: too large for one call; split the params across calls`: nothing
+  changed, so it never says `may have changed` and the devices after it are not
+  stopped by it. create-device's `params` follow the same rule, however the
+  wrapper was made (`hosted`, or just its browser name): the device is created
+  and its entries say so. A wrapper made by its browser name is given a few
+  seconds to start answering, and its params are written once the temp track is
+  gone; one that never answers has every entry
+  `not set: the hosted plug-in didn't answer`, never written to its own Live
+  params. A wrapper from before this write existed says to create the hosted
+  plug-in again. A wrapper with no plug-in loaded takes nothing: every entry is
+  `ok: false` with the device's read `detail` as the reason (see read-device
+  below). A Max device that isn't a wrapper takes `params` as any device does.
+- **read-device on a hosted plug-in marks the params a slot drives.** Params
+  that one of the wrapper's automation slots drives read with
+  `slot: "Slot 002"`, and, with values, `automation` (`active` or `overridden`)
+  from the slot's Live parameter, as any param reports it. It is left out, with
+  the usual `arrangement automation unknown while the track plays from Session`
+  detail, while the track plays from Session. Params no slot drives read as
+  before, and so does a wrapper whose slots can't be read. A wrapper with no
+  plug-in loaded reads as the plug-in it was saved for
+  (`instrument: Enstriate`), with no `parameters` and a `detail`:
+  `plug-in not loaded (not installed on this computer?); its saved state is kept for when it is`,
+  or `no plug-in loaded` for a bare wrapper. Every device listing carries it.
+- **read-device shows a pad's fader even at its defaults.** A read aimed at one
+  pad (its path or id, or one of its chains by path or id) lists each drum
+  chain's `gainDb` and `pan` even at 0 dB / center, so the pad's own fader is
+  never mistaken for missing and the instrument's volume reached for instead. A
+  rack or pad-list read and any other chain list only the non-default ones.
+  `sends` is listed only when turned up, in every read.
+- **read-device's `param-values` says each option list as few times as it can.**
+  An Off/On toggle lists no `options`: its `value` is `On` or `Off`, and a write
+  takes On/Off, true/false or 1/0. A list of 3 or more options that two or more
+  of the returned params share is said once in the device's `optionLists`, and
+  each of those params carries `optionList` (its key) in place of `options`.
+  `state` stays on the param (`inactive`: a switch or mode makes it do nothing
+  now; `disabled`: Live won't take a write).
+- **read-device leaves a rack's unused hidden macros out of `parameters`.** A
+  macro beyond the visible count that nothing maps to is not listed. A rack with
+  mappings lists all 16 until the remote script says which are mapped, then only
+  the visible ones and the hidden ones still mapped (`hiddenMapped`). A write
+  can still name any macro.
+- **read-device lists 200 params a page; `paramOffset` pages.** A device lists
+  at most 200 matches (after `paramSearch`), from `paramOffset` (default 0;
+  above 0 it turns params on, and with several targets it applies to each). When
+  the page isn't the whole match list, the entry has `paramCount` (how many
+  matched) and a `detail`:
+  `listing params 201-400 of 706; pass paramOffset: 400 for more, or narrow with paramSearch`,
+  or `listing params 601-706 of 706` on the last page. An offset at or past the
+  end lists nothing and says `paramOffset 800 is past the last param (706)`. A
+  read that fits on the first page says neither. Specialized pseudo-params and a
+  Simpler's bend ranges come on the first page only. A hosted plug-in pages the
+  same way.
+
+- **create-device loads a plug-in of a chosen format by browser path.** A bare
+  name installed in several formats loads the one in the best format: VST3, else
+  AU, else VST2, whoever made the others. Native and hosted loads answer the
+  same. Two plug-ins of the name in that best format are refused as ambiguous,
+  listing each path to pass instead. A path's vendor folder names one maker when
+  it matches loosely: case aside, one is the other followed by a
+  non-alphanumeric boundary (`Acme` and `Acme Audio`, `u-he` and `u-he.com`; not
+  `Acme` and `Acmetone`). A name spelled `Plug-Ins/<format>/<vendor>/<name>`
+  (VST2 has no vendor folder: `Plug-Ins/VST/<name>`) loads only that format,
+  never another. The format segment is `VST3`, `AU` (or Live's own `AUv2`) or
+  `VST` (or `VST2`), in any case; `VST` is VST2, as `list-plugins` says.
+  Anything else names no format. A native load finds the plug-in at that path
+  (one more listing, only when the segment isn't Live's own folder name); a
+  plug-in that isn't at that path (a wrong vendor folder, a format it isn't
+  installed in) is refused with
+  `invalid device "<path>": no plug-in is at that path; Live lists it at "<its paths>"`,
+  its paths in the asked format when it has that one. A name no plug-in has, or
+  a search for it that fails, leaves the usual "no native device, plug-in, or
+  Max for Live device has that name". A plug-in's entry has `format` (`VST3`,
+  `AU` or `VST`, `list-plugins`' words), the format that loaded, and `vendor`,
+  whose it is, so a caller who got the wrong maker can retry with a path; a
+  native VST2 in no maker's folder has no `vendor`, nor does a hosted plug-in
+  whose vendor is unknown. No other device has either; an entry kept after a
+  later step fails has them too.
+- **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
+  plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
+  and the wrapper that suits its kind (instrument or effect) in Live's browser,
+  before anything is made; a name that isn't an installed plug-in, a remote
+  script that isn't answering, or a wrapper that Live's browser doesn't have
+  fails the call with nothing changed. The last reads
+  `can't host "<plug-in>": the "PPal Plug-in Effect" wrapper isn't installed; <setup>`:
+  the setup is `ppal-manage` with `install-producer-pal` (or the chat UI's
+  Settings → Installation) when the caller has `ppal-manage`, else the chat UI
+  alone, and it adds that Live's browser can take a few seconds to see a new
+  file. The lookup says "nothing by that name" with a typed flag, never by its
+  message text. A VST3 or VST2 that Live's browser lists but its plug-in
+  database doesn't (installed since Live started) is refused with
+  `Live lists "<plug-in>" but its plug-in database doesn't have it yet. Restart Live, then try again.`;
+  the plain `No plug-in named "<name>"` is for a name in neither. A database
+  that can't be read fails only VST3 and VST2 names: an AU still resolves. A
+  name installed in several formats loads as VST3, else AU, else VST2. The path
+  spelling above works here per entry: the format comes from its first segment
+  and the plug-in name from its last (a `:` in a segment stands for `/` in a
+  name), and Live's browser must list the plug-in there, as a native load needs:
+  under another vendor folder it is refused with
+  `No <format> plug-in at "<path>"; Live lists it at "<its path>"` (not checked
+  when the remote script isn't answering, which fails the hosting anyway). Only
+  that format is tried: a miss reads `No <AU|VST3|VST2> plug-in named "<name>"`
+  (with the same restart and similar-names help, for that format), and a format
+  other than VST3, AU or VST is refused with
+  `Unknown plug-in format "<segment>" in "<path>": use VST3, AU or VST (VST2)`.
+  A path into another section (`Max for Live/...`) is a plain not-found. The
+  entry's `format` is the one that loaded, from the moment the plug-in loads
+  (beside `hosted`). Several plug-ins of that name in the chosen format, a VST2
+  shell plug-in, an AU that is neither an instrument nor an audio effect, an
+  AUv3, and a plug-in whose kind can't be told, are refused the same way. A
+  path's vendor folder picks among same-name plug-ins of its format: the vendor
+  that is exactly that (case aside) when there is one, else those that match
+  loosely (the rule above) the database's or the AU bundle's spelling. A vendor
+  that matches none picks nothing, so the usual refusal for a bare name follows.
+  An AU counts only if Live's browser lists it; with the remote script
+  unanswering there are none. `hosted` with `preset`, or with no `device`, is
+  refused. The wrapper is loaded and placed like any browser device (same path,
+  misfit and chain rules), then told to load the plug-in; the target only counts
+  as created once that worked, then takes its `name` and `params` (routed to the
+  plug-in as update-device's are). Its entry has `hosted: true` and
+  `paramCount`, the total a read-device of it pages through (the wrapper hides
+  some of the plug-in's own params), from the moment the plug-in loads, so an
+  entry kept after a later step fails has them too. A wrapper that gives no
+  count leaves `paramCount` out without failing the target. A plug-in that won't
+  load, or that doesn't answer in time, deletes the wrapper again and skips the
+  target with the reason (`could not load "<plug-in>": ...`), leaving the other
+  paths alone. A wrapper that can't be deleted stays: the entry keeps its `id`
+  and `path`, and the detail says so.
+- **A path that would add a chain to a rack with fixed chains is that path's
+  skip.** create-device's `c+` or `c<n>` past the last chain, and a `toPath` of
+  update-device that names one, fail the one target with the rack's limit and
+  chains (see the [path catalog](../object-paths/path-catalog.md)) before any
+  chain or device is made; the call's other paths still run, and a lone one
+  throws the reason. A device copy's `toPath` is refused the same way, before
+  the copy is made: nothing is copied, deleted or created for it.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.
@@ -46,11 +214,17 @@ Part of [Skip entries, tool by tool](README.md).
   return or main track) is refused before Live is asked, saying why:
   `group track t9 (id 12) takes only audio effects; "Operator" is an instrument`.
   The same for a chain of an audio effect rack (audio effects only) or a MIDI
-  effect rack (MIDI effects only), worked out once Live has turned the insert
-  down. A plug-in's kind shows once it is loaded, so it is refused then, or
-  `"X" may not be an audio effect` (`a MIDI effect` for a MIDI effect rack's
-  chain) when its kind can't be read. update-device's `toPath` move names the
-  same reasons, in the same words, when Live drops a move onto such a place
+  effect rack (MIDI effects only): for a chain the path would make, before it is
+  made, naming the chain by path with no id
+  (`chain t0/d0/c2 takes only audio effects; ...`); for one already there, once
+  Live has turned the insert down. A rack's return chain takes audio effects
+  only, whatever its rack takes, so a device of a known kind that isn't one is
+  refused before Live is asked or a temp track is made
+  (`return chain t0/d0/rc0 (id 12) takes only audio effects; ...`), as a move or
+  copy's `toPath` is. A plug-in's kind shows once it is loaded, so it is refused
+  then, or `"X" may not be an audio effect` (`a MIDI effect` for a MIDI effect
+  rack's chain) when its kind can't be read. update-device's `toPath` move names
+  the same reasons, in the same words, when Live drops a move onto such a place
   (checked once Live has refused it), with the move's usual skip or error shape.
   A device that is in the Set keeps its normal entry (`id`, `path`) when a later
   step threw (a name Live refused), plus a `detail` saying why and what landed:
@@ -67,27 +241,83 @@ Part of [Skip entries, tool by tool](README.md).
   says to load the file from a uniquely named folder.
 - **A `preset` name (create-device, update-device) is found wherever it's
   filed.** Live's browser is searched first, under the named device or, for
-  update-device, then anywhere. A name it lacks is looked up in Live's library
-  database, never by walking the Drums or Sounds sections (that can crash Live),
-  and loads by file. The match is the same as in the browser: the whole name,
-  any case, with or without `.adv`/`.adg`. One file loads; several refuse,
-  listing their paths. Only the device's presets count when a device is named
-  (racks by their rack class; any other device by the class of the presets filed
-  in or just under its folder). update-device asks for the target's presets
-  first and takes any preset only when it has none by that name. A plug-in or
-  Max device named on create-device has no class to filter by, so its name isn't
-  looked up in the database. The database is read as of Live's last save, so a
-  preset added this session may not be found; with no database, today's "no
-  preset" error stands.
+  update-device, then anywhere. The match is the whole name, any case, with or
+  without `.adv`/`.adg`. Where the files are listed depends on what the browser
+  finds:
+  - **Nothing.** The name is looked up in Live's library database, never by
+    walking the Drums or Sounds sections (that can crash Live), and loads by
+    file. One file loads; several refuse.
+  - **One match.** The database is asked too, for same-named files the browser
+    doesn't list (a pack Max device's preset sharing a name with a Core Library
+    one). Several refuse, filtered by the device's library class: racks by their
+    rack class, any other device by its own. One or none: the browser's match
+    loads.
+  - **Drum Racks.** Many drum kits are saved as an Instrument Rack whose first
+    chain starts with a Drum Rack, and the browser lists none of them under Drum
+    Rack. Such a file counts as a Drum Rack preset when named or given by file
+    path: for a Drum Rack the database is asked for Instrument Rack files too,
+    and those are read and kept unless they're readably a plain Instrument Rack
+    (an unreadable file counts, as elsewhere). A browser path under
+    `Instruments/Instrument Rack/` is mapped to its file too: the database's
+    Drum Rack files of that name are kept if their path ends with what the
+    browser path has below `Instrument Rack`. One file loads; several refuse as
+    a shared browser path (below); none, or a library that can't be read, leaves
+    the refusal "not a preset for Drum Rack". Live loads such a kit as the
+    Instrument Rack, not a bare Drum Rack.
+  - **Several matches.** The browser lists a rack under every device it is built
+    around, and two files can share a browser path, so the database settles it.
+    It is asked for every file with the name; with a device named or targeted,
+    the files are read and kept if they are for it (a rack counts for the device
+    it is built around; an unreadable file or an unknown device counts as for
+    it). Several files refuse, listing their absolute paths. One file loads only
+    when the browser's matches look like that rack listed under several devices
+    (only racks, `.adg`; a `.adv` is listed under its own device only, so
+    matches that are all `.adv` refuse): no two at the same browser path, all
+    with the same path below their device folder, and the file's path ending
+    with it. Otherwise, and with no files left, the browser's paths are listed.
+  - **No database.** The browser's match loads, or its paths are listed for
+    several; with no match, today's "no preset" error stands.
+  - update-device asks for the target's presets first and takes any preset only
+    when it has none by that name. A plug-in, or a Max device listed under Max
+    for Live, has no class to filter by, so its name isn't looked up in the
+    database. The database is read as of Live's last save, so a preset added
+    this session may not be found. A file the database lists that is gone from
+    disk isn't counted.
+- **A browser path two items share is refused, never guessed.** A `preset` or
+  `deviceName` spelled `<section>/<path>` (e.g.
+  `Instruments/Instrument Rack/Mallets/Vibraphone.adg`) that lists two or more
+  loadable items at the end is refused with the count: Live can list a Core
+  Library file and a pack's at one path, and the remote script would load the
+  first. A `preset` refusal says to pass the file's absolute path from
+  ppal-library. A `deviceName` refusal points to the same fix as a `preset`
+  refusal, adding "without deviceName" (a retry that keeps `deviceName` hits the
+  same refusal first), only when every item is a rack or preset file (`.adg`,
+  `.adv`, any case); a plug-in or Max device has no way to name one, so its
+  refusal gives none. A suffix picks between a rack and a preset of one name
+  (`Foo.adv`); folders don't count. With a device named, the path is checked
+  against it first (trimmed segments, any case), before the folder is listed: a
+  path outside the device's presets is refused "not a preset for <device>" even
+  when two items share it, unless it is a Drum Rack kit (above), where the Drum
+  Rack files of that name settle which file it is. A device already in the Set
+  (update-device) takes a path anywhere.
+- **A preset settles a `deviceName` several devices have.** create-device
+  refuses a `deviceName` that matches more than one device ("matches N
+  devices"), unless it comes with a `preset`. Then the preset is looked up under
+  each matched device (up to 5), and loads when exactly one preset file turns
+  up. Several different files, none, or more than 5 devices keep the
+  `deviceName` refusal. A lookup that runs out of time says so instead. Example:
+  Live 13's native Tape shares its name with Softube's Tape plug-ins.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it
   does a browser path: `preset "<path>" is not a preset for <device>`. An `.adv`
   is for the device its root element names; an `.adg` for the rack it holds, or
   (for a device that isn't a rack) the device it is built around, the first
-  device of its first chain. A rack that merely holds the device isn't for it. A
-  device with no known class (plug-ins, Max devices), or a file that can't be
-  read, isn't checked. update-device takes any file, as it does any preset.
+  device of its first chain. A rack that merely holds the device isn't for it,
+  except that an Instrument Rack whose first device is a Drum Rack is for Drum
+  Rack too. A device with no known class (plug-ins, Max devices), or a file that
+  can't be read, isn't checked. update-device takes any file, as it does any
+  preset.
 - **A preset that holds the Producer Pal device is refused after Live loads
   it.** The remote script looks through what `/load` or `/hotswap` loaded
   (chains, return chains, drum pads) and deletes what holds it, by device name
@@ -132,8 +362,8 @@ Part of [Skip entries, tool by tool](README.md).
   work asked of that target, so a target they were the whole of keeps its slot
   as a skip and a lone one throws.
 - **A rack's return chains are the rack's, so a send that names none is the
-  chain's.** `sends` (and the `sendGainDb`/`sendReturn` pair) on a chain or pad
-  naming no return chain of its rack is that send's own
+  chain's.** `sends` (and the deprecated `sendGainDb`/`sendReturn` pair) on a
+  chain or pad naming no return chain of its rack is that send's own
   `{return, ok: false, detail}` on the chain's entry, the return spelled the way
   the caller wrote it. update-track's own three — no mixer, no sends, no send
   for that return — are facts about the track rather than about the Live Set,
@@ -153,15 +383,43 @@ Part of [Skip entries, tool by tool](README.md).
   copy's `toPath` resolve a destination through one resolver, which makes the
   chains a path names past the last one. A success reports them as
   `created: "c1-c2"` on the entry (the rack's, for `wrapInRack`). A failure
-  after them — a refused insert or move, a browser load that fails, a path that
-  then names no device, Live making only some of the chains — ends its reason
-  with `; left 3 empty chains: c1-c3`, the chain a `c+` appended included, since
-  the path names that chain only once it exists. A failed move or copy names
-  them in its reason instead of `created`. A lone target throws that reason; in
-  a list it is the target's skip `detail`, the way created scenes are named: no
-  device landed, so `ok: false`. Chain and drum-pad copies make no chains
-  through a path (they append their own copy), so they have nothing to name.
-  Wrapping an instrument keeps its undo-then-throw, and the chains `toPath` made
-  before it began stay in the error. An instrument wrap's `toPath` slot reads
-  against the container as the call found it, though Live keeps an instrument
-  ahead of audio effects, so the rack may land before them.
+  after them — a refused insert or move, a browser load that fails, Live making
+  only some of the chains — ends its reason with `; left 3 empty chains: c1-c3`,
+  the chain a `c+` appended included, since the path names that chain only once
+  it exists. For create-device, what still ends that way is a refusal only Live
+  or the write can give (a second instrument), a plug-in, Max device or preset
+  of a kind the new chain won't take (its kind shows only once loaded), and a
+  chain a drum pad path makes; a path that names no place, a missing container,
+  an index past the end and a kind the chain won't take are refused before any
+  chain is made. A failed move or copy names them in its reason instead of
+  `created`. A lone target throws that reason; in a list it is the target's skip
+  `detail`, the way created scenes are named: no device landed, so `ok: false`.
+  Chain and drum-pad copies make no chains through a path (they append their own
+  copy), so they have nothing to name. Wrapping an instrument keeps its
+  undo-then-throw, and the chains `toPath` made before it began stay in the
+  error. An instrument wrap's `toPath` slot reads against the container as the
+  call found it, though Live keeps an instrument ahead of audio effects, so the
+  rack may land before them.
+- **create-device, an update-device move or a device copy checks its path before
+  making chains.** What the destination refuses is known without making
+  anything: no such track, device or chain, a pad path on a rack with no pads
+  (no destination), a chain in a Drum Rack, a full fixed-chain rack, too many
+  chains to make, an index past the end (a chain the path would make holds
+  none), and a kind of device the place takes none of. For a chain the path
+  would make, the kind is the rack's: an instrument into an audio effect rack's
+  new chain is refused naming the chain by path
+  (`chain t1/d0/c1 takes only audio effects; ...`), with no id since the chain
+  isn't there. Those refuse the target with the same reason and no chains left,
+  so no `; left N empty chains` follows them. `wrapInRack` checks its `toPath`
+  the same way, for what the walk refuses (not the index or the kind). Only what
+  Live's refusal shows (a second instrument) and a chain on a drum pad that the
+  write would make are known after the move, and keep the `; left ...` wording.
+  create-device checks the same way, for a native or a browser device (before
+  the load and its temp track), with the kind of a plug-in or preset only known
+  once loaded. It also answers a path naming no place and a container that isn't
+  there in the same words. A pad path isn't read up front (a kit is built a pad
+  per path): a slot past the end of a pad's chain the write would make is
+  refused before it makes one, and the rest is left to the write. A path that is
+  only a slot on a track (`t0/d+`, `t0/d3`) makes no chain and isn't walked: the
+  resolve gives its refusals. A chain copy checks its destination rack before it
+  adds the chain, so no copy is left to delete.

@@ -17,8 +17,8 @@ interface PresetPickerRowProps {
   naming: boolean;
   onSelect: (id: string) => void;
   onStartNaming: () => void;
-  onUpdate: () => void;
-  onDelete: () => void;
+  onUpdate: (preset: ChatPreset) => void;
+  onDelete: (preset: ChatPreset) => void;
 }
 
 /**
@@ -70,7 +70,7 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
         <>
           <button
             type="button"
-            onClick={props.onUpdate}
+            onClick={() => props.onUpdate(selected)}
             className={BUTTON_CLASS}
             data-testid="preset-update"
           >
@@ -78,7 +78,7 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
           </button>
           <button
             type="button"
-            onClick={props.onDelete}
+            onClick={() => props.onDelete(selected)}
             className={`${BUTTON_CLASS} text-red-600 dark:text-red-400`}
             data-testid="preset-delete"
           >

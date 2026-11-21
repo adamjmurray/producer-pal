@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   curveAmounts,
+  envelopeTimes,
   envelopeValues,
   rampShareOfRise,
   risesOverTime,
@@ -30,6 +31,18 @@ describe("envelopeValues", () => {
 
   it("reads nothing from no notation", () => {
     expect(envelopeValues(undefined)).toStrictEqual([]);
+  });
+});
+
+describe("envelopeTimes", () => {
+  it("reads each point's time as written, past displays and connectors", () => {
+    expect(
+      envelopeTimes("1|1 0.2 (18.8 ms) / 1|2.5 0.4 _ 2|1 0.6 (730 ms)"),
+    ).toStrictEqual(["1|1", "1|2.5", "2|1"]);
+  });
+
+  it("reads nothing from no notation", () => {
+    expect(envelopeTimes(undefined)).toStrictEqual([]);
   });
 });
 

@@ -25,6 +25,7 @@ import {
 } from "../../clip/helpers/clip-tool-constants.ts";
 import { newTrackPath } from "../../helpers/new-track-path.ts";
 import { describeNames } from "../helpers/describe-names.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const KIT = /505/;
 
@@ -61,7 +62,7 @@ export const deviceKitByName: EvalScenario = {
     // The device index isn't fixed: a default track preset may add devices.
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: (turns) => ({ path: newTrackPath(turns), include: ["devices"] }),
       expect: (result) => deviceNames(result).some((name) => KIT.test(name)),
       explain: (result) =>
@@ -77,8 +78,8 @@ export const deviceKitByName: EvalScenario = {
         return (
           calls.some(
             (call) =>
-              call.name === "ppal-create-device" && call.args.preset != null,
-          ) && !calls.some((call) => call.name === "ppal-library")
+              call.name === TOOLS.createDevice && call.args.preset != null,
+          ) && !calls.some((call) => call.name === TOOLS.library)
         );
       },
     }),

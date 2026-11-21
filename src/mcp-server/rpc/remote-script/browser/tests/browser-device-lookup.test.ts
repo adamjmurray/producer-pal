@@ -132,6 +132,8 @@ describe("lookUpBrowserDevice", () => {
         type: "plugin",
         path: "VST3/Valhalla/ValhallaReverb",
         name: "ValhallaReverb",
+        format: "VST3",
+        vendor: "Valhalla",
       },
     });
   });
@@ -161,25 +163,33 @@ describe("lookUpBrowserDevice", () => {
   it("loads a plug-in's VST3 over its AU and VST", async () => {
     const plugin = [
       "VST/FabFilter/Pro-Q 4",
-      "Audio Units/FabFilter/Pro-Q 4",
+      "AUv2/FabFilter/Pro-Q 4",
       "VST3/FabFilter/Pro-Q 4",
     ];
 
     expect(await lookUpIn({ plugin }, "Pro-Q 4")).toStrictEqual({
       available: true,
-      item: { type: "plugin", path: "VST3/FabFilter/Pro-Q 4", name: "Pro-Q 4" },
+      item: {
+        type: "plugin",
+        path: "VST3/FabFilter/Pro-Q 4",
+        name: "Pro-Q 4",
+        format: "VST3",
+        vendor: "FabFilter",
+      },
     });
   });
 
   it("loads a plug-in's AU over its VST", async () => {
-    const plugin = ["VST/FabFilter/Pro-L 2", "Audio Units/FabFilter/Pro-L 2"];
+    const plugin = ["VST/FabFilter/Pro-L 2", "AUv2/FabFilter/Pro-L 2"];
 
     expect(await lookUpIn({ plugin }, "Pro-L 2")).toStrictEqual({
       available: true,
       item: {
         type: "plugin",
-        path: "Audio Units/FabFilter/Pro-L 2",
+        path: "AUv2/FabFilter/Pro-L 2",
         name: "Pro-L 2",
+        format: "AU",
+        vendor: "FabFilter",
       },
     });
   });
@@ -191,8 +201,122 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
+      candidates: [
+        {
+          type: "plugin",
+          path: "VST3/Acme/Echo",
+          name: "Echo",
+          format: "VST3",
+          vendor: "Acme",
+        },
+        { type: "audio-effect", path: "Echo", name: "Echo" },
+      ],
     });
   });
+
+  it("loads the VST3 of a name two makers' plug-ins share across formats", async () => {
+    const plugin = ["VST3/Acme/Limiter", "AUv2/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
+
+    await fake?.close();
+
+    const withVst = ["VST/Limiter", "VST3/Acme/Limiter"];
+
+    expect(await lookUpIn({ plugin: withVst }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
+  });
+
+  it("loads the AU over a VST2 of another maker", async () => {
+    const plugin = ["AUv2/Acme/Limiter", "VST/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "AUv2/Acme/Limiter",
+    );
+  });
+
+  it("loads the one VST3 whatever else shares its name", async () => {
+    const plugin = [
+      "VST3/Acme/Limiter",
+      "AUv2/Other Co/Limiter",
+      "AUv2/Third Co/Limiter",
+      "VST/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "VST3/Acme/Limiter",
+    );
+  });
+
+  it("loads the one AU when there is no VST3, whatever VST2s share its name", async () => {
+    const plugin = ["AUv2/Acme/Limiter", "VST/Limiter", "VST/Other Co/Limiter"];
+
+    expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+      "item.path",
+      "AUv2/Acme/Limiter",
+    );
+  });
+
+  it("refuses two plug-ins in the best format, whatever the other formats hold", async () => {
+    const twoAus = [
+      "AUv2/Acme/Limiter",
+      "AUv2/Other Co/Limiter",
+      "VST/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin: twoAus }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 3 devices"),
+    );
+
+    await fake?.close();
+
+    const twoVst3s = [
+      "VST3/Acme/Limiter",
+      "VST3/Other Co/Limiter",
+      "AUv2/Acme/Limiter",
+    ];
+
+    expect(await lookUpIn({ plugin: twoVst3s }, "Limiter")).toHaveProperty(
+      "error",
+      expect.stringContaining("matches 3 devices"),
+    );
+  });
+
+  it("says whose plug-in it is, when it has a maker's folder", async () => {
+    expect(
+      await lookUpIn({ plugin: ["VST3/Acme/Limiter"] }, "Limiter"),
+    ).toHaveProperty("item.vendor", "Acme");
+
+    await fake?.close();
+
+    expect(
+      await lookUpIn({ plugin: ["VST/Limiter"] }, "Limiter"),
+    ).not.toHaveProperty("item.vendor");
+  });
+
+  it.each([
+    ["Acme Audio", "Acme"],
+    ["ACME", "Acme"],
+    ["Acmetone", "Acme"],
+  ])(
+    "loads the VST3 whatever its maker's folder is spelled like the AU's: %s, %s",
+    async (vst3Maker, auMaker) => {
+      const plugin = [`VST3/${vst3Maker}/Limiter`, `AUv2/${auMaker}/Limiter`];
+
+      expect(await lookUpIn({ plugin }, "Limiter")).toHaveProperty(
+        "item.path",
+        `VST3/${vst3Maker}/Limiter`,
+      );
+    },
+  );
 
   it("refuses two copies of a plug-in in one format, or in no format", async () => {
     const twoVst3 = { plugin: ["VST3/A/Pro-Q 4", "VST3/B/Pro-Q 4"] };
@@ -241,7 +365,14 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'invalid device "Nope": no native device, plug-in, or Max for Live device has that name',
+      notFound: true,
     });
+  });
+
+  it("marks only a name nothing has as not found, not an ambiguous one", async () => {
+    expect(
+      await lookUpIn({ "audio-effect": ["Delay A", "Delay B"] }, "delay"),
+    ).not.toHaveProperty("notFound");
   });
 
   it("refuses a blank name without asking", async () => {
@@ -365,11 +496,206 @@ describe("lookUpBrowserDevice", () => {
           type: "plugin",
           path: "VST/FabFilter/Pro-Q 4",
           name: "Pro-Q 4",
+          format: "VST",
+          vendor: "FabFilter",
         },
       });
       expect(queriesAsked(fake)).toStrictEqual([
         { type: "plugin", recursive: "false", path: "VST/FabFilter" },
       ]);
+    });
+
+    describe("naming the format", () => {
+      const installed = [
+        "VST3/Xfer Records/Serum 2 FX",
+        "AUv2/Xfer Records/Serum 2 FX",
+        "VST/Serum 2 FX",
+      ];
+      const au = {
+        available: true,
+        item: {
+          type: "plugin",
+          path: "AUv2/Xfer Records/Serum 2 FX",
+          name: "Serum 2 FX",
+          format: "AU",
+          vendor: "Xfer Records",
+        },
+      };
+
+      it("reaches Live's AUv2 folder as AU, in any case", async () => {
+        for (const spelled of ["AU", "au", "AUv2", "auv2"]) {
+          expect(
+            await lookUpIn(
+              { plugin: installed },
+              `Plug-Ins/${spelled}/Xfer Records/Serum 2 FX`,
+            ),
+          ).toStrictEqual(au);
+
+          await fake?.close();
+        }
+      });
+
+      it("lists the top folders only for a spelling Live doesn't use", async () => {
+        await lookUpIn(
+          { plugin: installed },
+          "Plug-Ins/AU/Xfer Records/Serum 2 FX",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false" },
+          { type: "plugin", recursive: "false", path: "AUv2/Xfer Records" },
+        ]);
+
+        await fake?.close();
+        await lookUpIn(
+          { plugin: installed },
+          "Plug-Ins/AUv2/Xfer Records/Serum 2 FX",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false", path: "AUv2/Xfer Records" },
+        ]);
+      });
+
+      it("loads the VST2, which has no vendor folder, by its folder", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/VST/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          item: {
+            type: "plugin",
+            path: "VST/Serum 2 FX",
+            name: "Serum 2 FX",
+            format: "VST",
+          },
+        });
+      });
+
+      it("reads VST2 as the VST folder", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/VST2/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          item: {
+            type: "plugin",
+            path: "VST/Serum 2 FX",
+            name: "Serum 2 FX",
+            format: "VST",
+          },
+        });
+      });
+
+      it("doesn't read a vendor that starts with AU as the format", async () => {
+        await lookUpIn({ plugin: installed }, "Plug-Ins/Audio Damage/Dazzle");
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "plugin", recursive: "false", path: "Audio Damage" },
+          { type: "plugin", q: "dazzle" },
+        ]);
+      });
+
+      it("lists every format's copy when the first folder is a vendor", async () => {
+        const both = ["VST3/Audio Damage/Dazzle", "AUv2/Audio Damage/Dazzle"];
+
+        expect(
+          await lookUpIn({ plugin: both }, "Plug-Ins/Audio Damage/Dazzle"),
+        ).toHaveProperty(
+          "error",
+          'invalid device "Plug-Ins/Audio Damage/Dazzle": no plug-in is at that path; Live lists it at "Plug-Ins/VST3/Audio Damage/Dazzle", "Plug-Ins/AUv2/Audio Damage/Dazzle"',
+        );
+      });
+
+      it("refuses a format that isn't installed", async () => {
+        const onlyVst3 = ["VST3/Xfer Records/Serum 2 FX"];
+
+        expect(
+          await lookUpIn(
+            { plugin: onlyVst3 },
+            "Plug-Ins/AU/Xfer Records/Serum 2 FX",
+          ),
+        ).toStrictEqual({
+          available: true,
+          error:
+            'invalid device "Plug-Ins/AU/Xfer Records/Serum 2 FX": no plug-in is at that path; Live lists it at "Plug-Ins/VST3/Xfer Records/Serum 2 FX"',
+          notFound: true,
+        });
+      });
+
+      it("names the path in that format when the vendor folder is wrong", async () => {
+        expect(
+          await lookUpIn({ plugin: installed }, "Plug-Ins/AU/Serum/Serum 2 FX"),
+        ).toStrictEqual({
+          available: true,
+          error:
+            'invalid device "Plug-Ins/AU/Serum/Serum 2 FX": no plug-in is at that path; Live lists it at "Plug-Ins/AUv2/Xfer Records/Serum 2 FX"',
+          notFound: true,
+        });
+      });
+
+      it("keeps the plain refusal when the search for it fails", async () => {
+        const name = "Plug-Ins/VST3/Serum/Serum 2 FX";
+        const plain = {
+          available: true,
+          error: `invalid device "${name}": no native device, plug-in, or Max for Live device has that name`,
+          notFound: true,
+        };
+
+        for (const status of [500, 504]) {
+          fake = await startFakeRemoteScript((request) =>
+            request.query.q == null
+              ? listing({ plugin: installed }, request)
+              : { status, body: { error: "boom" } },
+          );
+
+          expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual(
+            plain,
+          );
+
+          await fake.close();
+        }
+      });
+
+      it("leaves a path under another section alone", async () => {
+        await lookUpIn(
+          { "audio-effect": ["AU/Reverb"] },
+          "Audio Effects/AU/Reverb",
+        );
+
+        expect(queriesAsked(fake)).toStrictEqual([
+          { type: "audio-effect", recursive: "false", path: "AU" },
+        ]);
+      });
+
+      it("fails the way any listing does when the top folders can't be listed", async () => {
+        fake = await startFakeRemoteScript(() => ({
+          status: 500,
+          body: { error: "boom" },
+        }));
+
+        const name = "Plug-Ins/AU/Xfer Records/Serum 2 FX";
+
+        expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual({
+          available: true,
+          error: `could not search Live's browser for "${name}": boom`,
+        });
+
+        await fake.close();
+        fake = await startFakeRemoteScript(() => ({
+          status: 504,
+          body: { error: "the request expired before Live ran it" },
+        }));
+
+        await expect(lookUpBrowserDevice(name, inAMinute())).rejects.toThrow(
+          "the request expired before Live ran it",
+        );
+
+        await fake.close();
+        fake = undefined;
+
+        expect(await lookUpBrowserDevice(name, inAMinute())).toStrictEqual({
+          available: false,
+        });
+      });
     });
 
     it("reads the section and name in any case", async () => {
@@ -387,12 +713,13 @@ describe("lookUpBrowserDevice", () => {
     it("refuses a folder, a missing folder, or nothing after the section", async () => {
       for (const deviceName of [
         "Plug-Ins/VST3/FabFilter",
-        "Plug-Ins/VST4/Pro-Q 4",
+        "Plug-Ins/VST4/Nothing",
         "Plug-Ins/ ",
       ]) {
         expect(await lookUpIn({ plugin }, deviceName)).toStrictEqual({
           available: true,
           error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+          notFound: true,
         });
 
         await fake?.close();

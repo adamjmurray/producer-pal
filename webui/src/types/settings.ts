@@ -192,7 +192,10 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   saveSettings: () => Promise<boolean>;
   cancelSettings: () => void;
   hasApiKey: boolean;
-  settingsConfigured: boolean;
+  /** Chat is ready to use: set only by a Save that leaves the provider usable
+   * (an API key, or a local provider). Never set by closing Settings or by a
+   * Save without a key. Persisted, and never cleared once set. */
+  chatSetUp: boolean;
   /** False until the post-mount async decrypt has applied the real apiKeys.
    * Consumers that snapshot settings (e.g. unsaved-changes detection) must wait
    * for this so they don't capture the blank pre-decrypt apiKey. */

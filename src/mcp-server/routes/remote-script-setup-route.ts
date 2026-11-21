@@ -10,7 +10,7 @@
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import {
   answerUserLibraryError,
@@ -40,7 +40,7 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
   });
 
   app.post("/remote-script/install", (req: Request, res: Response): void => {
-    const posted = readUserLibraryPost(req, res, "/remote-script");
+    const posted = readUserLibraryPost(req, res);
 
     if (posted == null) {
       return;
@@ -61,7 +61,7 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
 
       const message = errorMessage(error);
 
-      console.error(`Remote script install failed: ${message}`);
+      nodeError(`Remote script install failed: ${message}`);
       res.status(500).json({
         error: `Couldn't install the remote script (${message}). ${installLeftText(message)}`,
       });

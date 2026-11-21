@@ -10,12 +10,12 @@ import {
   setupClip,
   setupTrack,
   setupTrackWithoutIndex,
-  tilingTrackMethods,
-} from "./helpers/arrangement-tiling-test-helpers.ts";
+  duplicatingTrackMethods,
+} from "./helpers/arrangement-mock-objects.ts";
 import {
   clearClipAtDuplicateTarget,
   setArrangementDuplicateCrashWorkaround,
-} from "../arrangement-tiling-workaround.ts";
+} from "../arrangement-duplicate-workaround.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -91,7 +91,7 @@ function setupHoldingClipScenario(
     properties: {
       arrangement_clips: ["id", existingClip.id],
     },
-    methods: tilingTrackMethods(),
+    methods: duplicatingTrackMethods(),
   });
 }
 
@@ -473,7 +473,7 @@ describe("clearClipAtDuplicateTarget", () => {
 
     const trackMock = setupTrackWithoutIndex({
       properties: { arrangement_clips: ["id", "100"] },
-      methods: tilingTrackMethods(),
+      methods: duplicatingTrackMethods(),
     });
 
     const safe = clearTargetForSource(trackMock, 12);
@@ -567,7 +567,7 @@ describe("clearClipAtDuplicateTarget", () => {
       properties: {
         arrangement_clips: ["id", far.id, "id", overlapping.id],
       },
-      methods: tilingTrackMethods(),
+      methods: duplicatingTrackMethods(),
     });
 
     clearTargetForSource(trackMock, 8);

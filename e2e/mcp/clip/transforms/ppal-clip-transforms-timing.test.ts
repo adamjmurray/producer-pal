@@ -12,6 +12,7 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-timing
  */
 import { describe, expect, it } from "vitest";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   parseToolResultWithWarnings,
@@ -123,6 +124,26 @@ describe("ppal-clip-transforms (swing)", () => {
     // Off-beat 16ths should be shifted by ~0.05
     expect(starts[1]).toBeCloseTo(0.3, 1); // 0.25 + 0.05
     expect(starts[3]).toBeCloseTo(0.8, 1); // 0.75 + 0.05
+  });
+
+  it("swings exactly the off-beats of a triplet clip", async () => {
+    // Repeated n/12 notes drift off exact thirds, which used to swing the wrong ones.
+    const clipId = await createMidiClip(73, "n/12 C3 1|1x24");
+
+    await applyTransform(clipId, "timing = swing(0.1, n/12)");
+
+    const starts = interpretNotation(await readClipNotes(clipId), {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    })
+      .map((note) => note.start_time)
+      .toSorted((a, b) => a - b);
+
+    expect(starts).toHaveLength(24);
+
+    for (const [i, start] of starts.entries()) {
+      expect(start).toBeCloseTo(i / 3 + (i % 2 === 1 ? 0.1 : 0), 2);
+    }
   });
 
   it("auto-quantizes so re-applying swing is safe", async () => {

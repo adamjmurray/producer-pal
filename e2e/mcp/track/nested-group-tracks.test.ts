@@ -131,7 +131,8 @@ describe("ppal-delete on nested group tracks", () => {
 
     expect(result.ok).toBeUndefined();
     expect(result.detail).toBe(
-      `also deleted the 4 tracks inside this group track: ${INSIDE_OUTER.map((index) => label(before, index)).join(", ")}`,
+      `also deleted the 4 tracks inside this group track: ${INSIDE_OUTER.map((index) => label(before, index)).join(", ")}; ` +
+        `and the 3 clips on them: ${PLAYABLE_IN_OUTER.map((index) => "t" + String(index) + "/s0").join(", ")}`,
     );
 
     const goneIds = [OUTER, ...INSIDE_OUTER].map((index) => before[index]!.id);

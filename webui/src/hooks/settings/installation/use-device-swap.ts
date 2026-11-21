@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { fetchJsonOrNull } from "#webui/utils/fetch-json";
+import { fetchJsonOrNull, responseError } from "#webui/utils/fetch-json";
 import { getDeviceInstallUrl, getDeviceSwapUrl } from "#webui/utils/mcp-url";
 import { type DeviceInstallStatus } from "./use-device-install";
 
@@ -141,21 +141,7 @@ async function postSwap(userLibrary: string): Promise<string | null> {
     return null;
   }
 
-  return (await readError(response)) ?? `Swap failed (${response.status})`;
-}
-
-/**
- * @param response - A refused swap
- * @returns The error its JSON body carries, if it has one
- */
-async function readError(response: Response): Promise<string | null> {
-  try {
-    const body = (await response.json()) as { error?: unknown };
-
-    return typeof body.error === "string" ? body.error : null;
-  } catch {
-    return null;
-  }
+  return (await responseError(response)) ?? `Swap failed (${response.status})`;
 }
 
 /**

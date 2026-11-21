@@ -3,8 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, it, expect } from "vitest";
-import { buildReflectionPrompt } from "./self-reflection.ts";
+import { describe, it, expect, vi } from "vitest";
+import {
+  buildReflectionPrompt,
+  maybeInjectReflection,
+} from "./self-reflection.ts";
+import { type EvalSession } from "../eval-session.ts";
 import { type EvalAssertionResult, type EvalTurnResult } from "../types.ts";
 
 /**
@@ -38,6 +42,25 @@ function makeToolCalledResult(
     details: { matchingCalls: [], count, nameMatchCount, argsSpecified },
   };
 }
+
+describe("maybeInjectReflection", () => {
+  it("keeps the reflection turn's reasoning text and finish reason", async () => {
+    const sendMessage = vi.fn<EvalSession["sendMessage"]>().mockResolvedValue({
+      text: "I skipped it.",
+      toolCalls: [],
+      reasoningText: "why did I fail",
+      finishReason: "stop",
+    });
+    const turns: EvalTurnResult[] = [];
+
+    await maybeInjectReflection([makeToolCalledResult()], turns, {
+      sendMessage,
+    } as unknown as EvalSession);
+
+    expect(turns[0]?.reasoningText).toBe("why did I fail");
+    expect(turns[0]?.finishReason).toBe("stop");
+  });
+});
 
 describe("buildReflectionPrompt", () => {
   it("names the missing tool, not 'any tool', when it was not called", () => {

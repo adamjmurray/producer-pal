@@ -79,13 +79,13 @@ describe("buildProviderOptions for the Vercel gateway", () => {
       buildProviderOptions("vercel", "Default", "openai/gpt-6-luna"),
     ).toStrictEqual({
       ...caching,
-      openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
+      openai: { reasoningSummary: "auto" },
     });
     expect(
       buildProviderOptions("vercel", "Default", "google/gemini-3.8-flash"),
     ).toStrictEqual({
       ...caching,
-      google: { thinkingConfig: { thinkingBudget: -1, includeThoughts: true } },
+      google: { thinkingConfig: { includeThoughts: true } },
     });
   });
 

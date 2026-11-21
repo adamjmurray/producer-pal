@@ -10,7 +10,7 @@ import "../duplicate-mocks-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { resolveSlotCopySource } from "#src/tools/actions/duplicate/helpers/clip/duplicate-clip-slot.ts";
+import { resolveSlotCopySource } from "#src/tools/actions/duplicate/helpers/clip/slot-copy/duplicate-clip-slot.ts";
 import {
   GROUP_REASON,
   registerGroupBesideTrack,

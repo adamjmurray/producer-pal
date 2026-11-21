@@ -50,6 +50,7 @@ import {
 import {
   type DurationGridEntry,
   durationEntry,
+  exactDurationBefore,
   floorDuration,
   MAX_GRID_BEATS,
   restNoteValues,
@@ -67,7 +68,7 @@ import {
 } from "#src/notation/stark/helpers/stark-note-formatting.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 /** Options for {@link formatNotation}. */
 export interface StarkFormatOptions {
@@ -148,7 +149,7 @@ function warnOnCeilingClippedNotes(count: number): void {
   const noun = count === 1 ? "note" : "notes";
   const verb = count === 1 ? "is" : "are";
 
-  console.warn(
+  emitWarning(
     `Stark: ${count} ${noun} longer than ${MAX_GRID_BEATS} beats ${verb} ` +
       `shortened on read-back — Stark's longest note value is a dotted whole ` +
       `(${MAX_GRID_BEATS} beats). Use bar|beat or midi-json notation to ` +
@@ -217,12 +218,18 @@ function legatoDuration(
   capBeats: number,
 ): DurationGridEntry {
   const snapped = snapDuration(naturalBeats);
+  const fitted =
+    snapped.beats <= capBeats + SAME_TIME_EPSILON
+      ? snapped
+      : floorDuration(capBeats);
 
-  if (snapped.beats <= capBeats + SAME_TIME_EPSILON) {
-    return snapped;
+  if (!Number.isFinite(capBeats)) {
+    return fitted;
   }
 
-  return floorDuration(capBeats);
+  // Prefer a value that leaves a rest the grid can spell, so the next onset
+  // lands where it is. Off-grid onsets have none; keep the plain fit.
+  return exactDurationBefore(naturalBeats, capBeats) ?? fitted;
 }
 
 // Fill a gap with `z` rest tokens (greedy, largest grid note value first).

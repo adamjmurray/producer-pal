@@ -323,8 +323,8 @@ the mechanical cases.
 
 The Node.js client doubles as the Producer Pal [Agent Skill](/guide/skills)
 script; see [The bundled script](/guide/skills#the-bundled-script) for the full
-source and CLI reference. It works with Claude Code, Codex CLI, Gemini CLI, and
-any other agent runtime that reads the `SKILL.md` convention.
+source and CLI reference. It works with Claude Code, Codex CLI, Antigravity CLI,
+and any other agent runtime that reads the `SKILL.md` convention.
 
 - Source:
   [`examples/skills/producer-pal/ppal.mjs`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal/ppal.mjs)

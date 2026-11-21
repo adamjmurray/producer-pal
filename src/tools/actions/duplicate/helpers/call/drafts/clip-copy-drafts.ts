@@ -19,15 +19,25 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import {
-  arrangementPositionPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+  canRecreateClip,
+  recreateBlocker,
+} from "#src/tools/shared/clip/recreate-clip.ts";
+import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type AnySlotPosition,
+  slotPositionText,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+  isReturnTrackClip,
+  returnSlotCopyBlocker,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Cover } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
   copyLengthBeats,
@@ -52,6 +62,8 @@ import {
 /** What the clip copies are told about the call. */
 export interface ClipDraftParams {
   takeLane: number | string | undefined;
+  /** The param the caller wrote the positions in */
+  startParam: string;
   /** Looks a source up, once for the call */
   objectOf: (id: string) => LiveAPI;
   /** Looks a destination track up, once for the call */
@@ -103,12 +115,28 @@ function addressed(path: string): NamedTarget {
  */
 function slotBlocker(
   clip: LiveAPI,
-  slot: ClipSlotPosition,
+  slot: AnySlotPosition,
   params: ClipDraftParams,
 ): string | null {
+  // An envelope clip goes between return track slots, and nothing else does.
+  if (isReturnSlotPosition(slot)) {
+    return (
+      returnSlotCopyBlocker(clip) ??
+      (LiveAPI.from(livePath.returnTrack(slot.returnIndex)).exists()
+        ? null
+        : `return track rt${slot.returnIndex} does not exist`)
+    );
+  }
+
+  if (isReturnTrackClip(clip)) {
+    return ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT;
+  }
+
   // An arrangement clip is re-created into the slot, from its notes or sample.
-  if (clip.sceneIndex == null && !canRecreateClip(clip)) {
-    return "it's an audio clip with no sample file; drag it in Live's UI";
+  const unbuildable = clip.sceneIndex == null ? recreateBlocker(clip) : null;
+
+  if (unbuildable != null) {
+    return unbuildable;
   }
 
   return clipCopyBlocker(
@@ -129,13 +157,13 @@ function slotBlocker(
 function slotDrafts(
   source: SourceShare,
   turn: number,
-  slots: ClipSlotPosition[],
+  slots: AnySlotPosition[],
   params: ClipDraftParams,
 ): CopyDraft[] {
   const clip = source.skip == null ? params.objectOf(source.id) : null;
 
   return slots.map((slot): CopyDraft => {
-    const path = slotPath(slot.trackIndex, slot.sceneIndex);
+    const path = slotPositionText(slot);
     const blocker = clip == null ? null : slotBlocker(clip, slot, params);
 
     if (source.skip != null || blocker != null) {
@@ -159,7 +187,9 @@ function slotDrafts(
 interface ArrangementSource {
   share: SourceShare;
   clip: LiveAPI | null;
-  noSample: string | null;
+  /** Why the clip can't be re-created, or null when it can. Read on demand:
+   * a copy Live's own duplicate makes never asks. */
+  rebuildBlocker: () => string | null;
   canPromote: boolean;
 }
 
@@ -183,7 +213,11 @@ function arrangementDrafts(
     clip == null
       ? unresolvedDestinations(where.arrangementTargets)
       : resolveDestinationTargets(clip, where.arrangementTargets);
-  const requested = aliasTakeLane(resolved.destinations, params.takeLane);
+  const requested = aliasTakeLane(
+    resolved.destinations,
+    params.takeLane,
+    "toPath",
+  );
 
   // Decided from what toPath named, not from what could be resolved: a lane
   // on a blocked destination is still a lane the caller named.
@@ -204,17 +238,14 @@ function arrangementDrafts(
 
   const meter = params.meter();
   const positions = positionsInBeats(share.arrangementStart, where, meter);
-  const plan = planCopies(requested, positions);
+  const plan = planCopies(requested, positions, params.startParam);
   const dropped = takeLaneTargetsThatFit(
     plan.targets.filter((target) => target.takeLane != null),
   ).dropped;
   const source: ArrangementSource = {
     share,
     clip,
-    noSample:
-      clip == null || canRecreateClip(clip)
-        ? null
-        : "it's an audio clip with no sample file; drag it in Live's UI",
+    rebuildBlocker: () => (clip == null ? null : recreateBlocker(clip)),
     canPromote:
       clip != null &&
       isTakeLaneClip(clip) &&
@@ -227,9 +258,9 @@ function arrangementDrafts(
     const target = plan.requestedTargets[request] as ArrangementTrack | null;
     const beats = plan.requestedPositions[request] as number;
     const label = destinationLabel(
-      where.arrangementTargets[request],
+      ofCopy(where.arrangementTargets, request),
       target,
-      resolved.destinations[request],
+      ofCopy(resolved.destinations, request),
     );
     const slot = where.arrangementRefusals[request];
     const named = addressed(
@@ -254,7 +285,7 @@ function arrangementDrafts(
 
     // A destination that can't take the copy says why.
     if (target == null) {
-      return { named, skip: resolved.refusals[request] as string };
+      return { named, skip: ofCopy(resolved.refusals, request) as string };
     }
 
     const refused = arrangementRefusal(source, target, dropped);
@@ -294,7 +325,9 @@ function arrangementRefusal(
   dropped: Map<string, string>,
 ): string | null {
   if (target.takeLane != null) {
-    return source.noSample ?? dropped.get(takeLaneLabel(target)) ?? null;
+    return (
+      source.rebuildBlocker() ?? dropped.get(takeLaneLabel(target)) ?? null
+    );
   }
 
   // Live's arrangement duplicate silently no-ops on a take-lane source, so it
@@ -305,7 +338,7 @@ function arrangementRefusal(
     isTakeLaneClip(source.clip) &&
     !source.canPromote
   ) {
-    return source.noSample;
+    return source.rebuildBlocker();
   }
 
   return null;
@@ -329,16 +362,20 @@ function arrangementCovers(
 ): Cover[] | undefined {
   const { numerator, denominator } = meter;
   // A re-created copy of a session clip is its loop length; a duplicate is
-  // what copyLengthBeats says. Only a duplicate takes the length asked for.
-  const recreated = target.takeLane != null || isTakeLaneClip(clip);
+  // what copyLengthBeats says. A duplicate takes the length asked for. A
+  // re-created copy lands at its own length and is resized after: on a lane
+  // that clears nothing, but promoted to the main lane it clears ahead.
+  const toTakeLane = target.takeLane != null;
+  const recreated = toTakeLane || isTakeLaneClip(clip);
   const own =
     recreated && clip.sceneIndex != null
       ? clipLengthBeats(clip)
       : copyLengthBeats(clip);
-  const span =
-    label.length == null || recreated
+  const asked =
+    label.length == null
       ? own
       : parseArrangementLength(label.length, numerator, denominator);
+  const span = toTakeLane ? own : recreated ? Math.max(own, asked) : asked;
 
   if (!Number.isFinite(span) || span <= 0) {
     return undefined;
@@ -375,6 +412,14 @@ function unresolvedDestinations(
     ),
     refusals: targets.map(() => null),
   };
+}
+
+// One destination covers every position, so what was named and why it was
+// refused go to every copy too.
+function ofCopy<T>(perDestination: T[], request: number): T | undefined {
+  return perDestination.length === 1
+    ? perDestination[0]
+    : perDestination[request];
 }
 
 /**

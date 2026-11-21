@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
 import {
   countSlotCollisions,
   dedupeAndSortNotes,
-} from "#src/notation/note-sort.ts";
+} from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -23,7 +23,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
+import { type CallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   clipNoteScanWindow,
   clipPlayRegion,
@@ -44,11 +44,15 @@ import {
   ignoreClipParams,
   noteLanded,
 } from "../entries/clip-reasons.ts";
+import {
+  reportTransformsChangedNothing,
+  type StagedTransforms,
+} from "./transform-no-change-report.ts";
 import { QUANTIZE_GRID, QUANTIZE_GRID_ALIASES } from "./quantize-grid.ts";
 import {
   mutedNotesHit,
   reportMutedCopies,
-  reportMutedNoteEffects,
+  reportNoteWriteEffects,
   reportMutedQuantize,
 } from "./muted-note-effects.ts";
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
@@ -73,6 +77,7 @@ interface QuantizationOptions {
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables, undefined when the call edits no notes
  * @param notation - Global notation setting the notes string is written in (default barbeat)
+ * @param staged - What an earlier duplicateLoop stage handed over, if this is the last one
  * @returns Note update result, or null if notes not modified
  */
 export function handleNoteUpdates(
@@ -85,6 +90,7 @@ export function handleNoteUpdates(
   timeSigDenominator: number,
   clipContext: ClipContext | undefined,
   notation: Notation | undefined,
+  staged?: StagedTransforms,
 ): NoteUpdateResult | null {
   // Nothing to do. The caller builds the clip context on this same check, so
   // an undefined one never reaches the code below.
@@ -104,6 +110,7 @@ export function handleNoteUpdates(
       timeSigNumerator,
       timeSigDenominator,
       clipContext,
+      staged,
     );
   }
 
@@ -188,16 +195,21 @@ export function handleNoteUpdates(
     (note) => !mutedHitBefore.has(note),
   ).length;
 
-  reportMutedNoteEffects(clip, reasons, {
+  reportNoteWriteEffects(clip, reasons, {
     written: mergedNotes,
     muted: mutedNotes,
     replaced: mutedReplaced,
   });
 
   // Both stages count: a note either one changed counts once.
+  const outcome = combineOutcomes(preOutcome, postOutcome);
+  const counts = countTransforms(outcome, mergedNotes);
+
+  reportTransformsChangedNothing(reasons, clip.id, outcome, counts, staged);
+
   return {
     noteCount: getClipNoteCount(clip),
-    ...countTransforms(combineOutcomes(preOutcome, postOutcome), mergedNotes),
+    ...counts,
     putOutside: countPutOutsideRegion(region, mergedNotes, mutedNotes, visible),
   };
 }
@@ -295,9 +307,6 @@ export function handleDuplicateLoop(
   }
 
   // Live copies muted notes too; the model can't see them, so say how many.
-  // Counted over the window read before, which the doubled clip's wider one
-  // contains.
-  const window = clipNoteScanWindow(clip);
   const mutedBefore = readClipNotes(clip).muted.length;
 
   clip.call("duplicate_loop");
@@ -309,7 +318,15 @@ export function handleDuplicateLoop(
   const freshClip = LiveAPI.from(clip.id);
   const { visible, muted } = readClipNotes(freshClip);
 
-  reportMutedCopies(clip, reasons, mutedBefore, window, muted);
+  // The doubled clip's window: on a looping clip the copies land past the old
+  // loop_end, outside the window read before.
+  reportMutedCopies(
+    clip,
+    reasons,
+    mutedBefore,
+    clipNoteScanWindow(freshClip),
+    muted,
+  );
 
   return {
     noteCount: visible.length,
@@ -339,7 +356,7 @@ export function handleDuplicateLoop(
  * @param params.clipIndex - 0-based index in the multi-clip batch
  * @param params.clipCount - Total clips in the batch
  * @param params.notation - Global notation setting the notes string is written in (or undefined)
- * @param params.scaleMask - The call's shared scale mask reader, when it has one
+ * @param params.callScale - What the call asked Live about scales
  * @returns Note update result with the final post-edit note count
  */
 export function handleDuplicateLoopWithEdits({
@@ -353,7 +370,7 @@ export function handleDuplicateLoopWithEdits({
   clipIndex,
   clipCount,
   notation,
-  scaleMask,
+  callScale,
 }: {
   clip: LiveAPI;
   reasons: ClipReasons;
@@ -365,10 +382,14 @@ export function handleDuplicateLoopWithEdits({
   clipIndex: number;
   clipCount: number;
   notation: Notation | undefined;
-  scaleMask?: ScaleMaskReader;
+  callScale: CallScale;
 }): NoteUpdateResult | null {
-  // Stage 1: flush preTransforms onto the existing notes before doubling.
+  // Stage 1: flush preTransforms onto the existing notes before doubling. With
+  // a stage 3 it hands its results over, so "nothing changed" is judged on both.
   let preCounts: TransformCounts = {};
+  const staged: StagedTransforms = {
+    defer: notationString != null || transformString != null,
+  };
 
   if (preTransformString != null) {
     const preContext = buildClipContext(
@@ -377,7 +398,7 @@ export function handleDuplicateLoopWithEdits({
       clipCount,
       timeSigNumerator,
       timeSigDenominator,
-      scaleMask,
+      callScale,
     );
     const preResult = applyTransformsToExistingNotes(
       clip,
@@ -387,6 +408,7 @@ export function handleDuplicateLoopWithEdits({
       timeSigNumerator,
       timeSigDenominator,
       preContext,
+      staged,
     );
 
     preCounts = {
@@ -394,6 +416,8 @@ export function handleDuplicateLoopWithEdits({
       deletedNotes: preResult.deletedNotes,
     };
   }
+
+  staged.defer = false;
 
   // Stage 2: native double (MIDI guaranteed by the caller).
   const dupResult = handleDuplicateLoop(clip, reasons);
@@ -411,7 +435,7 @@ export function handleDuplicateLoopWithEdits({
     clipCount,
     timeSigNumerator,
     timeSigDenominator,
-    scaleMask,
+    callScale,
   );
   const mergeResult = handleNoteUpdates(
     freshClip,
@@ -423,6 +447,7 @@ export function handleDuplicateLoopWithEdits({
     timeSigDenominator,
     postContext,
     notation,
+    staged,
   );
 
   // Stage 3 only counts notes, so carry stage 2's length across it — nothing
@@ -431,7 +456,7 @@ export function handleDuplicateLoopWithEdits({
     mergeResult.length = dupResult.length;
   }
 
-  return withPreCounts(mergeResult ?? dupResult, preCounts);
+  return withPreCounts(mergeResult, preCounts);
 }
 
 /**

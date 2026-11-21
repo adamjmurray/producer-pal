@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorPayloadMessage } from "#src/shared/error-message";
+
 /**
  * Rate limit detection and retry utilities for API error handling.
  *
@@ -151,24 +153,7 @@ function extractErrorString(error: unknown): string {
     return error.message;
   }
 
-  if (typeof error === "object" && error != null) {
-    const errorObj = error as Record<string, unknown>;
-
-    // Handle nested error object structure (common in API responses)
-    if (typeof errorObj.error === "object" && errorObj.error != null) {
-      const nestedError = errorObj.error as Record<string, unknown>;
-
-      if (typeof nestedError.message === "string") {
-        return nestedError.message;
-      }
-    }
-
-    if (typeof errorObj.message === "string") {
-      return errorObj.message;
-    }
-  }
-
-  return String(error);
+  return errorPayloadMessage(error) ?? String(error);
 }
 
 /**

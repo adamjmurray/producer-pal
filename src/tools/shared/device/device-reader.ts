@@ -5,7 +5,7 @@
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -13,25 +13,27 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import {
-  isRedundantDeviceClassName,
   processDeviceChains,
   readABCompare,
-  readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reading.ts";
 import {
-  noteAutomationUnknown,
-  owningTrackFollowsArrangement,
-} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
-import { extractDevicePath } from "./helpers/path/insertion-path.ts";
+  detectHostedPlugin,
+  type HostedPlugin,
+} from "./helpers/params/hosted-plugin-reading.ts";
+import {
+  appendHostedParameters,
+  appendParameters,
+} from "./helpers/params/param-listing.ts";
+import { describeDevice, deviceClassName } from "./helpers/device-identity.ts";
+import { fixedChainLimit } from "./helpers/path/rack-chain-limit.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
-  applySpecializedInactiveStates,
   readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
-  readSpecializedParams,
 } from "./specialized/specialized-device-registry.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** How deep readDevice walks a rack tree when the caller doesn't say. */
 export const DEFAULT_MAX_DEPTH = 4;
@@ -46,9 +48,11 @@ export interface ReadDeviceOptions {
   includeOptions?: boolean;
   includeActions?: boolean;
   paramSearch?: string;
+  /** Matches to skip before the page of params. */
+  paramOffset?: number;
   depth?: number;
   maxDepth?: number;
-  parentPath?: string;
+  parentPath?: string | null;
   /**
    * The caller drops the chains afterwards and is walking only to find a drum
    * rack. Chain identity and the chain mixer are then pure cost, so the walk
@@ -320,6 +324,7 @@ export function readDevice(
     includeOptions = false,
     includeActions = false,
     paramSearch,
+    paramOffset,
     depth = 0,
     maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
@@ -328,32 +333,36 @@ export function readDevice(
   } = options;
 
   if (depth > maxDepth) {
-    console.warn(`Maximum recursion depth (${maxDepth}) exceeded`);
+    emitWarning(`Maximum recursion depth (${maxDepth}) exceeded`);
 
     return {};
   }
 
   const deviceType = getDeviceType(device);
-  const className = device.getProperty("class_display_name") as string;
-  const userDisplayName = device.getName();
-  const isRedundant = isRedundantDeviceClassName(deviceType, className);
-  // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
-  const path = parentPath ?? extractDevicePath(device.path);
+  const hosted = detectHostedPlugin(device);
+  const className = deviceClassName(device, hosted);
+  // A walk threads its path down, or null when it shows none. A device read on
+  // its own is spelled the way results spell it: pad-relative under a drum
+  // chain, which costs a build per chain above it.
+  const path =
+    parentPath === undefined ? (objectPathForApi(device) ?? null) : parentPath;
+  const deviceInfo = describeDevice(device, {
+    deviceType,
+    className,
+    path,
+    hosted,
+  });
 
-  const deviceInfo: Record<string, unknown> = {
-    id: device.id,
-    ...(path && { path }),
-    type: isRedundant ? deviceType : `${deviceType}: ${className}`,
-  };
+  addDeactivated(device, deviceInfo);
 
-  if (userDisplayName !== className) {
-    deviceInfo.name = userDisplayName;
-  }
-
-  const isActive = (device.getProperty("is_active") as number) > 0;
-
-  if (!isActive) {
-    deviceInfo.deactivated = true;
+  // Drum racks never have fixed chains, and a hidden walk drops its racks, so
+  // neither is worth the version check and the read.
+  if (
+    deviceType.includes("rack") &&
+    deviceType !== DEVICE_TYPE.DRUM_RACK &&
+    !chainsHidden
+  ) {
+    addMaxChains(device, deviceInfo);
   }
 
   // collapsed — kept for potential future use
@@ -381,25 +390,64 @@ export function readDevice(
 
   appendDeviceDetails(device, deviceInfo, {
     className,
+    hosted,
     includeParams,
     includeParamValues,
     includeSample,
     includeOptions,
     includeActions,
     paramSearch,
+    paramOffset,
   });
 
   return deviceInfo;
 }
 
+/**
+ * Add `deactivated` when the device is off. An on/off state Live won't give
+ * (CC Control before Live 12.4.15) is left out: an unreadable on/off is not
+ * off.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ */
+function addDeactivated(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+): void {
+  const isActive = device.getProperty("is_active") as number | undefined;
+
+  if (isActive != null && isActive <= 0) {
+    deviceInfo.deactivated = true;
+  }
+}
+
+/**
+ * Add `maxChains` to a rack whose chains are fixed (Live 13's Mid-Side and
+ * Multiband racks), so a caller knows before trying to add one.
+ * @param device - LiveAPI rack device
+ * @param deviceInfo - Device info object to mutate
+ */
+function addMaxChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+): void {
+  const limit = fixedChainLimit(device);
+
+  if (limit != null) {
+    deviceInfo.maxChains = limit;
+  }
+}
+
 interface DeviceDetailOptions {
   className: string;
+  hosted: HostedPlugin | null;
   includeParams: boolean;
   includeParamValues: boolean;
   includeSample: boolean;
   includeOptions: boolean;
   includeActions: boolean;
   paramSearch: string | undefined;
+  paramOffset: number | undefined;
 }
 
 /**
@@ -420,12 +468,18 @@ function appendDeviceDetails(
     // object when not applicable).
     Object.assign(deviceInfo, readMacroVariations(device));
     Object.assign(deviceInfo, readABCompare(device));
-    appendParameters(
-      device,
-      deviceInfo,
-      opts.includeParamValues,
-      opts.paramSearch,
-    );
+    const append = opts.hosted ? appendHostedParameters : appendParameters;
+
+    // A wrapper with no plug-in has no params to list; its `detail` says why.
+    if (opts.hosted == null || opts.hosted.label != null) {
+      append(
+        device,
+        deviceInfo,
+        opts.includeParamValues,
+        opts.paramSearch,
+        opts.paramOffset,
+      );
+    }
   }
 
   if (opts.includeSample) {
@@ -456,46 +510,6 @@ function appendDeviceDetails(
       deviceInfo.actions = actions;
     }
   }
-}
-
-/**
- * Append DeviceParameters and specialized pseudo-params to a device info object.
- * @param device - LiveAPI device object
- * @param deviceInfo - Device info object to mutate
- * @param includeValues - Whether to include current param values
- * @param paramSearch - Optional case-insensitive name filter
- */
-function appendParameters(
-  device: LiveAPI,
-  deviceInfo: Record<string, unknown>,
-  includeValues: boolean,
-  paramSearch: string | undefined,
-): void {
-  // `automation` is only read with values, and the track is checked once here
-  // rather than once per param.
-  const showAutomation =
-    !includeValues || owningTrackFollowsArrangement(device);
-  const parameters = readDeviceParameters(device, {
-    includeValues,
-    search: paramSearch,
-    showAutomation,
-  });
-
-  if (!showAutomation) {
-    noteAutomationUnknown(deviceInfo);
-  }
-
-  const pseudoParams = readSpecializedParams(device, paramSearch);
-  const merged = [...pseudoParams, ...parameters];
-
-  // Mark mode-gated params inactive where Live leaves them active (e.g. a
-  // synced LFO's free-running Hz rate). Only meaningful with values, since
-  // `state` is value-level.
-  if (includeValues) {
-    applySpecializedInactiveStates(device, merged);
-  }
-
-  deviceInfo.parameters = merged;
 }
 
 /**

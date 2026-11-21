@@ -10,6 +10,7 @@ import {
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { InsecurePageNote } from "./helpers/InsecurePageNote";
 import { ModelDocsLink } from "./helpers/ModelDocsLink";
 import { SmallModelToggle } from "./helpers/SmallModelToggle";
 import { ThinkingSelector } from "./helpers/ThinkingSelector";
@@ -79,7 +80,7 @@ export function ConnectionTab({
           <input
             type="password"
             value={apiKey}
-            onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
+            onInput={(e) => setApiKey((e.target as HTMLInputElement).value)}
             placeholder={`Enter your ${providerLabel} API key`}
             className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
             data-testid="api-key-input"
@@ -100,6 +101,7 @@ export function ConnectionTab({
             API keys are encrypted at rest in your browser; this is not a
             substitute for OS-level protection.
           </p>
+          <InsecurePageNote />
         </div>
       )}
 
@@ -113,7 +115,7 @@ export function ConnectionTab({
             <input
               type="text"
               value={baseUrl ?? ""}
-              onChange={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
+              onInput={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
               placeholder={
                 DEFAULT_LOCAL_URLS[provider] ?? "https://api.example.com/v1"
               }

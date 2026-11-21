@@ -38,10 +38,9 @@ export interface MadeClip {
   clip: LiveAPI;
   /** What reaching its slot took, for a session clip */
   slotWork: SlotWork | null;
-  /** The lane it was written to, for an arrangement clip */
-  lane: ArrangementLane | null;
-  /** The take lane object, or the track, that the clip was made on */
-  laneApi: LiveAPI | null;
+  /** The lane it was written to, for an arrangement clip, and the take lane
+   * object, or the track, that it was made on */
+  arrangement: { lane: ArrangementLane; api: LiveAPI } | null;
   /** The take lanes made on the way to the clip's lane ("l1-l3"), when this
    * is the first clip written to them */
   lanesCreated?: string;
@@ -109,7 +108,7 @@ function makeSessionClip(
     step.landed(made.overwrote);
   }
 
-  return { clip: made.clip, slotWork: made, lane: null, laneApi: null };
+  return { clip: made.clip, slotWork: made, arrangement: null };
 }
 
 /**
@@ -173,7 +172,12 @@ function makeArrangementClip(
   step.coverLanded();
   step.landed("clip created", { id: clip.id, path: objectPathForApi(clip) });
 
-  return { clip, slotWork: null, lane, laneApi, lanesCreated };
+  return {
+    clip,
+    slotWork: null,
+    arrangement: { lane, api: laneApi },
+    lanesCreated,
+  };
 }
 
 /**

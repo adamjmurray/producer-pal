@@ -10,6 +10,8 @@ import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
+import { formatChatMessages } from "#webui/chat/sdk/formatter";
+import { streamEndNotice } from "#webui/chat/sdk/streaming/stream-end-notice";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import { conversationPanelProps } from "#webui/components/chat/tests/conversation-panel-props";
@@ -47,6 +49,7 @@ describe("ChatScreen", () => {
     isAssistantResponding: false,
     rateLimitState: null,
     toolLimitReached: false,
+    chatSetUp: true,
     handleSend: mockHandleSend,
     enqueueMessage: vi.fn(),
     queuedMessages: [],
@@ -108,6 +111,52 @@ describe("ChatScreen", () => {
 
       expect(chatStart).toBeDefined();
     });
+
+    it("asks for setup instead of starting a chat, and blocks the composer, until chat is set up", () => {
+      const onOpenConnectionSettings = vi.fn();
+
+      render(
+        <ChatScreen
+          {...defaultProps}
+          messages={[]}
+          chatSetUp={false}
+          onOpenConnectionSettings={onOpenConnectionSettings}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Set up chat" }));
+
+      expect(onOpenConnectionSettings).toHaveBeenCalledOnce();
+      expect(
+        screen.queryByRole("button", { name: "Quick Connect" }),
+      ).toBeNull();
+      expect(
+        (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+    });
+
+    it.each([
+      ["content-filter", true],
+      ["other", false],
+    ] as const)(
+      "locks the composer, so the %s notice points at Retry or edit",
+      (finishReason, producedContent) => {
+        const notice = streamEndNotice(finishReason, producedContent) as string;
+        const messages = formatChatMessages([
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: notice, isError: true },
+        ]);
+
+        render(<ChatScreen {...defaultProps} messages={messages} />);
+
+        expect(
+          (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+            .disabled,
+        ).toBe(true);
+        expect(notice).toMatch(/Use Retry, or edit your message/);
+      },
+    );
 
     it("shows MessageList when messages exist", () => {
       const messages: UIMessage[] = [

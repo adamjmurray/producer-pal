@@ -6,13 +6,11 @@
 /**
  * E2E tests for one undo step per write tool call. After each write call, Node
  * asks the remote script to end Live's pending undo step, so a single undo
- * reverts one call instead of everything since the Set opened. Opt-in like the
- * other remote script suites: skipped unless E2E_REMOTE_SCRIPT=true, and failed
- * when that's set but the script isn't answering.
+ * reverts one call instead of everything since the Set opened.
  *
  * Every test opens a fresh Set and only undoes its own track creations.
  *
- * Run with: npm run e2e:mcp:remote-script -- control/ppal-undo-step
+ * Run with: npm run e2e:mcp -- control/ppal-undo-step
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {

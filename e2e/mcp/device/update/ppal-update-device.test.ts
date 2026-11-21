@@ -388,15 +388,28 @@ describe("ppal-update-device", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { id: rackId, macroCount: 1 },
+      arguments: { id: rackId, macroCount: 3 },
     });
 
     // The count landed, just not the one asked for, so there is no `ok`.
     expect(parseToolResult<UpdateDeviceResult>(result).detail).toBe(
-      "macroCount rounded from 1 to 2 (macros come in pairs)",
+      "macroCount rounded from 3 to 4 (macros come in pairs)",
     );
 
-    expect((await readRackParams(rackId)).macros?.count).toBe(2);
+    expect((await readRackParams(rackId)).macros?.count).toBe(4);
+  });
+
+  // Live can show exactly 1 macro, so 1 lands as asked and says nothing.
+  it("lands macroCount 1 on 1 with nothing to report", async () => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 1 },
+    });
+
+    expect(parseToolResult<UpdateDeviceResult>(result).detail).toBeUndefined();
+    expect((await readRackParams(rackId)).macros?.count).toBe(1);
   });
 
   // The pair says nothing about any one device, so a reading it can't be given
@@ -446,6 +459,44 @@ describe("ppal-update-device", () => {
       expect(written.warnings).toStrictEqual([]);
       expect((await readRackParams(rackId)).macros?.count).toBe(macroCount);
     }
+  });
+
+  // Live 12 steps the count by 2 up to 16; Live 13 steps unevenly up to 32, so
+  // 16 may land on 14. Nothing here assumes one: the entry must say whatever
+  // count the rack really shows, and a count above the rack's macros is refused
+  // with the limit.
+  it("says where macroCount landed, whichever way this Live steps", async () => {
+    const rackId = await rackWithOneChain();
+
+    const raised = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 32 },
+    });
+
+    if (isToolError(raised)) {
+      expect(getToolErrorMessage(raised)).toMatch(
+        /macroCount 32 is above the most this rack has \(\d+\)/,
+      );
+      expect((await readRackParams(rackId)).macros?.count).toBe(8);
+    } else {
+      expect(
+        parseToolResult<UpdateDeviceResult>(raised).detail,
+      ).toBeUndefined();
+      expect((await readRackParams(rackId)).macros?.count).toBe(32);
+    }
+
+    const lowered = parseToolResult<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id: rackId, macroCount: 16 },
+      }),
+    );
+    const count = (await readRackParams(rackId)).macros?.count;
+
+    expect(count).toBeDefined();
+    expect(lowered.detail).toBe(
+      count === 16 ? undefined : `macroCount landed at ${count}, not 16`,
+    );
   });
 
   // A reason names the object the way the tools publish it, never by Live's

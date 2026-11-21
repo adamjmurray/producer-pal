@@ -12,6 +12,7 @@ import {
   type ParamHome,
 } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import {
+  canonicalManageAction,
   MANAGE_ACTIONS,
   MAX_STEPS,
   type ManageAction,
@@ -35,27 +36,25 @@ export interface CheckedManageArgs {
 // The only params that some actions don't read.
 const MANAGE_PARAM_HOMES: Record<string, ParamHome> = {
   userLibrary: {
-    action: [
-      "install-remote-script",
-      "add-producer-pal",
-      "update-producer-pal",
-    ],
+    action: ["install-producer-pal", "add-producer-pal", "update-producer-pal"],
   },
   steps: { action: ["undo", "redo"] },
 };
 
 /**
- * Check a ppal-manage call before anything runs.
+ * Check a ppal-manage call before anything runs. A retired action name is read
+ * as the action that replaced it.
  * @param args - The arguments as sent
  * @returns The action, and the params it reads
  * @throws Error for an unknown action, a param the action doesn't read, or a
  *   step count that can't run
  */
 export function checkManageArgs(args: ManageArgs): CheckedManageArgs {
-  const { action, userLibrary, steps } = args;
+  const { userLibrary, steps } = args;
+  const action = canonicalManageAction(args.action);
 
   if (!isManageAction(action)) {
-    const got = action == null ? "" : `, not "${action}"`;
+    const got = typeof action === "string" ? `, not "${action}"` : "";
 
     throw new Error(
       `action must be one of: ${MANAGE_ACTIONS.join(", ")}${got}`,
@@ -71,7 +70,7 @@ export function checkManageArgs(args: ManageArgs): CheckedManageArgs {
  * @param action - The action as sent
  * @returns True when it is one of the actions ppal-manage runs
  */
-function isManageAction(action: string | undefined): action is ManageAction {
+function isManageAction(action: unknown): action is ManageAction {
   return MANAGE_ACTIONS.includes(action as ManageAction);
 }
 

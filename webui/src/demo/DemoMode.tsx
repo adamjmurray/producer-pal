@@ -54,7 +54,7 @@ export function DemoMode() {
             handleEdit={NO_OP}
             showTimestamps={true}
             showTokenUsage={true}
-            requestedModel="gemini-3.8-flash"
+            requestedModel="gemini-4-carbon"
           />
         </div>
       </div>

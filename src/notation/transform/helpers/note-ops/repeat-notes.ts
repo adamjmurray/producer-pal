@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "../../transform-warning-label.ts";
+import {
+  clipDetail,
+  emitTransformWarning,
+} from "../../transform-warning-label.ts";
 import {
   type ExpressionNode,
   type NoteOp,
@@ -132,7 +135,7 @@ function resolveRepeatCopies(
   const copies = Math.round(value);
 
   if (copies < 1) {
-    console.warn(
+    emitTransformWarning(
       `repeat(offset, ${value}) needs a copy count of 1 or more; skipping`,
     );
 
@@ -140,9 +143,7 @@ function resolveRepeatCopies(
   }
 
   if (copies > MAX_NOTE_PIECES) {
-    console.clipDetail(
-      `repeat: copy count clamped to the max of ${MAX_NOTE_PIECES}`,
-    );
+    clipDetail(`repeat: copy count clamped to the max of ${MAX_NOTE_PIECES}`);
 
     return MAX_NOTE_PIECES;
   }

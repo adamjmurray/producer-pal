@@ -9,14 +9,12 @@ import { type ClipRun } from "./clip-run.ts";
 import { cutBlocker } from "./cut-clip.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
-import { tiledEnvelopesRefusal } from "./tiled-envelopes.ts";
 
 /**
  * Refuse a call whose note edits can't be read, before anything is cut or
  * written. Each clip is read in the meter it will have, so a range that only
  * fits some meters isn't refused for the clips it fits: the ones it doesn't
- * fit are skipped, each at its own turn, with nothing written to them. So is a
- * clip whose arrangementLength would tile it, when envelopes are sent too.
+ * fit are skipped, each at its own turn, with nothing written to them.
  * @param call - The update-clip call
  * @param targets - The call's targets, in the order named
  * @param run - The call's shared state
@@ -32,7 +30,6 @@ export function checkClipUpdate(
   // A clip named twice is read once, as its last mention asks.
   const requestedIndexById = new Map<string, number>();
   const clips: LiveAPI[] = [];
-  const tiled = new Map<string, string>();
 
   for (const [index, target] of targets.entries()) {
     if (target.skip == null) {
@@ -46,12 +43,6 @@ export function checkClipUpdate(
       requestedIndexById.get(target.data.clip.id) === index
     ) {
       clips.push(target.data.clip);
-
-      const refusal = tiledEnvelopesRefusal(target.data, call);
-
-      if (refusal != null) {
-        tiled.set(target.data.clip.id, refusal);
-      }
     }
   }
 
@@ -69,7 +60,7 @@ export function checkClipUpdate(
     splitting: call.split != null,
   });
 
-  run.refused = new Map([...tiled, ...unreadable]);
+  run.refused = unreadable;
 
   const { split } = call;
 

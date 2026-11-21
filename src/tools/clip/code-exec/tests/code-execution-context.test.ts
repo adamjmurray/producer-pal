@@ -67,7 +67,8 @@ describe("code-execution-context", () => {
           } as unknown as LiveAPI;
         }
 
-        return {} as LiveAPI;
+        // A Live whose clips have no scale of their own
+        return { call: () => "12.4.14" } as unknown as LiveAPI;
       }) as typeof LiveAPI.from;
 
       try {
@@ -155,7 +156,8 @@ describe("code-execution-context", () => {
           } as unknown as LiveAPI;
         }
 
-        return {} as LiveAPI;
+        // A Live whose clips have no scale of their own
+        return { call: () => "12.4.14" } as unknown as LiveAPI;
       }) as typeof LiveAPI.from;
 
       try {
@@ -213,6 +215,7 @@ describe("code-execution-context", () => {
           : ({
               getProperty: vi.fn(() => null),
               getColor: vi.fn().mockReturnValue(null),
+              call: () => "12.4.14",
             } as unknown as LiveAPI),
       ) as typeof LiveAPI.from;
 

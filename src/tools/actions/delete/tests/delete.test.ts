@@ -5,7 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -14,6 +15,17 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
 import { deleteObject } from "../delete.ts";
+
+/**
+ * A Set with no tracks, so a scene delete has no clips to list.
+ * @returns The Live Set's mock
+ */
+function registerEmptyLiveSet(): RegisteredMockObject {
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { tracks: children() },
+  });
+}
 
 describe("deleteObject", () => {
   let liveSet: RegisteredMockObject;
@@ -73,6 +85,7 @@ describe("deleteObject", () => {
   });
 
   it("should delete a single scene when type is 'scene'", () => {
+    liveSet = registerEmptyLiveSet();
     setupSceneMocks({ scene_2: livePath.scene(1) });
 
     const result = deleteObject({ id: "scene_2", type: "scene" });
@@ -85,6 +98,7 @@ describe("deleteObject", () => {
   });
 
   it("should delete multiple scenes in descending index order", () => {
+    liveSet = registerEmptyLiveSet();
     setupSceneMocks({
       scene_0: livePath.scene(0),
       scene_2: livePath.scene(2),
@@ -156,7 +170,7 @@ describe("deleteObject", () => {
   });
 
   it("reports a clip path with no clip as nothing to delete", () => {
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
 
@@ -170,7 +184,7 @@ describe("deleteObject", () => {
   });
 
   it("refuses a lone take-lane clip (cannot delete via API)", () => {
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("take_lane_clip", {
       path: livePath.track(0).takeLane(0).arrangementClip(0),
@@ -244,7 +258,7 @@ describe("deleteObject", () => {
   it("reports an id that isn't there as nothing to delete", () => {
     mockNonExistentObjects();
 
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const result = deleteObject({ id: "999", type: "track" });
 
@@ -261,7 +275,7 @@ describe("deleteObject", () => {
       type: "Scene",
     });
 
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     expect(() => deleteObject({ id: "scene_1", type: "track" })).toThrow(
       "s0 (id scene_1) is not a track (found scene)",
@@ -292,7 +306,7 @@ describe("deleteObject", () => {
     });
     mockNonExistentObjects();
 
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const result = deleteObject({
       id: "track_0, nonexistent, track_2",
@@ -342,7 +356,7 @@ describe("deleteObject", () => {
   it("should return empty array when all IDs are invalid", () => {
     mockNonExistentObjects();
 
-    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleWarnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const result = deleteObject({
       id: "nonexistent1, nonexistent2",
@@ -357,7 +371,9 @@ describe("deleteObject", () => {
   });
 
   it("refuses the Producer Pal host track", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     registerMockObject("this_device", {
       path: livePath.track(1).device(0),
@@ -438,7 +454,9 @@ describe("deleteObject", () => {
   });
 
   it("refuses the Producer Pal device", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     registerMockObject("this_device", {
       path: livePath.track(1).device(0),
@@ -495,7 +513,9 @@ describe("deleteObject", () => {
   });
 
   it("refuses a track whose Live path has no index", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     registerMockObject("track_0", {
       path: "invalid_path_without_track_index",
@@ -510,7 +530,9 @@ describe("deleteObject", () => {
   });
 
   it("refuses a scene whose Live path has no index", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     registerMockObject("scene_0", {
       path: "invalid_path_without_scene_index",
@@ -525,7 +547,9 @@ describe("deleteObject", () => {
   });
 
   it("refuses a clip whose Live path has no track index", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     registerMockObject("clip_0", {
       path: "invalid_path_without_track_index",

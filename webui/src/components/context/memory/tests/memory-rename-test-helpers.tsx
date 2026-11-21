@@ -116,7 +116,7 @@ export function entryPuts(): CapturedSave[] {
  * @returns The name field element
  */
 export function renameInput(): HTMLInputElement {
-  return screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement;
+  return screen.getByRole<HTMLInputElement>("textbox", { name: "Rename" });
 }
 
 /**
@@ -125,7 +125,7 @@ export function renameInput(): HTMLInputElement {
  * @returns The input's value
  */
 export function fieldValue(name: string | RegExp): string {
-  return (screen.getByRole("textbox", { name }) as HTMLInputElement).value;
+  return screen.getByRole<HTMLInputElement>("textbox", { name }).value;
 }
 
 /** Type into the open editor's body field. */

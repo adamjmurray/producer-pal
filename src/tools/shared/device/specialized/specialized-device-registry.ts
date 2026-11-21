@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
+import { drumSynthSpec } from "./devices/live-13/drum-synth.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
 import { hybridReverbSpec } from "./devices/hybrid-reverb.ts";
 import { meldSpec } from "./devices/meld.ts";
@@ -17,6 +19,7 @@ import {
 import { roarSpec } from "./devices/roar.ts";
 import { simplerSpec } from "./devices/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
+import { transientShaperSpec } from "./devices/live-13/transient-shaper.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
@@ -24,11 +27,15 @@ import {
   skippedParam,
 } from "../helpers/param-reading.ts";
 import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
-import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
-import { applyInactiveStates } from "./specialized-device-inactive.ts";
+import { readControllerValue } from "./specialized-controller-value.ts";
+import {
+  applyInactiveStates,
+  ruleMarksInactive,
+} from "./specialized-device-inactive.ts";
 import {
   type ActionDef,
   type ActionResult,
@@ -41,9 +48,11 @@ import {
 // `class_display_name` (consistent with the existing Simpler handling). See
 // dev/live-api/specialized-devices/README.md.
 
-const SPECS: SpecializedDeviceSpec[] = [
+/** Every specialized-device spec. */
+export const SPECS: SpecializedDeviceSpec[] = [
   // Instruments
   driftSpec,
+  drumSynthSpec,
   meldSpec,
   simplerSpec,
   wavetableSpec,
@@ -56,27 +65,44 @@ const SPECS: SpecializedDeviceSpec[] = [
   phaserFlangerSpec,
   roarSpec,
   spectralResonatorSpec,
+  transientShaperSpec,
 ];
 
 const SPEC_BY_DISPLAY_NAME = new Map<string, SpecializedDeviceSpec>();
+const SPEC_BY_CLASS_NAME = new Map<string, SpecializedDeviceSpec>();
 
 for (const spec of SPECS) {
   for (const displayName of spec.displayNames) {
     SPEC_BY_DISPLAY_NAME.set(displayName, spec);
   }
+
+  for (const className of spec.classNames ?? []) {
+    SPEC_BY_CLASS_NAME.set(className, spec);
+  }
 }
 
 /**
- * Look up the specialized spec for a device by its class_display_name.
+ * Look up the specialized spec for a device by its class_display_name, then by
+ * its class_name (read only when the display name matched nothing). Callers ask
+ * several times per device per call, so the answer is kept for the request,
+ * keyed by device id: a generic device costs its two reads once, not on every
+ * ask.
  * @param device - LiveAPI device object
  * @returns The matching spec, or undefined for a generic device
  */
 export function getSpecForDevice(
   device: LiveAPI,
 ): SpecializedDeviceSpec | undefined {
-  const displayName = device.getProperty("class_display_name") as string;
+  return requestMemo(`specialized-spec ${device.id}`, () => {
+    const displayName = device.getProperty("class_display_name") as string;
+    const byDisplayName = SPEC_BY_DISPLAY_NAME.get(displayName);
 
-  return SPEC_BY_DISPLAY_NAME.get(displayName);
+    if (byDisplayName != null) {
+      return byDisplayName;
+    }
+
+    return SPEC_BY_CLASS_NAME.get(device.getProperty("class_name") as string);
+  });
 }
 
 /**
@@ -345,18 +371,52 @@ function collectParamOptions(
  * Mark a device's parameters inactive per its specialized `inactiveWhen` rules
  * (no-op for generic devices or specs without rules). Mutates `parameters` in
  * place; call only when reading param values, since `state` is value-level.
+ *
+ * After a param search a rule's controller may not be in `parameters`. Then it
+ * is read from the device, only when a listed param depends on it, and is not
+ * added to the list.
  * @param device - LiveAPI device object
  * @param parameters - Parameter entries to annotate (mutated in place)
+ * @param searched - Whether a param search filtered `parameters`
  */
 export function applySpecializedInactiveStates(
   device: LiveAPI,
   parameters: Record<string, unknown>[],
+  searched = false,
 ): void {
   const spec = getSpecForDevice(device);
 
   if (spec?.inactiveWhen) {
-    applyInactiveStates(spec.inactiveWhen, parameters);
+    applyInactiveStates(
+      spec.inactiveWhen,
+      parameters,
+      searched
+        ? (controller) => readControllerValue(device, spec.params, controller)
+        : undefined,
+    );
   }
+}
+
+/**
+ * Whether a device's specialized `inactiveWhen` rules mark one of its params
+ * inactive right now. Reads a controller param only when a rule names the
+ * param, so a generic device costs no Live API calls.
+ * @param device - LiveAPI device object
+ * @param paramName - Display name of the param, as read-device reports it
+ * @returns True when a rule makes the param inactive
+ */
+export function isParamInactiveBySpecialized(
+  device: LiveAPI,
+  paramName: string,
+): boolean {
+  const spec = getSpecForDevice(device);
+
+  return (
+    spec?.inactiveWhen != null &&
+    ruleMarksInactive(spec.inactiveWhen, paramName, (controller) =>
+      readControllerValue(device, spec.params, controller),
+    )
+  );
 }
 
 /**

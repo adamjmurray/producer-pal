@@ -7,7 +7,7 @@
 // or a comma-separated list naming one per path, in order.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -15,12 +15,17 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "../create-device.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
-
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
 }));
+
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /**
  * A track that takes an insert, and the device that insert returns.
@@ -83,19 +88,31 @@ describe("createDevice — a device per path", () => {
   it("refuses a device list that doesn't match the paths", async () => {
     await expect(
       createDevice({ path: "t0,t1", device: "Compressor,Reverb,Delay" }),
-    ).rejects.toThrow("path names 2 entries but deviceName names 3 entries");
+    ).rejects.toThrow("path names 2 entries but device names 3 entries");
     expect(track0.call).not.toHaveBeenCalled();
   });
 
   it("refuses an empty entry in a device list", async () => {
     await expect(
       createDevice({ path: "t0,t1", device: "Compressor," }),
-    ).rejects.toThrow("path names 2 entries but deviceName names 1 entry");
+    ).rejects.toThrow("path names 2 entries but device names 1 entry");
   });
 
   it("refuses a hole in a device list", async () => {
     await expect(
       createDevice({ path: "t0,t1,t0", device: "Compressor,,Reverb" }),
+    ).rejects.toThrow(
+      'invalid device "Compressor,,Reverb" - it has an empty entry.',
+    );
+  });
+
+  // Each error names the spelling the caller sent.
+  it("names deviceName in the same refusals when that is what was sent", async () => {
+    await expect(
+      createDevice({ path: "t0,t1", deviceName: "Compressor,Reverb,Delay" }),
+    ).rejects.toThrow("path names 2 entries but deviceName names 3 entries");
+    await expect(
+      createDevice({ path: "t0,t1,t0", deviceName: "Compressor,,Reverb" }),
     ).rejects.toThrow(
       'invalid deviceName "Compressor,,Reverb" - it has an empty entry.',
     );

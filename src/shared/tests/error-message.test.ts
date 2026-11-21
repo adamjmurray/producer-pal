@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { assertDefined, errorMessage } from "../error-message.ts";
+import {
+  assertDefined,
+  errorMessage,
+  errorPayloadMessage,
+} from "../error-message.ts";
 
 describe("errorMessage", () => {
   it("should extract message from Error instance", () => {
@@ -19,6 +23,34 @@ describe("errorMessage", () => {
     expect(errorMessage({ message: "object" })).toBe("[object Object]");
     expect(errorMessage(null)).toBe("null");
     expect(errorMessage(undefined)).toBe("undefined");
+  });
+});
+
+describe("errorPayloadMessage", () => {
+  it("prefers the nested message over the wrapper's own", () => {
+    expect(
+      errorPayloadMessage({
+        message: "Provider returned error",
+        error: { message: "rate limited" },
+      }),
+    ).toBe("rate limited");
+    expect(errorPayloadMessage({ error: { error: { message: "deep" } } })).toBe(
+      "deep",
+    );
+  });
+
+  it("falls back to message, a string error, then detail", () => {
+    expect(errorPayloadMessage({ message: "top", error: { code: 429 } })).toBe(
+      "top",
+    );
+    expect(errorPayloadMessage({ error: "oops" })).toBe("oops");
+    expect(errorPayloadMessage({ message: "", detail: "why" })).toBe("why");
+  });
+
+  it("returns undefined when there is no message", () => {
+    expect(errorPayloadMessage({ code: 1 })).toBeUndefined();
+    expect(errorPayloadMessage("text")).toBeUndefined();
+    expect(errorPayloadMessage(null)).toBeUndefined();
   });
 });
 

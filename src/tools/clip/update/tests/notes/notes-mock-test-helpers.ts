@@ -88,3 +88,89 @@ export function registerScaledLiveSet(intervals: number[]): void {
     properties: { scale_mode: 1, root_note: 0, scale_intervals: intervals },
   });
 }
+
+export interface HeldNote {
+  pitch: number;
+  start_time: number;
+  duration: number;
+  velocity: number;
+  mute: number;
+  probability: number;
+  velocity_deviation: number;
+  release_velocity: number;
+}
+
+export const held = (
+  pitch: number,
+  start_time: number,
+  overrides: Partial<HeldNote> = {},
+): HeldNote => ({
+  pitch,
+  start_time,
+  duration: 1,
+  velocity: 100,
+  mute: 0,
+  probability: 1,
+  velocity_deviation: 0,
+  release_velocity: 64,
+  ...overrides,
+});
+
+/**
+ * What Live keeps when notes are added: whichever of two same-pitch notes
+ * starts earlier is cut at the later one's start.
+ * @param notes - Notes as written
+ * @returns The notes as Live would hold them
+ */
+export function liveKeeps(notes: HeldNote[]): HeldNote[] {
+  const sorted = notes.toSorted(
+    (a, b) => a.pitch - b.pitch || a.start_time - b.start_time,
+  );
+
+  return sorted.map((note, i) => {
+    const next = sorted[i + 1];
+
+    return next?.pitch === note.pitch &&
+      next.start_time < note.start_time + note.duration
+      ? { ...note, duration: next.start_time - note.start_time }
+      : note;
+  });
+}
+
+/**
+ * A clip that holds notes the way Live does: the write goes through liveKeeps.
+ * @param existing - Notes the clip starts with
+ * @returns The clip
+ */
+export function liveClip(existing: HeldNote[]): LiveAPI {
+  let notesInClip = existing;
+
+  return {
+    id: "123",
+    getProperty: vi.fn(clipRegionProperty()),
+    call: vi.fn((method: string, ...args: unknown[]) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: notesInClip });
+      }
+
+      if (method === "remove_notes_extended") {
+        notesInClip = [];
+      }
+
+      if (method === "add_new_notes") {
+        const notes = (args[0] as { notes: Partial<HeldNote>[] }).notes;
+
+        notesInClip = liveKeeps(
+          notes.map((n) => ({ ...writtenDefaults(), ...n }) as HeldNote),
+        );
+      }
+
+      return "[]";
+    }),
+  } as unknown as LiveAPI;
+}
+
+/** @returns Defaults for the fields a freshly written note leaves out */
+function writtenDefaults(): Partial<HeldNote> {
+  return { mute: 0, probability: 1, velocity_deviation: 0 };
+}

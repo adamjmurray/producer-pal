@@ -27,7 +27,8 @@ export function evaluateArgs<T extends number[]>(
 /**
  * Calculate normalized phase from the context's position within its time range.
  * @param ctx - Evaluation context
- * @returns Phase value between 0 and 1
+ * @returns Phase, 0 at the range start and 1 at its end; outside that for a
+ *   position outside the range, which ramp() and curve() clamp
  */
 export function computePhase(ctx: EvalContext): number {
   const { start, end } = ctx.timeRange;

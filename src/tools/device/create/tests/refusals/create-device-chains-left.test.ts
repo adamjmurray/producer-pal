@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A path that makes rack chains on the way keeps them when the insert is then
-// refused, so the failure has to say they are there.
+// A path that makes rack chains on the way keeps them when Live then turns the
+// insert down, so the failure has to say they are there. (Refusals the path
+// can be checked for up front make no chains: see the refused-before-chains
+// tests.)
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -18,14 +20,17 @@ import { registerGrowingRack } from "../../../tests/helpers/growing-rack-fixture
 import { createDevice } from "../../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const PLUGIN = { type: "plugin", path: "VST3/Pro-Q 4", name: "Pro-Q 4" };
 
@@ -66,18 +71,6 @@ describe("createDevice — chains left by a refused insert", () => {
       createDevice({ device: "Operator", path: "t0/d0/c2/d+" }),
     ).rejects.toThrow(
       'could not insert "Operator" at end in path "t0/d0/c2/d+"; left 3 empty chains: c0-c2',
-    );
-  });
-
-  // The walk makes c1, then finds nothing at its d0: it fails before any insert.
-  it("names the chains made before the path itself failed", async () => {
-    mockNonExistentObjects();
-    registerRefusingRack(1);
-
-    await expect(
-      createDevice({ device: "Operator", path: "t0/d0/c1/d0/c0/d+" }),
-    ).rejects.toThrow(
-      'Device in path "t0/d0/c1/d0/c0/d+" does not exist; left an empty chain: c1',
     );
   });
 

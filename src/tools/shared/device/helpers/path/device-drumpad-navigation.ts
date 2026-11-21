@@ -8,7 +8,7 @@ import {
   requestMemo,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarningOnce } from "#src/shared/max/v8-max-console.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
@@ -345,7 +345,7 @@ export function warnRackRelativeDrumChainSpelling(chain: LiveAPI): void {
     drumChainSegmentNamer(chain),
   ) as string;
 
-  console.warnOnce(
+  emitWarningOnce(
     RACK_RELATIVE_DRUM_CHAIN_WARNING_KEY,
     `${padPath} is the preferred spelling for this drum chain: the pad's ` +
       "pitch is the note that plays it, so paths line up with the notes in " +

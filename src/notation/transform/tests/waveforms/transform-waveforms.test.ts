@@ -416,6 +416,12 @@ describe("Transform Waveforms", () => {
       expect(curve(1.5, 0, 1, 2)).toBe(1);
     });
 
+    it("clamps at start value for phase < 0", () => {
+      // A fractional exponent of a negative phase is NaN without the clamp
+      expect(curve(-1e-9, 40, 120, 0.5)).toBe(40);
+      expect(curve(-0.5, 0, 1, 2)).toBe(0);
+    });
+
     it("supports arbitrary value ranges", () => {
       // curve from 10 to 20 with exponent 2
       expect(curve(0, 10, 20, 2)).toBe(10);
@@ -462,6 +468,10 @@ describe("Transform Waveforms", () => {
       expect(ramp(1.25, 0, 1)).toBe(1);
       expect(ramp(2.0, 0, 1)).toBe(1);
       expect(ramp(2.5, 0, 1)).toBe(1);
+    });
+
+    it("clamps at start value for phase < 0", () => {
+      expect(ramp(-0.25, 20, 127)).toBe(20);
     });
   });
 });

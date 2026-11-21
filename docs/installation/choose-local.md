@@ -10,8 +10,9 @@ The catch: it's less smart than online AI, and you need a powerful computer.
 - **Windows PC:** a strong Nvidia graphics card. 8 GB of video memory is the
   minimum and only runs small models. 16 GB or more is better, and 24 GB or more
   runs the biggest local models.
-- **Not sure, or on a regular laptop?** Use an
-  [AI router](./ai-routers#openrouter) instead.
+- **Not sure, or on a regular laptop?** Use
+  [your AI subscription](/installation#option-1-use-your-subscription) if you
+  have one, or an [AI router](./ai-routers#openrouter).
 
 ## Pick an App
 

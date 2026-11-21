@@ -288,16 +288,16 @@ describe("useConversations", () => {
     const { props } = createProps();
     const { result } = renderHook(() => useConversationsWithUndo(props));
 
-    await waitForEffects();
-
-    expect(result.current.activeConversationId).toBe(existingId);
-    expect(props.restoreChatHistory).toHaveBeenCalledWith(
-      [{ role: "user", content: "restored" }],
-      lockedSettings({
-        model: "claude-sonnet-4-6-20250514",
-        provider: "anthropic",
-      }),
-    );
+    await waitForHookState(() => {
+      expect(result.current.activeConversationId).toBe(existingId);
+      expect(props.restoreChatHistory).toHaveBeenCalledWith(
+        [{ role: "user", content: "restored" }],
+        lockedSettings({
+          model: "claude-sonnet-4-6-20250514",
+          provider: "anthropic",
+        }),
+      );
+    });
   });
 
   it("clears hash when referenced conversation no longer exists", async () => {
@@ -306,10 +306,10 @@ describe("useConversations", () => {
     const { props } = createProps();
     const { result } = renderHook(() => useConversationsWithUndo(props));
 
-    await waitForEffects();
-
-    expect(result.current.activeConversationId).toBeNull();
-    expect(getHash()).toBe("");
+    await waitForHookState(() => {
+      expect(result.current.activeConversationId).toBeNull();
+      expect(getHash()).toBe("");
+    });
     expect(props.restoreChatHistory).not.toHaveBeenCalled();
   });
 

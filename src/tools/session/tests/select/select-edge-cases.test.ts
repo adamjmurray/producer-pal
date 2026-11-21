@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -56,6 +57,51 @@ describe("select edge cases", () => {
       const result = select();
 
       expect(result.selectedDevice).toBeUndefined();
+    });
+  });
+
+  // As on every tool that takes both: a blank one reads as unset, and the call
+  // says so once it ran.
+  describe("a blank id or path beside one that names the selection", () => {
+    /** Track 0 and the views a track selection touches. */
+    function setupTrack0(): void {
+      setupSongViewMock();
+      setupAppViewMock();
+      registerMockObject("track_0", {
+        path: livePath.track(0),
+        type: "Track",
+        properties: { has_midi_input: 1 },
+      });
+    }
+
+    it("warns that a blank id was ignored", () => {
+      setupTrack0();
+
+      const result = select({ id: " ", path: "t0" });
+
+      expect(result.selectedTrack?.id).toBe("track_0");
+      expect(capturedWarnings()).toStrictEqual([
+        'blank id ignored: "path" names the selection',
+      ]);
+    });
+
+    it("warns that a blank path was ignored", () => {
+      setupTrack0();
+
+      const result = select({ id: "track_0", path: "" });
+
+      expect(result.selectedTrack?.id).toBe("track_0");
+      expect(capturedWarnings()).toStrictEqual([
+        'blank path ignored: "id" names the selection',
+      ]);
+    });
+
+    it("says nothing when neither is blank", () => {
+      setupTrack0();
+
+      select({ path: "t0" });
+
+      expect(capturedWarnings()).toStrictEqual([]);
     });
   });
 

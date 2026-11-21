@@ -26,8 +26,8 @@ describe("updateScene - a throw after a change landed", () => {
   });
 
   it.each([
-    ["color", { name: "A", color: "#FF0000" }, "name"],
-    ["tempo", { name: "A", color: "#FF0000", tempo: 90 }, "name, color"],
+    ["color", { name: "A", color: "#FF3636" }, "name"],
+    ["tempo", { name: "A", color: "#FF3636", tempo: 90 }, "name, color"],
     ["tempo_enabled", { tempo: 90 }, "tempo"],
     ["time_signature_denominator", { timeSignature: "3/4" }, "time signature"],
   ])(

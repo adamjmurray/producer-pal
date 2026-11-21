@@ -12,6 +12,7 @@ import {
   type EvalTurnResult,
   type EvalAssertionResult,
 } from "../types.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /**
  * Run a custom assertion callback against turn data
@@ -40,7 +41,7 @@ export function assertCustom(
       assertion,
       earned: 0,
       maxScore: 1,
-      message: `Failed: ${assertion.description} — ${error instanceof Error ? error.message : String(error)}`,
+      message: `Failed: ${assertion.description} — ${errorMessage(error)}`,
     };
   }
 }

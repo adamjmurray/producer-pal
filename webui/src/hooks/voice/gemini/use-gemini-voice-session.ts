@@ -20,12 +20,13 @@ import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-
 import { fetchGeminiToken } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { createGenAIClient } from "#webui/hooks/voice/gemini/gemini-client";
 import {
-  closeQuietly,
   openResumableGeminiSession,
   type ResumeState,
 } from "#webui/hooks/voice/gemini/gemini-resumable-session";
 import {
+  beginGeminiConnect,
   releaseGeminiSessionResources,
+  releaseOwnedGeminiResources,
   seedGeminiContext,
   startGeminiMic,
 } from "#webui/hooks/voice/gemini/gemini-session-resources";
@@ -157,8 +158,9 @@ export function useGeminiVoiceSession(
       }
 
       connectingRef.current = true;
-      const myGen = connectGenRef.current;
-      const stale = (): boolean => connectGenRef.current !== myGen;
+      // A stale connect releases only what it made itself; cleanup() would
+      // tear down the newer connect's refs and bump the generation again.
+      const { stale, owned } = beginGeminiConnect(connectGenRef);
 
       intentionalCloseRef.current = false;
       resumeRef.current = { handle: null, attempts: 0 };
@@ -173,11 +175,14 @@ export function useGeminiVoiceSession(
         const { functionDeclarations, executeTool, mcpClient } =
           await createGeminiMcpTools(mcpUrl, enabledTools);
 
-        mcpClientRef.current = mcpClient;
+        owned.mcpClient = mcpClient;
 
         if (stale()) {
-          return await cleanup();
+          return await releaseOwnedGeminiResources(owned);
         }
+
+        mcpClientRef.current = mcpClient;
+        owned.mcpClient = undefined; // teardown closes it via the ref now
 
         const credential = await fetchGeminiToken(
           voiceTokenUrl,
@@ -186,10 +191,12 @@ export function useGeminiVoiceSession(
         );
 
         if (stale()) {
-          return await cleanup();
+          return await releaseOwnedGeminiResources(owned);
         }
 
         const player = new GeminiPcmPlayer();
+
+        owned.player = player;
 
         player.setVolume(volume ?? 1);
         // Assign BEFORE the await: a teardown that races resume() must be able
@@ -199,7 +206,7 @@ export function useGeminiVoiceSession(
         await player.resume();
 
         if (stale()) {
-          return await cleanup();
+          return await releaseOwnedGeminiResources(owned);
         }
 
         // turn-detection is fixed for the session (changes apply on the next
@@ -260,27 +267,35 @@ export function useGeminiVoiceSession(
           onDrop: handleDrop,
         });
 
-        if (stale()) {
-          closeQuietly(session);
+        owned.session = session;
 
-          return await cleanup();
+        if (stale()) {
+          return await releaseOwnedGeminiResources(owned);
         }
 
         sessionRef.current = session;
 
         const mic = await startGeminiMic(micRef, sessionRef, isMutedRef);
 
-        // If cleanup() ran during mic.start(), it stopped a partial mic and
+        owned.mic = mic;
+
+        // If teardown ran during mic.start(), it stopped a partial mic and
         // didn't see the resources mic.start() set up afterward. Stop the
-        // orphan locally — cleanup() already ran the rest of teardown.
+        // orphan too.
         if (stale()) {
-          return await mic.stop();
+          return await releaseOwnedGeminiResources(owned);
         }
 
         seedGeminiContext(session, initialHistory);
         setActiveVoice(voice ?? null);
         setStatus("connected");
       } catch (err) {
+        // A superseded connect's failure (often caused by the teardown itself)
+        // must not overwrite the user's state.
+        if (stale()) {
+          return await releaseOwnedGeminiResources(owned);
+        }
+
         setStatus("error");
         setError(extractErrorMessage(err));
         await cleanup();

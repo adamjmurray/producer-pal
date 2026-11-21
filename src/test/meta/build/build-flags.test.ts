@@ -32,7 +32,11 @@ const DEBUG_FLAGS = ["ENABLE_LIVE_API"];
 // note-count transforms it was being tested on. ENABLE_LIVE_API is not in this
 // class: it only forces a runtime flag that `POST /config` still controls.
 // Set these by hand for the build you're testing that feature on.
-const UNGATED_SCHEMA_FLAGS = ["ENABLE_CODE_EXEC", "ENABLE_WARP_MARKERS"];
+const UNGATED_SCHEMA_FLAGS = [
+  "ENABLE_CODE_EXEC",
+  "ENABLE_GEN_UI",
+  "ENABLE_WARP_MARKERS",
+];
 
 const OPT_IN_FLAGS = [
   "ENABLE_REMOTE_CORS",
@@ -67,6 +71,14 @@ describe("build flags", () => {
     expect([...flagsReadInSrc()].toSorted()).toStrictEqual(
       [...REPLACED_FLAGS, ...RUNTIME_FLAGS].toSorted(),
     );
+  });
+
+  it("names every replaced flag in the startup dev-build warning", () => {
+    const server = readRepoFile("src/mcp-server/mcp-server.ts");
+
+    for (const flag of REPLACED_FLAGS) {
+      expect(server).toContain(`["${flag}", process.env.${flag}]`);
+    }
   });
 
   it("declares every replaced flag in the rolldown replacements", () => {
@@ -174,6 +186,16 @@ describe("build flags", () => {
 
   it("opts the debug build out of the guard", () => {
     expect(scripts["build:debug"]).toContain(`${DEV_BUILD_OVERRIDE}=true`);
+  });
+});
+
+// webui/ reads process.env too, which the src/ scan above doesn't see. The
+// browser has no `process`, so an unreplaced read would throw there.
+describe("chat UI build flags", () => {
+  it("substitutes ENABLE_GEN_UI in the chat UI bundle", () => {
+    expect(readRepoFile("config/vite.config.ts")).toContain(
+      '"process.env.ENABLE_GEN_UI"',
+    );
   });
 });
 

@@ -76,6 +76,43 @@ describe("formatNotation() core", () => {
     expect(formatNotation(notes)).toBe("v80-120 n/4 C3 v60-100 D3 E3 1|1");
   });
 
+  it("formats a negative deviation as a descending velocity range", () => {
+    const notes = [
+      createNote({ velocity: 100, velocity_deviation: -20 }),
+      createNote({ pitch: 62, velocity: 100, velocity_deviation: -20 }),
+      createNote({ pitch: 64, velocity: 90, velocity_deviation: -10 }),
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("v100-80 n/4 C3 D3 v90-80 E3 1|1");
+  });
+
+  it("floors a descending velocity range at 1, down to a plain v1", () => {
+    const notes = [
+      createNote({ velocity: 10, velocity_deviation: -50 }),
+      createNote({ pitch: 62, velocity: 1, velocity_deviation: -5 }),
+    ] as NoteEvent[];
+
+    // The second note collapses to v1: a plain v1 after the first range.
+    expect(formatNotation(notes)).toBe("v10-1 n/4 C3 v1 D3 1|1");
+  });
+
+  it("emits a first note that clamps to v1 despite a negative deviation", () => {
+    const notes = [
+      createNote({ velocity: 1, velocity_deviation: -5 }),
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("v1 n/4 C3 1|1");
+  });
+
+  it("drops a negative deviation back to a plain velocity", () => {
+    const notes = [
+      createNote({ velocity: 100, velocity_deviation: -20 }),
+      createNote({ pitch: 62, velocity: 100 }),
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("v100-80 n/4 C3 v100 D3 1|1");
+  });
+
   it("formats notes with mixed velocity and velocity range", () => {
     const notes = [
       createNote(),

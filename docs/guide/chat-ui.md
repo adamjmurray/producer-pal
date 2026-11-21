@@ -13,7 +13,8 @@ no other app to install.
 
 1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab
 2. Configure your AI provider in [Settings](#settings) (opens automatically on
-   first use)
+   first use). Until you do, the chat shows a "Set up chat" button that opens it
+   again, and you can't send messages
 3. Click "Quick Connect" to connect to Ableton Live
 
 ## Header Bar
@@ -308,9 +309,11 @@ detail, so leave it off unless you need it.
 
 ## Settings
 
-Settings open as a modal overlay. Press Escape or click outside to close (if
-there are unsaved changes, the dialog will shake as a reminder to save or
-cancel).
+Settings open as a modal overlay. Click **Close** (or **Cancel**), press Escape
+or click outside to close (if there are unsaved changes, the dialog will shake
+as a reminder to save or cancel). You can close Settings before setting up chat,
+for example after only using the **Installation** tab. Chat is set up once you
+save with an API key (or a local provider, or a custom endpoint with a URL).
 
 Settings are stored in your browser so you don't have to redo the setup every
 time. API keys are encrypted at rest, so they never sit in local storage as
@@ -549,20 +552,29 @@ cards use the one User Library path at the top of the tab.
 
 - **Max for Live device:** copies the Producer Pal device you loaded into your
   User Library, so every Live Set can find it. The device shows a **Finish
-  installation…** button until it's there (and the remote script is current);
-  the button opens this tab. A development (unfrozen) device can't be copied. A
-  Live Set remembers the file a device was loaded from, so a device loaded from
-  Downloads stays tied to that file. Once the remote script is running and your
-  User Library has a copy that is the same version or newer, **Swap** replaces
-  the device in your Set with it. The AI connection drops for a moment while the
-  new device starts. Save your Live Set afterwards so it keeps using the User
-  Library copy.
-- **Remote script:** installs the Producer Pal
+  installation…** button until it's there (and the remote script and plug-in
+  wrapper devices are current); the button opens this tab. A development
+  (unfrozen) device can't be copied, but it can install the plug-in wrapper
+  devices. A Live Set remembers the file a device was loaded from, so a device
+  loaded from Downloads stays tied to that file. Once the remote script is
+  running and your User Library has a copy that is the same version or newer,
+  **Swap** replaces the device in your Set with it. The AI connection drops for
+  a moment while the new device starts. Save your Live Set afterwards so it
+  keeps using the User Library copy. The card also says whether the two
+  [plug-in wrapper devices](/guide/plugins) are in your User Library, and
+  installs them along with the device.
+- **Control Surface remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether
   the script is installed and whether Live is running it, and offers an update
   when your Producer Pal build has a newer one. The header also flags this, so
   you can spot it without opening Settings.
+
+Installing and **Swap** work only when the chat UI is open at `localhost` or
+this computer's IP address (for example from another computer on your network,
+with **Remote Control** on). Through a web tunnel's domain name, the tab shows
+status but refuses to install, so another website can't install files on your
+computer.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
@@ -572,9 +584,10 @@ Two checkboxes under **Options**, at the bottom of the tab, control the notices
 on the device:
 
 - **Warn when installation is incomplete** - On by default. The device shows
-  **Finish installation…** while its User Library copy or the remote script is
-  missing or out of date. It gives way to the **Update available** notice, which
-  sits in the same spot. Turn this off and the device never shows it.
+  **Finish installation…** while its User Library copy, the remote script or a
+  plug-in wrapper device is missing or out of date. It gives way to the **Update
+  available** notice, which sits in the same spot. Turn this off and the device
+  never shows it.
 - **Automatically check for new versions** - On by default. Producer Pal asks
   GitHub once per device load whether a newer release exists, and shows an
   `(update)` link next to the version number when there is one. Turn this off
@@ -584,6 +597,16 @@ Both checkboxes apply immediately (no Save) and are machine-wide: they are
 stored in `~/.producer-pal/settings.json` and also govern the device's own
 notices. The `×` beside the `(update)` link dismisses that version's notice in
 both places; a later release brings it back.
+
+Under **Remote Control**, **Allow other computers to connect** is the same
+setting as the **Remote Control** toggle on the device (see the
+[device guide](/guide/device#setup-tab)). It applies immediately and shows what
+the server reports, and it picks up a change made on the device when you come
+back to the window. It is off by default, and with it on, anyone on your network
+can control Live, and there's no password. To turn it on, open the Chat UI at
+`localhost` on Live's computer: it refuses to turn it on from other phones and
+computers on your network, from web tunnels, and from other websites. Turning it
+off from another phone or computer cuts it off.
 
 ### Preferences
 

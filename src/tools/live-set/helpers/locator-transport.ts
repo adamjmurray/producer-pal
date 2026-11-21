@@ -11,7 +11,7 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitForPlayheadPosition } from "./locator-updates.ts";
@@ -56,7 +56,7 @@ export async function restoreTransport(
       return;
     }
   } catch (error) {
-    console.warn(`Playhead not put back: ${errorMessage(error)}`);
+    emitWarning(`Playhead not put back: ${errorMessage(error)}`);
 
     return;
   }
@@ -86,9 +86,9 @@ async function restorePlayhead(liveSet: LiveAPI, beats: number): Promise<void> {
       return;
     }
 
-    console.warn(`Playhead not put back at ${barBeat(liveSet, beats)}`);
+    emitWarning(`Playhead not put back at ${barBeat(liveSet, beats)}`);
   } catch (error) {
-    console.warn(`Playhead not put back: ${errorMessage(error)}`);
+    emitWarning(`Playhead not put back: ${errorMessage(error)}`);
   }
 }
 
@@ -116,9 +116,9 @@ async function restoreStartTime(
       return;
     }
 
-    console.warn(`Start marker not put back at ${barBeat(liveSet, beats)}`);
+    emitWarning(`Start marker not put back at ${barBeat(liveSet, beats)}`);
   } catch (error) {
-    console.warn(`Start marker not put back: ${errorMessage(error)}`);
+    emitWarning(`Start marker not put back: ${errorMessage(error)}`);
   }
 }
 

@@ -125,6 +125,9 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     await expect(
       page.getByTestId("remote-script-installed-path"),
     ).toContainText("Producer_Pal");
+    await expect(page.getByTestId("remote-script-new-chat-hint")).toContainText(
+      "After restarting Live, start a new chat",
+    );
     await expect(page.getByTestId("remote-script-status")).toHaveText(
       "Installed v1.2.0 (not running)",
     );

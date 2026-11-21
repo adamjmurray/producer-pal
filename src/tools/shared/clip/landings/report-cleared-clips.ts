@@ -146,7 +146,7 @@ function noteCutShort<E extends ClearedClipEntry>(
   }
 
   // A clip can end sooner than its entry's span with no later write to blame:
-  // lengthening tiles cut the first one to a whole loop.
+  // Live stopped a resize short.
   const written = othersWrites(entry, read.log);
 
   if (!wroteOver(span, written)) {

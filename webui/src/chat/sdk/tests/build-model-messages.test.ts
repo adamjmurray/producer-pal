@@ -74,9 +74,9 @@ describe("buildModelMessages", () => {
     expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 
-  it("JSON-stringifies a non-string tool result", () => {
-    // Tool results are usually structured objects, not strings; they must be
-    // serialized into the text output part the provider expects.
+  it("sends a non-string tool result as JSON, as the SDK does within a turn", () => {
+    // Gemini sends JSON and text results differently, so replaying a structured
+    // result as a string would break its cache on the next turn.
     const result = buildModelMessages([
       {
         role: "assistant",
@@ -95,10 +95,47 @@ describe("buildModelMessages", () => {
         type: "tool-result",
         toolCallId: "1",
         toolName: "read-song",
-        output: { type: "text", value: JSON.stringify({ bpm: 120 }) },
+        output: { type: "json", value: { bpm: 120 } },
       },
     ]);
   });
+
+  it.each([
+    [
+      "the error text the SDK sent within the turn",
+      "boom",
+      "Error: boom",
+      "Error: boom",
+    ],
+    [
+      "the plain message for a result recorded without it",
+      "boom",
+      undefined,
+      "boom",
+    ],
+    [
+      "a structured result as JSON for a result recorded without it",
+      { code: 1 },
+      undefined,
+      '{"code":1}',
+    ],
+  ])(
+    "sends a failed tool call as error-text with %s",
+    (_name, result, errorText, value) => {
+      const failed = { id: "1", name: "t", args: {}, result };
+      const [, tool] = buildModelMessages([
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ id: "1", name: "t", args: {} }],
+          toolResults: [{ ...failed, isError: true, errorText }],
+        },
+      ]);
+      const parts = tool?.content as Array<{ output: unknown }>;
+
+      expect(parts[0]?.output).toStrictEqual({ type: "error-text", value });
+    },
+  );
 
   it("never sends a subagent transcript to the model, only the compact result", () => {
     // The worker transcript rides on the tool-result for the UI, but the model
@@ -249,6 +286,30 @@ describe("buildModelMessages", () => {
           type: "reasoning",
           text: "",
           providerOptions: { anthropic: { redactedData: "redacted-blob" } },
+        },
+        { type: "text", text: "answer" },
+      ]);
+    });
+
+    it("replays OpenRouter details with empty text when the step kept no reasoning text", () => {
+      const details = [{ type: "reasoning.encrypted", data: "enc" }];
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "answer",
+            openrouterReasoningDetails: details,
+            responseModel: "anthropic/claude-sonnet-5.5",
+          },
+        ],
+        { openrouter: "anthropic/claude-sonnet-5.5" },
+      );
+
+      expect(result[0]!.content).toStrictEqual([
+        {
+          type: "reasoning",
+          text: "",
+          providerOptions: { openrouter: { reasoning_details: details } },
         },
         { type: "text", text: "answer" },
       ]);

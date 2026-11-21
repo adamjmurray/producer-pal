@@ -14,12 +14,12 @@
 // Both must turn an identical token into identical Live note properties
 // (base `velocity` + `velocity_deviation`). The layers cannot share code (Peggy
 // compiles each grammar separately and cannot import), so the
-// min/max → velocity/deviation mapping is duplicated: the barbeat interpreter
+// start/end → velocity/deviation mapping is duplicated: the barbeat interpreter
 // (barbeat-interpreter.ts) vs. the transform grammar's shorthand action. This
 // test feeds one corpus through both end-to-end and pins them so they cannot
 // silently diverge.
 //
-// `lo == 0` cases (`v0-N` / `vN-0` / `v0-0`) are rejected at parse time in BOTH
+// Zero-bound cases (`v0-N` / `vN-0` / `v0-0`) are rejected at parse time in BOTH
 // grammars with a byte-identical targeted error: a velocity-0 base note is the
 // delete sentinel, so such a range would silently delete every note it touches.
 // Both layers throw rather than desugar — pinned by its own assertion below, a
@@ -30,12 +30,14 @@ import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-int
 import { type NoteEvent } from "#src/notation/types.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 
-// Includes in-range, reversed, equal-bounds, and out-of-range clamp cases.
+// Includes in-range, descending, equal-bounds, and out-of-range clamp cases.
 const TOKENS = [
   "v80-120",
   "v60-100",
   "v100-100", // min == max → deviation 0
-  "v120-80", // reversed → swaps
+  "v120-80", // descending → velocity 120, deviation -40
+  "v100-80", // descending → velocity 100, deviation -20
+  "v130-90", // start clamps to 127 → deviation -37
   "v200-250", // both clamp to 127 → deviation 0
   "v10-130", // high bound clamps to 127
   "v1-127", // full usable span
@@ -72,12 +74,12 @@ describe("velocity range cross-layer parity (vA-B)", () => {
     },
   );
 
-  // The v0 lower-bound edge the parametric corpus can't cover: both grammars
-  // reject it at parse time with a byte-identical targeted error (base velocity 0
-  // is the delete sentinel, so the range would silently delete every note). The
-  // single `min === 0` guard covers both orderings and the equal-bounds case.
+  // The v0 edge the parametric corpus can't cover: both grammars reject it at
+  // parse time with a byte-identical targeted error (base velocity 0 is the
+  // delete sentinel, so the range would silently delete every note). The single
+  // zero guard covers both orderings and the equal-bounds case.
   const V0_ERROR =
-    /velocity ranges must start at 1 or higher — v0 is the delete sentinel/;
+    /both ends of a velocity range must be 1 or higher — v0 is the delete sentinel/;
 
   it.each(["v0-100", "v100-0", "v0-0"])(
     "%s is rejected at parse time in BOTH layers (shared v0 delete sentinel)",

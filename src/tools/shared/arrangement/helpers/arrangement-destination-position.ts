@@ -16,6 +16,7 @@ import {
   type SongPositionLabels,
 } from "#src/tools/shared/locator/song-position.ts";
 import { type ClipDestinationPath } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /**
  * Resolves every locator a destination list names. A list with none costs no
@@ -26,7 +27,7 @@ import { type ClipDestinationPath } from "#src/tools/shared/validation/helpers/c
  * @returns The destinations, with every locator spelled as bar|beat
  */
 export function resolveDestinationPositions<
-  T extends ClipDestinationPath | null,
+  T extends ClipDestinationPath<unknown> | null,
 >(entries: T[], labels: SongPositionLabels): T[] {
   const resolve = destinationPositionResolver(entries, labels);
 
@@ -41,17 +42,18 @@ export function resolveDestinationPositions<
  * @returns A rewrite for one entry, or null when the list names no locator
  */
 export function destinationPositionResolver<
-  T extends ClipDestinationPath | null,
+  T extends ClipDestinationPath<unknown> | null,
 >(entries: T[], labels: SongPositionLabels): ((entry: T) => T) | null {
   if (!entries.some((entry) => namesLocator(entry))) {
     return null;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
+  const meter = songMeter();
   const options = {
     ...labels,
-    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
+    timeSigNumerator: meter.numerator,
+    timeSigDenominator: meter.denominator,
   };
 
   return (entry) =>
@@ -74,6 +76,6 @@ export function destinationPositionResolver<
  * @param entry - One parsed destination
  * @returns True when it needs a lookup
  */
-function namesLocator(entry: ClipDestinationPath | null): boolean {
+function namesLocator(entry: ClipDestinationPath<unknown> | null): boolean {
   return entry?.position != null && locatorRef(entry.position) != null;
 }

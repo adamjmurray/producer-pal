@@ -15,6 +15,7 @@ import {
   type ChainMixerParams,
   applyChainMixer,
   readChainMixer,
+  readChainMixerAndParams,
 } from "../chain-mixer.ts";
 import {
   chainApi,
@@ -53,6 +54,25 @@ describe("readChainMixer", () => {
     registerChainWithMixer();
 
     expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
+  it("reports gainDb and pan at their defaults when asked to show the fader", () => {
+    registerChainWithMixer();
+
+    expect(readChainMixerAndParams(chainApi(), true).values).toStrictEqual({
+      gainDb: 0,
+      pan: 0,
+    });
+  });
+
+  it("still leaves out sends that are off when showing the fader", () => {
+    registerChainWithMixer({ sends: [{ value: 0, display_value: -70 }] });
+    registerReturnChains("a Delay");
+
+    expect(readChainMixerAndParams(chainApi(), true).values).toStrictEqual({
+      gainDb: 0,
+      pan: 0,
+    });
   });
 
   it("returns nothing when the chain has no mixer device", () => {
@@ -298,6 +318,14 @@ describe("applyChainMixer", () => {
       applyMixer({ sendGainDb: 0, sendReturn: "A" });
 
       expect(first?.set).toHaveBeenCalledWith("display_value", 0);
+    });
+
+    it("trims the return each sends entry names", () => {
+      const [first] = registerChainWithSends();
+
+      applyMixer({ sends: [{ return: " a ", gainDb: -6 }] });
+
+      expect(first?.set).toHaveBeenCalledWith("display_value", -6);
     });
 
     it("matches a return chain by id", () => {

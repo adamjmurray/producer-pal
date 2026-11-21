@@ -36,6 +36,7 @@ import {
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
+  extractRegularTrackIndex,
   withTempTrackCopy,
 } from "./temp-track-copy.ts";
 import { copyChainMixerTo } from "./copy-chain-mixer.ts";
@@ -77,6 +78,17 @@ export function duplicateChain(
   if (isProducerPalDevice(chain)) {
     throw new Error(
       `cannot duplicate ${targetLabel(chain)}: it holds the Producer Pal device`,
+    );
+  }
+
+  // Devices cross on a temp copy of the source track, and Live copies only
+  // regular tracks. Refuse now: the new chain would be left empty.
+  if (
+    extractRegularTrackIndex(chain.path) == null &&
+    chain.getChildCount("devices") > 0
+  ) {
+    throw new Error(
+      `cannot duplicate ${targetLabel(chain)}: its devices cannot be copied off a return or main track`,
     );
   }
 

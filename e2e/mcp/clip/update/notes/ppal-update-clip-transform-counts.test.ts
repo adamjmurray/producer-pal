@@ -6,7 +6,8 @@
 /**
  * E2E tests for what a transform reports: `transformed` counts notes it
  * changed, `deletedNotes` counts notes it removed (left out at 0), and a note it left
- * exactly as it was counts as neither. `transformed: 0` says it changed none.
+ * exactly as it was counts as neither. `transformed: 0` says it changed none, and `detail` says whether the
+ * selector matched nothing or the transforms left what they matched as it was.
  *
  * Uses: e2e-test-set - t8 is the empty MIDI track.
  * Run with: npm run e2e:mcp -- ppal-update-clip-transform-counts
@@ -59,6 +60,20 @@ describe("ppal-clip-transforms (counts)", () => {
     expect(result.transformed).toBe(0);
     expect(result.deletedNotes).toBeUndefined();
     expect(result.noteCount).toBe(2);
+    expect(result.detail).toBe(
+      "the transforms changed none of the 2 matched notes",
+    );
+  });
+
+  it("says when the selector matched no notes, apart from a no-op expression", async () => {
+    const clipId = await createMidiClip(96, "v100 C3 1|1 E3 1|2");
+
+    const result = parseToolResult<CountedResult>(
+      await applyTransform(clipId, "G5: velocity += 10"),
+    );
+
+    expect(result.transformed).toBe(0);
+    expect(result.detail).toBe("no notes matched the selector");
   });
 
   it("reports notes a merge absorbed as deleted", async () => {
@@ -71,6 +86,19 @@ describe("ppal-clip-transforms (counts)", () => {
     expect(result.transformed).toBe(1);
     expect(result.deletedNotes).toBe(2);
     expect(result.noteCount).toBe(1);
+  });
+
+  it("says the transforms changed nothing when a note op leaves its note as it was", async () => {
+    const clipId = await createMidiClip(94, "v100 C3 1|1");
+
+    const result = parseToolResult<CountedResult>(
+      await applyTransform(clipId, "merge()"),
+    );
+
+    expect(result.transformed).toBe(0);
+    expect(result.detail).toBe(
+      "the transforms didn't change the 1 matched note",
+    );
   });
 
   it("doesn't count a value Live stores at 32-bit precision as changed", async () => {

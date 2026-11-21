@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 // What a write goes over depends on the kind of clip: an arrangement clip moved
-// into a slot fills it, and a take-lane clip resized in place writes nothing.
+// into a slot fills it, and a take-lane clip grows only into empty space.
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -21,8 +21,8 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { registerLiveSet } from "../batch/stacking-track-test-helpers.ts";
 
-const TAKE_LANE_REFUSAL =
-  "arrangementLength ignored: this is a take-lane clip; adjust it in Live's UI";
+const NEXT_CLIP_THERE =
+  "arrangementLength unchanged: the next clip on the lane starts where this one ends";
 
 describe("updateClip - what each kind of clip's write goes over", () => {
   it("lets an arrangement clip moved into a slot overwrite an earlier move there", async () => {
@@ -51,7 +51,7 @@ describe("updateClip - what each kind of clip's write goes over", () => {
     expect(result[1]?.path).toBe("t1/s3");
   });
 
-  it("doesn't let a refused take-lane resize overwrite a clip it would reach", async () => {
+  it("doesn't let a take-lane resize overwrite a clip it would reach", async () => {
     registerLiveSet();
     registerTakeLaneTrack({
       initialLanes: 1,
@@ -71,15 +71,16 @@ describe("updateClip - what each kind of clip's write goes over", () => {
         )?.id as string,
     );
 
-    // Grown in place, the later clip would reach over all of the earlier one.
+    // Grown in place, the later target would reach over all of the earlier one,
+    // but a take-lane clip stops at its neighbor.
     const result = (await updateClip({
       id: `${second},${first}`,
       arrangementLength: "1bar,4bar",
     })) as ClipResult[];
 
     expect(result).toStrictEqual([
-      { id: second, ok: false, detail: TAKE_LANE_REFUSAL },
-      { id: first, ok: false, detail: TAKE_LANE_REFUSAL },
+      { id: second, path: "t0/l0[2|1]" },
+      { id: first, ok: false, detail: NEXT_CLIP_THERE },
     ]);
   });
 });

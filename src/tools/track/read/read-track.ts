@@ -18,8 +18,8 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { returnClipsExist } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
-import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   readFanOut,
   type ReadResult,
@@ -43,6 +43,7 @@ import {
   readSessionClips,
   readTakeLanes,
   type ReadTakeLaneResult,
+  stripRedundantClipType,
 } from "./helpers/track-clips.ts";
 import { getInstrumentName } from "./helpers/instrument-name.ts";
 import {
@@ -164,8 +165,9 @@ function processSessionClips(
   nested: NestedClipReads,
   knownCount: number | undefined,
 ): SessionClipsResult {
-  if (isGroup || category !== "regular") {
-    // These tracks hold no session clips, so a count would always be 0.
+  // Live 13 return tracks have clip slots. Elsewhere these tracks hold no
+  // session clips, so a count would always be 0.
+  if (isGroup || !holdsSessionClips(category)) {
     return includeSessionClips ? { sessionClips: [] } : {};
   }
 
@@ -177,9 +179,23 @@ function processSessionClips(
           nested.isDrumMode,
           nested.include,
           nested.notation,
+          category,
         ),
       }
-    : { sessionClipCount: knownCount ?? countSessionClips(track, trackIndex) };
+    : {
+        sessionClipCount:
+          knownCount ?? countSessionClips(track, trackIndex, category),
+      };
+}
+
+/**
+ * @param category - Track category (regular, return, or master)
+ * @returns Whether tracks of this category have session clip slots here
+ */
+function holdsSessionClips(category: string): boolean {
+  return (
+    category === "regular" || (category === "return" && returnClipsExist())
+  );
 }
 
 /**
@@ -475,8 +491,10 @@ export function readTrackGeneric({
   // Strip fields from nested clips that are redundant with parent track
   // context. Every clip keeps its path: "t0/s3" and "t0[5|1]" each address one
   // clip, which the track's own path doesn't.
-  stripFields(result.sessionClips as unknown[], "type");
-  stripFields(result.arrangementClips as unknown[], "type");
+  stripRedundantClipType(result.sessionClips as ReadClipResult[] | undefined);
+  stripRedundantClipType(
+    result.arrangementClips as ReadClipResult[] | undefined,
+  );
 
   return result;
 }

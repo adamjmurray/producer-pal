@@ -22,10 +22,12 @@
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-duplicate-loop
  */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
+  parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
+  setConfig,
   setupMcpTestContext,
   sleep,
   type UpdateClipResult,
@@ -33,6 +35,10 @@ import {
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
+
+beforeEach(async () => {
+  await setConfig({ liveApiEnabled: true });
+});
 
 /** Create a looping MIDI clip (default 2 bars) and return its id. */
 async function createLoopingClip(
@@ -66,6 +72,27 @@ async function readClip(clipId: string): Promise<ReadClipResult> {
   });
 
   return parseToolResultWithWarnings<ReadClipResult>(result).data;
+}
+
+/** The pitches of the notes starting at a beat, wherever in the clip. */
+async function pitchesAt(clipId: string, beat: number): Promise<number[]> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        {
+          type: "call",
+          method: "get_notes_extended",
+          args: [0, 128, beat, 0.5],
+        },
+      ],
+    },
+  });
+  const [raw] = parseToolResult<{ results: string[] }>(result).results;
+  const { notes } = JSON.parse(raw!) as { notes: Array<{ pitch: number }> };
+
+  return notes.map((note) => note.pitch);
 }
 
 /**
@@ -193,16 +220,19 @@ describe("ppal-update-clip duplicateLoop", () => {
     // Call 2: double that 1-bar region to 2 bars.
     const { data, clip } = await duplicateLoopAndRead(clipId, {});
 
-    // 3 notes: the in-region C3, its inserted copy, and the pushed-out E3.
-    expect(data.noteCount).toBe(3);
+    // 2 notes in the loop: the in-region C3 and its inserted copy. The E3 was
+    // pushed out past loop_end, where no read counts it.
+    expect(data.noteCount).toBe(2);
     // The selected 1-bar region doubled to a 2-bar loop.
     expect(clip.length).toBe("2bar");
     // Bar 1 C3 (original) + bar 2 C3 (the inserted copy of the 1-bar region).
     expect(clip.notes).toContain("C3 1|1");
     expect(clip.notes).toContain("C3 2|1");
-    // The original bar-2 E3 was pushed forward one loop-length to bar 3, landing
-    // beyond the new 2-bar loop (overhang, read but not played by the loop).
-    expect(clip.notes).toContain("E3 3|1");
+    // The original bar-2 E3 was pushed forward one loop-length to bar 3, onto
+    // the new 2-bar loop's end: never played, so read-clip leaves it out, but
+    // it is still in the clip.
+    expect(clip.notes).not.toContain("E3");
+    expect(await pitchesAt(clipId, 8)).toStrictEqual([64]);
   });
 
   it("composes firstStart, which does not select what gets copied", async () => {

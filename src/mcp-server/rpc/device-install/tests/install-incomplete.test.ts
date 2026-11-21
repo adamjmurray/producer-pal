@@ -5,7 +5,11 @@
 
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  installPluginHostParts,
+  pluginHostStates,
+} from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { installedRemoteScript } from "../../remote-script/remote-script-status.ts";
 import { installRemoteScript } from "../../remote-script/install/remote-script-install.ts";
@@ -15,6 +19,11 @@ import { useDeviceScratch } from "./device-install-test-helpers.ts";
 
 describe("installIncomplete", () => {
   const scratch = useDeviceScratch();
+
+  // Most cases are about the device and the script: start with wrappers in.
+  beforeEach(() => {
+    installPluginHostParts(scratch().library);
+  });
 
   /**
    * Install the bundled remote script in the scratch User Library, then give
@@ -118,5 +127,49 @@ describe("installIncomplete", () => {
         device({ source: null, problem: "unknown-source", state: null }),
       ),
     ).toBe(true);
+  });
+
+  describe("plug-in wrapper devices", () => {
+    /** Leave the scratch User Library without one of the wrappers. */
+    function removeOneWrapper(): void {
+      const [wrapper] = pluginHostStates(scratch().library) ?? [];
+
+      rmSync(wrapper?.path ?? "");
+    }
+
+    it("is incomplete when a wrapper is missing", () => {
+      installScript(VERSION);
+      removeOneWrapper();
+
+      expect(installIncomplete(device())).toBe(true);
+    });
+
+    it("is incomplete when a wrapper differs from this build", () => {
+      installScript(VERSION);
+
+      const [wrapper] = pluginHostStates(scratch().library) ?? [];
+
+      writeFileSync(wrapper?.path ?? "", "another build");
+
+      expect(installIncomplete(device())).toBe(true);
+    });
+
+    it("counts them for a development device, which installs them alone", () => {
+      installScript(VERSION);
+      removeOneWrapper();
+
+      expect(
+        installIncomplete(device({ problem: "not-frozen", state: null })),
+      ).toBe(true);
+    });
+
+    it("leaves them alone when the copy is newer than this device", () => {
+      installScript(VERSION);
+      removeOneWrapper();
+
+      expect(installIncomplete(device({ state: "installed-newer" }))).toBe(
+        false,
+      );
+    });
   });
 });

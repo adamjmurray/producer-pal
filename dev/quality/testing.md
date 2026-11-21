@@ -150,7 +150,8 @@ That failure reads as success: the suite dies while collecting, so vitest
 reports `0 failed` and a total quietly short by the tests that never registered.
 
 The stubbed Playwright suite is `npm run ui:test` (no Ableton or API keys
-needed); `npm run check` doesn't include it, so run it yourself after touching
+needed; it also builds a gen-UI variant of the UI for the `gen/` specs);
+`npm run check` doesn't include it, so run it yourself after touching
 `webui/**`.
 
 ## Coverage
@@ -174,12 +175,13 @@ can't reasonably be tested.
 comment block per tree, and names the worst files (`--all` lists every file).
 The license header and lint directives don't count.
 
-`src/test/comment-limits.test.ts` ratchets two numbers, neither of which moves
-when files are split, merged or renamed:
+`src/test/comment-limits.test.ts` caps two numbers, neither of which moves when
+files are split, merged or renamed:
 
-- **Comment density** per tree — comment lines per code line, capped to 3
-  decimals within 0.005 of the current number. Lower a cap when density falls;
-  raising one needs user approval.
+- **Comment density** per tree — comment lines per code line. Each cap is a
+  fixed ceiling with some headroom, not a ratchet: don't lower it when density
+  falls. Raising one needs user approval. Comment quality is judged in review
+  (the `comment-cleanup` skill), not by this number.
 - **Block length** — no comment block over `MAX_BLOCK_LINES` (25), repo-wide.
   Files that were already over it are listed in `LONG_BLOCK_ALLOWANCES`, each at
   its exact longest block. That list only shrinks: shortening or moving a block

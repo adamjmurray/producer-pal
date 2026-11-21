@@ -63,25 +63,26 @@ async function resolvedBy(
 }
 
 describe("duplicate scene build budget", () => {
-  // Each count includes the call's fixed reads. Before the scene was read once
+  // Each count includes the call's fixed reads, and one Live version read per
+  // scene pass (a real request makes it once). Before the scene was read once
   // per call these were 102, 270 and 201: length, covers and the write each
   // walked every track's slots again.
   it("reads the scene once for one position", async () => {
     expect(await resolvedBy({ id: "scene1", arrangementStart: "5|1" })).toBe(
-      54,
+      55,
     );
   });
 
   it("reads the scene once for three positions", async () => {
     expect(
       await resolvedBy({ id: "scene1", arrangementStart: "5|1,9|1,13|1" }),
-    ).toBe(126);
+    ).toBe(127);
   });
 
   it("reads each scene once for two scenes", async () => {
     expect(
       await resolvedBy({ id: "scene1,scene2", arrangementStart: "5|1,13|1" }),
-    ).toBe(105);
+    ).toBe(107);
   });
 
   // The sources, the Set and its tracks: no slot of the scene is looked at.

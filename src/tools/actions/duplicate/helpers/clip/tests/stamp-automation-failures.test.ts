@@ -43,10 +43,9 @@ describe("stamping that stops partway", () => {
 
     world.declinesCopy = (count) => count === 1;
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips).toHaveLength(1);
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       "automation written for the first 4 of 10 beats only (Live made no copy at 20 beats)",
     );
     expect(leftBehind(world)).toBe(false);
@@ -61,9 +60,9 @@ describe("stamping that stops partway", () => {
       }
     };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       "automation written for the first 8 of 10 beats only (Live says no)",
     );
     expect(leftBehind(world)).toBe(false);
@@ -76,10 +75,10 @@ describe("stamping that stops partway", () => {
       throw new Error("Live says no");
     };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe("automation not written (Live says no)");
-    expect(world.copies().filter((copy) => copy.envelopes)).toHaveLength(0);
+    expect(copy?.detail).toBe("automation not written (Live says no)");
+    expect(world.copies().filter((made) => made.envelopes)).toHaveLength(0);
     expect(leftBehind(world)).toBe(false);
   });
 
@@ -97,9 +96,9 @@ describe("stamping that stops partway", () => {
       }
     };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       "automation written for the first 3 of 10 beats only (Live says no)",
     );
     expect(leftBehind(world)).toBe(false);
@@ -114,9 +113,9 @@ describe("stamping that stops partway", () => {
       }
     };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       "automation written for the first 4 of 10 beats only (couldn't delete a scratch copy at 16 beats (Live says no))",
     );
     expect(leftBehind(world)).toBe(false);
@@ -125,9 +124,9 @@ describe("stamping that stops partway", () => {
   it("writes none of the lane when the deadline has passed before the first stamp", async () => {
     const world = registerStampWorld();
 
-    const clips = await copyAtLength(world, 10, { deadline: Date.now() - 1 });
+    const copy = await copyAtLength(world, 10, { deadline: Date.now() - 1 });
 
-    expect(clips[0]?.detail).toBe("automation not written (ran out of time)");
+    expect(copy?.detail).toBe("automation not written (ran out of time)");
     expect(world.stamps().filter((stamp) => stamp.envelopes)).toHaveLength(0);
     expect(leftBehind(world)).toBe(false);
   });
@@ -144,9 +143,9 @@ describe("stamping that stops partway", () => {
       }
     };
 
-    const clips = await copyAtLength(world, 10, { deadline: 1000 });
+    const copy = await copyAtLength(world, 10, { deadline: 1000 });
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       "automation written for the first 4 of 10 beats only (ran out of time)",
     );
     expect(world.stamps()).toHaveLength(1);
@@ -224,7 +223,7 @@ describe("a failure after the lane changed", () => {
     // No loop means nothing to stamp, so the clip's own copy is the only one.
     world.declinesCopy = () => true;
 
-    expect(await copyAtLength(world, 10)).toStrictEqual([]);
+    expect(await copyAtLength(world, 10)).toBeUndefined();
     expect(world.stamps()).toHaveLength(0);
     expect(leftBehind(world)).toBe(false);
   });
@@ -248,9 +247,9 @@ describe("a scratch copy Live won't remove", () => {
       throw new Error("Live says no");
     };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       `${LANE_WRITE_NOTE}; couldn't remove the scratch session clip (Live says no)`,
     );
     expect(world.sceneCount()).toBe(1);
@@ -265,9 +264,9 @@ describe("a scratch copy Live won't remove", () => {
         throw new Error("Live says no");
       };
 
-    const clips = await copyAtLength(world, 10);
+    const copy = await copyAtLength(world, 10);
 
-    expect(clips[0]?.detail).toBe(
+    expect(copy?.detail).toBe(
       `${LANE_WRITE_NOTE}; left an empty scene behind: couldn't remove the scratch scene (Live says no)`,
     );
   });
@@ -280,14 +279,14 @@ describe("a scratch copy Live won't remove", () => {
       throw new Error("Live says no");
     };
 
-    const clips = await copyAtLength(world, 10, {
+    const copy = await copyAtLength(world, 10, {
       reportScratch: (message: string) => said.push(message),
     });
 
     expect(said).toStrictEqual([
       "couldn't remove the scratch session clip (Live says no)",
     ]);
-    expect(clips[0]?.detail).toBe(LANE_WRITE_NOTE);
+    expect(copy?.detail).toBe(LANE_WRITE_NOTE);
   });
 
   it("keeps it on a failure that follows", async () => {

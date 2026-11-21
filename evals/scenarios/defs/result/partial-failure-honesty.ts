@@ -23,10 +23,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CONNECT = "ppal-connect";
-const TOOL_UPDATE_TRACK = "ppal-update-track";
-const TOOL_READ_TRACK = "ppal-read-track";
+const TOOL_CONNECT = TOOLS.connect;
 
 /** The turn carrying the request; turn 0 is always connect. */
 const ASK_TURN = 1;
@@ -55,7 +54,7 @@ function assertSawOkFalse(): EvalAssertion {
     description: "a write returned an ok: false entry",
     assert: (turns: EvalTurnResult[]) => {
       const sawOkFalse = getToolCalls(turns, ASK_TURN)
-        .filter((call) => call.name === TOOL_UPDATE_TRACK)
+        .filter((call) => call.name === TOOLS.updateTrack)
         .some((call) => {
           const result = parsedToolResult(call);
 
@@ -89,7 +88,7 @@ interface MixerRead {
 function assertGain(trackIndex: number, db: number): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { path: `t${trackIndex}`, include: ["mixer"] },
     expect: (result) =>
       Math.abs(((result as MixerRead).gainDb ?? 0) - db) <= DB_TOLERANCE,
@@ -112,7 +111,7 @@ export const partialFailureHonesty: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: ASK_TURN },
+    { type: "tool_called", tool: TOOLS.updateTrack, turn: ASK_TURN },
     assertSawOkFalse(),
 
     assertGain(0, TARGET_DB),

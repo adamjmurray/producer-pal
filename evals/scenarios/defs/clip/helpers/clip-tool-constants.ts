@@ -8,18 +8,19 @@
  */
 
 import { CONNECT_MESSAGE } from "../../../helpers/seed-connect/seed-connect.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
-export const TOOL_CONNECT = "ppal-connect";
+export const TOOL_CONNECT = TOOLS.connect;
 
 /** update-clip tool name. */
-export const TOOL_UPDATE_CLIP = "ppal-update-clip";
+export const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /** read-clip tool name. */
-export const TOOL_READ_CLIP = "ppal-read-clip";
+export const TOOL_READ_CLIP = TOOLS.readClip;
 
 /** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
-export const TOOL_CREATE_CLIP = "ppal-create-clip";
+export const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** Standard turn-0 message that opens a connection to Live. */
 export const MSG_CONNECT = CONNECT_MESSAGE;

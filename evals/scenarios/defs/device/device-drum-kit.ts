@@ -13,8 +13,8 @@
  * `params` whose names are pad-path prefixed — `{name: "pC1/sample", value:
  * "<abs file path>"}` loads a sample into pad C1, auto-creating that pad's
  * Simpler. The capability is "one call, many pads", NOT pad-by-pad add-device
- * loops. The eval samples folder ships `drums/kick.aiff` + `sample.aiff`, so the
- * kit is two pads (C1, D1) — enough to grade the multi-pad single-call build.
+ * loops. The kit is a kick and a snare from Live's own library on two pads (C1,
+ * D1) — enough to grade the multi-pad single-call build.
  *
  * Grading is path-independent (the model names its own track): we find ONE
  * device call carrying >= 2 pad-path sample params and confirm the engine took
@@ -23,11 +23,9 @@
 
 import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import {
-  SAMPLE_FOLDER_CONFIG,
-  sampleBrowseAssertionHead,
-} from "../helpers/sample-browse-setup.ts";
+import { sampleBrowseAssertionHead } from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * A pad-path sample param. The published spelling is the short `pC1/sample`,
@@ -47,17 +45,15 @@ export const deviceDrumKit: EvalScenario = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
 
-  config: SAMPLE_FOLDER_CONFIG,
-
   messages: [
     "Connect to Ableton Live",
-    "Show me the available samples.",
-    "Make a new MIDI track and build a Drum Rack on it in a single step: put the kick on pad C1 and the other sample on pad D1.",
+    "Find me a kick and a snare sample in the library.",
+    "Make a new MIDI track and build a Drum Rack on it in a single step: put the kick on pad C1 and the snare on pad D1.",
   ],
 
   assertions: [
     ...sampleBrowseAssertionHead(),
-    { type: "tool_called", tool: "ppal-create-device", turn: 2 },
+    { type: "tool_called", tool: TOOLS.createDevice, turn: 2 },
 
     // One device call must carry >= 2 distinct pad-path sample params, accepted.
     {
@@ -66,8 +62,7 @@ export const deviceDrumKit: EvalScenario = {
         "kit built in one device call with >=2 path-prefixed pad samples",
       assert: (turns: EvalTurnResult[]) => {
         const deviceCalls = getToolCalls(turns, 2).filter(
-          (c) =>
-            c.name === "ppal-create-device" || c.name === "ppal-update-device",
+          (c) => c.name === TOOLS.createDevice || c.name === TOOLS.updateDevice,
         );
 
         const oneCallKit = deviceCalls.find((c) => {

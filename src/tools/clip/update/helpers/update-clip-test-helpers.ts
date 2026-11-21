@@ -16,7 +16,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import * as scratchClips from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -469,7 +469,7 @@ function createPropertyGetImpl(
  * @param fileContentBoundary - File's actual content length (returned by getProperty("end_marker"))
  * @returns Mock objects for assertions
  */
-export function setupSessionTilingMock(fileContentBoundary = 8.0) {
+export function setupSessionBoundaryMock(fileContentBoundary = 8.0) {
   const sessionClip = {
     id: "session-temp",
     set: vi.fn(),
@@ -485,7 +485,7 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
     call: vi.fn(),
   };
   const mockCreate = vi
-    .spyOn(tilingHelpers, "createAudioClipInSession")
+    .spyOn(scratchClips, "createAudioClipInSession")
     .mockReturnValue({
       clip: sessionClip as unknown as LiveAPI,
       slot: clipSlot as unknown as LiveAPI,

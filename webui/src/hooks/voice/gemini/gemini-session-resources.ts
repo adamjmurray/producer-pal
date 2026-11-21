@@ -84,6 +84,44 @@ export async function releaseGeminiSessionResources(
   await closeSessionAndMcp(session, mcp);
 }
 
+/** What one connect() attempt has created so far. */
+export interface OwnedGeminiResources {
+  mcpClient?: Client;
+  player?: GeminiPcmPlayer;
+  session?: Session;
+  mic?: GeminiMicCapture;
+}
+
+/**
+ * Start tracking one connect() attempt: a staleness check against the current
+ * generation, and a record of the resources it creates.
+ * @param connectGenRef - The hook's connect generation counter
+ * @returns The staleness check and the (initially empty) owned resources
+ */
+export function beginGeminiConnect(connectGenRef: { current: number }): {
+  stale: () => boolean;
+  owned: OwnedGeminiResources;
+} {
+  const myGen = connectGenRef.current;
+
+  return { stale: () => connectGenRef.current !== myGen, owned: {} };
+}
+
+/**
+ * Release only what a stale connect() created itself. Never touches the shared
+ * refs: they now belong to a newer connect, or were already cleared by the
+ * teardown that made this one stale. Closing something that teardown already
+ * closed is harmless.
+ * @param owned - The resources this connect() created
+ */
+export async function releaseOwnedGeminiResources(
+  owned: OwnedGeminiResources,
+): Promise<void> {
+  await owned.mic?.stop();
+  await owned.player?.close();
+  await closeSessionAndMcp(owned.session ?? null, owned.mcpClient ?? null);
+}
+
 /**
  * Best-effort teardown of the live session + MCP client. A close that throws
  * shouldn't stall the rest of cleanup (the refs are already nulled), so each is

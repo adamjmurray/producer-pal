@@ -42,9 +42,9 @@ interface DeprecatedParamBase {
    * How the replacement reads the value differently, for a param whose
    * replacement is not a rename. Without it the warning reads as one, and a
    * caller who follows it literally writes a call that quietly does something
-   * else.
+   * else. A function reads it off the call's own args.
    */
-  note?: string;
+  note?: string | ExampleFromArgs;
 }
 
 /**
@@ -193,7 +193,7 @@ export function hiddenParamWarnings(
       warnings.push(
         `${WARNING_PREFIX}param "${key}" is deprecated and will be removed; ` +
           deprecationAdvice(info, args) +
-          (info.note == null ? "" : `. ${info.note}`),
+          noteText(info, args),
       );
       continue;
     }
@@ -248,6 +248,21 @@ function deprecationAdvice(
     typeof info.example === "function" ? info.example(args) : info.example;
 
   return `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, example)}`;
+}
+
+/**
+ * The note half of a deprecation warning, if the deprecation has one.
+ * @param info - The deprecation
+ * @param args - The args the call sent, for a note read off them
+ * @returns Text to append, starting with ". ", or "" when there is no note
+ */
+function noteText(
+  info: DeprecatedParamInfo,
+  args: Record<string, unknown>,
+): string {
+  const note = typeof info.note === "function" ? info.note(args) : info.note;
+
+  return note == null ? "" : `. ${note}`;
 }
 
 /**

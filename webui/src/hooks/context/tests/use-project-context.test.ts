@@ -204,6 +204,29 @@ describe("useProjectContext", () => {
     expect(result.current.saveError).toContain("Config update failed");
   });
 
+  it("save() shows the server's reason for a refusal", async () => {
+    mockResponses(
+      { projectContext: "" },
+      new Response(
+        JSON.stringify({
+          error: "projectContext: must be at most 10000 characters",
+        }),
+        { status: 400, statusText: "Bad Request" },
+      ),
+    );
+
+    const { result } = renderHook(() => useProjectContext());
+
+    await waitForHookState(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    expect(await callAndCapture(() => result.current.save("long"))).toBe(false);
+    expect(result.current.saveError).toBe(
+      "Config update failed (400 Bad Request): projectContext: must be at most 10000 characters",
+    );
+  });
+
   it("clear() saves empty content", async () => {
     const result = await renderWithLoadedContent({ projectContext: "" });
 

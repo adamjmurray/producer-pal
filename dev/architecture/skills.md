@@ -20,6 +20,14 @@ include manifest. The **fragments** it names are the task sections, plus one
   `automation-write` and `plugins-and-max-devices` ship only while a current
   remote script answers, on top of their tool gate. `ppal-connect` pings it
   (small-model mode skips the ping). See [remote-script.md](remote-script.md).
+- **Gated by the user** (`newUser` in `BuildSkillsOptions`): when connect knows
+  the user is not new, the built-in `context-standard` renders without its New
+  user paragraph (`contextStandardKnownUser`). It stays inside the guide, not a
+  fragment of its own: its position is load-bearing for onboarding evals.
+  `ppal-connect` asks `isNewUser` (`helpers/connect/new-user.ts`) once; the
+  result's `New user` marker and the paragraph share that answer. Only an
+  explicit `false` drops it, so callers that can't tell (Skills preview, docs,
+  scripts) keep it, and a user's own override is used as-is.
 - **Requires** (`fragment-requires.ts`): fragments that are incomplete without
   another (the transforms tiers name functions whose grammar lives in
   `transforms-core`). A gate table entry must be a subset of the gate of what it

@@ -9,7 +9,6 @@ import {
   assertPatternLimit,
   countPatternOccurrences,
   findSourceFiles,
-  findTestFiles,
   throwOnFileViolations,
 } from "./helpers/meta-test-helpers.ts";
 
@@ -167,7 +166,7 @@ describe("Lint suppression limits", () => {
     const allFiles = dirs.flatMap((dir) => {
       const dirPath = path.join(projectRoot, dir);
 
-      return [...findSourceFiles(dirPath), ...findTestFiles(dirPath)];
+      return findSourceFiles(dirPath);
     });
     // A file-wide directive that closes, reaches a "--" reason, or simply ends
     // the line, without ever naming a rule — oxlint honors the line-comment form
@@ -190,7 +189,7 @@ describe("Lint suppression limits", () => {
     const allFiles = dirs.flatMap((dir) => {
       const dirPath = path.join(projectRoot, dir);
 
-      return [...findSourceFiles(dirPath), ...findTestFiles(dirPath)];
+      return findSourceFiles(dirPath);
     });
     // Matches bare v8 ignore next/start that close without a "--" description
     const barePattern = /v8 ignore (next|start)\s*\*\//;

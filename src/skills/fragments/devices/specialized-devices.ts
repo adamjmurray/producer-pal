@@ -20,7 +20,12 @@ Instruments:
 Audio effects:
 
 - **Compressor** sidechain: \`sidechainSourceTrackId\` (a trackId or a path like \`t0\`, \`rt0\`, \`mt\`, or null for No Input), then \`sidechainChannel\` — set the source first, as the valid channels vary by source. options lists \`sidechainSourceTrackIds\` and the current source's \`sidechainChannels\`.
-- **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
+- **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. Stereo uses only the A bands. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
 - **Hybrid Reverb** \`irCategory\`, \`irFile\` (set category first; options \`irCategoryList\`, then \`irFileList\` lists the selected category's files), \`irAttackTime\`, \`irDecayTime\`, \`irSizeFactor\`, \`irTimeShapingOn\`.
 - **Roar** \`routingMode\`, \`envListen\`.
-- **Spectral Resonator** \`midiGate\`, \`monoPoly\`, \`pitchBendRange\`, \`modMode\`, \`pitchMode\`, \`polyphony\`.`;
+- **Spectral Resonator** \`midiGate\`, \`monoPoly\`, \`pitchBendRange\`, \`modMode\`, \`pitchMode\`, \`polyphony\`.
+
+Live 13 devices with only mode-gated DeviceParameters (a param read as \`state: "inactive"\` has no effect in the current mode):
+
+- **Drum Synth** \`Sound Type\`, and each type's \`* Model\` param, decide which params apply: those of another type or model are inactive.
+- **Transient Shaper** \`S/C Gain\` and \`S/C Emph Type\` apply only while \`S/C On\` is On.`;

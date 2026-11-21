@@ -121,13 +121,24 @@ added nothing measurable — that is Live no-opping an unchanged write, so it sa
 nothing about what a real write costs.
 
 **Why this matters.** At 0.39 MB per full-set read it takes on the order of
-10,000 calls to reach 4 GB. Live 12.4.5 died of a V8 `FatalProcessOutOfMemory`
-after 2.5 days of eval runs, in `Object.defineProperty`. Our own
-`defineProperty` calls are all on `LiveAPI.prototype` and guarded, so they run
-once; the growth here is per resolution and is the better fit.
+10,000 calls to reach 4 GB.
 
-One thing this measurement cannot settle: RSS cannot separate the V8 heap from
-Max's own C++ allocation, so "V8 heap leak" stays a hypothesis.
+**This growth is not V8 heap.** `vmmap --summary <live pid>` lists V8's heap on
+its own, as the `App-Specific Tag 16` region type. Over 300 full reads on
+12.4.16, Live's RSS grew about 200 MB and that region's resident size grew 4 MB.
+The rest is Max's or Live's own allocation.
+
+### V8 heap grows per Set load
+
+Loading a Set with the device in it adds about **0.8 MB** to the V8 heap, and
+nothing gives it back: 20 loads with no tool calls took it from 59.5 to 75.6 MB.
+Max's `v8` objects share one isolate, and the heap a device built is not freed
+when its Set closes. Whether our code holds it or Max does is not known.
+
+This is what kills Live with a V8 `FatalProcessOutOfMemory`, seen in
+`Object.defineProperty` while the device was loading: 12.4.5 after 2.5 days of
+eval runs, and 12.4.16 after about 2,500 Set loads across e2e runs. So restart
+Live before a full e2e run (`e2e/mcp/README.md`).
 
 ### Where the 3.2 KB goes, and why we keep paying it
 

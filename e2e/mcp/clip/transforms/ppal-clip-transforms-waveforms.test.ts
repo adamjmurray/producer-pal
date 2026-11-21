@@ -12,6 +12,7 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-waveforms
  */
 import { describe, expect, it } from "vitest";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -121,6 +122,24 @@ describe("ppal-clip-transforms-waveforms", () => {
     expect(notes).toMatch(/^v114\b/);
     expect(notes).toMatch(/v14\b.*1\|3/);
     expect(notes).not.toMatch(/v64/); // No notes at mid-velocity
+  });
+
+  it("square() flips exactly at the edges on a triplet period", async () => {
+    // Repeated n/12 notes drift off exact thirds; two per n/6 cycle sit on the edges.
+    const clipId = await createMidiClip(49, "v64 n/12 C3 1|1x24");
+
+    await applyTransform(clipId, "velocity = 64 + 50 * square(n/6)");
+
+    const velocities = interpretNotation(await readClipNotes(clipId), {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    })
+      .toSorted((a, b) => a.start_time - b.start_time)
+      .map((note) => note.velocity);
+
+    expect(velocities).toStrictEqual(
+      Array.from({ length: 24 }, (_, i) => (i % 2 === 0 ? 114 : 14)),
+    );
   });
 
   // A period that divides the note spacing samples ONE phase, so every note

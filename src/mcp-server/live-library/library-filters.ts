@@ -164,13 +164,6 @@ export function deviceTypeForKind(deviceKind: LibraryDeviceKind): number {
 }
 
 /**
- * places.folder_kind values that map to each DB-side source enum.
- * "sample-folder" is not here — it's a V8-only synthetic source for the
- * user-configured custom sample folder, with no DB encoding.
- */
-type DbLibrarySource = Exclude<LibrarySource, "sample-folder">;
-
-/**
  * folder_kind of the "Presets" places (`/Library/Audio/Presets` and the user's
  * copy). Plug-ins install sample libraries there, which Live indexes but its
  * browser hides, and plug-in presets (`.aupreset`, `.vstpreset`), which Live
@@ -178,19 +171,34 @@ type DbLibrarySource = Exclude<LibrarySource, "sample-folder">;
  */
 export const PRESET_FOLDER_KIND = 5;
 
-const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
+/** folder_kind of a pack's place. */
+export const PACK_FOLDER_KIND = 0;
+
+/** folder_kind of Live's "Built-in" place. */
+const BUILTIN_FOLDER_KIND = 8;
+
+/**
+ * SQL on places `p`: its folder_kind for `source`. Live files the Core Library
+ * as a pack (folder_kind 0), but it ships with Live, so it counts as builtin.
+ * Matched by the place's root folder name, which isn't localized.
+ */
+export const SOURCE_FOLDER_KIND = `CASE WHEN p.folder_kind = ${PACK_FOLDER_KIND}
+  AND p.file_id IN (SELECT file_id FROM files WHERE place_id = 0 AND name = 'Core Library')
+  THEN ${BUILTIN_FOLDER_KIND} ELSE p.folder_kind END`;
+
+const SOURCE_TO_FOLDER_KINDS: Record<LibrarySource, number[]> = {
   user: [1, 2],
-  pack: [0],
+  pack: [PACK_FOLDER_KIND],
   "preset-folder": [PRESET_FOLDER_KIND],
-  builtin: [8],
+  builtin: [BUILTIN_FOLDER_KIND],
   cloud: [9],
   plugin: [10],
 };
 
-const FOLDER_KIND_TO_SOURCE: Map<number, DbLibrarySource> = new Map();
+const FOLDER_KIND_TO_SOURCE: Map<number, LibrarySource> = new Map();
 
 for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
-  [DbLibrarySource, number[]]
+  [LibrarySource, number[]]
 >) {
   for (const k of kinds) {
     FOLDER_KIND_TO_SOURCE.set(k, src);
@@ -200,14 +208,13 @@ for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
 /**
  * Map a public source enum to the folder_kind integers it covers. "plugin"
  * also covers plug-in presets in kind 5, and "preset-folder" only the kind 5
- * files not linked to a plug-in; the query adds that. Returns [] for
- * "sample-folder" (no DB encoding); callers should guard.
+ * files not linked to a plug-in; the query adds that.
  *
  * @param source - Public source enum
  * @returns Array of folder_kind integers to IN-match
  */
 export function folderKindsForSource(source: LibrarySource): number[] {
-  return source === "sample-folder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
+  return SOURCE_TO_FOLDER_KINDS[source];
 }
 
 /**

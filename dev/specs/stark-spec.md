@@ -136,7 +136,9 @@ roots, slash bass, and chord qualities (`7♯9` = `7#9`):
   models write it unprompted, so the parser tolerates it while the guidance
   stays on one spelling (ADR-0018).
 - **octave marks** `'` (up) / `,` (down), stackable — shift from the register
-  default, or from an absolute octave when both are present (`C3'` = C4).
+  default, or from an absolute octave when both are present (`C3'` = C4). A note
+  the marks push out of MIDI range is warn-skipped like an absolute one; a chord
+  symbol skips only its notes that land out of range.
 - **duration** `/N` — absolute note value (§ Durations). At most one.
 - **dynamic** `!` accent / `?` soft. Omit = normal. At most one.
 
@@ -258,6 +260,9 @@ the free ordering of the `' , ! ?` suffixes. It applies to every token type:
 drum hit, pitched note, rest, bracket chord, and chord symbol. There is **no
 group repeat** (`(…)*N` is not supported) — repeat multiplies one token only.
 
+`N` over 10000 is a parse error, and a whole string may make at most 10000
+notes.
+
 The serializer **emits** `*N`: a final pass collapses each run of **3+**
 consecutive identical rendered tokens (same core, `/N`, and dynamic) into
 `token*N`, so a read-back of a 16th roll reads `X*16` rather than sixteen `X`s.
@@ -271,7 +276,8 @@ number of copies, matching interpret-time expansion, so the collapse is lossless
 
 Three buckets: soft (`?` / `x`) 60–80, normal (bare / `X`) ~100–110, accent (`!`
 / `^`) 115–127. Velocity is randomized within the bucket on interpret;
-round-trip preserves the bucket, not the exact value.
+round-trip preserves the bucket, not the exact value. Stark carries no velocity
+deviation (positive or negative), so bar|beat's `vA-B` ranges do not exist here.
 
 ---
 

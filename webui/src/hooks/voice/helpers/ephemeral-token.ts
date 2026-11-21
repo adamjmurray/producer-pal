@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import { safeJson } from "#webui/hooks/voice/helpers/safe-json";
 
 /**
  * Fetch an ephemeral `ek_...` token from the backend proxy.
@@ -43,17 +44,4 @@ export async function fetchEphemeralToken(
   }
 
   return json.value;
-}
-
-/**
- * Best-effort JSON read; returns null on failure.
- * @param response - Fetch response
- * @returns Parsed JSON or null
- */
-async function safeJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
 }

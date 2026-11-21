@@ -5,13 +5,8 @@
 
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
-import {
-  type MutableRef,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-} from "preact/hooks";
+import { type RefObject } from "preact";
+import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks";
 import {
   chatInputExtensions,
   markdownEditorExtensions,
@@ -52,7 +47,7 @@ interface MarkdownEditorProps {
    */
   onSubmit?: () => void;
   /** Receives a {@link MarkdownEditorHandle} while mounted, null after. */
-  editorRef?: MutableRef<MarkdownEditorHandle | null>;
+  editorRef?: RefObject<MarkdownEditorHandle | null>;
   className?: string;
   /**
    * Accessible name for the editable region, applied to the content DOM via

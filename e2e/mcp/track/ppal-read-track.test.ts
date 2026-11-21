@@ -20,6 +20,7 @@ import {
   type SkippedTargetResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { LIVE_13_OR_NEWER } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -70,7 +71,14 @@ describe("ppal-read-track", () => {
 
     expect(returnTrack.id).toBeDefined();
     expect(returnTrack.path).toBe("rt0");
-    expect(returnTrack).not.toHaveProperty("sessionClipCount");
+
+    // Live 13 return tracks have a clip slot per scene; Live 12's have none.
+    if (LIVE_13_OR_NEWER) {
+      expect(typeof returnTrack.sessionClipCount).toBe("number");
+    } else {
+      expect(returnTrack).not.toHaveProperty("sessionClipCount");
+    }
+
     expect(returnTrack).not.toHaveProperty("arrangementClipCount");
 
     // Test 4: Read master track
@@ -231,7 +239,7 @@ describe("ppal-read-track", () => {
 
   it("reports each send's return track id alongside its name", async () => {
     // The id is the only thing that tells two same-named returns apart, and
-    // update-track's sends/sendReturn accept it. Only real Live proves the id
+    // update-track's sends accept it. Only real Live proves the id
     // the read reports is the return track's own.
     const liveSet = parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({
@@ -342,6 +350,14 @@ describe("ppal-read-track over a list of targets", () => {
 
     expect(getToolErrorMessage(refused)).toContain(
       "id names the target on its own - don't send ids with it",
+    );
+  });
+
+  it("names ids, as sent, when it arrives beside trackId", async () => {
+    const refused = await readTracks({ ids: "1", trackId: "2" });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "ids names the target on its own - don't send trackId with it",
     );
   });
 

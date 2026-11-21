@@ -48,9 +48,9 @@ are included to get you started.
 ## Drive it from a coding agent
 
 Producer Pal ships a portable [Agent Skill](/guide/skills), built on the
-`SKILL.md` convention shared by Claude Code, Codex CLI, and Gemini CLI. Drop the
-folder into your agent's skills directory and it can control Live through the
-REST API, no MCP client needed.
+`SKILL.md` convention shared by Claude Code, Codex CLI, and Antigravity CLI.
+Drop the folder into your agent's skills directory and it can control Live
+through the REST API, no MCP client needed.
 
 A coding agent can write and run code against the API, iterate on a generative
 script while you listen, and change device settings mid-session:
@@ -103,7 +103,7 @@ works.
 | ------------------------------------------------------- | -------------------------------------------------- |
 | Script Ableton Live without AI                          | [REST API](/guide/rest-api)                        |
 | Build my own interface for Live                         | [REST API](/guide/rest-api)                        |
-| Work from Claude Code, Codex CLI, or Gemini CLI         | [Agent Skill](/guide/skills)                       |
+| Work from Claude Code, Codex CLI, or Antigravity CLI    | [Agent Skill](/guide/skills)                       |
 | Synthesize audio and land it in Live                    | [Companion skills](/guide/skills#companion-skills) |
 | Render a mixdown or stem (macOS only), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
 | Teach the AI a production technique                     | [Skills](/guide/customizing-skills)                |

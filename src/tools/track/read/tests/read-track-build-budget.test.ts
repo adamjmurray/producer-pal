@@ -32,6 +32,7 @@ import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { registerInstrumentRackFixture } from "./helpers/instrument-rack-fixture.ts";
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
+import { inOneRequest } from "#src/tools/clip/read/tests/read-clip-test-helpers.ts";
 
 /** How many chains the throwaway rack carries. */
 const CHAIN_COUNT = 8;
@@ -194,13 +195,17 @@ describe("readTrack build budget", () => {
   it("builds one object per clip slot, not three", () => {
     setupTrackWithSessionClips();
 
-    readTrack({ trackIndex: 0, include: ["session-clips"] });
+    inOneRequest(() => {
+      readTrack({ trackIndex: 0, include: ["session-clips"] });
+    });
 
     // Reading a slot used to check that its track and its scene were there
     // before going for the clip — so a track read rebuilt its own track object
     // once per scene, and built a scene object it never looked at again. A
     // clip that answers already proves both.
-    expect(liveApiBuildStats().resolved).toBe(SLOT_COUNT + 2);
+    // Plus the request's one version check, which decides whether clips can be
+    // step sequencer clips.
+    expect(liveApiBuildStats().resolved).toBe(SLOT_COUNT + 2 + 1);
     expect(resolves("live_set tracks *")).toBe(1);
     expect(resolves("live_set scenes *")).toBe(0);
   });

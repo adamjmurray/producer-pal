@@ -8,20 +8,21 @@ import {
   type PairLabels,
   splitList,
   valueForIndex,
-  warnPairingMismatch,
+  requirePairing,
 } from "./list-pairing.ts";
 
 /**
- * Split a comma-separated param into one entry per target, warning when it
- * names a different number than the call acts on.
+ * Split a comma-separated param into one entry per target, refusing a list
+ * that names a different number than the call acts on.
  *
  * The same rule `name` uses, for any other string param that varies per target:
  * one value covers them all, a list pairs 1:1 in order. Read an entry back with
  * {@link valueForIndex}.
  * @param value - The raw param, as the caller sent it
  * @param count - How many targets the call acts on
- * @param labels - What to call the param and its entries in a warning
+ * @param labels - What to call the param and its entries in an error
  * @returns One entry per target, or null when the value covers every target
+ * @throws Error when the list's length doesn't match the targets
  */
 export function parsePairedValues(
   value: string | null | undefined,
@@ -30,12 +31,12 @@ export function parsePairedValues(
 ): ListEntries | null {
   const parsed = splitList(value ?? undefined, count, labels.param);
 
-  warnPairingMismatch(parsed?.length ?? 0, count, labels);
+  requirePairing(parsed?.length ?? 0, count, labels);
 
   return parsed;
 }
 
-/** What to call each paired param in a mismatch warning. */
+/** What to call each paired param in a mismatch error. */
 export type PairedParamLabels<K extends string> = Record<K, PairLabels>;
 
 /**
@@ -45,7 +46,7 @@ export type PairedParamLabels<K extends string> = Record<K, PairLabels>;
  * Paired against the targets named, not the ones that resolved, so entry k
  * still lands on target k when an earlier target was skipped.
  * @param args - The params, as the caller sent them
- * @param labels - Each param to pair, and what to call it in a warning
+ * @param labels - Each param to pair, and what to call it in an error
  * @param count - How many targets the call named
  * @returns The values for the target at an index
  * @throws Error when a list has an empty entry

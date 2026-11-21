@@ -3,112 +3,144 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A re-created copy ignores arrangementLength, and says it keeps the source's
-// arrangement length only when that was read back.
+// A re-created copy is resized to arrangementLength the way update-clip resizes
+// any arrangement clip, and its entry says what the resize said.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import * as arrangementLength from "#src/tools/actions/duplicate/helpers/clip/arrangement-length.ts";
 import {
   registerArrangementSource,
   registerLiveSet,
   registerTakeLaneSource,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 
-const KEPT =
-  "arrangementLength ignored: the copy keeps the source's arrangement length";
-const IGNORED = "arrangementLength ignored: a re-created copy isn't resized";
 const AUDIO = { is_midi_clip: 0, is_audio_clip: 1, file_path: "/s/loop.wav" };
+const STOPPED =
+  "arrangementLength landed at 1bar: the next clip on the lane starts there";
+
+/**
+ * Stand in for update-clip's resize, answering with a detail.
+ * @param detail - What the resize says about the copy
+ * @returns The spy
+ */
+function spyOnResize(detail?: string) {
+  return vi
+    .spyOn(arrangementLength, "resizeCopy")
+    .mockImplementation(async (id) => [
+      { id, ...(detail != null && { detail }) },
+    ]);
+}
 
 /**
  * Copy the source onto a fresh take lane, asking for a 2-bar length.
  * @param midi - Whether the source is a MIDI clip
- * @param clipLength - The length Live gives an audio copy, in beats
- * @returns The copy's entry detail
+ * @param postCreateFails - Whether filling the new clip fails
+ * @returns The copy's entry
  */
-async function laneCopyDetail(
+async function laneCopy(
   midi: boolean,
-  clipLength?: number,
-): Promise<string | undefined> {
+  postCreateFails = false,
+): Promise<{ id: string; detail?: string }> {
   registerTakeLaneTrack({
     initialLanes: 0,
     hasMidiInput: midi ? 1 : 0,
-    clipLength,
+    postCreateFails,
   });
 
-  const result = (await duplicate({
+  return (await duplicate({
     type: "clip",
     id: "src_clip",
     arrangementStart: "5|1",
     takeLane: 1,
     arrangementLength: "2bar",
-  })) as { detail?: string };
-
-  return result.detail;
+  })) as { id: string; detail?: string };
 }
 
 describe("a re-created copy sent an arrangementLength", () => {
-  it("says the copy keeps the source's arrangement length for a MIDI arrangement clip", async () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
     registerLiveSet();
+  });
+
+  it("resizes a copy re-created on a take lane", async () => {
     registerArrangementSource(true, undefined, { extraProps: { end_time: 4 } });
+    const resize = spyOnResize();
 
-    expect(await laneCopyDetail(true)).toContain(KEPT);
+    const copy = await laneCopy(true);
+
+    expect(resize).toHaveBeenCalledWith(
+      copy.id,
+      "2bar",
+      undefined,
+      undefined,
+      expect.anything(),
+    );
+    expect(copy.detail).toBe("re-created on the take lane");
   });
 
-  it("says so for an audio clip whose copy came out the same length", async () => {
-    registerLiveSet();
-    registerArrangementSource(false, undefined, {
-      extraProps: { ...AUDIO, end_time: 4 },
-    });
+  it("puts what the resize said on the copy's entry", async () => {
+    registerArrangementSource(true, undefined, { extraProps: { end_time: 4 } });
+    spyOnResize(STOPPED);
 
-    // The mock's new audio clip is 4 beats, the source's span.
-    expect(await laneCopyDetail(false)).toContain(KEPT);
+    const { detail } = await laneCopy(true);
+
+    expect(detail).toBe(`re-created on the take lane; ${STOPPED}`);
   });
 
-  // The loss already says the copy's length, so the ignored note must not add
-  // a second, contradicting one.
-  it("states the length once for an audio clip whose copy came out different", async () => {
-    registerLiveSet();
+  // The copy is sized as asked, so the source's length is no longer news.
+  it("drops an audio copy's length loss once it is resized", async () => {
     registerArrangementSource(false, undefined, {
       extraProps: { ...AUDIO, end_time: 16 },
     });
+    spyOnResize();
 
-    const detail = await laneCopyDetail(false);
+    const { detail } = await laneCopy(false);
 
-    expect(detail).toContain(
-      "length is 1bar, not 4bar: Live rebuilds an audio clip from its sample",
-    );
-    expect(detail).toContain(IGNORED);
-    expect(detail).not.toContain("arrangement length");
-    expect(detail?.match(/length is /g)).toHaveLength(1);
+    expect(detail).not.toContain("length is");
   });
 
-  it("says only that it was ignored for a session clip, which has no arrangement length", async () => {
-    registerLiveSet();
-    registerArrangementSource(true, undefined, {
-      extraProps: { is_arrangement_clip: 0, end_time: 4 },
-    });
+  it("doesn't resize a copy that failed partway", async () => {
+    registerArrangementSource(true, undefined, { extraProps: { end_time: 4 } });
+    const resize = spyOnResize();
 
-    const detail = await laneCopyDetail(true);
+    const { detail } = await laneCopy(true, true);
 
-    expect(detail).toContain(IGNORED);
-    expect(detail).not.toContain("arrangement length");
+    expect(detail).toContain("the take-lane copy is incomplete");
+    expect(detail).toContain("not resized");
+    expect(resize).not.toHaveBeenCalled();
+  });
+
+  it("resizes a copy promoted off a take lane", async () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource({ end_time: 4 });
+    const resize = spyOnResize(STOPPED);
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "5|1",
+      arrangementLength: "2bar",
+    })) as { detail?: string };
+
+    expect(resize).toHaveBeenCalledOnce();
+    expect(result.detail).toContain(STOPPED);
   });
 
   // The pre-roll isn't part of a re-created copy, so a copy one loop later
   // doesn't bury it.
   it("copies a session clip onto a lane at its loop length", async () => {
-    registerLiveSet();
     registerMockObject("src_clip", {
       path: livePath.track(0).clipSlot(0).clip(),
       type: "Clip",
@@ -147,32 +179,5 @@ describe("a re-created copy sent an arrangementLength", () => {
         detail: "re-created on the take lane",
       },
     ]);
-  });
-
-  it("makes no kept-length claim when the copy's span can't be read", async () => {
-    registerLiveSet();
-    registerArrangementSource(false, undefined, {
-      extraProps: { ...AUDIO, end_time: 4 },
-    });
-
-    const detail = await laneCopyDetail(false, Number.NaN);
-
-    expect(detail).toContain(IGNORED);
-    expect(detail).not.toContain("arrangement length");
-  });
-
-  it("says the copy keeps the source's arrangement length for a MIDI clip promoted off a take lane", async () => {
-    registerLiveSet();
-    registerTakeLaneTrack({ initialLanes: 1 });
-    registerTakeLaneSource({ end_time: 4 });
-
-    const result = (await duplicate({
-      type: "clip",
-      id: "tl_src_clip",
-      arrangementStart: "5|1",
-      arrangementLength: "2bar",
-    })) as { detail?: string };
-
-    expect(result.detail).toContain(KEPT);
   });
 });

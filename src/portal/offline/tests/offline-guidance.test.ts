@@ -49,7 +49,7 @@ describe("offlineGuidance", () => {
     const text = await guidance(false, true);
 
     expect(text).toContain("Cannot connect to Ableton Live.");
-    expect(text).toContain('ppal-manage action "install-remote-script"');
+    expect(text).toContain('ppal-manage action "install-producer-pal"');
     expect(text).toContain("restart Live");
     expect(text).toContain('ppal-manage action "add-producer-pal"');
     expect(text).toContain(`(Producer Pal ${VERSION})`);
@@ -79,10 +79,10 @@ describe("offlineGuidance", () => {
     const text = await guidance(false, true);
 
     expect(text).toContain(
-      'Or run ppal-manage action "install-remote-script" now (it works without Producer Pal)',
+      'Run ppal-manage action "install-producer-pal" now (it installs the remote script and the device, and works without Producer Pal)',
     );
     expect(text).toContain(
-      'After that, ppal-manage action "add-producer-pal" adds the device.',
+      'After that, ppal-manage action "add-producer-pal" adds the device to a new MIDI track.',
     );
   });
 

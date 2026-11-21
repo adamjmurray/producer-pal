@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import {
   buildClipResultObject,
   type ClipResult,
@@ -22,7 +22,7 @@ import {
   withCreatedScenes,
 } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
@@ -37,7 +37,9 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   noteClipOverwrite,
   noteClipReason,
+  journalEnvelopeLoss,
   noteLanded,
+  sayEnvelopeLoss,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -48,15 +50,28 @@ interface PreparedDestination {
   created: string | null;
 }
 
-interface SlotMoveArgs {
+/** What every move of a session clip to another slot collects into. */
+export interface SlotMoveCollectors {
   clip: LiveAPI;
-  toSlot: ClipSlotPosition;
-  /** Destination tracks the batch has already resolved, keyed by track index. */
-  destinationTracks?: Map<number, LiveAPI>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
+}
+
+interface SlotMoveArgs extends SlotMoveCollectors {
+  toSlot: ClipSlotPosition;
+  /** Destination tracks the batch has already resolved, keyed by track index. */
+  destinationTracks?: Map<number, LiveAPI>;
+}
+
+/** A slot a clip moves between, as Live addresses it and as a call spells it. */
+export interface MoveSlot {
+  /** The slot's Live path */
+  path: PathLike;
+  /** The slot as a call spells it, "t0/s1" or "rt0/s1" */
+  text: string;
+  sceneIndex: number;
 }
 
 /**
@@ -67,11 +82,9 @@ interface SlotMoveArgs {
  * @param args.destinationTracks - Destination tracks the batch already resolved
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
- * @param args.reasons - What each clip has to say beyond its result
  */
 export function handleClipSlotMove(args: SlotMoveArgs): void {
-  const { clip, toSlot, destinationTracks, updatedClips, noteResult, reasons } =
-    args;
+  const { clip, toSlot, destinationTracks, updatedClips, noteResult } = args;
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 
@@ -108,7 +121,28 @@ export function handleClipSlotMove(args: SlotMoveArgs): void {
     return;
   }
 
-  const destination = destinationSlot(args);
+  moveBetweenSlots(
+    args,
+    regularMoveSlot({ trackIndex: srcTrackIndex, sceneIndex: srcSceneIndex }),
+    regularMoveSlot(toSlot),
+  );
+}
+
+/**
+ * Copy a session clip into another slot, then delete the original there. Used
+ * for a move between slots of regular tracks and between return track slots.
+ * The caller has checked the destination track takes the clip.
+ * @param args - The clip and what the move collects into
+ * @param from - The slot the clip leaves
+ * @param to - The slot it moves to
+ */
+export function moveBetweenSlots(
+  args: SlotMoveCollectors,
+  from: MoveSlot,
+  to: MoveSlot,
+): void {
+  const { clip, updatedClips, noteResult, reasons } = args;
+  const destination = destinationSlot(args, to);
 
   if (destination == null) {
     return;
@@ -120,9 +154,7 @@ export function handleClipSlotMove(args: SlotMoveArgs): void {
   // is still there and an up-front warning contradicts the one that follows.
   const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
 
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(srcTrackIndex).clipSlot(srcSceneIndex),
-  );
+  const sourceClipSlot = LiveAPI.from(from.path);
 
   // Look before deleting. duplicate_clip_to reports nothing when it declines a
   // copy, so anything the checks above didn't catch would destroy the clip and
@@ -134,7 +166,7 @@ export function handleClipSlotMove(args: SlotMoveArgs): void {
     refuseSlotMove(
       args,
       withCreatedScenes(
-        `no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+        `no clip landed at ${to.text}, so the original was kept`,
         created,
       ),
     );
@@ -143,21 +175,24 @@ export function handleClipSlotMove(args: SlotMoveArgs): void {
   }
 
   // The copy is in the slot from here: a throw below still has it to report.
-  const destPath = slotPath(toSlot.trackIndex, toSlot.sceneIndex);
+  const destPath = to.text;
 
   noteLanded(reasons, `copy at ${destPath}`, {
     id: newClip.id,
     path: destPath,
   });
+  journalEnvelopeLoss(reasons, clip.id);
 
   if (destinationWasOccupied) {
     noteClipOverwrite(reasons, clip.id, destPath);
   }
 
+  sayEnvelopeLoss(reasons, clip.id);
+
   deleteMovedSource({
     reasons,
     clipId: clip.id,
-    source: slotPath(srcTrackIndex, srcSceneIndex),
+    source: from.text,
     deleteSource: () => sourceClipSlot.call("delete_clip"),
   });
   pushMovedClip(updatedClips, newClip, noteResult, created);
@@ -189,7 +224,7 @@ export function handleArrangementToSlotMove(args: SlotMoveArgs): void {
     return;
   }
 
-  const destination = destinationSlot(args);
+  const destination = destinationSlot(args, regularMoveSlot(toSlot));
 
   if (destination == null) {
     return;
@@ -247,6 +282,19 @@ export function handleArrangementToSlotMove(args: SlotMoveArgs): void {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * A regular track's slot, as a move reads it.
+ * @param position - The slot
+ * @returns The slot, addressed for a move
+ */
+function regularMoveSlot(position: ClipSlotPosition): MoveSlot {
+  return {
+    path: livePath.track(position.trackIndex).clipSlot(position.sceneIndex),
+    text: slotPath(position.trackIndex, position.sceneIndex),
+    sceneIndex: position.sceneIndex,
+  };
+}
 
 /**
  * Report the clip the move landed, naming the scenes reaching it had to make.
@@ -326,9 +374,12 @@ export function arrangementToSlotBlocker(
     return "could not determine its track";
   }
 
-  // Audio is rebuilt from its sample, so a clip that has none can't be moved.
-  if (!canRecreateClip(clip)) {
-    return "it's an audio clip with no sample file; drag it in Live's UI";
+  // Audio is rebuilt from its sample, so a clip that has none can't be moved,
+  // and a step sequencer clip can't be rebuilt at all.
+  const unbuildable = recreateBlocker(clip);
+
+  if (unbuildable != null) {
+    return unbuildable;
   }
 
   return clipCopyBlocker(
@@ -375,19 +426,19 @@ export function destinationTrack(
  * are made — the path says what to create, so the move creates it. Null when
  * the slot still isn't there, in which case the clip is left where it is and
  * its entry says it didn't move.
- * @param args - The clip, the destination, and the call's collectors
+ * @param args - The clip, and the call's collectors
  * @param args.clip - The clip being moved
- * @param args.toSlot - Destination slot position
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
+ * @param to - The slot the clip moves to
  * @returns The destination ClipSlot and the scenes created, or null
  */
 function destinationSlot(
-  args: Omit<SlotMoveArgs, "destinationTracks">,
+  args: SlotMoveCollectors,
+  to: MoveSlot,
 ): PreparedDestination | null {
-  const { toSlot } = args;
-  const path = livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex);
+  const { path } = to;
   const clipSlot = LiveAPI.from(path);
 
   if (clipSlot.exists()) {
@@ -397,7 +448,7 @@ function destinationSlot(
   let created: string | null;
 
   try {
-    created = createMissingScenes(toSlot.sceneIndex);
+    created = createMissingScenes(to.sceneIndex);
   } catch (error) {
     return refuseSlotMove(args, errorMessage(error));
   }
@@ -410,10 +461,7 @@ function destinationSlot(
 
   return refuseSlotMove(
     args,
-    withCreatedScenes(
-      `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
-      created,
-    ),
+    withCreatedScenes(`destination ${to.text} does not exist`, created),
   );
 }
 
@@ -427,13 +475,8 @@ function destinationSlot(
  * @param reason - Why it didn't move
  * @returns Null, for the caller to return
  */
-function refuseSlotMove(
-  {
-    clip,
-    updatedClips,
-    noteResult,
-    reasons,
-  }: Omit<SlotMoveArgs, "destinationTracks">,
+export function refuseSlotMove(
+  { clip, updatedClips, noteResult, reasons }: SlotMoveCollectors,
   reason: string,
 ): null {
   refuseClipWork(reasons, clip.id, `not moved: ${reason}`);

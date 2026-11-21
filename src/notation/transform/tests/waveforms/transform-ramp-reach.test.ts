@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 /**
  * 16th-note hats on a quarter-note grid starting at bar 2 beat 3.
@@ -34,7 +34,7 @@ function reachWarnings(
   transform: string,
   notes = hats(7),
 ): { warnings: string[]; notes: NoteEvent[] } {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
 
   try {
     applyTransforms(notes, transform, 4, 4);
@@ -187,5 +187,50 @@ describe("ramp reach detection", () => {
     );
 
     expect(warnings).toStrictEqual([]);
+  });
+});
+
+describe("a note before the ramp's range start", () => {
+  it("keeps a note that sits a hair under a time selector's start", () => {
+    // 1|1.1 parses to slightly more than the note's 0.1
+    const notes = hats(2).map((note, i) => ({
+      ...note,
+      start_time: [0.1, 0.5][i] as number,
+    }));
+
+    applyTransforms(notes, "1|1.1-1|1.9: velocity = curve(40, 120, 0.5)", 4, 4);
+
+    expect(notes).toHaveLength(2);
+    expect(notes[0]!.velocity).toBe(40);
+  });
+
+  it("keeps a note an earlier line moved before the first note", () => {
+    const notes = hats(3);
+
+    applyTransforms(
+      notes,
+      "timing -= 0.01\nvelocity = curve(20, 127, 0.5)",
+      4,
+      4,
+    );
+
+    expect(notes).toHaveLength(3);
+    expect(notes[0]!.velocity).toBe(20);
+  });
+
+  it("never writes a NaN start or pitch", () => {
+    const notes = hats(3);
+
+    applyTransforms(
+      notes,
+      "timing -= 0.01\ntiming += curve(0, 0.1, 0.5)\npitch += curve(0, 12, 0.5)",
+      4,
+      4,
+    );
+
+    for (const note of notes) {
+      expect(Number.isNaN(note.start_time)).toBe(false);
+      expect(Number.isNaN(note.pitch)).toBe(false);
+    }
   });
 });

@@ -7,6 +7,15 @@ A target the call couldn't carry out keeps its slot as a skip entry:
 
 - `id` or `path` is exactly the caller's spelling, under the param that named
   it. It is all they have to match the entry on.
+- **A skip's path can go stale, and says so.** An earlier target in the same
+  call may move things (a drum chain move, a delete, a track a copy inserts), so
+  that path names another object by the end. Then the entry keeps its `path` and
+  adds one clause to its `detail`: where the object the target resolved to is
+  now, with its id (`; that chain is now t14/d0/pD1/c1 (id 42)`). A path that
+  named nothing when the call began but names something now says
+  `; nothing was there when the call began`. Nothing is added when the path
+  still names what it did, for an `id`, or for an object a later target
+  destroyed. If the lookup fails, the entry is returned without the clause.
 - `detail` is prose, the words a lone target would have thrown. No slugs.
 - `ok` appears only on a skip. A hit says so by having a result, and a key per
   hit is paid for in the caller's context again and again.
@@ -37,12 +46,13 @@ A target the call couldn't carry out keeps its slot as a skip entry:
   target landed.
 - **Nested entries** (`sends`, device `params`, `actions`) follow the same
   shape. When every nested write failed and nothing else was asked of the
-  target, the target is `ok: false` with a `detail` saying none landed. Changes
-  made on the way count as landed and are not undone: the `detail` says what was
-  left (`left an empty Simpler on pad ...`). The exception is wrapping an
-  instrument in a rack: it removes the rack it made, restores the instrument,
-  then throws, because the temporary track it uses isn't something the caller
-  asked for.
+  target, the target is `ok: false` with a `detail` saying none landed and why,
+  per entry — or once (`no param landed — all 800: ...`) when every entry failed
+  for the same reason. Changes made on the way count as landed and are not
+  undone: the `detail` says what was left (`left an empty Simpler on pad ...`).
+  The exception is wrapping an instrument in a rack: it removes the rack it
+  made, restores the instrument, then throws, because the temporary track it
+  uses isn't something the caller asked for.
 - **A write the tool can't do** is refused on the target's entry: a track's
   `pan` in split mode, `leftPan`/`rightPan` in stereo, a gain Live has disabled,
   `mute`/`solo` on the main track, `arm` on a track that can't be armed, a rack

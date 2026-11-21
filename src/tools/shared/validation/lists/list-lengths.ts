@@ -259,7 +259,7 @@ function countEntries(
 ): number {
   const entries = split(value);
 
-  if ((entries.at(-1) ?? "").trim() === "") {
+  if (entries.at(-1)?.trim() === "") {
     entries.pop();
   }
 

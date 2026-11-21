@@ -8,6 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
+import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
   mockServer,
@@ -16,18 +17,7 @@ import {
   serverInfoCalls,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
-
-/**
- * A stand-in for a module with only the exports the code under test reads.
- * Typed `never` so it fits any module's `vi.mock` factory. A function
- * declaration, so it exists when the hoisted factories run.
- * @param exports - The exports to supply
- * @returns The same object
- */
-function partialModule(exports: object): never {
-  return exports as never;
-}
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 /** One client per connect, so the old and new can be told apart. */
 interface FakeClient {
@@ -162,6 +152,8 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     clients.length = 0;
     state.slow = null;
     state.oldVersion = OLD;
+    // The update hint asks the device's GET /config whether it is small-model.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
     mockServer.connect.mockResolvedValue(undefined);
     mockServer.sendToolListChanged.mockResolvedValue(undefined);
     vi.spyOn(console, "error").mockImplementation(() => {});

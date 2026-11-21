@@ -5,10 +5,12 @@
 
 import { vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
 
 /** Where the temp track a browser device loads onto lands. */
 export const TEMP_TRACK = livePath.track(1);
@@ -42,4 +44,28 @@ export function registerTempTrack(
   });
 
   return { tempTrack, songView };
+}
+
+/**
+ * Register the Live Set and a t0 holding one device, where a browser device
+ * is created.
+ * @returns The Live Set and track mocks
+ */
+export function registerTargetTrack(): {
+  liveSet: RegisteredMockObject;
+  track: RegisteredMockObject;
+} {
+  const liveSet = mockWorkingDeviceMoves();
+
+  liveSet.methods.delete_track = vi.fn();
+
+  const track = registerMockObject("track-0", {
+    path: livePath.track(0),
+    type: "Track",
+    properties: { devices: children("existing") },
+  });
+
+  registerMockObject("existing", { path: livePath.track(0).device(0) });
+
+  return { liveSet, track };
 }

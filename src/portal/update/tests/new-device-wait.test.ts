@@ -13,6 +13,7 @@ describe("waitForNewDevice", () => {
       { from: "2.4.0" },
       fakeDevice("2.4.0", "2.5.0"),
       updateDeps(),
+      Date.now() + 50_000,
     );
 
     expect(version).toBe("2.5.0");
@@ -23,6 +24,7 @@ describe("waitForNewDevice", () => {
       { from: "2.5.0-beta", expected: "2.5.0-rc2" },
       fakeDevice("2.5.0-beta", "2.5.0-rc2"),
       updateDeps(),
+      Date.now() + 50_000,
     );
 
     expect(version).toBe("2.5.0-rc2");
@@ -34,7 +36,34 @@ describe("waitForNewDevice", () => {
         { from: "2.4.0", expected: "2.4.0" },
         fakeDevice("2.4.0"),
         updateDeps(),
+        Date.now() + 50_000,
       ),
     ).rejects.toThrow("old version (2.4.0) is still answering");
+  });
+
+  it("gives each connect the time left", async () => {
+    const device = fakeDevice("2.5.0");
+
+    await waitForNewDevice(
+      { from: "2.4.0" },
+      device,
+      updateDeps({ now: () => 1_000 }),
+      31_000,
+    );
+
+    expect(device.connect).toHaveBeenCalledWith(30_000);
+  });
+
+  it("still gives the first connect 1 ms once the deadline has passed", async () => {
+    const device = fakeDevice("2.5.0");
+
+    await waitForNewDevice(
+      { from: "2.4.0" },
+      device,
+      updateDeps({ now: () => 1_000 }),
+      500,
+    );
+
+    expect(device.connect).toHaveBeenCalledWith(1);
   });
 });

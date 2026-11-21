@@ -1,16 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import {
-  setupArrangementClipPath,
-  setupMockProperties,
-} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { resizesLikeLiveClip } from "#src/test/mocks/registry/mock-clip-resize.ts";
+import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
-  it("should preserve envelopes by tiling when exposing hidden content", async () => {
+  it("lengthens the clip itself to reveal hidden content", async () => {
     const trackIndex = 0;
     const handles = setupArrangementClipPath(trackIndex, [
       "789",
@@ -26,7 +25,8 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       throw new Error("Expected source clip mock for 789");
     }
 
-    setupMockProperties(sourceClip, {
+    // On the clip itself, so the resize below can move its end.
+    Object.assign(sourceClip.properties, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,
       is_audio_clip: 0,
@@ -41,15 +41,14 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
       muted: 0,
       playing_status: 1,
     });
+    resizesLikeLiveClip(sourceClip);
 
     const result = await updateClip({
       id: "789",
       arrangementLength: "1bar+n5/8", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });
 
-    // Should tile the content (note: updateClip doesn't actually do this yet, this tests the intent)
-    const firstResult = Array.isArray(result) ? result[0] : result;
-
-    expect(firstResult).toBeDefined();
+    // The one clip grows in place, keeping its id and envelopes.
+    expect(result).toStrictEqual(expect.objectContaining({ id: "789" }));
   });
 });

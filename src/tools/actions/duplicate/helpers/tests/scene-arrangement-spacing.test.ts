@@ -16,8 +16,12 @@ vi.mock(import("../sources/duplicate-scene.ts"), () => ({
 }));
 
 vi.mock(import("../sources/scene-clips.ts"), () => ({
-  forEachClipInScene: vi.fn(),
-  readScene: vi.fn(() => ({ sceneIndex: 0, clips: [], length: 16 })),
+  readScene: vi.fn(() => ({
+    sceneIndex: 0,
+    clips: [],
+    returnClips: [],
+    length: 16,
+  })),
   readSceneClips: vi.fn(),
   sceneIndexOf: vi.fn(),
 }));
