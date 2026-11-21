@@ -120,6 +120,32 @@ export function parseJudgeThinking(
 }
 
 /**
+ * Re-key levels after models were renamed (e.g. by `--context`).
+ *
+ * @param thinking - Level per original model key
+ * @param before - The models the levels were parsed for
+ * @param after - The same models, same order, after renaming
+ * @returns Level per renamed model key
+ */
+export function renameThinkingModels(
+  thinking: ThinkingByModel,
+  before: ModelSpec[],
+  after: ModelSpec[],
+): ThinkingByModel {
+  const renamed = new Map<string, ThinkingLevel>();
+
+  for (const [i, spec] of before.entries()) {
+    const level = thinking.get(modelKey(spec));
+
+    if (level != null) {
+      renamed.set(modelKey(after[i] as ModelSpec), level);
+    }
+  }
+
+  return renamed;
+}
+
+/**
  * Format the levels for the run header.
  *
  * @param thinking - Level per model key

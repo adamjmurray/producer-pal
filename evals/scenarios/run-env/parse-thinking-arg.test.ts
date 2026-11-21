@@ -9,6 +9,7 @@ import {
   describeThinking,
   parseJudgeThinking,
   parseThinkingArgs,
+  renameThinkingModels,
 } from "./parse-thinking-arg.ts";
 
 const LUNA: ModelSpec = { provider: "codex-code", model: "luna" };
@@ -159,5 +160,28 @@ describe("describeThinking", () => {
         parseThinkingArgs(["high,codex-code/luna=low"], [LUNA, SOL]),
       ),
     ).toBe("codex-code/luna=low, openai/gpt-6.1-sol=high");
+  });
+});
+
+describe("renameThinkingModels", () => {
+  it("moves a level to the renamed model's key", () => {
+    const thinking = parseThinkingArgs(["local/qwen3.8=off"], [LOCAL, SOL]);
+    const copy: ModelSpec = { provider: "local", model: "qwen3.8-ctx65536" };
+
+    expect([
+      ...renameThinkingModels(thinking, [LOCAL, SOL], [copy, SOL]),
+    ]).toStrictEqual([["local/qwen3.8-ctx65536", "off"]]);
+  });
+
+  it("keeps the other models' keys when only one is renamed", () => {
+    const thinking = parseThinkingArgs(["off"], [LOCAL, GEMINI]);
+    const copy: ModelSpec = { provider: "local", model: "qwen3.8-ctx65536" };
+
+    expect([
+      ...renameThinkingModels(thinking, [LOCAL, GEMINI], [copy, GEMINI]),
+    ]).toStrictEqual([
+      ["local/qwen3.8-ctx65536", "off"],
+      ["google/gemini-3.8-flash", "off"],
+    ]);
   });
 });

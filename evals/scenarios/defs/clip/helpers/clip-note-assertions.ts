@@ -8,7 +8,7 @@
  * note match, and the expected-vs-actual diff a failure prints.
  */
 
-import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
+import { hasPerfectMatching } from "./bipartite-matching.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
