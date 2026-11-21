@@ -78,8 +78,9 @@ is the cubic Bezier Live stores on the event that starts the segment
   `random` is accepted. An end can be a display value in parentheses,
   `rand((200 Hz), (2 kHz))`, which is converted to raw first, so the roll is
   even in raw values; a display end needs both ends written. The parser only
-  passes the range on: the tool rolls once it knows the parameter. A rolled
-  value keeps 6 significant digits. There is no seed.
+  passes the range on: the tool rolls once it knows the parameter, and on an
+  option list it rolls a whole option. A rolled value keeps 6 significant
+  digits. There is no seed.
 - **`~rand(min, max)`** rolls the curve amount, once per point the connector
   arrives at. Its ends are plain numbers inside -1..1.
 - A read never prints any of these: it lists every point.

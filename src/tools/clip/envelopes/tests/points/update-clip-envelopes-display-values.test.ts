@@ -359,6 +359,24 @@ describe("updateClip - envelope points written as display values", () => {
     vi.restoreAllMocks();
   });
 
+  it("rolls a whole option on an option list, each as likely as the next", async () => {
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.34)
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(0.6);
+
+    await updateClip({
+      id: "123",
+      envelopes:
+        "t0/d0/Filter Type: 1|1x4@n/4 rand((Low-pass), (Notch)) _ 2|1 rand(2, 1)",
+    });
+
+    expect(writtenValues()).toStrictEqual([0, 1, 2, 2, 2]);
+    vi.restoreAllMocks();
+  });
+
   it("never rounds a roll past its range", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.9999999);
 
@@ -406,10 +424,6 @@ describe("updateClip - envelope points written as display values", () => {
     [
       "pan: 1|1 rand(-1, 1.2)",
       "not written: rand() end 1.2 is outside the parameter's range -1..1",
-    ],
-    [
-      "t0/d0/Filter Type: 1|1 rand((Low-pass), (Notch))",
-      "not written: rand() can't roll between an option list's labels; write each point's option",
     ],
   ])("refuses %s whatever it would roll", async (line, why) => {
     await expectRefused(line, why);

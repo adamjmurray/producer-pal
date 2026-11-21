@@ -68,9 +68,11 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `not written: rand() end -1 is outside the parameter's range 0..1`. An end can
   be a display value, `rand((200 Hz), (2 kHz))`, converted like a point's (one
   past the range is clamped and noted); the roll is even in raw values. On an
-  option list a range of labels is refused. A hosted plug-in's param can't be
-  asked its range or whether it is an option list, so there a raw end is only
-  checked by the write itself and a range of labels still rolls.
+  option list it rolls a whole option from one end to the other, each as likely
+  as the next, and the ends can be labels: `rand((Low-pass), (Notch))`. A hosted
+  plug-in's param can't be asked its range or whether it is an option list, so
+  there a raw end is only checked by the write itself and an option list rolls
+  fractions.
 
 - **Times are read in each clip's meter.** Only the syntax (points, values,
   curves, connectors) is checked before anything is written. Points that run

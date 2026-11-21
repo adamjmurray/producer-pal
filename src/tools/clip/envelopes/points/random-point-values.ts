@@ -10,7 +10,6 @@
 import {
   type EnvelopeRand,
   type EnvelopeRandEnd,
-  isRawRand,
   rollEnvelopeRand,
 } from "#src/notation/barbeat/envelope/envelope-rand.ts";
 import {
@@ -50,7 +49,9 @@ export function randomPointValues(
     return toRaw(points as DisplayEnvelopePoint[]);
   }
 
-  checkRanges(ranges, limits());
+  const parameter = limits();
+
+  checkRanges(ranges, parameter);
 
   // The display ends ride along as extra points, to share one conversion.
   const displays = [
@@ -91,7 +92,9 @@ export function randomPointValues(
       return "rand" in written
         ? {
             ...point,
-            value: rollEnvelopeRand(
+            value: (parameter?.quantized === true
+              ? rollOption
+              : rollEnvelopeRand)(
               rawEnd(written.rand.min),
               rawEnd(written.rand.max),
             ),
@@ -134,6 +137,19 @@ export function targetLimits(
 }
 
 /**
+ * Roll one option of an option list, each as likely as the next.
+ * @param min - One end, an option's raw value
+ * @param max - The other end
+ * @returns A whole raw value from one end to the other
+ */
+function rollOption(min: number, max: number): number {
+  const low = Math.round(Math.min(min, max));
+  const high = Math.round(Math.max(min, max));
+
+  return Math.min(high, low + Math.floor(Math.random() * (high - low + 1)));
+}
+
+/**
  * Refuse a range the parameter can't take.
  * @param ranges - Each rand() range the line writes
  * @param limits - The parameter's limits, when they can be read
@@ -148,12 +164,6 @@ function checkRanges(
   }
 
   for (const range of ranges) {
-    if (limits.quantized && !isRawRand(range)) {
-      throw new Error(
-        "not written: rand() can't roll between an option list's labels; write each point's option",
-      );
-    }
-
     const past = [range.min, range.max]
       .filter((end) => typeof end === "number")
       .find((end) => end < limits.min || end > limits.max);
