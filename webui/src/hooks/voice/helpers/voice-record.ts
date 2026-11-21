@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type RealtimeItem } from "@openai/agents/realtime";
+import { extractUserText } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { isGeminiRealtimeModelId } from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
@@ -63,11 +64,7 @@ export function deriveVoiceTitle(items: RealtimeItem[]): string | null {
       continue;
     }
 
-    const text = item.content
-      .map((c) => (c.type === "input_text" ? c.text : (c.transcript ?? "")))
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    const text = extractUserText(item).trim();
 
     if (text) {
       return text.slice(0, 80);
