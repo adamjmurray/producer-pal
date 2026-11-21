@@ -31,6 +31,7 @@ import { envelopeWritePoints } from "./points/envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
 import { narrowRangeNote } from "./points/narrow-range-note.ts";
 import {
+  HOSTED_LIMITS,
   randomPointValues,
   targetLimits,
 } from "./points/random-point-values.ts";
@@ -380,10 +381,10 @@ function readPoints(
           "hosted" in resolved
             ? hostedRawPointValues(displayPoints, resolved.hosted)
             : rawPointValues(displayPoints, resolved.target, address.track),
-        // Nor can an unmapped slot say what range it takes.
+        // Its values are the plug-in's normalized 0 to 1, whatever it shows.
         () =>
           "hosted" in resolved
-            ? undefined
+            ? HOSTED_LIMITS
             : targetLimits(resolved.target, address.track),
       ),
       converted,

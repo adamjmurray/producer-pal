@@ -29,6 +29,16 @@ export interface ParameterLimits {
 }
 
 /**
+ * A hosted plug-in's param: always normalized. Whether it is an option list
+ * can't be asked, so it rolls fractions.
+ */
+export const HOSTED_LIMITS: ParameterLimits = {
+  min: 0,
+  max: 1,
+  quantized: false,
+};
+
+/**
  * Give every point its raw value, rolling the ones written as `rand()`.
  * @param points - The parsed notation
  * @param toRaw - Converts display values to raw ones, for this parameter

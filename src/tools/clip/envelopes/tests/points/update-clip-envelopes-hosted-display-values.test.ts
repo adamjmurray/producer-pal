@@ -175,6 +175,20 @@ describe("updateClip - display values on a hosted plug-in's param", () => {
     );
   });
 
+  it.each([
+    ["rand()", -1],
+    ["rand(0, 1.5)", 1.5],
+  ])(
+    "refuses %s, whose end is past a hosted param's 0..1",
+    async (value, end) => {
+      await expectRefused(
+        wrapper,
+        `1|1x4@n/4 ${value}`,
+        `not written: rand() end ${end} is outside the parameter's range 0..1`,
+      );
+    },
+  );
+
   it("says what the param shows when nothing matches", async () => {
     finds(wrapper, [
       { error: 'nothing displays as "loud"; it shows values like Off, On' },
