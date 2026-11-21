@@ -379,6 +379,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]);
     });
 
+    it("rolls a whole option on an option-list parameter", async () => {
+      const device = await createTestDeviceAt(ctx.client!, "Reverb", TRACK);
+      const id = await emptyClip();
+
+      // Device On is an Off/On list on every device.
+      expect(
+        await writeEnvelopes(id, `${device}/Device On: 1|1x16@n/16 rand(0, 1)`),
+      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+
+      const values = (await bareEvents(id))
+        .split(" _ ")
+        .map((point) => Number(point.split(" ")[1]));
+
+      // A fraction would mean it rolled between the options.
+      expect(values.every((value) => value === 0 || value === 1)).toBe(true);
+      expect(new Set(values).size).toBe(2);
+    });
+
     it("writes values given as what Live displays", async () => {
       const id = await emptyClip();
 
