@@ -1577,12 +1577,12 @@ function bisect(index, samples, target) {
   const bracket = bracketOf(shown, target);
   let best = closest(samples, shown, target);
 
-  // Past either end, the closest sample.
+  // Past every number the param shows: the closest sample.
   if (bracket == null) return { value: best.value, outside: best.diff > 0 };
 
-  const { pair, loIsLow } = bracket;
-  let lo = samples[pair].value;
-  let hi = samples[pair + 1].value;
+  const { from, to, loIsLow } = bracket;
+  let lo = samples[from].value;
+  let hi = samples[to].value;
 
   for (let step = 0; step < BISECT_STEPS && best.diff > 0; step++) {
     const mid = (lo + hi) / 2;
@@ -1591,10 +1591,11 @@ function bisect(index, samples, target) {
 
     const n = displayNumber(String(readParam(index).display ?? ""));
 
-    // No number: past the last one, toward the end that shows none.
+    // No number: past the last one, toward the end that shows none. Between
+    // two numbers it's a gap ("Off"), and the closest so far stands.
     if (n == null) {
-      if (shown[pair] == null) lo = mid;
-      else if (shown[pair + 1] == null) hi = mid;
+      if (shown[from] == null) lo = mid;
+      else if (shown[to] == null) hi = mid;
       else break;
       continue;
     }
@@ -1609,31 +1610,33 @@ function bisect(index, samples, target) {
   return { value: best.value };
 }
 
-// The neighbouring samples the target lies between, as {pair, loIsLow}: the
-// first numeric pair that brackets it, else an end that shows no number
-// ("-inf dB") beside the first or last number, when the target is past it.
+// The samples the target lies between, as {from, to, loIsLow}: the first two
+// numbers in a row that bracket it (samples between them showing none are
+// skipped), else an end that shows no number ("-inf dB") beside the first or
+// last number, when the target is past it. Null when it is past every number.
 function bracketOf(shown, target) {
-  for (let i = 0; i < shown.length - 1; i++) {
-    const a = shown[i];
-    const b = shown[i + 1];
+  const at = shown.flatMap((n, i) => (n == null ? [] : [i]));
 
-    if (a != null && b != null && Math.min(a, b) <= target && target <= Math.max(a, b)) {
-      return { pair: i, loIsLow: a <= b };
+  for (let k = 0; k < at.length - 1; k++) {
+    const a = shown[at[k]];
+    const b = shown[at[k + 1]];
+
+    if (Math.min(a, b) <= target && target <= Math.max(a, b)) {
+      return { from: at[k], to: at[k + 1], loIsLow: a <= b };
     }
   }
 
-  const at = shown.flatMap((n, i) => (n == null ? [] : [i]));
   const first = at[0];
   const last = at[at.length - 1];
   const upFirst = shown[first] <= shown[at[1]];
   const upLast = shown[at[at.length - 2]] <= shown[last];
 
   if (first > 0 && (upFirst ? target < shown[first] : target > shown[first])) {
-    return { pair: first - 1, loIsLow: upFirst };
+    return { from: first - 1, to: first, loIsLow: upFirst };
   }
 
   if (last < shown.length - 1 && (upLast ? target > shown[last] : target < shown[last])) {
-    return { pair: last, loIsLow: upLast };
+    return { from: last, to: last + 1, loIsLow: upLast };
   }
 
   return null;

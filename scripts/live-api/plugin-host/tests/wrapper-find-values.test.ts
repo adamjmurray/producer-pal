@@ -116,6 +116,19 @@ describe("wrapper find", () => {
     expect(current()).toBe(START);
   });
 
+  it("doesn't flag a number that falls in a gap between the numbers shown", () => {
+    // "Off" around the middle, 0 to 10 dB either side.
+    const { found, current } = find(
+      [{ text: "5 dB", number: 5 }],
+      "Plug",
+      (v) => (Math.abs(v - 0.5) < 0.05 ? "Off" : `${(v * 10).toFixed(2)} dB`),
+    );
+
+    expect(found.values[0]?.outside).toBeUndefined();
+    expect(found.values[0]?.error).toBeUndefined();
+    expect(current()).toBe(START);
+  });
+
   it("samples the param once, however many values are asked", () => {
     const one = find([{ text: "0.00 dB", number: 0 }]);
     const two = find([
