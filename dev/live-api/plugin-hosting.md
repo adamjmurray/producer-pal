@@ -255,6 +255,17 @@ param back and says what the param does show. One request covers a whole
 that matches more than one param is refused; two entries reaching one param
 write the last.
 
+Every search sweeps the param. Checked by ear on Diva (VST3) under a held note,
+setting the filter frequency, an oscillator's tune and the chorus mix: not
+jarring or glitchy, at most a slight pitch glide. Other plug-ins are unchecked.
+
+Keeping each param's samples, so only its first search sweeps, was built and
+dropped: on Diva it sounded the same and a write took as long (about 0.2 s
+either way). A plug-in can change what a param shows (a rate going from Hz to
+1/16 when sync turns on), so kept samples have to be read again before they're
+trusted, and a stale one sets a wrong value silently. Worth another look only if
+a sweep is audible on some plug-in.
+
 ### Params the plug-in names alike
 
 Plug-ins repeat names across modules: two envelopes, each with an "Attack". The
