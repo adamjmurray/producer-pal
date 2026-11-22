@@ -135,7 +135,7 @@ describe("settleOllamaThinking", () => {
     ).toStrictEqual({});
   });
 
-  it("asks once per model, and again after a network error", async () => {
+  it("asks once per model", async () => {
     const body = { model: "m", reasoning_effort: "high" };
     const mock = stubFetch({ capabilities: ["thinking"] });
 
@@ -143,13 +143,18 @@ describe("settleOllamaThinking", () => {
     await send(mock, "drop", body);
 
     expect(mock).toHaveBeenCalledTimes(3);
-
-    resetOllamaThinkingCache();
-    const offline = stubFetch("network-error");
-
-    await send(offline, "drop", body);
-    await send(offline, "drop", body);
-
-    expect(offline).toHaveBeenCalledTimes(4);
   });
+
+  it.each(["http-error", "network-error"] as const)(
+    "asks again after a failed lookup (%s)",
+    async (show) => {
+      const body = { model: "m", reasoning_effort: "high" };
+      const failing = stubFetch(show);
+
+      await send(failing, "drop", body);
+      await send(failing, "drop", body);
+
+      expect(failing).toHaveBeenCalledTimes(4);
+    },
+  );
 });
