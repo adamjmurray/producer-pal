@@ -41,11 +41,13 @@ export function buildProviderOptions(
   }
 
   if (provider === "lmstudio") {
-    // LM Studio takes an effort for any model, but "none" doesn't turn
-    // reasoning off there, so Off sends nothing.
-    return toThinkingEffort(thinking) === "max"
-      ? { lmstudio: { reasoningEffort: "xhigh" } }
-      : undefined;
+    // LM Studio takes an effort for any model: one that can't reason, or
+    // can't stop, ignores it. Same names as OpenRouter: "none" and "xhigh".
+    const reasoningEffort = mapThinkingToOpenRouterEffort(
+      toThinkingEffort(thinking),
+    );
+
+    return reasoningEffort ? { lmstudio: { reasoningEffort } } : undefined;
   }
 
   if (provider === "openrouter") {

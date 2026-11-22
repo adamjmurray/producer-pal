@@ -153,11 +153,13 @@ describe("buildProviderOptions for Ollama", () => {
 });
 
 describe("buildProviderOptions for LM Studio", () => {
-  it("sends xhigh at Max and nothing otherwise", () => {
+  it("sends xhigh at Max, none at Off and nothing at Default", () => {
     expect(buildProviderOptions("lmstudio", "Max", "m")).toStrictEqual({
       lmstudio: { reasoningEffort: "xhigh" },
     });
-    expect(buildProviderOptions("lmstudio", "Off", "m")).toBeUndefined();
+    expect(buildProviderOptions("lmstudio", "Off", "m")).toStrictEqual({
+      lmstudio: { reasoningEffort: "none" },
+    });
     expect(buildProviderOptions("lmstudio", "Default", "m")).toBeUndefined();
   });
 });
