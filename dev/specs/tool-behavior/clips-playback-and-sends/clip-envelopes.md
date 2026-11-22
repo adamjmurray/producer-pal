@@ -69,7 +69,9 @@ remote script. A line it can't write is a `detail` on that clip's entry
   be a display value, `rand((200 Hz), (2 kHz))`, converted like a point's (one
   past the range is clamped and noted); the roll is even in raw values. On an
   option list it rolls a whole option from one end to the other, each as likely
-  as the next, and the ends can be labels: `rand((Low-pass), (Notch))`. A hosted
+  as the next, and the ends can be labels: `rand((Low-pass), (Notch))`. Between
+  fractional raw ends it rolls only the options inside them (`rand(0.5, 2.5)`
+  rolls 1 or 2), or the one nearest their middle when none is. A hosted
   plug-in's param always takes 0 to 1, so that is the range its raw ends must
   fit. It can't be asked whether it is an option list, so there an option list
   rolls fractions.

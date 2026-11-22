@@ -379,22 +379,29 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]);
     });
 
-    it("rolls a whole option on an option-list parameter", async () => {
+    it("rolls whole options on an option-list parameter, inside the ends", async () => {
       const device = await createTestDeviceAt(ctx.client!, "Reverb", TRACK);
       const id = await emptyClip();
 
       // Device On is an Off/On list on every device.
-      expect(
-        await writeEnvelopes(id, `${device}/Device On: 1|1x16@n/16 rand(0, 1)`),
-      ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
+      const roll = async (range: string): Promise<number[]> => {
+        expect(
+          await writeEnvelopes(id, `${device}/Device On: 1|1x16@n/16 ${range}`),
+        ).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
 
-      const values = (await bareEvents(id))
-        .split(" _ ")
-        .map((point) => Number(point.split(" ")[1]));
+        return (await bareEvents(id))
+          .split(" _ ")
+          .map((point) => Number(point.split(" ")[1]));
+      };
 
       // A fraction would mean it rolled between the options.
+      const values = await roll("rand(0, 1)");
+
       expect(values.every((value) => value === 0 || value === 1)).toBe(true);
       expect(new Set(values).size).toBe(2);
+
+      // On (1) is the only option from 0.4 to 1.
+      expect(new Set(await roll("rand(0.4, 1)"))).toStrictEqual(new Set([1]));
     });
 
     it("writes values given as what Live displays", async () => {

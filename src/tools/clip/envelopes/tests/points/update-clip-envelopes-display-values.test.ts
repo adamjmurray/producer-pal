@@ -377,6 +377,23 @@ describe("updateClip - envelope points written as display values", () => {
     vi.restoreAllMocks();
   });
 
+  it("rolls only the options inside fractional ends", async () => {
+    vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.99);
+
+    await updateClip({
+      id: "123",
+      envelopes:
+        "t0/d0/Filter Type: 1|1x2@n/4 rand(0.5, 1.5) _ 2|1 rand(1.4, 1.8)",
+    });
+
+    // 1 is the only option in 0.5..1.5; none is in 1.4..1.8, so the nearest.
+    expect(writtenValues()).toStrictEqual([1, 1, 2]);
+    vi.restoreAllMocks();
+  });
+
   it("never rounds a roll past its range", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.9999999);
 

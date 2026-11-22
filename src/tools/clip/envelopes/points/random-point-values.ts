@@ -153,8 +153,12 @@ export function targetLimits(
  * @returns A whole raw value from one end to the other
  */
 function rollOption(min: number, max: number): number {
-  const low = Math.round(Math.min(min, max));
-  const high = Math.round(Math.max(min, max));
+  const from = Math.min(min, max);
+  const to = Math.max(min, max);
+  // Only options inside the ends; when none is, the one nearest their middle.
+  const inside = Math.ceil(from) <= Math.floor(to);
+  const low = inside ? Math.ceil(from) : Math.round((from + to) / 2);
+  const high = inside ? Math.floor(to) : low;
 
   return Math.min(high, low + Math.floor(Math.random() * (high - low + 1)));
 }
