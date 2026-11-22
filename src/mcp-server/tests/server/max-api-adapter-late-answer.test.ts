@@ -7,11 +7,17 @@ import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
+import { V8_STARTED_ROUTE } from "#src/shared/max/v8-started-contract.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
+  registerV8StartedRoute,
   setTimeoutForTesting,
 } from "../../max-api-adapter.ts";
+import {
+  clearNodeRoutes,
+  handleNodeRequest,
+} from "#src/mcp-server/rpc/node-request-protocol.ts";
 import { endUndoStep } from "#src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts";
 
 // Tested on its own. A real undo-step end here holds the queue between tests
@@ -121,5 +127,45 @@ describe("Max API Adapter: a timed-out write", () => {
       {},
       result,
     );
+  });
+
+  it("stops waiting for the late answer when V8's script loads again", async () => {
+    clearNodeRoutes();
+    registerV8StartedRoute();
+
+    const { outlet, first, second } = startTimedOutWrite();
+
+    await vi.advanceTimersByTimeAsync(FIRST_TIMEOUT_MS);
+    await first;
+    expect(outlet).toHaveBeenCalledTimes(1);
+
+    await handleNodeRequest("1", JSON.stringify({ route: V8_STARTED_ROUTE }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The second write went to V8, with no wait for the cap.
+    const sent = outlet.mock.calls.filter(([name]) => name === "mcp_request");
+
+    expect(sent).toHaveLength(2);
+    answer(outlet, outlet.mock.calls.indexOf(sent[1]!));
+
+    const result = await second;
+
+    expect(result.isError).toBeUndefined();
+  });
+
+  it("answers a call V8 had when its script loads again", async () => {
+    clearNodeRoutes();
+    registerV8StartedRoute();
+    setTimeoutForTesting(MAX_TIMEOUT_MS);
+    Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+    const running = callLiveApi("ppal-read-live-set", {});
+
+    await handleNodeRequest("1", JSON.stringify({ route: V8_STARTED_ROUTE }));
+
+    const result = await running;
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain("restarted while this call");
   });
 });

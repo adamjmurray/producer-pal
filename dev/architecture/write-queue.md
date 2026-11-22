@@ -40,8 +40,10 @@ half done: two of the three envelopes it was writing.
   Node keeps listening for V8's late answer, and the write keeps the turn, and
   the reads behind it, until that answer comes. Node gives up after
   `MAX_TIMEOUT_MS` (55 s), longer than any single wait inside V8, and frees the
-  queue. A late answer that never comes means V8's script was reloaded while
-  Node stayed up, or V8 is stuck.
+  queue. V8 tells Node each time its script loads (the `v8.started` route), and
+  Node then answers every call V8 had and stops waiting for late ones, so a
+  reload doesn't hold the queue. A late answer that still never comes means V8
+  is stuck.
 - **Limits.** A user editing Live during a wait can still shift things under a
   write. A write that arrives after a read can still land while that read waits
   on the remote script (read-clip envelopes, read-device macros or Simpler), so

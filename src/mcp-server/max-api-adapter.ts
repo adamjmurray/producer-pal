@@ -25,7 +25,11 @@ import { withWriteQueue } from "./rpc/write-queue/write-queue.ts";
 import { markStillRunning } from "./rpc/write-queue/still-running.ts";
 import { endUndoStep } from "./rpc/remote-script/forwarded/end-undo-step.ts";
 import { nodeError, nodeInfo, nodeWarn } from "./node-for-max-logger.ts";
-import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
+import {
+  handleNodeRequest,
+  registerNodeRoute,
+} from "./rpc/node-request-protocol.ts";
+import { V8_STARTED_ROUTE } from "#src/shared/max/v8-started-contract.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
 export { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -81,7 +85,7 @@ const pendingRequests = new Map<string, PendingRequest>();
 const LATE_ANSWER_CAP_MS = MAX_TIMEOUT_MS;
 
 /** Timed-out calls V8 may still be running; each entry takes the late answer. */
-const lateRequests = new Map<string, (answer: McpResponse) => void>();
+const lateRequests = new Map<string, (answer: McpResponse | null) => void>();
 
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 
@@ -236,6 +240,32 @@ function waitForLateAnswer(
       lateRequests.delete(requestId);
       resolve(answer);
     });
+  });
+}
+
+/**
+ * Register the route V8 calls when its script loads. A load drops every call
+ * V8 had, so the ones still waiting are answered now and the timed-out ones
+ * stop holding the write queue for a late answer that can't come.
+ */
+export function registerV8StartedRoute(): void {
+  registerNodeRoute(V8_STARTED_ROUTE, () => {
+    for (const [requestId, pending] of pendingRequests) {
+      clearTimeout(pending.timeout);
+      pendingRequests.delete(requestId);
+      pending.resolve(
+        formatErrorResponse(
+          "Producer Pal's Live API adapter restarted while this call was running. " +
+            "It may have partly applied: re-read before acting.",
+        ),
+      );
+    }
+
+    for (const giveUp of lateRequests.values()) {
+      giveUp(null);
+    }
+
+    return {};
   });
 }
 

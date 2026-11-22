@@ -7,6 +7,7 @@
 import Max from "max-api";
 import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { registerV8StartedRoute } from "./max-api-adapter.ts";
 import { syncDeviceInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { registerDeviceReportRoute } from "./rpc/device-install/device-report-route.ts";
 import { askDeviceToReport } from "./rpc/device-install/device-source.ts";
@@ -29,6 +30,7 @@ registerDeviceReportRoute();
 registerGlobalContextNodeRoutes();
 registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();
+registerV8StartedRoute();
 
 // Cast process to access Node.js argv (max-globals.d.ts has limited process type)
 const { port } = parseServerArgs(

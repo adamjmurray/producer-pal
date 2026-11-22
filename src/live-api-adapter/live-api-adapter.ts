@@ -11,6 +11,7 @@ import {
   DEVICE_REPORT_ROUTE,
   type DeviceReportArgs,
 } from "#src/shared/max/device-install-contract.ts";
+import { V8_STARTED_ROUTE } from "#src/shared/max/v8-started-contract.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
@@ -680,6 +681,10 @@ maxLog(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 // re-entrantly: this call returns before that echo arrives, which is why the
 // load-vs-edit split in projectContext() can't be scoped to this statement.
 outlet(0, "started");
+
+// Tell Node too, so it stops waiting on calls this load dropped. Nothing hears
+// it when Node isn't up yet, and then there is nothing to drop.
+detachWarningCapture(() => requestNode(V8_STARTED_ROUTE));
 
 /**
  * Check the Live version meets the minimum requirement.
