@@ -13,16 +13,16 @@ import {
   type WrittenEnvelopePoint,
 } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { isRawRand } from "#src/notation/barbeat/envelope/envelope-rand.ts";
-import { envelopeParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
+import {
+  envelopeDevice,
+  envelopeParameter,
+} from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import { rawValueForParam } from "#src/tools/device/update/helpers/params/param-value-interpretation.ts";
 import { normalizeParamValue } from "#src/tools/device/update/update-device-param-parser.ts";
 import { trimmedParamName } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { strForValue } from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import { type EnvelopeTrack, trackObject } from "../envelope-track.ts";
 import { type EnvelopeTarget } from "../targets/envelope-targets.ts";
-
-/** The tail a Live path adds to a device's own path to name one of its params. */
-const PARAMETER_TAIL = / parameters \d+$/;
 
 /**
  * Whether any point gives a display value in place of a raw one, as itself or
@@ -77,7 +77,7 @@ export function rawPointValues(
     );
   }
 
-  const deviceName = deviceNameOf(param);
+  const deviceName = deviceNameOf(target, track);
   const paramName = trimmedParamName(param);
   // An envelope often repeats a value, and a search is ~60 reads of the param.
   const converted = new Map<string, number>();
@@ -166,16 +166,21 @@ function rawValue(
 }
 
 /**
- * The name of the device a parameter belongs to, for its recorded units.
- * @param param - The parameter
- * @returns The device's class_display_name, or undefined for a mixer parameter
+ * The name of the device a target's parameter sits on, which picks the unit a
+ * bare number is read in.
+ * @param target - The address the remote script takes
+ * @param track - The track the clip sits on
+ * @returns Its class_display_name; undefined for a mixer parameter
  */
-function deviceNameOf(param: LiveAPI): string | undefined {
-  if (!PARAMETER_TAIL.test(param.path)) {
+function deviceNameOf(
+  target: EnvelopeTarget,
+  track: EnvelopeTrack,
+): string | undefined {
+  if (target.device == null || typeof target.parameter !== "number") {
     return undefined;
   }
 
-  return LiveAPI.from(param.path.replace(PARAMETER_TAIL, "")).getProperty(
+  return envelopeDevice(trackObject(track), target.device)?.getProperty(
     "class_display_name",
   ) as string | undefined;
 }

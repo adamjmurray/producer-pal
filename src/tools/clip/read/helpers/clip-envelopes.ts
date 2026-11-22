@@ -271,7 +271,7 @@ function hostedIdentity(
  *   plug-in or can't say
  */
 function slotsOf(track: EnvelopeTrack, device: string): SlotMap | null {
-  const wrapper = deviceAt(trackObject(track), device);
+  const wrapper = envelopeDevice(trackObject(track), device);
 
   if (wrapper == null || detectHostedPlugin(wrapper) == null) {
     return null;
@@ -372,7 +372,7 @@ export function envelopeParameter(
   parameter: string | number,
 ): LiveAPI | null {
   // A name is a mixer parameter: the track's, or the chain's `device` ends on.
-  const holder = device == null ? track : deviceAt(track, device);
+  const holder = device == null ? track : envelopeDevice(track, device);
 
   if (holder == null) {
     return null;
@@ -389,7 +389,7 @@ export function envelopeParameter(
  * @param device - The remote script's device path
  * @returns The device or chain, or null when the path isn't one we can walk
  */
-function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
+export function envelopeDevice(track: LiveAPI, device: string): LiveAPI | null {
   let container = track;
 
   for (const segment of device.split("/")) {
