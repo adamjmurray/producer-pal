@@ -9,9 +9,8 @@ OpenAI's ChatGPT web app.
 
 <!--@include: ../_partials/live-requirement.md-->
 
-- [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
-  subscription is required to access the advanced settings needed for this to
-  work)
+- [ChatGPT account](https://chatgpt.com) (a paid subscription may be required to
+  add a custom MCP server)
 - [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ## Installation Steps
@@ -33,36 +32,39 @@ will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
 ![Cloudflare web tunnel](/img/cloudflare-tunnel.png)
 
-### 3. Enable Developer Mode
+### 3. Add a Custom MCP Server
 
-Go to
-[ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
-and enable Developer Mode (this option might not appear for free accounts):
+Go to [ChatGPT → Plugins](https://chatgpt.com/plugins) and choose Add → Add
+custom MCP server:
 
-![ChatGPT developer mode settings](/img/chatgpt-setup.png)
+![Adding a custom MCP server in ChatGPT Plugins](/img/chatgpt-setup.png)
 
-### 4. Create Custom Connector
+Fill in the form and choose "Create as a plugin":
 
-In the [Apps & Connectors](https://chatgpt.com/#settings/Connectors) settings,
-create a custom connector:
-
-- URL: Your tunnel URL + `/mcp` (e.g., `https://abc-xyz.trycloudflare.com/mcp`)
+- Name: Anything you like (e.g. `Producer Pal`)
+- Server URL: Your tunnel URL + `/mcp` (e.g.,
+  `https://abc-xyz.trycloudflare.com/mcp`)
 - No authentication
-- Trust the app
+- Check "I understand and want to continue"
 
-![ChatGPT custom connector setup](/img/chatgpt-setup2.png)
+![ChatGPT custom MCP server form](/img/chatgpt-setup2.png)
 
-### 5. Enable Tools in Conversation
+### 4. Connect the Plugin
 
-Explicitly enable the Producer Pal tools for each conversation where you want to
-use them:
+Connect the new plugin when prompted:
 
-![Enabling Producer Pal tools in ChatGPT](/img/chatgpt-enable-tools.png)
+![Connecting the Producer Pal plugin in ChatGPT](/img/chatgpt-connect.png)
+
+### 5. Select the Plugin in a Conversation
+
+In each conversation where you want to use Producer Pal, select the plugin from
+the + menu:
+
+![Selecting the Producer Pal plugin in ChatGPT](/img/chatgpt-enable-tools.png)
 
 ### 6. Start Using Producer Pal
 
-Start a new chat with "connect to ableton with your producer pal tools" (note
-that ChatGPT tends to need more nudging than "connect to ableton"):
+Start the chat with "connect to ableton":
 
 ![ChatGPT successfully connected to Producer Pal](/img/chatgpt-success.png)
 
