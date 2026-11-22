@@ -33,8 +33,8 @@ Studio account.
 ### 1. Install a Compatible Model
 
 Download a model in Bionic under Settings &rarr; Explore, such as a recent
-version of Qwen, Gemma, Mistral, or Nemotron. If your computer can handle it,
-use the larger variants of a model.
+version of Qwen, Inkling, Gemma, Mistral, or Nemotron. If your computer can
+handle it, use the larger variants of a model.
 
 It has to support tools. Your downloaded models are listed under Settings &rarr;
 Library, where a hammer icon marks the ones that do:

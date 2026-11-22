@@ -25,8 +25,9 @@ Haven't installed the device yet? Do
 
 1. Download and install [Ollama](https://ollama.com/download).
 2. Download a model that can control other apps (Ollama calls this "tools"),
-   such as `qwen3.8`, `gemma4`, `muse-glimmer` or `mistral-small3.2`. Open
-   Terminal (Mac) or Command Prompt (Windows), type this and press Enter:
+   such as `qwen3.8`, `inkling-2-mini`, `gemma4`, `muse-glimmer` or
+   `mistral-small3.2`. Open Terminal (Mac) or Command Prompt (Windows), type
+   this and press Enter:
 
    ```
    ollama pull qwen3.8
@@ -60,8 +61,8 @@ the settings are the same. Prefer Bionic's own chat window? See
 
 1. Install [Bionic](https://lmstudio.ai/bionic) (free, no account needed).
 2. Download a model under Settings &rarr; Explore, such as a recent version of
-   Qwen, Gemma, Mistral, or Nemotron. It has to support tools: under Settings
-   &rarr; Library, a hammer icon marks the ones that do:
+   Qwen, Inkling, Gemma, Mistral, or Nemotron. It has to support tools: under
+   Settings &rarr; Library, a hammer icon marks the ones that do:
 
    <img src="/img/bionic-tool-icon.png" alt="The hammer icon marks a model that supports tools" width="400"/>
 
@@ -82,8 +83,8 @@ the settings are the same. Prefer Bionic's own chat window? See
    - Provider: **Bionic / LM Studio (local)**
    - URL: the Base URL you copied
    - Model: pick a model that supports tools, such as `qwen/qwen3.8-27b`,
-     `google/gemma-4-e4b`, `mistralai/devstral-small-2-2512`, or
-     `zai-org/glm-4.7-flash`
+     `thinkingmachines/inkling-2-mini`, `google/gemma-4-e4b`,
+     `mistralai/devstral-small-2-2512`, or `zai-org/glm-4.7-flash`
 
 ## 3. Turn On Small Model Mode (Recommended)
 

@@ -10,11 +10,12 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { styleText } from "node:util";
 import { Command } from "commander";
 import "#evals/shared/install-fetch-dispatcher.ts";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
+import { applyContextOrExit } from "#evals/shared/ollama/apply-context-to-models.ts";
 import { listModels } from "#evals/shared/list-models.ts";
+import { parseContextTokens } from "#evals/shared/ollama/parse-context-tokens.ts";
 import {
   LIST_MODELS_HINT,
   type ModelSpec,
@@ -22,9 +23,9 @@ import {
 } from "#evals/shared/parse-model-arg.ts";
 import { parseOutputTokens } from "./run-env/parse-output-tokens.ts";
 import {
-  describeThinking,
   parseJudgeThinking,
   parseThinkingArgs,
+  renameThinkingModels,
   type ThinkingByModel,
 } from "./run-env/parse-thinking-arg.ts";
 import { DEFAULT_JUDGE_MODEL } from "#evals/shared/provider-configs.ts";
@@ -37,6 +38,7 @@ import { type RunRecord } from "./helpers/trials/resume/run-record.ts";
 import { setQuietMode } from "./helpers/quiet-mode.ts";
 import { type RunContext } from "./helpers/trials/run-trials.ts";
 import { runAllScenarios } from "./helpers/trials/run-all-scenarios.ts";
+import { printRunHeader } from "./helpers/reporting/run-header.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
 import { resumeOptions } from "./helpers/trials/resume/resume-options.ts";
@@ -96,6 +98,8 @@ interface CliOptions {
   /** Whether to write JSON result files to disk (--no-save sets false). */
   save?: boolean;
   baseUrl?: string;
+  /** Context size in tokens for `local/...` models (Ollama only). */
+  context?: number;
 }
 
 /**
@@ -233,6 +237,11 @@ program
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
   )
+  .option(
+    "--context <tokens>",
+    "Context size for local/... models (Ollama only): runs them as a <model>-ctx<tokens> copy created with that num_ctx",
+    parseContextTokens,
+  )
   .action(async (given: CliOptions) => {
     const { argv, options } = await resolveResumeOrExit(given);
 
@@ -303,10 +312,10 @@ async function runEvaluation(
 
   const tags = resolveSelection(options);
 
-  const modelSpecs = options.model.map((model) =>
+  const parsedSpecs = options.model.map((model) =>
     parseModelArgOrExit(program, model),
   );
-  const thinking = parseThinkingOrExit(options.thinking, modelSpecs);
+  const parsedThinking = parseThinkingOrExit(options.thinking, parsedSpecs);
   const judgeOverride = parseJudgeOrExit(options);
 
   let decider: DeciderSettings | undefined;
@@ -343,41 +352,29 @@ async function runEvaluation(
     }
 
     const repeatCount = parseRepeatCount(options.repeat);
-    const totalRuns = scenarios.length * modelSpecs.length * repeatCount;
-    const repeatLabel = repeatCount > 1 ? ` × ${repeatCount} trial(s)` : "";
 
-    console.log(
-      styleText(
-        "bold",
-        `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
-          `${repeatLabel} = ${totalRuns} run(s)...`,
-      ),
+    // After every other option is checked: this creates models on the server.
+    const modelSpecs =
+      options.context == null
+        ? parsedSpecs
+        : await applyContextOrExit(program, parsedSpecs, options.context);
+    const thinking = renameThinkingModels(
+      parsedThinking,
+      parsedSpecs,
+      modelSpecs,
     );
 
-    if (label !== "default") {
-      console.log(styleText("gray", `Environment: ${label}`));
-    }
-
-    if (thinking.size > 0) {
-      console.log(styleText("gray", `Thinking: ${describeThinking(thinking)}`));
-    }
-
-    if (judgeOverride.thinking != null) {
-      console.log(
-        styleText("gray", `Judge thinking: ${String(judgeOverride.thinking)}`),
-      );
-    }
-
-    if (decider != null) {
-      console.log(
-        styleText(
-          "gray",
-          `Judge: decider ${decider.provider}/${decider.model} first; LLM judge for escalations`,
-        ),
-      );
-    } else if (options.decider != null && options.skipJudge) {
-      console.log(styleText("gray", "--skip-judge: the decider is not used"));
-    }
+    printRunHeader({
+      scenarioCount: scenarios.length,
+      modelSpecs,
+      repeatCount,
+      label,
+      context: options.context,
+      thinking,
+      judgeOverride,
+      decider,
+      deciderIgnored: options.decider != null && options.skipJudge === true,
+    });
 
     keepDisplayAwake();
 

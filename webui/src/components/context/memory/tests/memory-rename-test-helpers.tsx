@@ -116,7 +116,7 @@ export function entryPuts(): CapturedSave[] {
  * @returns The name field element
  */
 export function renameInput(): HTMLInputElement {
-  return screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement;
+  return screen.getByRole<HTMLInputElement>("textbox", { name: "Rename" });
 }
 
 /**

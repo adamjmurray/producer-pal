@@ -336,40 +336,32 @@ const SWAPPABLE = status({
 /**
  * Stub the swap POST. A swap kills the server that gets it, so by default the
  * connection drops without an answer, and the status the page polls then shows
- * the new device after `polls` reads.
+ * the new device. The first poll finds it: each extra poll costs 3s, and the
+ * unit tests cover the old device still answering.
  * @param page - Playwright page
  * @param initial - The status before the swap
  * @param swap - How the POST answers: dropped (the default), or a status and body
  * @param swap.status - HTTP status of the answer
  * @param swap.body - JSON body of the answer
- * @param polls - How many reads still show the old device after the POST
  * @returns The bodies the swap POST received
  */
 async function stubSwap(
   page: Page,
   initial: DeviceStatus,
   swap: { status: number; body: unknown } | null = null,
-  polls = 1,
 ): Promise<unknown[]> {
   const posted: unknown[] = [];
   let swapped = false;
-  let readsSinceSwap = 0;
 
-  await page.route("**/device-install", (route) => {
-    if (swapped && ++readsSinceSwap > polls) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ...initial, inUserLibrary: true }),
-      });
-    }
-
-    return route.fulfill({
+  await page.route("**/device-install", (route) =>
+    route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(initial),
-    });
-  });
+      body: JSON.stringify(
+        swapped ? { ...initial, inUserLibrary: true } : initial,
+      ),
+    }),
+  );
   await page.route("**/device-install/swap", (route) => {
     posted.push(route.request().postDataJSON());
 

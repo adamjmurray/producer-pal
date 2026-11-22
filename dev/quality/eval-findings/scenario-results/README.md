@@ -26,3 +26,4 @@ model the newest directory wins, and refused or errored trials never count.
 | [runs-36.md](runs-36.md)       | muse-glimmer small-model, every failure                     |
 | [runs-37.md](runs-37.md)       | qwen3.8-flash-next, every failure                           |
 | [runs-38.md](runs-38.md)       | deepseek-v4-flash, every failure                            |
+| [runs-39.md](runs-39.md)       | qwen3.8-flash-next again, every failure                     |

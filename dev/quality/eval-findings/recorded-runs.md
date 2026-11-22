@@ -50,6 +50,7 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 36  | muse-glimmer-30b   | `--small-model` | `01219a45c`  | 3      | 228 | 201 (88%) | 14.9M  | 2h38m  |
 | 37  | qwen3.8-flash-next | default         | `c8edb1676`  | 3      | 402 | 393 (98%) | 84.9M  | 5h53m  |
 | 38  | deepseek-v4-flash  | default         | `c398d5cc2`? | 3      | 402 | 376 (94%) | 67.3M  | 13h03m |
+| 39  | qwen3.8-flash-next | default         | `0a04078a9`  | 3      | 408 | 395 (97%) | 88.8M  | 6h13m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -176,3 +177,11 @@ so none is recorded. The debug build was made ten minutes before `c398d5cc2` was
 committed, so it may lack part of that commit. `--decider jev` with Luna judging
 escalations; Jev decided 65 of 93 judged replies. No context overflow, timeout
 or cut-off output. Wall is scenario time.
+
+**Run 39 is qwen3.8-flash-next's second run**, on the same 64K-context tag and
+quant as run 37 (Ollama, MLX runner; Live 12.4.16). Build of `0a04078a9`, made
+ten minutes before the run. `--decider jev` with Luna judging escalations; Jev
+decided 69 of 99 judged replies. No context overflow, timeout or errored trial,
+even though the smoke test's single trial took 47.8K input tokens. The 7
+`live-13-*` scenarios and `delete-targets` (which needs `--live-api`) skipped.
+Wall is first to last trial.

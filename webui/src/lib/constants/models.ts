@@ -260,6 +260,7 @@ export const VERCEL_MODELS = [
 
 export const OLLAMA_MODELS = [
   { value: "qwen3.8", label: "qwen3.8" },
+  { value: "inkling-2-mini", label: "inkling-2-mini" },
   { value: "gemma4", label: "gemma4" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
   { value: "muse-glimmer", label: "muse-glimmer" },

@@ -9,6 +9,7 @@ import {
   describeThinking,
   parseJudgeThinking,
   parseThinkingArgs,
+  renameThinkingModels,
 } from "./parse-thinking-arg.ts";
 
 const LUNA: ModelSpec = { provider: "codex-code", model: "luna" };
@@ -107,12 +108,15 @@ describe("parseThinkingArgs", () => {
     expect(result.get("openai/gpt-6.1-sol")).toBe("off");
   });
 
-  it("takes only off for a local model", () => {
-    expect(parseThinkingArgs(["off"], [LOCAL]).get("local/qwen3.8")).toBe(
-      "off",
-    );
-    expect(() => parseThinkingArgs(["high"], [LOCAL])).toThrow(
-      /local models take off only/,
+  it("takes every named level for a local model", () => {
+    for (const level of ["off", "low", "medium", "high", "ultra"]) {
+      expect(parseThinkingArgs([level], [LOCAL]).get("local/qwen3.8")).toBe(
+        level,
+      );
+    }
+
+    expect(() => parseThinkingArgs(["4096"], [LOCAL])).toThrow(
+      /token budget is for google models only/,
     );
   });
 
@@ -159,5 +163,28 @@ describe("describeThinking", () => {
         parseThinkingArgs(["high,codex-code/luna=low"], [LUNA, SOL]),
       ),
     ).toBe("codex-code/luna=low, openai/gpt-6.1-sol=high");
+  });
+});
+
+describe("renameThinkingModels", () => {
+  it("moves a level to the renamed model's key", () => {
+    const thinking = parseThinkingArgs(["local/qwen3.8=off"], [LOCAL, SOL]);
+    const copy: ModelSpec = { provider: "local", model: "qwen3.8-ctx65536" };
+
+    expect([
+      ...renameThinkingModels(thinking, [LOCAL, SOL], [copy, SOL]),
+    ]).toStrictEqual([["local/qwen3.8-ctx65536", "off"]]);
+  });
+
+  it("keeps the other models' keys when only one is renamed", () => {
+    const thinking = parseThinkingArgs(["off"], [LOCAL, GEMINI]);
+    const copy: ModelSpec = { provider: "local", model: "qwen3.8-ctx65536" };
+
+    expect([
+      ...renameThinkingModels(thinking, [LOCAL, GEMINI], [copy, GEMINI]),
+    ]).toStrictEqual([
+      ["local/qwen3.8-ctx65536", "off"],
+      ["google/gemini-3.8-flash", "off"],
+    ]);
   });
 });

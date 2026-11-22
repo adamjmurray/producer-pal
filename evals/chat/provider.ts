@@ -14,6 +14,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
+import { settleOllamaThinking } from "#webui/chat/sdk/provider/local-model/ollama-thinking.ts";
+import { rewritingFetch } from "#webui/chat/sdk/provider/rewriting-fetch.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { cacheAnthropicRequest } from "./cache/anthropic-cache.ts";
 import { cacheOpenRouterRequest } from "./cache/openrouter-cache.ts";
@@ -87,6 +89,11 @@ export function createProviderModel(
         apiKey,
         baseURL,
         includeUsage: true,
+        // --thinking sends an effort; Ollama refuses one for a model that
+        // can't think. LM Studio takes it for any model.
+        fetch: rewritingFetch((body) =>
+          settleOllamaThinking(body, baseURL, "keep"),
+        ),
       }).chatModel(model);
     }
 

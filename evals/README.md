@@ -115,6 +115,7 @@ scripts/eval [options]
 | `-u, --usage`                | Show token usage per turn                                    |
 | `--no-save`                  | Skip writing JSON result files to disk                       |
 | `-b, --base-url <url>`       | Base URL for the `local` provider                            |
+| `--context <tokens>`         | Context size for `local` models (Ollama only)                |
 | `-l, --list`                 | List available scenarios                                     |
 | `--list-tags`                | List scenario tags with their counts                         |
 
@@ -207,8 +208,14 @@ Local models (Ollama, LM Studio, etc.) need special handling:
 1. **Always specify the model explicitly** with the `local/` prefix
 2. **Enable small-model mode** (`--small-model`) for the basic skills tier and
    simplified tool descriptions
-3. **Load the model with a 64K+ context window.** Tools plus Skills take ~12–14K
-   tokens per request, so a 32K context overflows mid-scenario.
+3. **Use a 64K+ context window.** Tools plus Skills take ~12–14K tokens per
+   request, so a 32K context overflows mid-scenario. On Ollama, `--context N`
+   does it for you (Ollama ignores a context size sent over its
+   OpenAI-compatible API): it makes a copy named `<model>-ctx<N>` (with a tag:
+   `<model>-ctx<N>:<tag>`) and runs against it. A size above the model's maximum
+   is refused. The copy stays in `ollama list`. Results, report filenames and
+   `--thinking` keys use the copy's name, so runs at different contexts count as
+   different models.
 
 ```bash
 # Test a local model
@@ -216,6 +223,9 @@ scripts/eval -m local/glm-4.7-flash -t connect-to-ableton --small-model
 
 # Test a different local model
 scripts/eval -m local/qwen3.8 -t duplicate --small-model
+
+# Ollama: run with a 64K context
+scripts/eval -m local/qwen3.8 -t duplicate --small-model --context 65536
 ```
 
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).

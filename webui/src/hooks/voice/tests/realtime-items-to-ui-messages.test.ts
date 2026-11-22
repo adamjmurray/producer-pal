@@ -96,6 +96,25 @@ describe("realtimeItemsToUIMessages", () => {
     ]);
   });
 
+  it("ignores image parts in a user message", () => {
+    const result = realtimeItemsToUIMessages([
+      {
+        itemId: "u1",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [
+          { type: "input_image", image_url: "data:image/png;base64,AA==" },
+          { type: "input_text", text: "what is this?" },
+        ],
+      },
+    ]);
+
+    expect(result[0]?.parts).toStrictEqual([
+      { type: "text", content: "what is this?" },
+    ]);
+  });
+
   it("skips messages whose content has no text yet", () => {
     expect(
       realtimeItemsToUIMessages([

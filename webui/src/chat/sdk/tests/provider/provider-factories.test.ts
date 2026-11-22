@@ -19,9 +19,8 @@ const getModelId = (model: unknown): string =>
 // factory (Responses API). @ai-sdk/openai-compatible tags "<name>.chat" (e.g.
 // "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
 // only implement Chat Completions and reject the Responses API's `input` field
-// with "Invalid type for 'input'". LM Studio and custom endpoints route through
-// @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
-// Ollama stays on @ai-sdk/openai (its `reasoning_effort` option needs that namespace).
+// with "Invalid type for 'input'". LM Studio, Ollama and custom endpoints route
+// through @ai-sdk/openai-compatible so their reasoning shows as thinking.
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 
@@ -208,15 +207,10 @@ describe("createProviderModel", () => {
       expect(hasProxyFetch(model)).toBe(false);
     });
 
-    it("calls lmstudio and ollama directly, even on this computer", () => {
+    it("calls lmstudio directly, even on this computer", () => {
       expect(
         hasProxyFetch(
           createProviderModel("lmstudio", "m", "k", "http://127.0.0.1:1234"),
-        ),
-      ).toBe(false);
-      expect(
-        hasProxyFetch(
-          createProviderModel("ollama", "m", "k", "http://127.0.0.1:11434"),
         ),
       ).toBe(false);
     });

@@ -30,6 +30,7 @@ import {
   type RewritingFetch,
 } from "#webui/chat/sdk/provider/rewriting-fetch";
 import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
+import { settleOllamaThinking } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
@@ -88,14 +89,20 @@ export function createProviderModel(
         includeUsage: true,
       }).chatModel(modelId);
 
-    case "ollama":
+    case "ollama": {
+      const ollamaUrl = withDefaultUrl(baseUrl, "http://localhost:11434/v1");
+
       return createOpenAICompatible({
         name: "ollama",
         apiKey: apiKey || "not-needed",
-        baseURL: withDefaultUrl(baseUrl, "http://localhost:11434/v1"),
+        baseURL: ollamaUrl,
         // See lmstudio note.
         includeUsage: true,
+        fetch: rewritingFetch((body) =>
+          settleOllamaThinking(body, ollamaUrl, "drop"),
+        ),
       }).chatModel(modelId);
+    }
 
     case "custom": {
       // Unlike lmstudio/ollama, the custom provider has no default endpoint and

@@ -142,11 +142,23 @@ describe("buildProviderOptions for Ollama", () => {
     ).toBeUndefined();
   });
 
-  it("sends nothing at Max and none at Off", () => {
-    expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toBeUndefined();
+  it("sends high at Max and none at Off", () => {
+    expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toStrictEqual({
+      ollama: { reasoningEffort: "high" },
+    });
     expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
       ollama: { reasoningEffort: "none" },
     });
+  });
+});
+
+describe("buildProviderOptions for LM Studio", () => {
+  it("sends xhigh at Max and nothing otherwise", () => {
+    expect(buildProviderOptions("lmstudio", "Max", "m")).toStrictEqual({
+      lmstudio: { reasoningEffort: "xhigh" },
+    });
+    expect(buildProviderOptions("lmstudio", "Off", "m")).toBeUndefined();
+    expect(buildProviderOptions("lmstudio", "Default", "m")).toBeUndefined();
   });
 });
 

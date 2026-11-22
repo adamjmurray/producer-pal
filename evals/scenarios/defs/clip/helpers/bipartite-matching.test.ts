@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
+import { hasPerfectMatching } from "./bipartite-matching.ts";
 
 /**
  * A left item matches a right "any-of" set when the set contains it.
