@@ -12,7 +12,6 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
   buildAnthropicProviderOptions,
   getGeminiOffThinkingConfig,
-  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   type ThinkingEffort,
@@ -186,9 +185,10 @@ function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
 }
 
 /**
- * Build thinking options for the local OpenAI-compatible server (Ollama by
- * default, see LOCAL_DEFAULT_BASE_URL). Only Off is expressible, with the chat
- * UI's Ollama rule. The `local` key is the provider name in provider.ts.
+ * Build thinking options for the local OpenAI-compatible server (LM Studio or
+ * Ollama). The level goes through as `reasoning_effort`; ultra is "xhigh".
+ * provider.ts takes it back off for an Ollama model that can't think. The
+ * `local` key is the provider name in provider.ts.
  *
  * @param level - Thinking level string
  * @returns Provider options with reasoningEffort, or undefined
@@ -196,7 +196,7 @@ function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
 function buildLocalThinking(level: string): ProviderOptions | undefined {
   const effort = THINKING_EFFORT[level];
   const reasoningEffort =
-    effort == null ? undefined : mapThinkingToOllamaEffort(effort);
+    effort == null ? undefined : mapThinkingToOpenRouterEffort(effort);
 
   return reasoningEffort ? { local: { reasoningEffort } } : undefined;
 }

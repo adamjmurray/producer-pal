@@ -204,8 +204,17 @@ describe("buildProviderOptions for the local provider", () => {
     });
   });
 
-  it("sends nothing for other levels or when unset", () => {
-    expect(buildProviderOptions("local", "ultra", "qwen3.8")).toBeUndefined();
+  it("passes the named levels through, ultra as xhigh", () => {
+    expect(buildProviderOptions("local", "low", "qwen3.8")).toStrictEqual({
+      local: { reasoningEffort: "low" },
+    });
+    expect(buildProviderOptions("local", "ultra", "qwen3.8")).toStrictEqual({
+      local: { reasoningEffort: "xhigh" },
+    });
+  });
+
+  it("sends nothing for a token budget or when unset", () => {
+    expect(buildProviderOptions("local", "4096", "qwen3.8")).toBeUndefined();
     expect(buildProviderOptions("local", undefined, "qwen3.8")).toBeUndefined();
   });
 });

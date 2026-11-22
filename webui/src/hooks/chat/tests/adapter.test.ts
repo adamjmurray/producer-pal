@@ -366,10 +366,12 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sends no ollama reasoningEffort for Max thinking", () => {
+    it("sets ollama reasoningEffort high for Max thinking", () => {
       const config = buildForProvider("ollama", "Max", "qwq");
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "high" },
+      });
     });
 
     it("sets ollama reasoningEffort none for Off thinking", () => {

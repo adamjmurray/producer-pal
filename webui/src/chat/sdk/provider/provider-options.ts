@@ -40,6 +40,14 @@ export function buildProviderOptions(
     return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
   }
 
+  if (provider === "lmstudio") {
+    // LM Studio takes an effort for any model, but "none" doesn't turn
+    // reasoning off there, so Off sends nothing.
+    return toThinkingEffort(thinking) === "max"
+      ? { lmstudio: { reasoningEffort: "xhigh" } }
+      : undefined;
+  }
+
   if (provider === "openrouter") {
     const effort = mapThinkingToOpenRouterEffort(toThinkingEffort(thinking));
 

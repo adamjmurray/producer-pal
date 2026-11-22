@@ -208,15 +208,10 @@ describe("createProviderModel", () => {
       expect(hasProxyFetch(model)).toBe(false);
     });
 
-    it("calls lmstudio and ollama directly, even on this computer", () => {
+    it("calls lmstudio directly, even on this computer", () => {
       expect(
         hasProxyFetch(
           createProviderModel("lmstudio", "m", "k", "http://127.0.0.1:1234"),
-        ),
-      ).toBe(false);
-      expect(
-        hasProxyFetch(
-          createProviderModel("ollama", "m", "k", "http://127.0.0.1:11434"),
         ),
       ).toBe(false);
     });

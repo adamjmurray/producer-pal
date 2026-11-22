@@ -154,15 +154,23 @@ export function mapThinkingToOpenRouterEffort(
 
 /**
  * Maps a thinking setting to Ollama's `reasoning_effort`. Ollama's OpenAI
- * endpoint ignores `think`; `none` turns reasoning off. Max sends nothing:
- * models that can't think refuse any other effort with a 400.
+ * endpoint ignores `think`; `none` turns reasoning off. A model that can't
+ * think refuses Max's "high" with a 400, so the request rewrite
+ * (ollama-thinking) takes it back off for those.
  * @param level - Thinking setting
  * @returns effort, or undefined to let the model decide
  */
 export function mapThinkingToOllamaEffort(
   level: ThinkingEffort,
 ): ReasoningEffort | undefined {
-  return level === "off" ? "none" : undefined;
+  switch (level) {
+    case "off":
+      return "none";
+    case "max":
+      return "high";
+    default:
+      return undefined;
+  }
 }
 
 /**

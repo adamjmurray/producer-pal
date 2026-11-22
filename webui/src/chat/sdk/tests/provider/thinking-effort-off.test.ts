@@ -18,8 +18,8 @@ describe("mapThinkingToOllamaEffort", () => {
     expect(mapThinkingToOllamaEffort("off")).toBe("none");
   });
 
-  it("should send nothing for max", () => {
-    expect(mapThinkingToOllamaEffort("max")).toBeUndefined();
+  it("should map max to high", () => {
+    expect(mapThinkingToOllamaEffort("max")).toBe("high");
   });
 });
 
