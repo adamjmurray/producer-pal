@@ -28,7 +28,8 @@ export function contextPercent(usage: TokenUsage): number | undefined {
 /**
  * Whether a local server likely cut the history to fit: the input stayed flat
  * or shrank between steps, though the conversation only grows. Only compares
- * steps whose window size is known, so cloud models never warn.
+ * steps whose window size is known, so cloud models never warn, and steps of
+ * one model: another model counts the same history differently.
  * @param usage - The step's usage
  * @param prev - The step before it, if any (none across a compaction)
  * @returns True when the history was probably cut
@@ -40,6 +41,7 @@ export function looksTruncated(
   return (
     usage.contextLength != null &&
     prev?.contextLength != null &&
+    usage.contextModel === prev.contextModel &&
     usage.inputTokens != null &&
     prev.inputTokens != null &&
     usage.inputTokens <= prev.inputTokens

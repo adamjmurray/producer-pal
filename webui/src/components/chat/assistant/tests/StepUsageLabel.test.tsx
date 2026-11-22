@@ -144,6 +144,15 @@ describe("StepUsageLabel context use", () => {
     expect(container.textContent).not.toContain("dropped");
   });
 
+  it("doesn't compare steps of different models", () => {
+    const container = renderStep(
+      { ...step(3500, 10_000), contextModel: "ollama/b" },
+      { ...step(4000, 10_000), contextModel: "lmstudio/a" },
+    );
+
+    expect(container.textContent).not.toContain("dropped");
+  });
+
   it("doesn't compare with a step whose window size is unknown", () => {
     const container = renderStep(step(3000, 10_000), step(4000));
 

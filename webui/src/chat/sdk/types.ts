@@ -159,17 +159,21 @@ export interface TokenUsage {
   cacheWriteTokens?: number;
   /** Context length the local model was loaded with when this step ran */
   contextLength?: number;
+  /** The model that context length belongs to */
+  contextModel?: string;
 }
 
 /**
  * Convert AI SDK LanguageModelUsage to our TokenUsage type.
  * @param sdkUsage - Usage data from the AI SDK
  * @param contextLength - The local model's loaded context length, if known
+ * @param contextModel - The model that length belongs to
  * @returns Token usage summary
  */
 export function toTokenUsage(
   sdkUsage: LanguageModelUsage,
   contextLength?: number,
+  contextModel?: string,
 ): TokenUsage {
   const reasoning = sdkUsage.outputTokenDetails.reasoningTokens;
   const cacheRead = sdkUsage.inputTokenDetails.cacheReadTokens;
@@ -182,7 +186,7 @@ export function toTokenUsage(
     ...(cacheRead != null && cacheRead > 0 && { cacheReadTokens: cacheRead }),
     ...(cacheWrite != null &&
       cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
-    ...(contextLength != null && { contextLength }),
+    ...(contextLength != null && { contextLength, contextModel }),
   };
 }
 

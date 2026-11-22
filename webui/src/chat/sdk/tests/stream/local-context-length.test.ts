@@ -52,6 +52,8 @@ describe("local model context length on step usage", () => {
     expect(turns.map((t) => t.usage?.contextLength)).toStrictEqual([
       8192, 16384,
     ]);
+    expect(new Set(turns.map((t) => t.usage?.contextModel)).size).toBe(1);
+    expect(turns[0]?.usage?.contextModel).toBeTypeOf("string");
     expect(lookup).toHaveBeenCalledTimes(3);
   });
 
