@@ -219,12 +219,6 @@ function assertExpressible(spec: ModelSpec, level: string, flag: string): void {
     return;
   }
 
-  if (spec.provider === "local" && level !== "off") {
-    throw new Error(
-      `${flag} ${level} can't be set for ${key}: local models take off only.`,
-    );
-  }
-
   if (/^\d+$/.test(level) && spec.provider !== "google") {
     throw new Error(
       `${flag} ${level} can't be set for ${key}: a token budget is for google models only.`,

@@ -108,12 +108,15 @@ describe("parseThinkingArgs", () => {
     expect(result.get("openai/gpt-6.1-sol")).toBe("off");
   });
 
-  it("takes only off for a local model", () => {
-    expect(parseThinkingArgs(["off"], [LOCAL]).get("local/qwen3.8")).toBe(
-      "off",
-    );
-    expect(() => parseThinkingArgs(["high"], [LOCAL])).toThrow(
-      /local models take off only/,
+  it("takes every named level for a local model", () => {
+    for (const level of ["off", "low", "medium", "high", "ultra"]) {
+      expect(parseThinkingArgs([level], [LOCAL]).get("local/qwen3.8")).toBe(
+        level,
+      );
+    }
+
+    expect(() => parseThinkingArgs(["4096"], [LOCAL])).toThrow(
+      /token budget is for google models only/,
     );
   });
 
