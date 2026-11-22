@@ -9,7 +9,7 @@ const SHOW_TIMEOUT_MS = 3000;
 export type UnknownThinking = "keep" | "drop";
 
 // `origin model` -> whether the model thinks; null when the server didn't say.
-// A request that threw isn't kept, so it's asked again.
+// A request that failed isn't kept, so it's asked again.
 const thinks = new Map<string, Promise<boolean | null>>();
 
 /**
@@ -84,7 +84,7 @@ function ollamaModelThinks(
  * Read a model's `capabilities` from `/api/show`.
  * @param baseUrl - The server's base URL
  * @param model - Model id
- * @returns Whether "thinking" is listed, or null on an HTTP error or bad shape
+ * @returns Whether "thinking" is listed, or null on a bad shape
  */
 async function requestOllamaModelThinks(
   baseUrl: string,
@@ -96,8 +96,9 @@ async function requestOllamaModelThinks(
     signal: AbortSignal.timeout(SHOW_TIMEOUT_MS),
   });
 
+  // Thrown, not answered, so it's asked again: the model may be pulled later.
   if (!response.ok) {
-    return null;
+    throw new Error(`/api/show answered ${response.status}`);
   }
 
   const json = (await response.json()) as { capabilities?: unknown };

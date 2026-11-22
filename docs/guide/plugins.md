@@ -71,7 +71,6 @@ parameter's name. See [Automation](#automation) below.
   presets, is only in the plug-in's own window.
 - **Not supported:** AUv3 plug-ins, VST2 shell plug-ins (such as Waves'
   WaveShell), and AU MIDI effects.
-- **Tested on macOS and Windows.**
 - **Undo** reverts the plug-in's whole previous state at once, not one parameter
   at a time.
 - **Setting a value sweeps the parameter.** To set a value in the plug-in's
