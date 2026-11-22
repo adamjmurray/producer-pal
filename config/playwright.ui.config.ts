@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
+  workers: 4,
   // The JSON report feeds the CI e2e stats summary (scripts/stats/e2e-stats.ts).
   reporter: [
     ["list"],

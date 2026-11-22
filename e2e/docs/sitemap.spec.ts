@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -306,21 +307,17 @@ test.describe("Docs Site Sitemap Tests", () => {
       );
 
       // Get all links on the page
-      const links = await page.locator("a[href]").all();
+      // Read every link in one round trip: one per link is slow on big pages.
+      const links = await page.locator("a[href]").evaluateAll((anchors) =>
+        anchors.map((a) => ({
+          href: a.getAttribute("href"),
+          isDownload: a.hasAttribute("download"),
+        })),
+      );
       const linkValidationErrors: string[] = [];
 
-      for (const link of links) {
-        const href = await link.getAttribute("href");
-
-        if (!href) {
-          continue;
-        }
-
-        if (href.startsWith("mailto:")) {
-          continue;
-        }
-
-        if ((await link.getAttribute("download")) != null) {
+      for (const { href, isDownload } of links) {
+        if (!href || href.startsWith("mailto:") || isDownload) {
           continue;
         }
 

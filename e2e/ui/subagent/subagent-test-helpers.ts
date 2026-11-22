@@ -220,10 +220,15 @@ async function routeChatCompletions(
     if ("rateLimited" in reply) {
       // Retry-After keeps the spec's backoff short: the detector reads it off
       // the AI SDK error, so the wait is 2s instead of the schedule's ~5s.
+      // The request is cross-origin, so the page can't see the header unless
+      // it's exposed — without that the wait silently falls back to ~5s.
       await route.fulfill({
         status: 429,
         contentType: "application/json",
-        headers: { "retry-after": "2" },
+        headers: {
+          "retry-after": "2",
+          "access-control-expose-headers": "retry-after",
+        },
         body: JSON.stringify({ error: { message: "rate limit exceeded" } }),
       });
 
