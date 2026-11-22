@@ -3,7 +3,8 @@
 # Waits until every workflow run and check-run on <sha> completes, then prints:
 #   GREEN    exit 0
 #   RED      exit 1  (a failure, a cancel, or a failing commit status)
-#   NOBUILD  exit 3  (no workflow run appeared: not the PR head, or the PR conflicts)
+#   NOBUILD  exit 3  (no workflow run appeared: not the head of an open PR)
+#   CONFLICT exit 5  (its PR conflicts with the base, so nothing builds)
 #   STUCK    exit 4  (a run sat queued with no jobs: a GitHub flake)
 # CI_WAIT_DELAY overrides the initial wait (seconds, default 60).
 sha=$1
@@ -37,6 +38,17 @@ stuck_runs() {
     done
 }
 
+# CI builds a PR as merged into its base, so a PR that conflicts gets no run.
+# Prints the conflicting PR that <sha> heads, as "<number> <head> <base>".
+conflicting_pr() {
+  gh api "repos/$repo/commits/$full/pulls" \
+    --jq ".[] | select(.state==\"open\" and .head.sha==\"$full\") | .number" 2>/dev/null |
+    while read -r number; do
+      gh pr view "$number" --repo "$repo" --json mergeable,number,headRefName,baseRefName \
+        --jq 'select(.mergeable=="CONFLICTING") | "\(.number) \(.headRefName) \(.baseRefName)"'
+    done | head -1
+}
+
 pushed_age=$(gh api "repos/$repo/commits/$full" --jq '(now - (.commit.committer.date | fromdateiso8601)) | floor')
 
 sleep "${CI_WAIT_DELAY:-60}"
@@ -46,10 +58,17 @@ for i in $(seq 1 120); do
   runs=$(check_runs)
 
   if [ -z "$wf" ]; then
+    read -r pr head base <<<"$(conflicting_pr)"
+    if [ -n "$pr" ]; then
+      echo "CONFLICT"
+      echo "PR #$pr ($head → $base) conflicts with $base, so CI built nothing for $full."
+      echo "Merge $base into $head, resolve the conflicts and push: every commit needs a green build."
+      exit 5
+    fi
     age=$((pushed_age + i * 30))
     if [ "$age" -gt "$NOBUILD_AFTER" ]; then
       echo "NOBUILD"
-      echo "No workflow run for $full. CI only builds the head of the open, non-conflicting dev→main PR."
+      echo "No workflow run for $full. CI only builds the head of an open PR."
       exit 3
     fi
     sleep 30
