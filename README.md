@@ -67,6 +67,7 @@ Thanks to everyone who has contributed to Producer Pal:
 - Eike Haß ([@eike-hass](https://github.com/eike-hass))
 - Taylor Haun ([@taylorhaun](https://github.com/taylorhaun))
 - Guido Macchi (outside contributor)
+- Bart Saunders ([@Trabz2020](https://github.com/Trabz2020))
 - Dominik Zeman
   ([@dominikzeman56-cloud](https://github.com/dominikzeman56-cloud))
 
