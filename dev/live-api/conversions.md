@@ -85,7 +85,7 @@ drum loops.
   `update-device` loads the sample through Max before it asks for the
   conversion; an e2e test does both in one tool call.
 
-Not probed: undo steps and Live 12.3.
+Not probed: Live 12.3. Undo is under [Undo](#undo).
 
 ## Track devices to a Drum Rack pad
 
@@ -132,9 +132,28 @@ pad with `toPath: "t+"`, through the remote script's
   rack's pads can be converted. An outer pad holding a Drum Rack gave a track
   with the inner pad's devices, not the inner rack.
 
-Not probed for either call: a pad with several chains, return tracks, Live 12.3,
-and undo. One `song.undo()` took back every conversion a probe session had made,
-so the remote script may need its own undo step.
+Not probed for either call: a pad with several chains, return tracks and Live
+12.3.
+
+## Undo
+
+Probed on Live 12.4.16 through the tools, for all three device conversions:
+
+- A tool call that only converts is one undo step. Undo takes back the new track
+  (or puts the Simpler back) and brings back a source track Live removed; redo
+  converts again.
+- A call that also changes something else is two steps: the other changes, then
+  the conversion. Renaming and converting a track in one call needed two undos,
+  and so did setting slice settings and converting a Simpler.
+- Why: a conversion only shares a step with changes that no `begin_undo_step` or
+  `end_undo_step` has touched. Any begin or end before or after it puts it in a
+  step of its own, and writes made through Max behave as if each is wrapped in
+  such a pair (inferred, not seen). An outer begin/end around the whole call
+  doesn't help, and neither does converting first. Plain property writes from
+  the remote script do merge with a conversion, in the same call or the one
+  before, so the only way to one step is to make the call's other writes from
+  the remote script too.
+- Undo doesn't restore which track was selected or armed.
 
 Live 12.3 (the minimum) may lack `Live.Conversions` or some of its functions;
 the route answers 409 "this Live version can't convert clips" then.

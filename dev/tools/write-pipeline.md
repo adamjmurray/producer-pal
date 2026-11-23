@@ -183,6 +183,11 @@ that is not read-only (`readOnlyHint`) gets this with no code of its own, except
 `ppal-manage`: an end clears the guard that stops its next undo from removing
 Producer Pal.
 
+One exception: a call that converts devices (a track's devices to a Drum Rack, a
+drum pad to a track, a Simpler's slices to a Drum Rack) and also changes
+something else is two steps, the other changes and then the conversion. Live
+won't merge them; see [Undo](../live-api/conversions.md#undo).
+
 A call that changes nothing gets no end, because an end also clears the undo
 guard that `ppal-manage` keeps (see
 [ppal-manage](../specs/tool-behavior/ppal-manage.md)). Two ways to know:

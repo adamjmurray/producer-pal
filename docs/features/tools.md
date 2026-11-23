@@ -81,7 +81,8 @@ gives you this shape.
   in place and keeps your project context. Your AI offers this when the device
   is older. Needs the remote script.
 - Undo and redo in Live's own history, one step or several at a time. One
-  Producer Pal tool call that changed the Live Set is one step. It never removes
+  Producer Pal tool call that changed the Live Set is one step, or two when it
+  converted devices and changed something else as well. It never removes
   Producer Pal itself. The history also holds your own edits in Live, so an undo
   can revert something you did. Needs the remote script.
 - Not available in [small model mode](/features#small-model-mode).
