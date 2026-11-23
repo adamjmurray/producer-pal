@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { DEVICE_CONVERSION_ROUTES } from "#src/tools/shared/remote-script/device-conversions/device-conversions-contract.ts";
 import { DEVICE_BASICS_ROUTE } from "#src/tools/shared/remote-script/device-basics/device-basics-contract.ts";
 import {
   RACK_MACROS_ROUTE,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
 } from "#src/tools/shared/remote-script/rack-macros-contract.ts";
 import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
-import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { requireString } from "../../route-string-args.ts";
 import { requireExpiry } from "./remote-script-change.ts";
@@ -19,7 +20,8 @@ import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
  * Register the routes V8 uses to ask the remote script which rack macros are
  * mapped (`/device/macros`), for a device's name and on/off state
  * (`/device/basics`), to read and write a Simpler's pitch bend ranges and to
- * turn its slices into a Drum Rack (`/device/simpler/*`).
+ * turn its slices into a Drum Rack (`/device/simpler/*`), and for the two
+ * conversions between a track's devices and a drum pad.
  */
 export function registerRemoteScriptDeviceRoutes(): void {
   registerNodeRoute(
@@ -45,6 +47,16 @@ export function registerRemoteScriptDeviceRoutes(): void {
   registerNodeRoute(
     SIMPLER_SETTINGS_ROUTES.toDrumRack,
     forwardSimplerToDrumRackRequest,
+    REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  );
+  registerNodeRoute(
+    DEVICE_CONVERSION_ROUTES.trackToDrumRack,
+    forwardTrackToDrumRackRequest,
+    REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  );
+  registerNodeRoute(
+    DEVICE_CONVERSION_ROUTES.drumPadToTrack,
+    forwardDrumPadToTrackRequest,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
 }
@@ -143,6 +155,45 @@ async function forwardSimplerToDrumRackRequest(
   return await forwardRemoteScriptRequest(
     "/device/simpler/to-drum-rack",
     { device_path: requireString(args, "devicePath") },
+    requireExpiry(args),
+  );
+}
+
+/**
+ * Forward one track-devices-to-Drum-Rack conversion to the remote script.
+ * @param args - `{ track }`: t0, t1...
+ * @returns The remote script's JSON, an error worded for the model, or
+ *   `available: false` when nothing answered
+ * @throws Error when `track` isn't a string, `expiresInMs` is missing, or the
+ *   remote script took the request but never answered
+ */
+async function forwardTrackToDrumRackRequest(
+  args: unknown,
+): Promise<RouteReply<Record<string, unknown>>> {
+  return await forwardRemoteScriptRequest(
+    "/track/to-drum-rack",
+    { track: requireString(args, "track") },
+    requireExpiry(args),
+  );
+}
+
+/**
+ * Forward one drum-pad-to-track conversion to the remote script.
+ * @param args - `{ devicePath, note }`, in V8's spelling
+ * @returns The remote script's JSON, an error worded for the model, or
+ *   `available: false` when nothing answered
+ * @throws Error when `devicePath` isn't a string, `expiresInMs` is missing, or
+ *   the remote script took the request but never answered
+ */
+async function forwardDrumPadToTrackRequest(
+  args: unknown,
+): Promise<RouteReply<Record<string, unknown>>> {
+  return await forwardRemoteScriptRequest(
+    "/device/drum-pad/to-track",
+    {
+      device_path: requireString(args, "devicePath"),
+      note: (args as Record<string, unknown>).note,
+    },
     requireExpiry(args),
   );
 }

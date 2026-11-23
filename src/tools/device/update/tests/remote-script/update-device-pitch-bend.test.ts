@@ -13,7 +13,7 @@ import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { writePitchBendParams } from "#src/tools/device/update/helpers/call/simpler-pitch-bend.ts";
-import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import {
   bend,

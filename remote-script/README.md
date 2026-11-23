@@ -116,12 +116,13 @@ skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
 and with every route whose result a caller waits on and that changes the Set
 (`/load`, `/hotswap`, `/replace-producer-pal`, `/device/duplicate`,
 `/clip/convert`, `/envelope/write`, `/envelope/clear`, `/device/simpler/write`,
-`/device/simpler/to-drum-rack`, `/undo/undo`, `/undo/redo`), a bit under the
-time it has left, so one deadline covers the lookup and the load, and a change
-it stopped waiting for isn't made later. `/undo/end` is fire-and-forget and
-sends none. A new route that changes the Set must be sent one too. A job Live
-started but didn't finish in 30s is also a 504, with `started: true`: Live may
-have made the change.
+`/device/simpler/to-drum-rack`, `/track/to-drum-rack`,
+`/device/drum-pad/to-track`, `/undo/undo`, `/undo/redo`), a bit under the time
+it has left, so one deadline covers the lookup and the load, and a change it
+stopped waiting for isn't made later. `/undo/end` is fire-and-forget and sends
+none. A new route that changes the Set must be sent one too. A job Live started
+but didn't finish in 30s is also a 504, with `started: true`: Live may have made
+the change.
 
 ### `GET /ping`
 
@@ -273,6 +274,8 @@ reply, and 30s more if the job started in that time.
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges, and turning its slices
   into a Drum Rack
+- `device_conversions.py`: a track's devices onto a new Drum Rack's pad, and a
+  drum pad's chain onto a new track
 - `undo.py`: Live's undo history: closing the pending step, undo and redo
 - `gen_ui_routes.py`, `watches.py`, `ui_widgets.py`: the generative UI (see
   below)

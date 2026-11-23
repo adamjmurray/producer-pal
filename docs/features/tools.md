@@ -208,6 +208,8 @@ be copied when the Producer Pal remote script is running.
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
+- Copy a drum pad's devices to a new MIDI track with `toPath: "t+"`, to give one
+  drum sound its own track. Needs the [remote script](/guide/remote-script)
 - Copy a chain of any rack with `type: "chain"`, carrying its name, color,
   mute/solo, chain trim, and devices. `toPath` names the destination rack and
   may cross racks of the same kind; omit it to append to the chain's own rack.
@@ -289,6 +291,9 @@ be copied when the Producer Pal remote script is running.
   only param a lane takes
 - Says when a write overrides arrangement automation: Live then ignores that
   lane until you press **Re-Enable Automation**
+- Put a track's devices on a pad of a new Drum Rack (`convert: "drum-rack"`), on
+  a new track right after it. A track with clips is kept; one with none is
+  replaced by the new track. Needs the [remote script](/guide/remote-script)
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->

@@ -14,6 +14,7 @@ import {
 } from "./remote-script-route-contract.ts";
 import { whyUnavailable } from "./outdated-remote-script.ts";
 import { remoteScriptExpiry, remoteScriptWait } from "./remote-script-wait.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 /** Why a request too large for one Max message was never sent. */
@@ -86,6 +87,36 @@ export function remoteScriptChange<T>(
   manage: boolean,
 ): Promise<RouteOutcome<T>> {
   return callRoute<T>(route, args, deadline, missing, manage, { change: true });
+}
+
+/**
+ * {@link remoteScriptChange} that never throws: a call that fails before an
+ * answer comes back as `stalled: "unanswered"`, since it may still have landed.
+ * @param route - The Node route that forwards to the remote script
+ * @param args - What to send it
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param missing - What to say when the remote script isn't running
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
+ * @returns The route's result, or why there isn't one
+ */
+export async function settledRemoteScriptChange<T>(
+  route: string,
+  args: object,
+  deadline: number | null | undefined,
+  missing: string,
+  manage: boolean,
+): Promise<RouteOutcome<T>> {
+  try {
+    return await remoteScriptChange<T>(route, args, deadline, missing, manage);
+  } catch (error) {
+    // Whether the request reached the remote script is unknown.
+    return {
+      ok: false,
+      reason: `${REMOTE_SCRIPT_UNANSWERED} (${errorMessage(error)})`,
+      available: true,
+      stalled: "unanswered",
+    };
+  }
 }
 
 // --- Helpers below main exports ---

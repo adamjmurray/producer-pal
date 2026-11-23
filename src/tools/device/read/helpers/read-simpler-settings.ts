@@ -8,7 +8,7 @@
 
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { READ_DETAIL_MAX_WAIT_MS } from "#src/tools/shared/remote-script/remote-script-wait.ts";
-import { lookUpSimplerSettings } from "#src/tools/shared/remote-script/simpler-settings.ts";
+import { lookUpSimplerSettings } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings.ts";
 import { findInReadResult } from "./find-in-read-result.ts";
 
 /** A Simpler in a read result that listed its params. */

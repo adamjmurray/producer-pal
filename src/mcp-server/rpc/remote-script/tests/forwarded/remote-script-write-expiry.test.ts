@@ -14,7 +14,8 @@ import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelop
 import { CONVERT_ROUTE } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { MANAGE_ROUTES } from "#src/tools/core/helpers/manage-contract.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+import { DEVICE_CONVERSION_ROUTES } from "#src/tools/shared/remote-script/device-conversions/device-conversions-contract.ts";
+import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptRoutes } from "../../remote-script-routes.ts";
 import { useFakeRemoteScriptRoutes } from "../remote-script-test-helpers.ts";
@@ -56,6 +57,14 @@ const WRITES: Record<string, { node: string; args: object }> = {
   "/device/simpler/to-drum-rack": {
     node: SIMPLER_SETTINGS_ROUTES.toDrumRack,
     args: { devicePath: DEVICE },
+  },
+  "/track/to-drum-rack": {
+    node: DEVICE_CONVERSION_ROUTES.trackToDrumRack,
+    args: { track: "t0" },
+  },
+  "/device/drum-pad/to-track": {
+    node: DEVICE_CONVERSION_ROUTES.drumPadToTrack,
+    args: { devicePath: DEVICE, note: 36 },
   },
   "/undo/undo": { node: MANAGE_ROUTES.undo, args: {} },
   "/undo/redo": { node: MANAGE_ROUTES.redo, args: {} },

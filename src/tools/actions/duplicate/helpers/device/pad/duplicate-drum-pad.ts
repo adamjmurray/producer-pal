@@ -137,7 +137,7 @@ export function duplicateDrumPad(
  * @param rack - The rack the pads belong to
  * @throws Error when copy_pad isn't safe to call
  */
-function refuseRackWithoutPads(rack: LiveAPI): void {
+export function refuseRackWithoutPads(rack: LiveAPI): void {
   if (rack.getProperty("can_have_drum_pads") !== 1) {
     throw new Error(
       `the source pad's device ${targetLabel(rack)} is not a Drum Rack`,

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { duplicateEnvelopeClip } from "../clip/slot-copy/duplicate-envelope-clip.ts";
@@ -20,7 +21,11 @@ import { duplicateDevice } from "../device/duplicate-device.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
-} from "../device/duplicate-drum-pad.ts";
+} from "../device/pad/duplicate-drum-pad.ts";
+import {
+  PAD_TO_NEW_TRACK,
+  duplicateDrumPadToTrack,
+} from "../device/pad/drum-pad-to-track.ts";
 import { runLaneCopy } from "../sources/copy-clip-to-lane.ts";
 import {
   duplicateScene,
@@ -306,12 +311,16 @@ function writeChainCopy(
   // Read fresh: an earlier copy inserted at or before the source's own index
   // shifts it up, so reusing an object would copy whatever moved into its place.
   if (body.kind === "pad") {
-    return duplicateDrumPad(
-      resolveSourcePad(validateIdType(body.sourceId, "drum-pad")),
-      // Never undefined: a pad with no destination was refused up front.
-      body.toPath as string,
-      label.name,
-    );
+    const source = resolveSourcePad(validateIdType(body.sourceId, "drum-pad"));
+    // Never undefined: a pad with no destination was refused up front.
+    const toPath = body.toPath as string;
+
+    return toPath.trim() === PAD_TO_NEW_TRACK
+      ? duplicateDrumPadToTrack(source, label.name, {
+          deadline: run.context.deadline,
+          manage: manageOffered(run.context),
+        })
+      : duplicateDrumPad(source, toPath, label.name);
   }
 
   return body.kind === "chain"

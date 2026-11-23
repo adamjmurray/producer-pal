@@ -8,6 +8,7 @@ import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type Call,
   type Done,
+  type MaybePromise,
   type PipelineResult,
   type WriteSpec,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
@@ -29,6 +30,28 @@ import { type TrackEntry, writeTrack } from "./helpers/call/write-track.ts";
 
 /** What update-track answers: the lone entry, or one entry per target. */
 export type UpdateTrackAnswer = PipelineResult<TrackEntry>;
+
+/**
+ * Updates properties of existing tracks, and the take lanes on them. Without
+ * `convert` nothing awaits, so the answer is never a promise.
+ * @param args - The track parameters
+ * @param context - Internal context object
+ * @returns Single entry, or array when more than one target was named
+ */
+export function updateTrack(
+  args: UpdateTrackArgs & { convert?: undefined },
+  context?: Partial<ToolContext>,
+): UpdateTrackAnswer;
+/**
+ * Updates tracks, converting each through the remote script.
+ * @param args - The track parameters
+ * @param context - Internal context object, for the request deadline
+ * @returns Single entry, or array when more than one target was named
+ */
+export function updateTrack(
+  args: UpdateTrackArgs,
+  context?: Partial<ToolContext>,
+): MaybePromise<UpdateTrackAnswer>;
 
 /**
  * Updates properties of existing tracks, and the take lanes on them
@@ -65,9 +88,12 @@ export type UpdateTrackAnswer = PipelineResult<TrackEntry>;
 export function updateTrack(
   args: UpdateTrackArgs,
   context: Partial<ToolContext> = {},
-): UpdateTrackAnswer {
-  // No hook awaits, so the answer is never a promise.
-  return runWrite(TRACK_WRITE, args, context) as UpdateTrackAnswer;
+): MaybePromise<UpdateTrackAnswer> {
+  return runWrite(
+    TRACK_WRITE,
+    args,
+    context,
+  ) as MaybePromise<UpdateTrackAnswer>;
 }
 
 const TRACK_WRITE: WriteSpec<
@@ -82,7 +108,7 @@ const TRACK_WRITE: WriteSpec<
   parse: (args) => parseTrackCall(args),
   lists: trackListArgs,
   targets: trackTargets,
-  check: checkTrackCall,
+  check: (call, targets, { ctx }) => checkTrackCall(call, targets, ctx),
   write: writeTrack,
   settle: settleTrackUpdate,
 };

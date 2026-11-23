@@ -13,6 +13,7 @@ import {
   deprecatedSendParams,
   sendsInputSchema,
 } from "#src/tools/shared/sends/sends-schema.ts";
+import { TRACK_CONVERT_TYPES } from "#src/tools/shared/remote-script/device-conversions/device-conversions-contract.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -118,5 +119,12 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       smallModel: null,
     }),
     ...deprecatedSendParams,
+    convert: param(z.enum(TRACK_CONVERT_TYPES).optional(), {
+      default:
+        "drum-rack = put the track's devices on pad C1 of a Drum Rack on a new track right after it (shifting later tracks), after the other edits. " +
+        "A track with clips is kept; one with none is removed, the new track taking its name. Clips aren't copied. Live selects and arms the new track. " +
+        "Regular tracks only. Needs the remote script",
+      smallModel: null,
+    }),
   },
 });

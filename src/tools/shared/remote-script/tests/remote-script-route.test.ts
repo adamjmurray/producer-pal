@@ -8,6 +8,7 @@ import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-pro
 import {
   remoteScriptChange,
   remoteScriptRoute,
+  settledRemoteScriptChange,
 } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
@@ -75,6 +76,30 @@ describe("an out-of-date remote script", () => {
       reason: OUTDATED.outdatedWithoutManage,
       available: false,
       outdated: true,
+    });
+  });
+});
+
+describe("settledRemoteScriptChange", () => {
+  it("answers as remoteScriptChange does when nothing throws", async () => {
+    answers({ available: true, result: { n: 1 } });
+
+    expect(
+      await settledRemoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({ ok: true, result: { n: 1 } });
+  });
+
+  it("calls a throw unanswered, since the change may have landed", async () => {
+    vi.mocked(requestNode).mockRejectedValue(new Error("channel closed"));
+
+    expect(
+      await settledRemoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({
+      ok: false,
+      reason:
+        "the Producer Pal remote script did not answer in time (channel closed)",
+      available: true,
+      stalled: "unanswered",
     });
   });
 });

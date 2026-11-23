@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type PairedLabels,
   pairLabels,
@@ -18,6 +19,7 @@ import {
 } from "../track-routing-updates.ts";
 import { type TrackSends, trackSendsAt } from "../track-send-updates.ts";
 import { paramsTakeLanesIgnore } from "../track-take-lanes.ts";
+import { type TrackConversionCall } from "../track-to-drum-rack.ts";
 import { type UpdateTrackArgs, type TrackCall } from "./parse-track-call.ts";
 import { type TrackPayload } from "./resolve-track-targets.ts";
 
@@ -36,6 +38,8 @@ export interface TrackChecked extends PairedLabels {
   sent: TargetParams;
   /** How many targets the call named */
   named: number;
+  /** The request deadline and the manage flag, for `convert` */
+  conversion: TrackConversionCall;
 }
 
 /**
@@ -43,6 +47,7 @@ export interface TrackChecked extends PairedLabels {
  * carried out before any track is touched.
  * @param call - The update-track call
  * @param targets - The call's targets
+ * @param ctx - The tool context, for the request deadline
  * @returns What each target takes from the lists
  * @throws Error when a list can't be paired, or the call asks nothing of its
  *   targets: a take lane path that adds a lane, or that no track can hold, is
@@ -51,6 +56,7 @@ export interface TrackChecked extends PairedLabels {
 export function checkTrackCall(
   call: TrackCall,
   targets: Array<Target<TrackPayload>>,
+  ctx: Partial<ToolContext>,
 ): TrackChecked {
   const { args, sent } = call;
   const lanes = targets.flatMap(({ data }) =>
@@ -84,5 +90,6 @@ export function checkTrackCall(
     laneIgnores: lanes.length > 0 ? paramsTakeLanesIgnore(args) : [],
     sent,
     named: targets.length,
+    conversion: { deadline: ctx.deadline, manage: manageOffered(ctx) },
   };
 }

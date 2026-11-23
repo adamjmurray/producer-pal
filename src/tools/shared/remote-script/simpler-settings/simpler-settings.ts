@@ -7,15 +7,13 @@
 // Live API has neither; the Producer Pal remote script reaches them through
 // Live's Python API.
 
-import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type Unreadable,
   askAboutDevices,
 } from "#src/tools/shared/remote-script/device-batch-route.ts";
-import { REMOTE_SCRIPT_UNANSWERED } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 import {
   type RouteOutcome,
-  remoteScriptChange,
+  settledRemoteScriptChange,
 } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import {
   MAX_SIMPLERS_PER_CALL,
@@ -24,7 +22,7 @@ import {
   type SimplerSettingsEntry,
   type SimplerToDrumRackResult,
   type SimplerWriteRequest,
-} from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 
 /** A Simpler's pitch bend ranges, in semitones. */
 export interface SimplerSettings {
@@ -134,29 +132,19 @@ export function convertSimplerToDrumRack(
  * @param manage - Whether the caller can use ppal-manage
  * @returns The route's result, or why there isn't one
  */
-async function changeSimpler<T>(
+function changeSimpler<T>(
   route: string,
   request: object,
   deadline: number | null | undefined,
   manage: boolean,
 ): Promise<RouteOutcome<T>> {
-  try {
-    return await remoteScriptChange<T>(
-      route,
-      request,
-      deadline,
-      REMOTE_SCRIPT_MISSING,
-      manage,
-    );
-  } catch (error) {
-    // Whether the request reached the remote script is unknown.
-    return {
-      ok: false,
-      reason: `${REMOTE_SCRIPT_UNANSWERED} (${errorMessage(error)})`,
-      available: true,
-      stalled: "unanswered",
-    };
-  }
+  return settledRemoteScriptChange<T>(
+    route,
+    request,
+    deadline,
+    REMOTE_SCRIPT_MISSING,
+    manage,
+  );
 }
 
 /**

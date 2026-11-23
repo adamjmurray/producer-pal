@@ -23,6 +23,7 @@ import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type AppliedTarget,
+  type MaybePromise,
   type Step,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
@@ -41,6 +42,7 @@ import {
   type UpdateTakeLaneResult,
   updateTakeLane,
 } from "../track-take-lanes.ts";
+import { type TrackConverted, trackToDrumRack } from "../track-to-drum-rack.ts";
 import { type TrackChecked } from "./check-track-call.ts";
 import { type UpdateTrackArgs } from "./parse-track-call.ts";
 import { type TrackPayload } from "./resolve-track-targets.ts";
@@ -58,6 +60,8 @@ export interface UpdateTrackResult extends TrackMixerApplied {
   detail?: string;
   /** Every send the call wrote, read back off the track */
   sends?: SendResult[];
+  /** The new track `convert` made */
+  converted?: TrackConverted;
 }
 
 /** One target's entry: a track's, or a take lane's. */
@@ -96,7 +100,7 @@ interface MixerParams {
 export function writeTrack(
   target: AppliedTarget<TrackPayload>,
   step: Step<TrackChecked>,
-): TrackEntry {
+): MaybePromise<TrackEntry> {
   const { data } = target;
 
   if (data.kind === "lane") {
@@ -121,7 +125,7 @@ export function writeTrack(
 function writeTrackProperties(
   track: LiveAPI,
   step: Step<TrackChecked>,
-): UpdateTrackResult {
+): MaybePromise<UpdateTrackResult> {
   const { checked, index } = step;
   const { args } = checked;
   const address = { id: track.id, ...pathField(track) };
@@ -166,11 +170,24 @@ function writeTrackProperties(
     ...(sends.length > 0 ? { sends } : {}),
   };
 
-  return reportTargetNotes(
-    result,
-    notes,
-    trackWorkAsked(args, name, color, routing),
-  );
+  const asked = trackWorkAsked(args, name, color, routing);
+
+  if (args.convert == null) {
+    return reportTargetNotes(result, notes, asked);
+  }
+
+  // Last: it adds a track, and Live may delete this one.
+  return trackToDrumRack(track, notes, checked.conversion).then((converted) => {
+    if (converted == null) {
+      return reportTargetNotes(result, notes, asked);
+    }
+
+    // A removed track's path names another track now.
+    const { path, ...rest } = result;
+    const kept = converted.sourceRemoved === true ? rest : { path, ...rest };
+
+    return reportTargetNotes({ ...kept, converted }, notes, asked);
+  });
 }
 
 /**

@@ -16,7 +16,7 @@ import {
 } from "#src/tools/shared/device/specialized/devices/simpler/simpler-slicing.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { askedAnythingElse } from "#src/tools/shared/helpers/target-notes.ts";
-import { convertSimplerToDrumRack } from "#src/tools/shared/remote-script/simpler-settings.ts";
+import { convertSimplerToDrumRack } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings.ts";
 
 /** What the conversion needs from the call. */
 interface ConversionCall {

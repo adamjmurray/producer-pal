@@ -21,6 +21,7 @@ import {
 import { type PanningMode } from "../track-mixer-updates.ts";
 import { validateMonitoringState } from "../track-monitoring-updates.ts";
 import { ROUTING_PARAMS } from "../track-routing-updates.ts";
+import { type TrackConvertType } from "#src/tools/shared/remote-script/device-conversions/device-conversions-contract.ts";
 
 export interface UpdateTrackArgs {
   id?: string;
@@ -55,6 +56,7 @@ export interface UpdateTrackArgs {
   sendGainDb?: number;
   sendReturn?: string;
   sends?: SendEntry[];
+  convert?: TrackConvertType;
 }
 
 /** An update-track call, read once and refused if it was written wrong. */

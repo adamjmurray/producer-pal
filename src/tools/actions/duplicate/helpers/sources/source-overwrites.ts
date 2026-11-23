@@ -21,7 +21,7 @@ import {
   resolvePadTarget,
   resolveSourcePad,
   type PadTarget,
-} from "../device/duplicate-drum-pad.ts";
+} from "../device/pad/duplicate-drum-pad.ts";
 import { type SourceShare } from "./source-plan.ts";
 
 /** A lane copy's source, and where its clips go. */

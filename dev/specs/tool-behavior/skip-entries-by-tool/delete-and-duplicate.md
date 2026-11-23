@@ -193,6 +193,12 @@ Part of [Skip entries, tool by tool](README.md).
   either: the lane can't be read, so it can't tell whether anything was left,
   and checking every parameter on the track costs too much. The tool
   descriptions warn before the call instead.
+- **duplicate: a pad sent to `t+` goes through the remote script.** The pad's
+  chain is copied onto a new MIDI track after the last track, and the entry is
+  that track's `id` and `path`; `name` names the track. An empty pad, a rack
+  with no pads of its own, and a pad holding the Producer Pal device are skips
+  before anything is sent. A refusal or a missing remote script is a skip
+  (`not copied: …`); with no answer the skip says it _may have copied_.
 - **duplicate: a device copy's destination is checked before the copy.** A
   `toPath` that can't take the device is the target's skip before either route
   (the remote script's, a temp track) writes anything. It gives the reason the

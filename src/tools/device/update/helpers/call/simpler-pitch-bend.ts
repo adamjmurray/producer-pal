@@ -21,12 +21,12 @@ import { coerceInt } from "#src/tools/shared/device/specialized/specialized-para
 import {
   NOTE_PITCH_BEND_RANGE_MAX,
   PITCH_BEND_RANGE_MAX,
-} from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import {
   type SimplerSettings,
   type SimplerSettingsChange,
   writeSimplerSettings,
-} from "#src/tools/shared/remote-script/simpler-settings.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 
 /** Each param entry a write was settled for, with what it came to. */

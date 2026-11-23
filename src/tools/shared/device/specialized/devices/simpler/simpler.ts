@@ -13,7 +13,7 @@ import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   NOTE_PITCH_BEND_RANGE_MAX,
   PITCH_BEND_RANGE_MAX,
-} from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import {
   enumParam,
   readBoolProp,

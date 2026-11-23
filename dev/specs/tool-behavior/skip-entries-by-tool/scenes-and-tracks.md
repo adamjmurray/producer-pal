@@ -13,6 +13,16 @@ Part of [Skip entries, tool by tool](README.md).
   entry plus `<error>; already changed: name, color, tempo, time signature`;
   later scenes still run, and the deadline skips the ones it never reached.
   `focus` selects the last scene written.
+- **update-track's `convert` runs last, through the remote script.** The track's
+  other writes land first. When it converts, the entry carries `converted.track`
+  (the new track's `id`, `path` and `name`). Live deletes a source track that
+  has no clips: the entry then says so in `detail`, has
+  `converted.sourceRemoved: true`, and drops its own `path`, which names another
+  track by then. A conversion that didn't happen is a `detail`
+  (`not converted: …`): a return or main track, a group track, a track with no
+  devices, a clip-less track that is its group's only child (Live crashes on
+  it), or no remote script. With nothing else asked of the track it is a skip.
+  With no answer the entry says it _may have converted_.
 - **update-track answers per target named.** Its targets, tracks and take lanes,
   resolve up front. A path that can't be parsed refuses the call (a lane on a
   return or main track included); one that parses but names no track holds its
