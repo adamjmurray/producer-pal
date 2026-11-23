@@ -111,6 +111,16 @@ Part of [Skip entries, tool by tool](README.md).
   clip) is a whole-call warning, `auto ignored: …`. A clip meter Live changed (a
   numerator it clamps) is reported as read back, but the clip's region is still
   laid out in the meter asked for.
+- **Live 12.3: a clip placed inside another.** Live 12.3 crashes when it creates
+  an arrangement clip with both edges strictly inside an existing clip (12.4
+  doesn't). create-clip, and a move or duplicate that re-creates a clip (to or
+  from a take lane), guard every such create on Live before 12.4 only:
+  - Main lane: the clip in the way is first cut at the new start, so the entry
+    reads as it would on 12.4. A cut that fails is the target's skip.
+  - Take lane, where a clip can't be cut: the target is a skip,
+    `Live 12.3 crashes placing a clip inside another on a take lane (<path>); start it at or outside that clip's edges, or use Live 12.4`.
+  - An audio clip's end isn't known until it exists, so one that starts inside a
+    clip counts as inside.
 - **A clip's own scale (`scale`) is MIDI-only and needs Live 12.4.15.** Each
   clip keeps its own scale; writing one changes that clip alone, and a clip made
   without one starts with the Live Set's. update-clip and create-clip take a

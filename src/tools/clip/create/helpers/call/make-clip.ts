@@ -14,6 +14,7 @@ import {
   createInSessionSlot,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { guardInsideCreate } from "#src/tools/shared/arrangement/inside-create-guard.ts";
 import {
   resolveTakeLane,
   type ResolvedTakeLane,
@@ -140,12 +141,30 @@ function makeArrangementClip(
   }
 
   const start = position.arrangementStartBeats as number;
+  const length = createdClipLength(
+    transform.clipLength,
+    plan.timing.startBeats,
+  );
 
   run.ledger.scan(lane, laneApi);
 
   let clip: LiveAPI;
 
   try {
+    // After the scan, so a cut it makes reads as part of this write.
+    guardInsideCreate({
+      laneApi,
+      lane,
+      start,
+      end: plan.sampleFile ? null : start + length,
+      isMidi: !plan.sampleFile,
+      context: {
+        silenceWavPath: run.context.silenceWavPath,
+        lanes: run.ledger.lanes,
+      },
+      onCut: (path) => step.landed(`cut the clip at ${path}`),
+    });
+
     clip = plan.sampleFile
       ? createAudioArrangementClip(
           position.trackIndex,
@@ -154,12 +173,7 @@ function makeArrangementClip(
           takeLane,
           track,
         ).clip
-      : createdMidiClip(
-          laneApi,
-          position,
-          start,
-          createdClipLength(transform.clipLength, plan.timing.startBeats),
-        );
+      : createdMidiClip(laneApi, position, start, length);
   } catch (error) {
     // Live may have cleared the span before it declined, so what the lane held
     // is no longer known.
