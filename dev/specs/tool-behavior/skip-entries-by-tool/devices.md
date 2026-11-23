@@ -37,6 +37,30 @@ Part of [Skip entries, tool by tool](README.md).
   sent), the remote script isn't running or is out of date, or Live refused
   (`not converted: …`). With no answer the entry says it _may have converted_.
   If that leaves the target with nothing landed, the target is a skip.
+- **update-device's `copyParamsFrom` copies one device's settings onto each
+  target.** It takes an id or a path, resolved before anything is written; a
+  source that doesn't exist, or is a chain or drum pad, refuses the call
+  (`copyParamsFrom must name a device, not a chain: "t0/d0/c0"`), and so does
+  `wrapInRack` beside it. Each target then gets its settings first (the named
+  settings `params` also takes, such as `globalMode` or a Simpler's `sample`),
+  then its params, both ahead of `params`, so a param the call names wins. A
+  target's entry says
+  `copied: { params: <how many changed>, settings?: [...], skipped?: [...] }`; a
+  target that already matches is `copied: { params: 0 }`, a success. Values
+  within about six significant digits count as matching, since that is all Max
+  passes. `skipped` names each param a rack macro owns
+  (`Threshold: mapped to a macro`), each setting or param Live refused
+  (`<name>: <reason>`), and, when the two devices list different params, one
+  `N params not on both devices` for those with no partner by name. Sidechain
+  routing and a Simpler's pitch bend ranges are not copied. A copy that overrode
+  arrangement automation adds
+  `copyParamsFrom: arrangement automation overridden` and the params. A target
+  is refused, with nothing written to it, when it is the source
+  (`not copied: this is the source device`), is another type
+  (`not copied: the source is Compressor, not EQ Eight`), or the source is gone
+  by its turn (`not copied: the source device is gone`). On a chain or pad the
+  arg is ignored, as any arg a chain has no use for. If the refusal is all the
+  call asked of the target, the target is a skip.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes

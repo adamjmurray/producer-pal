@@ -521,6 +521,8 @@ sounding.
   slice (the conversion needs the [remote script](/guide/remote-script))
 - Swap a preset onto a device (needs the [remote script](/guide/remote-script)),
   found by name the same way as in Create Device
+- Copy one device's param values onto other devices of the same type with
+  `copyParamsFrom`
 - Says when a write overrides arrangement automation: Live then ignores that
   lane until you press **Re-Enable Automation**
 

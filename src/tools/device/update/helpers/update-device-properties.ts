@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import {
+  type CopiedParams,
+  copyDeviceParams,
+} from "#src/tools/device/update/helpers/params/copy-device-params.ts";
 import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
@@ -60,6 +64,9 @@ export interface UpdatePropertyOptions {
   macroVariationIndex?: number;
   macroCount?: number;
   abCompare?: string;
+  /** Id of the device whose settings are copied onto each target, resolved by
+   * the call's parse; the argument is an id or a path */
+  copyParamsFrom?: string;
   mute?: boolean;
   solo?: boolean;
   color?: string;
@@ -88,6 +95,8 @@ export interface DeviceApplied {
   params: ParamResult[];
   /** One per action the call sent: what it did, or why it did nothing */
   actions: ActionResult[];
+  /** What `copyParamsFrom` changed, when it ran */
+  copied?: CopiedParams;
 }
 
 /**
@@ -114,6 +123,7 @@ export function updateDeviceProperties(
     macroCount,
     mappedMacros,
     abCompare,
+    copyParamsFrom,
     mute,
     solo,
     color,
@@ -128,6 +138,12 @@ export function updateDeviceProperties(
   } = options;
 
   const ignored: string[] = [];
+
+  // Before `params`, so a param the call names wins over the copy.
+  const copied =
+    copyParamsFrom == null
+      ? undefined
+      : copyDeviceParams(target, copyParamsFrom, notes);
 
   // Written first so a macroVariation "create" stores what was just set. The
   // values are read at the end instead: an A/B swap, a variation recall or a
@@ -194,7 +210,11 @@ export function updateDeviceProperties(
     (result) => result.action,
   );
 
-  return { params: paramsRead, actions: actionResults };
+  return {
+    params: paramsRead,
+    actions: actionResults,
+    ...(copied == null ? {} : { copied }),
+  };
 }
 
 /**
@@ -257,6 +277,7 @@ export function updateNonDeviceProperties(
   noteIfSet(ignored, "macroVariationIndex", options.macroVariationIndex);
   noteIfSet(ignored, "macroCount", options.macroCount);
   noteIfSet(ignored, "abCompare", options.abCompare);
+  noteIfSet(ignored, "copyParamsFrom", options.copyParamsFrom);
 
   if (options.mute != null) {
     const { mute } = options;
