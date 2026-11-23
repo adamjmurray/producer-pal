@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A Simpler's pitch bend ranges. Max's Live API doesn't have them; the Producer
-// Pal remote script reads and writes them through Live's Python API.
+// A Simpler's pitch bend ranges, and turning its slices into a Drum Rack. Max's
+// Live API has neither; the Producer Pal remote script reaches them through
+// Live's Python API.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
@@ -21,6 +22,7 @@ import {
   SIMPLER_SETTINGS_ROUTES,
   type SimplerReadResult,
   type SimplerSettingsEntry,
+  type SimplerToDrumRackResult,
   type SimplerWriteRequest,
 } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 
@@ -88,19 +90,64 @@ export async function writeSimplerSettings(
   manage: boolean,
 ): Promise<RouteOutcome<SimplerSettings>> {
   const request: SimplerWriteRequest = { devicePath: simpler.path, ...change };
+  const outcome = await changeSimpler<SimplerSettingsEntry>(
+    SIMPLER_SETTINGS_ROUTES.write,
+    request,
+    deadline,
+    manage,
+  );
 
+  return outcome.ok
+    ? { ok: true, result: settingsOf(outcome.result) }
+    : outcome;
+}
+
+/**
+ * Replace a sliced Simpler with a Drum Rack, one pad per slice, through the
+ * remote script. Never throws. Fails the same ways as
+ * {@link writeSimplerSettings}.
+ * @param simpler - The Simpler, in slicing mode
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The new rack's pad count, or why not
+ */
+export function convertSimplerToDrumRack(
+  simpler: LiveAPI,
+  deadline: number | null | undefined,
+  manage: boolean,
+): Promise<RouteOutcome<SimplerToDrumRackResult>> {
+  return changeSimpler<SimplerToDrumRackResult>(
+    SIMPLER_SETTINGS_ROUTES.toDrumRack,
+    { devicePath: simpler.path },
+    deadline,
+    manage,
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Send one change to a Simpler. Never throws.
+ * @param route - The Node route
+ * @param request - What to send it
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The route's result, or why there isn't one
+ */
+async function changeSimpler<T>(
+  route: string,
+  request: object,
+  deadline: number | null | undefined,
+  manage: boolean,
+): Promise<RouteOutcome<T>> {
   try {
-    const outcome = await remoteScriptChange<SimplerSettingsEntry>(
-      SIMPLER_SETTINGS_ROUTES.write,
+    return await remoteScriptChange<T>(
+      route,
       request,
       deadline,
       REMOTE_SCRIPT_MISSING,
       manage,
     );
-
-    return outcome.ok
-      ? { ok: true, result: settingsOf(outcome.result) }
-      : outcome;
   } catch (error) {
     // Whether the request reached the remote script is unknown.
     return {
@@ -111,8 +158,6 @@ export async function writeSimplerSettings(
     };
   }
 }
-
-// --- Helpers below main exports ---
 
 /**
  * Put the remote script's snake_case entry in this tool's spelling.

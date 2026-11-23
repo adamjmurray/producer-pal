@@ -3,14 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// What V8 and Node share about a Simpler's pitch bend ranges, which only the
-// Producer Pal remote script (remote-script/) can reach. Results are the remote
+// What V8 and Node share about a Simpler's pitch bend ranges and its
+// slices-to-Drum-Rack conversion, which only the Producer Pal remote script
+// (remote-script/) can reach. Results are the remote
 // script's own JSON, so their fields stay snake_case.
 
 /** The Node routes V8 calls to reach the remote script's `/device/simpler/*`. */
 export const SIMPLER_SETTINGS_ROUTES = {
   read: "remoteScript.device.simplerRead",
   write: "remoteScript.device.simplerWrite",
+  toDrumRack: "remoteScript.device.simplerToDrumRack",
 } as const;
 
 /** The most Simplers one read takes; more are asked in chunks. */
@@ -43,4 +45,9 @@ export interface SimplerSettingsEntry {
 export interface SimplerReadResult {
   /** One per path asked, in order */
   simplers: Array<SimplerSettingsEntry | { error: string }>;
+}
+
+/** What converting a sliced Simpler answers: the new Drum Rack's pad count. */
+export interface SimplerToDrumRackResult {
+  pads: number;
 }

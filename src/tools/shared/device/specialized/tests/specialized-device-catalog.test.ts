@@ -18,7 +18,7 @@ import {
   phaserFlangerSpec,
 } from "../devices/modulation-rate-effects.ts";
 import { roarSpec } from "../devices/roar.ts";
-import { simplerSpec } from "../devices/simpler.ts";
+import { simplerSpec } from "../devices/simpler/simpler.ts";
 import { spectralResonatorSpec } from "../devices/spectral-resonator.ts";
 import { wavetableSpec } from "../devices/wavetable.ts";
 import {
@@ -97,6 +97,23 @@ describe("action catalogs", () => {
         name: "warpAs",
         signature: "warpAs(beats)",
         description: "Warp the active region to span the given number of beats",
+      },
+      {
+        name: "setSlices",
+        signature: "setSlices(seconds, ...)",
+        description:
+          "Slice by hand: switch sliceBy to manual and put a slice at each position, replacing the others. A slice always starts at 0",
+      },
+      {
+        name: "resetSlices",
+        signature: "resetSlices",
+        description: "Bring back the slices sliceBy makes on its own",
+      },
+      {
+        name: "sliceToDrumRack",
+        signature: "sliceToDrumRack",
+        description:
+          "Replace the Simpler with a Drum Rack, one pad per slice from C1 up, after the rest of the call. The rack is a new device with a new id. Needs slicing mode and the remote script",
       },
     ]);
   });

@@ -489,6 +489,7 @@ POST_ONLY = (
     "/envelope/clear",
     "/clip/convert",
     "/device/simpler/write",
+    "/device/simpler/to-drum-rack",
     "/undo/end",
     "/undo/undo",
     "/undo/redo",

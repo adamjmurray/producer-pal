@@ -484,6 +484,9 @@ sounding.
   racks)
 - Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
   parameters (needs the remote script)
+- Read how a Simpler slices its sample (`sliceBy`, `sliceSensitivity`,
+  `sliceDivision`, `sliceRegions`) and where the slices fall (`slices`, in
+  seconds)
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
 
@@ -507,6 +510,9 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
+- Slice a Simpler's sample by transients, beat divisions, equal regions, or at
+  positions you give, then turn the slices into a Drum Rack with one pad per
+  slice (the conversion needs the [remote script](/guide/remote-script))
 - Swap a preset onto a device (needs the [remote script](/guide/remote-script)),
   found by name the same way as in Create Device
 - Says when a write overrides arrangement automation: Live then ignores that

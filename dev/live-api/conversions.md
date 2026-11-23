@@ -57,28 +57,35 @@ where the track lands for a source inside a group.
 
 ## Sliced Simpler to Drum Rack
 
-`sliced_simpler_to_drum_rack(song, simpler)` is not exposed yet. Measured on
-Live 12.4.16 with 1-bar and 8-bar drum loops.
+`sliced_simpler_to_drum_rack(song, simpler)` backs `update-device`'s
+`sliceToDrumRack` action, through the remote script's
+`/device/simpler/to-drum-rack`. Measured on Live 12.4.16 with 1-bar and 8-bar
+drum loops.
 
 - **It works at once**, unlike the clip conversions: the Drum Rack is there
   before the call returns.
 - **It replaces the Simpler in place.** Same track, same device position, no new
   track. The rack is a new device that keeps the Simpler's name; the track name
-  doesn't change.
+  doesn't change. A Simpler on a drum pad or in a rack chain converts in place
+  too, leaving a Drum Rack inside that chain.
 - **One pad per slice, from C1 (36) up**, named "Slice 1", "Slice 2", … Each
   pad's chain holds one Simpler in one-shot mode on the same sample file, with
-  its start and end markers at the slice's bounds. Every chain is in choke
-  group 1. Simpler allows at most 64 slices, so the pads never run out.
+  its start and end markers at the slice's bounds, and the sample's warp setting
+  kept. Every chain is in choke group 1. Simpler allows at most 64 slices, so
+  the pads never run out.
+- **MIDI clips on the track are untouched**, and their notes still play the same
+  slices: Simpler plays slice N from C1 up too.
 - A Simpler that isn't in slicing mode raises
   `RuntimeError('Can only convert to drum rack if sliced')`.
 - **Never replace the sample and convert in the same main-thread call: Live
-  crashes** (null pointer, twice out of two tries). `replace_sample` in one
+  crashes** (null pointer, three out of three tries). `replace_sample` in one
   request and the conversion in the next is fine, even with no wait between
   them. Setting slicing mode or the slice settings in the same call as the
-  conversion is also fine.
+  conversion is also fine. So the route never loads a sample, and
+  `update-device` loads the sample through Max before it asks for the
+  conversion; an e2e test does both in one tool call.
 
-Not probed: a track that already has MIDI clips, a Simpler inside a rack, undo
-steps, warped samples, and Live 12.3.
+Not probed: undo steps and Live 12.3.
 
 Live 12.3 (the minimum) may lack `Live.Conversions` or some of its functions;
 the route answers 409 "this Live version can't convert clips" then.

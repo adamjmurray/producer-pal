@@ -53,6 +53,10 @@ const WRITES: Record<string, { node: string; args: object }> = {
     node: SIMPLER_SETTINGS_ROUTES.write,
     args: { devicePath: DEVICE, pitchBendRange: 2 },
   },
+  "/device/simpler/to-drum-rack": {
+    node: SIMPLER_SETTINGS_ROUTES.toDrumRack,
+    args: { devicePath: DEVICE },
+  },
   "/undo/undo": { node: MANAGE_ROUTES.undo, args: {} },
   "/undo/redo": { node: MANAGE_ROUTES.redo, args: {} },
 };

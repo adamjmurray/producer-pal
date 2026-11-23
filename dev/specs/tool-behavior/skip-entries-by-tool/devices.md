@@ -29,6 +29,14 @@ Part of [Skip entries, tool by tool](README.md).
   `that chain is now <path> (id N)`; see
   [Tool Behavior](../skips-and-replaced-targets.md). A bare pad path is its
   note, which no move changes, so it gets no clause.
+- **update-device's `sliceToDrumRack` action runs last, through the remote
+  script.** It converts once the target's other writes are done and read back,
+  wherever it sits in `actions`. When it converts, its entry is the action alone
+  and the target's `id` is the new Drum Rack's; the path is unchanged. It is
+  `ok: false` with the reason when the Simpler isn't in slicing mode (nothing is
+  sent), the remote script isn't running or is out of date, or Live refused
+  (`not converted: …`). With no answer the entry says it _may have converted_.
+  If that leaves the target with nothing landed, the target is a skip.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes

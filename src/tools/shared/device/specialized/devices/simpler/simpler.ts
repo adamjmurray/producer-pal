@@ -19,12 +19,16 @@ import {
   readBoolProp,
   writeBoolProp,
   writeIntFromSet,
-} from "../specialized-param-access.ts";
+} from "../../specialized-param-access.ts";
 import {
   type ActionOutcome,
   type PseudoParamWrite,
   type SpecializedDeviceSpec,
-} from "../specialized-device-types.ts";
+} from "../../specialized-device-types.ts";
+import {
+  simplerSlicingActions,
+  simplerSlicingParams,
+} from "./simpler-slicing.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). See
 // dev/live-api/specialized-devices/instruments/simpler.md.
@@ -150,6 +154,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
       "slicing_playback_mode",
       SLICING_PLAYBACK_MODES,
     ),
+    ...simplerSlicingParams(),
     {
       name: "retrigger",
       read: (device) => readBoolProp(device, "retrigger"),
@@ -223,5 +228,6 @@ export const simplerSpec: SpecializedDeviceSpec = {
       signature: "warpAs(beats)",
       description: "Warp the active region to span the given number of beats",
     },
+    ...simplerSlicingActions(),
   },
 };

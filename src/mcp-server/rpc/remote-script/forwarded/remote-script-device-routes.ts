@@ -18,8 +18,8 @@ import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
 /**
  * Register the routes V8 uses to ask the remote script which rack macros are
  * mapped (`/device/macros`), for a device's name and on/off state
- * (`/device/basics`), and to read and write a Simpler's pitch bend ranges
- * (`/device/simpler/*`).
+ * (`/device/basics`), to read and write a Simpler's pitch bend ranges and to
+ * turn its slices into a Drum Rack (`/device/simpler/*`).
  */
 export function registerRemoteScriptDeviceRoutes(): void {
   registerNodeRoute(
@@ -40,6 +40,11 @@ export function registerRemoteScriptDeviceRoutes(): void {
   registerNodeRoute(
     SIMPLER_SETTINGS_ROUTES.write,
     forwardSimplerWriteRequest,
+    REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  );
+  registerNodeRoute(
+    SIMPLER_SETTINGS_ROUTES.toDrumRack,
+    forwardSimplerToDrumRackRequest,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
 }
@@ -120,6 +125,24 @@ async function forwardSimplerWriteRequest(
         note_pitch_bend_range: notePitchBendRange,
       }),
     },
+    requireExpiry(args),
+  );
+}
+
+/**
+ * Forward one slices-to-Drum-Rack conversion to the remote script.
+ * @param args - `{ devicePath }`, in V8's spelling
+ * @returns The remote script's JSON, an error worded for the model, or
+ *   `available: false` when nothing answered
+ * @throws Error when `devicePath` isn't a string, `expiresInMs` is missing, or
+ *   the remote script took the request but never answered
+ */
+async function forwardSimplerToDrumRackRequest(
+  args: unknown,
+): Promise<RouteReply<Record<string, unknown>>> {
+  return await forwardRemoteScriptRequest(
+    "/device/simpler/to-drum-rack",
+    { device_path: requireString(args, "devicePath") },
     requireExpiry(args),
   );
 }

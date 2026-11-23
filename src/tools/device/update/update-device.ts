@@ -57,6 +57,7 @@ import {
   type SettledParams,
   writePitchBendParams,
 } from "./helpers/call/simpler-pitch-bend.ts";
+import { slicesToDrumRack } from "./helpers/call/slices-to-drum-rack.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateDeviceTarget } from "./helpers/update-device-target.ts";
 import { noteLayeredLanding } from "./helpers/move-drum-chain.ts";
@@ -409,7 +410,7 @@ function updateResolved(
   const landed = (phrase: string): void =>
     step.landed(phrase, { id: target.id });
 
-  const finish = (settled?: SettledParams): DeviceEntry => {
+  const finish = (settled?: SettledParams): MaybePromise<DeviceEntry> => {
     const update = updateDeviceTarget(
       target,
       options,
@@ -421,7 +422,8 @@ function updateResolved(
 
     step.checked.written.set(update.entry, update.written);
 
-    return update.entry;
+    // Last: a Simpler's sliceToDrumRack replaces the device just written.
+    return slicesToDrumRack(target, update.entry, options, call);
   };
 
   // A Simpler's pitch bend params go through the remote script, and a hosted

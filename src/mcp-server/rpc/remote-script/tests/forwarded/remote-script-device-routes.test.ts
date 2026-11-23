@@ -287,3 +287,44 @@ describe("remoteScript.device.simplerWrite", () => {
     ).toStrictEqual({ success: false, error: "devicePath must be a string" });
   });
 });
+
+describe("remoteScript.device.simplerToDrumRack", () => {
+  it("sends the Simpler's path and hands back the pad count", async () => {
+    const remote = await answerWith({ body: { pads: 8 } });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.toDrumRack, {
+        devicePath: PATHS[0],
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, result: { pads: 8 } },
+    });
+    expect(remote.requests).toStrictEqual([
+      {
+        method: "POST",
+        route: "/device/simpler/to-drum-rack",
+        query: {},
+        body: { device_path: PATHS[0], expires_in_ms: EXPIRES_IN_MS },
+      },
+    ]);
+  });
+
+  it("hands back why the remote script refused", async () => {
+    await answerWith({
+      status: 409,
+      body: { error: "the Simpler isn't in slicing mode" },
+    });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.toDrumRack, {
+        devicePath: PATHS[0],
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: "the Simpler isn't in slicing mode" },
+    });
+  });
+});

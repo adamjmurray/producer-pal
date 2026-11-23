@@ -116,11 +116,12 @@ skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
 and with every route whose result a caller waits on and that changes the Set
 (`/load`, `/hotswap`, `/replace-producer-pal`, `/device/duplicate`,
 `/clip/convert`, `/envelope/write`, `/envelope/clear`, `/device/simpler/write`,
-`/undo/undo`, `/undo/redo`), a bit under the time it has left, so one deadline
-covers the lookup and the load, and a change it stopped waiting for isn't made
-later. `/undo/end` is fire-and-forget and sends none. A new route that changes
-the Set must be sent one too. A job Live started but didn't finish in 30s is
-also a 504, with `started: true`: Live may have made the change.
+`/device/simpler/to-drum-rack`, `/undo/undo`, `/undo/redo`), a bit under the
+time it has left, so one deadline covers the lookup and the load, and a change
+it stopped waiting for isn't made later. `/undo/end` is fire-and-forget and
+sends none. A new route that changes the Set must be sent one too. A job Live
+started but didn't finish in 30s is also a 504, with `started: true`: Live may
+have made the change.
 
 ### `GET /ping`
 
@@ -140,11 +141,11 @@ when unknown and absent from older scripts.
 
 The other routes, by what they work on:
 
-| Part                                                    | Routes                                                                                                                                             |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                                       |
-| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/basics`, `/device/simpler/read`, `/device/simpler/write` |
-| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                                     |
+| Part                                                    | Routes                                                                                                                                                                             |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                                                                       |
+| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/basics`, `/device/simpler/read`, `/device/simpler/write`, `/device/simpler/to-drum-rack` |
+| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                                                                     |
 
 ### `POST /undo/end`
 
@@ -270,7 +271,8 @@ reply, and 30s more if the job started in that time.
 - `device_basics.py`: a device's name and on/off state (CC Control)
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
-- `simpler_settings.py`: a Simpler's pitch bend ranges
+- `simpler_settings.py`: a Simpler's pitch bend ranges, and turning its slices
+  into a Drum Rack
 - `undo.py`: Live's undo history: closing the pending step, undo and redo
 - `gen_ui_routes.py`, `watches.py`, `ui_widgets.py`: the generative UI (see
   below)

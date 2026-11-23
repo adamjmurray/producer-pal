@@ -12,9 +12,9 @@ import {
   applySpecializedActions,
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../../specialized-device-registry.ts";
+} from "../../../specialized-device-registry.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { expectWriteRefused } from "../refused-write-assertions.ts";
+import { expectWriteRefused } from "../../refused-write-assertions.ts";
 
 interface SimplerProps {
   multiSampleMode?: number;

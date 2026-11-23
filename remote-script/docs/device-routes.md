@@ -140,3 +140,19 @@ a Simpler is a 400 and nothing is written.
 ```sh
 curl -s -X POST localhost:3349/device/simpler/write -d '{"device_path": "live_set tracks 0 devices 0", "pitch_bend_range": 12}'
 ```
+
+## `POST /device/simpler/to-drum-rack`
+
+Replaces a sliced Simpler with a Drum Rack, one pad per slice, using
+`Live.Conversions.sliced_simpler_to_drum_rack`. Takes one `device_path` and
+answers `{pads}`, the new rack's pad count. Live converts in place before the
+route answers. A device that isn't a Simpler is a 400; a Simpler that isn't in
+slicing mode, a Live without the conversion, or a refusal from Live is a 409.
+
+The route must never load a sample: Live crashes when a Simpler's sample is
+replaced and converted in the same main-thread call. See
+[conversions.md](../../dev/live-api/conversions.md#sliced-simpler-to-drum-rack).
+
+```sh
+curl -s -X POST localhost:3349/device/simpler/to-drum-rack -d '{"device_path": "live_set tracks 0 devices 0"}'
+```

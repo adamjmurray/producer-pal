@@ -17,7 +17,7 @@ import {
   phaserFlangerSpec,
 } from "./devices/modulation-rate-effects.ts";
 import { roarSpec } from "./devices/roar.ts";
-import { simplerSpec } from "./devices/simpler.ts";
+import { simplerSpec } from "./devices/simpler/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
 import { transientShaperSpec } from "./devices/live-13/transient-shaper.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
