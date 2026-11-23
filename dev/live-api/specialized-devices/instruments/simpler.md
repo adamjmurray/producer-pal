@@ -162,3 +162,28 @@ Actions via `update-device`'s new `actions: string[]` arg:
    after loading a sample; `can_warp_double/half` stayed `0`.)
 5. **`estimatedPlaybackLength` should be omitted from read output when `sample`
    is null** — `guess_playback_length` returns garbage / 0 with no sample.
+
+## Slicing (not built yet)
+
+On the `sample` child, reachable from Max. Measured on Live 12.4.16 unless a
+line says 12.4.6.
+
+- `slicing_style` (int): 0 Transient, 1 Beat, 2 Region, 3 Manual. Switching to
+  Manual left 1 slice.
+- `slicing_sensitivity` (float 0–1), for Transient. On 12.4.6 an 8-bar loop gave
+  64 slices at 1 and 40 at 0.2.
+- `slicing_beat_division` (int 0–10), for Beat; 11 raises. The slice counts fit
+  Live's list 1/64, 1/32T, 1/32, 1/16T, 1/16, 1/8T, 1/8, 1/4T, 1/4, 1/2, 1 bar,
+  but only if Simpler counted the unwarped 8-bar loop as 2 bars — so the list is
+  a guess until it's checked on a warped sample.
+- `slicing_region_count` (int 2–64), for Region; 1 and 65 raise
+  `RuntimeError('Cannot set split count to invalid value')`.
+- **At most 64 slices** in every style.
+- `slices`: slice starts in sample frames, read-only, updated at once.
+- `insert_slice(frame)`, `remove_slice(frame)`, `move_slice(old, new)`,
+  `clear_slices()`, `reset_slices()`. On 12.4.6 insert and remove worked in
+  Region style without switching it to Manual, and `reset_slices` brought back
+  the style's own slices.
+
+Turning the slices into a Drum Rack is Python only: see
+[conversions.md](../../conversions.md#sliced-simpler-to-drum-rack).

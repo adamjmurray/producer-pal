@@ -55,5 +55,30 @@ caller shouldn't rely on that: poll for the track with a deadline.
 Not probed: unwarped audio clips, a clip with no sample, frozen tracks, and
 where the track lands for a source inside a group.
 
+## Sliced Simpler to Drum Rack
+
+`sliced_simpler_to_drum_rack(song, simpler)` is not exposed yet. Measured on
+Live 12.4.16 with 1-bar and 8-bar drum loops.
+
+- **It works at once**, unlike the clip conversions: the Drum Rack is there
+  before the call returns.
+- **It replaces the Simpler in place.** Same track, same device position, no new
+  track. The rack is a new device that keeps the Simpler's name; the track name
+  doesn't change.
+- **One pad per slice, from C1 (36) up**, named "Slice 1", "Slice 2", … Each
+  pad's chain holds one Simpler in one-shot mode on the same sample file, with
+  its start and end markers at the slice's bounds. Every chain is in choke
+  group 1. Simpler allows at most 64 slices, so the pads never run out.
+- A Simpler that isn't in slicing mode raises
+  `RuntimeError('Can only convert to drum rack if sliced')`.
+- **Never replace the sample and convert in the same main-thread call: Live
+  crashes** (null pointer, twice out of two tries). `replace_sample` in one
+  request and the conversion in the next is fine, even with no wait between
+  them. Setting slicing mode or the slice settings in the same call as the
+  conversion is also fine.
+
+Not probed: a track that already has MIDI clips, a Simpler inside a rack, undo
+steps, warped samples, and Live 12.3.
+
 Live 12.3 (the minimum) may lack `Live.Conversions` or some of its functions;
 the route answers 409 "this Live version can't convert clips" then.
