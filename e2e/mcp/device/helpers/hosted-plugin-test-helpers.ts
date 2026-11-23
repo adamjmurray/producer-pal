@@ -14,6 +14,10 @@ import {
   parseToolResult,
   sleep,
 } from "../../mcp-test-helpers";
+import {
+  HOSTING_NEEDS,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers";
 
 /** Live closes an undo step after about this long without a change. */
 export const UNDO_SETTLE_MS = 5000;
@@ -45,11 +49,17 @@ export interface HostedDevice {
 }
 
 /**
- * Tool-calling helpers for a suite of hosted plug-ins.
+ * Tool-calling helpers for a suite of hosted plug-ins. The suite skips on Live
+ * before 12.4, which can't host, unless `hosts` is false.
  * @param ctx - The suite's MCP test context
+ * @param options - `hosts: false` for a suite that only loads plug-ins
+ * @param options.hosts - Whether the suite hosts a plug-in
  * @returns Helpers that call tools, host a plug-in, read it and duplicate it
  */
-export function hostedPluginHelpers(ctx: McpTestContext) {
+export function hostedPluginHelpers(
+  ctx: McpTestContext,
+  options: { hosts?: boolean } = {},
+) {
   /**
    * Call a tool and parse its result.
    * @param name - Tool name
@@ -141,6 +151,10 @@ export function hostedPluginHelpers(ctx: McpTestContext) {
     const copy = await duplicateTrack(track);
 
     return readDevice(`${copy}/${path.split("/").at(-1)}`, paramSearch);
+  }
+
+  if (options.hosts !== false) {
+    skipBeforeLive(ctx, "12.4", HOSTING_NEEDS);
   }
 
   return {

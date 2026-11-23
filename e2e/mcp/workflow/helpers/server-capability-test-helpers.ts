@@ -100,6 +100,9 @@ export function skipBeforeLive(
 /** Why a test that searches with ppal-library needs Live 12.4. */
 export const LIBRARY_NEEDS = "ppal-library reads Live's browser database";
 
+/** Why a test that hosts a plug-in needs Live 12.4. */
+export const HOSTING_NEEDS = "ppal-create-device hosts plug-ins";
+
 /** Why a test that writes envelope points needs Live 12.4. */
 export const ENVELOPE_WRITE_NEEDS =
   "Envelope.create_event, which writes envelope points";
