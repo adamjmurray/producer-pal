@@ -41,7 +41,11 @@ import {
 } from "../helpers/remote-script-test-helpers";
 import { readChainCount } from "../helpers/chain-count-test-helpers";
 import { readTrackCount } from "../helpers/track-count-test-helpers";
-import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  liveVersionAtLeast,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
@@ -375,6 +379,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     requireRemoteScript();
 
     const ctx = setupMcpTestContext();
+
+    // Finding a plug-in in both formats reads list-plugins.
+    skipBeforeLive(ctx, "12.4", LIBRARY_NEEDS);
 
     let plugin: PluginInFormats | undefined;
 

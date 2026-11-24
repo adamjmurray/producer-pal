@@ -24,6 +24,7 @@ import {
 import { arrangementSpan, keptSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
 import { resizeArrangementClip } from "#src/tools/shared/arrangement/arrangement-clip-resize.ts";
+import { guardInsideCreate } from "#src/tools/shared/arrangement/inside-create-guard.ts";
 import {
   LIVE_SHORTENED_IT,
   recreateSpanRoom,
@@ -122,22 +123,37 @@ export function recreateClip(
   losses: string[],
   context: SpanRoomContext,
 ): LiveAPI {
+  const guard = (end: number | null, isMidi: boolean): void =>
+    guardInsideCreate({
+      laneApi: destination,
+      start: startBeats,
+      end,
+      isMidi,
+      context,
+    });
+
   return recreateInto(sourceClip, name, color, losses, {
     keepsSpan: true,
     room: recreateSpanRoom(destination, context, losses),
-    createMidi: (length) =>
-      createdArrangementClip(
+    createMidi: (length) => {
+      guard(startBeats + length, true);
+
+      return createdArrangementClip(
         destination.call("create_midi_clip", startBeats, length) as string,
         destination,
         startBeats,
-      ),
-    createAudio: (filePath) =>
-      createdArrangementClip(
+      );
+    },
+    createAudio: (filePath) => {
+      guard(null, false);
+
+      return createdArrangementClip(
         destination.call("create_audio_clip", filePath, startBeats) as string,
         destination,
         startBeats,
         filePath,
-      ),
+      );
+    },
   });
 }
 

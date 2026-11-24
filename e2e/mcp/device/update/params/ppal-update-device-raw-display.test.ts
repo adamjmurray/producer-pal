@@ -45,7 +45,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("ValhallaFreqEcho.vst3"))(
     requireRemoteScript();
 
     const ctx = setupMcpTestContext();
-    const { call } = hostedPluginHelpers(ctx);
+    // Loads its plug-in natively, which works on Live 12.3 too.
+    const { call } = hostedPluginHelpers(ctx, { hosts: false });
 
     /**
      * Read some of a device's params.

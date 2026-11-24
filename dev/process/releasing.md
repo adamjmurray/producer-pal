@@ -7,12 +7,13 @@ A release cycle, start to finish. Everything happens on `dev`.
 3. [Tag and pre-release](#3-tag-and-pre-release) — `npm run tag`, GitHub
    pre-release
 4. [Test](#4-test) — macOS and Windows, from the downloaded files
-5. [Ship](#5-ship) — GA bump, merge, rebuild, release, npm, MCP Registry
+5. [Ship](#5-ship) — GA bump, rebuild, tag, merge, release, npm, MCP Registry
 6. [Start the next cycle](#6-start-the-next-cycle) — sync `main`, bump `dev` to
    the next minor, open the next release PR
 
-Something broke? See [Fixing a candidate](#fixing-a-candidate) or
-[Urgent fix after a release](#urgent-fix-after-a-release).
+Something broke? See [Fixing a candidate](#fixing-a-candidate),
+[Fixing the GA build before it's public](#fixing-the-ga-build-before-its-public),
+or [Urgent fix after a release](#urgent-fix-after-a-release).
 
 Versions: every build carries a real version. Candidates are `X.Y.Z-rcN`, the
 shipped release is `X.Y.Z`. `dev` always targets the next **minor**; patches are
@@ -141,9 +142,20 @@ cd ..
    git push origin dev
    ```
 
-2. Merge the release PR in the GitHub UI. A squash merge prefills the body with
+2. Rebuild and tag, still on `dev`. The files must say `X.Y.Z`, not `-rcN`:
+
+   ```sh
+   npm run release
+   npm run tag               # vX.Y.Z; run the push command it prints
+   ```
+
+3. Draft a GitHub release for `vX.Y.Z` (**not** a pre-release) and upload the
+   fresh files. Don't publish it yet.
+
+4. Merge the release PR in the GitHub UI. A squash merge prefills the body with
    every commit message: delete the one line with a private ticket number
-   (`AJM-NNN`) first.
+   (`AJM-NNN`) first. Once merged, the version is spent: a fix after this is a
+   [patch release](#urgent-fix-after-a-release).
 
    The merge triggers the
    [Deploy Documentation](https://github.com/adamjmurray/producer-pal/actions/workflows/deploy-docs.yml)
@@ -151,17 +163,10 @@ cd ..
    [upgrading page](https://producer-pal.org/installation/upgrading) shows the
    new version.
 
-3. Rebuild and tag, still on `dev`. The files must say `X.Y.Z`, not `-rcN`:
+5. Publish the GitHub release. This is what prompts everyone to update.
 
-   ```sh
-   npm run release
-   npm run tag               # vX.Y.Z; run the push command it prints
-   ```
-
-4. Create a GitHub release for `vX.Y.Z` (**not** a pre-release) and upload the
-   fresh files. This is what prompts everyone to update.
-
-5. Publish to npm. Test the tarball as in step 4, then publish that same file:
+6. Publish to npm. Test the tarball as in [Test](#4-test), then publish that
+   same file:
 
    ```sh
    npm login
@@ -177,7 +182,7 @@ cd ..
    Publishing a tarball skips the publish guard, so the two guards are run by
    hand. A published version can never be replaced.
 
-6. Publish to the [MCP Registry](https://registry.modelcontextprotocol.io),
+7. Publish to the [MCP Registry](https://registry.modelcontextprotocol.io),
    after npm (it checks the published package):
 
    ```sh
@@ -244,6 +249,28 @@ npm run tag               # then run the push command it prints
 
 Publish a new pre-release ([step 3](#3-tag-and-pre-release)), tell the testers,
 and retest. Old pre-releases can be deleted once nobody is on them.
+
+## Fixing the GA build before it's public
+
+If something turns up after the `vX.Y.Z` tag is pushed but before the release PR
+is merged, nobody has those files yet. Move the tag instead of cutting another
+candidate:
+
+```sh
+# commit and push the fix on dev, then:
+git push origin --delete vX.Y.Z
+git tag -d vX.Y.Z
+npm run release
+npm run tag               # then run the push command it prints
+```
+
+`npm run tag` refuses while the old tag exists, locally or on `origin`, so
+delete both first. Then, in the draft GitHub release, delete the old files and
+upload the new ones. Push the tag before publishing, or GitHub creates an
+unsigned one.
+
+Once the release PR is merged, the version is spent and the fix is a patch
+release: see [Urgent fix after a release](#urgent-fix-after-a-release).
 
 ## Urgent fix after a release
 
