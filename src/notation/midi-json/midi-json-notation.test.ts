@@ -364,6 +364,25 @@ describe("dropped-note warnings", () => {
     expect(emitWarning).not.toHaveBeenCalled();
   });
 
+  it("warns when it clamps velocity, deviation or probability", () => {
+    const events = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:200},{p:62,t:1,d:1,v:300,vd:-200,c:2}]",
+    );
+
+    expect(events.map((e) => e.velocity)).toStrictEqual([127, 127]);
+    expect(events[1]?.velocity_deviation).toBe(-127);
+    expect(events[1]?.probability).toBe(1);
+    expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
+      "clamped 4 out-of-range MIDI JSON values: v outside 1 to 127 (2), vd outside -127 to 127, c outside 0 to 1",
+    );
+  });
+
+  it("does not warn for a fractional value that rounds into range", () => {
+    interpretMidiJson("[{p:60,t:0,d:1,v:127.4,vd:-127.4}]");
+
+    expect(emitWarning).not.toHaveBeenCalled();
+  });
+
   it("counts repeats of the same reason instead of repeating it", () => {
     interpretMidiJson("[{t:0,d:1,v:100},{t:1,d:1,v:90},{p:64,t:2,d:0,v:90}]");
 

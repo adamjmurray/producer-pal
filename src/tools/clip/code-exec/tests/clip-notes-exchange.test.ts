@@ -415,22 +415,13 @@ describe("clip-notes-exchange", () => {
       ).toBe(false);
     });
 
-    it("should clamp pitch to 0-127", () => {
-      const low = validateAndSanitizeNote({
-        pitch: -10,
-        start: 0,
-        duration: 1,
-        velocity: 100,
-      });
-      const high = validateAndSanitizeNote({
-        pitch: 200,
-        start: 0,
-        duration: 1,
-        velocity: 100,
-      });
-
-      expect(low.valid && low.note.pitch).toBe(0);
-      expect(high.valid && high.note.pitch).toBe(127);
+    it("rejects a pitch outside 0-127 instead of clamping it", () => {
+      expect(
+        validateAndSanitizeNote(
+          { pitch: 200, start: 0, duration: 1, velocity: 100 },
+          { longKeys: true },
+        ),
+      ).toStrictEqual({ valid: false, reason: "pitch 200 is outside 0-127" });
     });
 
     it("should clamp velocity to 1-127", () => {
@@ -494,16 +485,52 @@ describe("clip-notes-exchange", () => {
       expect(!result.success && result.error).toContain("must return an array");
     });
 
-    it("should filter out invalid notes silently", () => {
+    it("filters out invalid notes and says why, in a code note's keys", () => {
       const result = validateCodeNotes([
         { pitch: 60, start: 0, duration: 1, velocity: 100 },
         { pitch: 60 }, // missing required fields
         null,
-        { pitch: 72, start: 1, duration: 1, velocity: 100 },
+        { pitch: 130, start: 0 },
+        { pitch: 72, start: 1, duration: 0, velocity: 100 },
+        { pitch: 72, start: 1, duration: Infinity },
       ]);
 
-      expect(result.success).toBe(true);
-      expect(result.success && result.notes).toHaveLength(2);
+      expect(result.success && result.notes).toHaveLength(1);
+      expect(result.success && result.dropped).toStrictEqual([
+        "missing or non-numeric pitch/start",
+        "not an object",
+        "pitch 130 is outside 0-127",
+        "duration must be greater than 0",
+        "non-finite duration, velocity, or probability",
+      ]);
+    });
+
+    it("lists the values it clamped", () => {
+      const result = validateCodeNotes([
+        {
+          pitch: 60,
+          start: 0,
+          velocity: 0,
+          velocityDeviation: 200,
+          probability: 2,
+        },
+      ]);
+
+      expect(result.success && result.notes).toStrictEqual([
+        {
+          pitch: 60,
+          start: 0,
+          duration: 1,
+          velocity: 1,
+          velocityDeviation: 127,
+          probability: 1,
+        },
+      ]);
+      expect(result.success && result.clamped).toStrictEqual([
+        "velocity outside 1 to 127",
+        "velocityDeviation outside -127 to 127",
+        "probability outside 0 to 1",
+      ]);
     });
   });
 });
