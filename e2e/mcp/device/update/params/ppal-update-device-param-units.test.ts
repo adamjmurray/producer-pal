@@ -49,6 +49,22 @@ describe("ppal-update-device param units", () => {
       ]);
     });
 
+    // Models write a boost with a plus, and "+3 dB" used to be refused.
+    it("takes a leading plus", async () => {
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const { data, warnings } = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Output",
+        "+3 dB",
+      );
+
+      expect(warnings).toStrictEqual([]);
+      expect(data.params).toStrictEqual([
+        { id: expect.any(String), name: "Output", value: 3 },
+      ]);
+    });
+
     it("refuses a value in a unit the param doesn't use", async () => {
       const deviceId = await createGlueCompressor(ctx.client!);
       // Dry/Wet is a percentage. The number alone is in range, so before the

@@ -48,6 +48,8 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("72Hz")).toBe(72);
     expect(normalizeParamValue("1.5 kHz")).toBe(1500);
     expect(normalizeParamValue("-6 dB")).toBe(-6);
+    expect(normalizeParamValue("+3 dB")).toBe(3);
+    expect(normalizeParamValue("+25 %")).toBe(25);
     expect(normalizeParamValue("100 ms")).toBe(100);
     expect(normalizeParamValue("0.5 s")).toBe(500);
     expect(normalizeParamValue("180°")).toBe(180);
