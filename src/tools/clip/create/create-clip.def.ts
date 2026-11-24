@@ -151,11 +151,14 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     // reads a neutral option, omits it, and hands back a clip the user has to
     // click. The skills blob used to say this; it belongs with the param, which
     // ships only when this tool does.
-    auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
-      default:
-        "auto-play the new session clip(s) — worth setting whenever the user will want to hear what you made. play-scene launches the whole scene so the new clip stays in sync with the others (it restarts them; say so first). play-clip fires the clip alone",
-      smallModel: null,
-    }),
+    auto: param(
+      z.enum(["play-scene", "play-clip", "play-clip-synced"]).optional(),
+      {
+        default:
+          "auto-play the new session clip(s) — worth setting whenever the user will want to hear what you made. play-clip-synced brings it in at the next loop start of the clips already playing, restarting nothing (may wait for it). play-scene launches the whole scene (it restarts the others; say so first). play-clip fires the clip alone",
+        smallModel: null,
+      },
+    ),
 
     takeLane: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

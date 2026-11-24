@@ -44,6 +44,51 @@ and the playhead is moving anyway once playback runs.
   Writing the start and then refusing the length would leave a loop nobody asked
   for.
 
+## Synced launch
+
+`play-session-clips-synced` and `ppal-create-clip` `auto: "play-clip-synced"`
+start session clips at the next loop start of the clips already playing,
+restarting nothing. How: `dev/live-api/launch-quantization.md`.
+
+- **The reference is the playing, looping session clips on regular tracks other
+  than the ones being fired**; with none, the fired tracks' own playing loops. A
+  clip whose playhead is past its loop end isn't looping. The sync point is the
+  next loop start of the longest.
+- **Nothing to sync to fires plainly.** A stopped transport or no playing loop
+  fires like `play-session-clips`, including its transport restart for two or
+  more clips, and playback says `sync: "no loop playing to sync to"`.
+- **Loops that don't all restart together at the longest loop's start are
+  refused up front**
+  (`... loop out of step ...; use play-session-clips to fire without sync`),
+  before anything fires. That includes a loop whose length doesn't divide the
+  longest's (3 beats against 8). create-clip still makes its clips and warns
+  `auto ignored: …`, with the same text.
+- **A loop start further off than the call can wait for is refused the same
+  way**, but only when a wait is needed: the limit is the request deadline less
+  5 s, or 30 s with no deadline. A fire that lands now goes ahead even with a
+  deadline inside that margin.
+- **A loop start on no usable launch grid fires plainly and says so**: `sync:`
+  text in playback, a warning in create-clip. Grids no longer than the 0.15 s
+  guard are not usable.
+- **A call that has to wait answers late, once the clips are fired.** The wait
+  ends as soon as a grid fits, when the transport stops, or at the limit above.
+- **A call with no clip on a regular track to sync plans nothing.** All targets
+  skipped: no `sync`, no wait, no refusal. Only group or return slots: they fire
+  plainly with no wait, no per-slot `detail`, and
+  `sync: "a group or return slot has no clip to sync"`. Beside a clip, such a
+  slot's entry gets `detail: "fired without sync"`. A return slot always fires
+  plainly.
+- **A slot the plan couldn't reach fires plainly** (the transport stopped, or
+  the wait ran out): `detail: "fired without sync"` on its entry, and
+  `sync: "nothing fired in sync"`. create-clip warns
+  `auto: the loop start was missed; fired without sync`.
+- **Success says when**: `sync: "starts in 2.2s, when t7/s1 loops"`.
+- **A synced launch restarts the transport for two or more clips only when it
+  was stopped before the call**, as `play-session-clips` always does. It never
+  restarts a transport that was playing.
+- **The clip's `launch_quantization` is back as it was** when the call ends,
+  even when the fire threw.
+
 ## Sends
 
 `sends[].return` (and the deprecated `sendReturn`) take a return's id, name,

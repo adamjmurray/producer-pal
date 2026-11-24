@@ -11,16 +11,25 @@
  *
  * Run with: npm run e2e:mcp -- clip/create/ppal-create-clip-auto
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   getToolWarnings,
   parseToolResult,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import {
+  loopDistance,
+  ONE_BAR,
+  restartError,
+  type Slot,
+  syncedLaunchCalls,
+} from "../../control/helpers/synced-launch-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
+const calls = syncedLaunchCalls(ctx);
 
 interface CreatedClip {
   id: string;
@@ -138,5 +147,72 @@ describe("ppal-create-clip auto", () => {
 
     expect(clip.playing).toBeUndefined();
     expect(clip.triggered).toBeUndefined();
+  });
+});
+
+// play-clip-synced brings the new clip in at the next loop start of the clips
+// already playing. Loops are 2 bars (8 beats) at 108 BPM; t8/s3 is the
+// reference and t3/s3 gets the new clip.
+describe("ppal-create-clip auto: play-clip-synced", () => {
+  const REFERENCE: Slot = { track: EMPTY_MIDI_TRACK, scene: 3 };
+  const NEW_CLIP: Slot = { track: 3, scene: 3 };
+  const LENGTH = 8;
+  let globalQuantization: number | undefined;
+
+  beforeEach(async () => {
+    await setConfig({ liveApiEnabled: true });
+    globalQuantization = await calls.readGlobalQuantization();
+    await calls.setGlobalQuantization(ONE_BAR);
+    await calls.makeLoop(REFERENCE, "2bars");
+  });
+
+  afterEach(async () => {
+    await calls.stopAll();
+
+    if (globalQuantization != null) {
+      await calls.setGlobalQuantization(globalQuantization);
+    }
+  });
+
+  it("starts the new clip with the playing loop, which keeps playing", async () => {
+    await calls.startLoop(REFERENCE);
+    await sleep(500);
+
+    const before = await calls.snapshot([REFERENCE]);
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${NEW_CLIP.track}/s${NEW_CLIP.scene}`,
+        notes: "C3 1|1",
+        length: "2bars",
+        looping: true,
+        auto: "play-clip-synced",
+      },
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([]);
+    await calls.waitFor(() => calls.isClipPlaying(NEW_CLIP));
+
+    const after = await calls.snapshot([REFERENCE, NEW_CLIP]);
+
+    expect(
+      loopDistance(after.positions[0]!, after.positions[1]!, LENGTH),
+    ).toBeLessThan(0.05);
+    expect(restartError(before, after, 0, LENGTH)).toBeLessThan(0.15);
+  });
+
+  it("makes the clip and fires it plainly when nothing is playing", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${NEW_CLIP.track}/s${NEW_CLIP.scene}`,
+        notes: "C3 1|1",
+        length: "2bars",
+        auto: "play-clip-synced",
+      },
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([]);
+    await calls.waitFor(() => calls.isClipPlaying(NEW_CLIP));
   });
 });

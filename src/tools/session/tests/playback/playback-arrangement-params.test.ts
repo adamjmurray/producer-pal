@@ -20,6 +20,7 @@ import {
 const SESSION_ACTIONS = [
   "play-scene",
   "play-session-clips",
+  "play-session-clips-synced",
   "stop-session-clips",
   "stop-all-session-clips",
 ];
@@ -37,7 +38,11 @@ function targetFor(action: string): Record<string, unknown> {
     return { sceneIndex: 3 };
   }
 
-  if (action === "play-session-clips" || action === "stop-session-clips") {
+  if (
+    action === "play-session-clips" ||
+    action === "play-session-clips-synced" ||
+    action === "stop-session-clips"
+  ) {
     return { path: "t0/s1" };
   }
 

@@ -13,7 +13,12 @@ import {
 const TIMELINE_ACTIONS = ["play-arrangement", "update-arrangement", "stop"];
 const TIMELINE: ParamHome = { action: TIMELINE_ACTIONS };
 const TARGET: ParamHome = {
-  action: ["play-scene", "play-session-clips", "stop-session-clips"],
+  action: [
+    "play-scene",
+    "play-session-clips",
+    "play-session-clips-synced",
+    "stop-session-clips",
+  ],
 };
 
 const PLAYBACK_PARAM_HOMES: Record<string, ParamHome> = {

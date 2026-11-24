@@ -97,6 +97,9 @@ gives you this shape.
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
+- Start clips in sync with what's already playing, at the next loop start and
+  without restarting anything (`play-session-clips-synced`). It can wait a few
+  seconds for that loop start
 - Set loop points and playback position
 - Jump to arrangement locators by ID or name
 - Set loop start/end using locators
@@ -359,6 +362,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   `created`
 - Give a MIDI clip its own scale with `scale` (Live 12.4.15 or later). A new
   clip starts with the Live Set's scale otherwise
+- Play the new session clip when it's made: `auto: "play-clip"` fires it,
+  `"play-scene"` launches its scene, and `"play-clip-synced"` starts it at the
+  next loop start of the clips already playing, restarting nothing
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 

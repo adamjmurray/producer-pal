@@ -5,16 +5,24 @@
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ArrangementTrack,
   takeLanesBlocker,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  awaitLaunchWindow,
+  fireSynced,
+  syncedLaunch,
+} from "#src/tools/session/helpers/playback/synced-launch.ts";
+import { type MaybePromise } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./create-clip-destinations.ts";
 
-const AUTO_ACTIONS = new Set(["play-scene", "play-clip"]);
+const PLAY_CLIP_SYNCED = "play-clip-synced";
+const AUTO_ACTIONS = new Set(["play-scene", "play-clip", PLAY_CLIP_SYNCED]);
 
 /**
  * Validates that the call named somewhere to put a clip
@@ -97,7 +105,7 @@ export function calculateClipLength(
 export function refuseUnknownAuto(auto: string | null): void {
   if (auto != null && auto !== "" && !AUTO_ACTIONS.has(auto)) {
     throw new Error(
-      `unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+      `unknown auto value "${auto}". Expected "play-scene", "play-clip" or "${PLAY_CLIP_SYNCED}"`,
     );
   }
 }
@@ -125,14 +133,18 @@ export function createClipBlocker(
 
 /**
  * Launches what the call made in the session, the way `auto` asks.
- * @param auto - Auto playback mode (play-scene or play-clip)
+ * @param auto - Auto playback mode (play-scene, play-clip or play-clip-synced)
  * @param slots - The clip slots that got a clip, in call order, never empty
- * @throws Error when the scene to launch isn't there
+ * @param deadline - When the request must finish, if it says
+ * @returns Nothing, as a promise only when a synced launch had to wait
+ * @throws Error when the scene to launch isn't there, or a synced launch has
+ *   no loop start it can reach
  */
 export function launchCreatedClips(
   auto: string,
   slots: ClipSlotPosition[],
-): void {
+  deadline?: number | null,
+): MaybePromise<void> {
   if (auto === "play-scene") {
     // The first slot's scene launches, for synchronization
     const { sceneIndex } = slots[0] as ClipSlotPosition;
@@ -147,7 +159,54 @@ export function launchCreatedClips(
     return;
   }
 
+  if (auto === PLAY_CLIP_SYNCED) {
+    return launchInSync(slots, deadline);
+  }
+
   for (const { trackIndex, sceneIndex } of slots) {
     LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)).call("fire");
   }
+}
+
+/**
+ * Fire the new clips so they come in with the loops already playing.
+ * @param slots - The clip slots that got a clip
+ * @param deadline - When the request must finish, if it says
+ * @returns Nothing, as a promise only when it had to wait for the loop start
+ */
+function launchInSync(
+  slots: ClipSlotPosition[],
+  deadline?: number | null,
+): MaybePromise<void> {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const launch = syncedLaunch(
+    liveSet,
+    slots.map(({ trackIndex }) => trackIndex),
+    deadline,
+  );
+
+  const fire = (): void => {
+    let unsynced = false;
+
+    for (const { trackIndex, sceneIndex } of slots) {
+      const startsIn = fireSynced(
+        liveSet,
+        LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)),
+        launch,
+      );
+
+      unsynced ||= startsIn == null && launch.startBeat != null;
+    }
+
+    if (launch.unsynced != null) {
+      emitWarning(`auto: ${launch.unsynced}; fired without sync`);
+    } else if (unsynced) {
+      // The transport stopped, or the wait ran out of time
+      emitWarning("auto: the loop start was missed; fired without sync");
+    }
+  };
+
+  const waited = awaitLaunchWindow(liveSet, launch);
+
+  return waited instanceof Promise ? waited.then(fire) : fire();
 }
