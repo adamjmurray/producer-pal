@@ -14,7 +14,10 @@ import {
 import { MAX_READ_PARAMS } from "#src/tools/shared/device/helpers/params/param-read-cap.ts";
 
 /** The Max device classes a wrapper can have. Users can rename a device, so the class is the only fixed thing to go by. */
-const WRAPPER_CLASSES = new Set(["MxDeviceAudioEffect", "MxDeviceInstrument"]);
+export const WRAPPER_CLASSES = new Set([
+  "MxDeviceAudioEffect",
+  "MxDeviceInstrument",
+]);
 
 /** What the two wrappers are called, in Live's browser and until renamed. */
 export const WRAPPER_NAMES = {

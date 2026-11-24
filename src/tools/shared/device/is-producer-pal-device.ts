@@ -38,3 +38,15 @@ function producerPalDevicePath(): string | null {
     return null;
   }
 }
+
+/**
+ * Whether any of these objects is the Producer Pal device itself, not a rack or
+ * chain that holds it. Looks the device up once for all of them.
+ * @param objects - The objects to check
+ * @returns True when one is the Producer Pal device
+ */
+export function anyIsProducerPalDeviceItself(...objects: LiveAPI[]): boolean {
+  const hostPath = producerPalDevicePath();
+
+  return hostPath != null && objects.some((object) => object.path === hostPath);
+}

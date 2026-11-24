@@ -119,7 +119,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     copyParamsFrom: param(z.coerce.string().optional(), {
       default:
-        "id or path of a device of the same type: copies its param values (and the settings listed as params by read-device) onto each target, before `params`. Skips params mapped to a rack macro. Not copied: rack chains, plug-in or Max device internal state, sidechain routing, modulation matrices",
+        "id or path of a device of the same type (plug-ins and Max devices must match exactly): copies its param values (and the settings listed as params by read-device) onto each target, before `params`. Skips params mapped to a rack macro. Not copied: rack chains, plug-in or Max device internal state, sidechain routing, modulation matrices",
       smallModel: null,
     }),
 

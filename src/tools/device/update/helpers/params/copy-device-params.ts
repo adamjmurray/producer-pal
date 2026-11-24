@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { copyTypeRefusal, sameNames } from "./copy-type-refusal.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   automationOverriddenDetail,
@@ -112,23 +113,7 @@ function copyRefusal(source: LiveAPI, target: LiveAPI): string | null {
     return "this is the source device";
   }
 
-  if (source.getProperty("class_name") !== target.getProperty("class_name")) {
-    return `the source is ${deviceType(source)}, not ${deviceType(target)}`;
-  }
-
-  return null;
-}
-
-/**
- * A device's type in the words the tools use.
- * @param device - The device
- * @returns Its display name, or its class name when it has none
- */
-function deviceType(device: LiveAPI): string {
-  return String(
-    device.getProperty("class_display_name") ??
-      device.getProperty("class_name"),
-  );
+  return copyTypeRefusal(source, target);
 }
 
 /**
@@ -262,11 +247,8 @@ function pairParams(
 ): { pairs: ParamPair[]; unmatched: number } {
   const sourceNames = source.map((param) => param.getName());
   const targetNames = target.map((param) => param.getName());
-  const sameNames =
-    sourceNames.length === targetNames.length &&
-    sourceNames.every((name, index) => name === targetNames[index]);
 
-  if (sameNames) {
+  if (sameNames(sourceNames, targetNames)) {
     return {
       pairs: source.map((param, index) => ({
         name: sourceNames[index] as string,

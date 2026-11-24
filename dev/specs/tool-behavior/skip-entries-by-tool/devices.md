@@ -58,9 +58,25 @@ Part of [Skip entries, tool by tool](README.md).
   is refused, with nothing written to it, when it is the source
   (`not copied: this is the source device`), is another type
   (`not copied: the source is Compressor, not EQ Eight`), or the source is gone
-  by its turn (`not copied: the source device is gone`). On a chain or pad the
-  arg is ignored, as any arg a chain has no use for. If the refusal is all the
-  call asked of the target, the target is a skip.
+  by its turn (`not copied: the source device is gone`). A built-in device's
+  type is its class. Every VST, AU and Max device of a kind shares one class, so
+  those must also have the same type name (not the user-editable `name`) and
+  list the same params in the same order
+  (`not copied: both are Serum, but they list different params`). Live gives Max
+  devices a generic type name, so for them the param list is what tells them
+  apart. A plug-in host wrapper (told by its numbered slot params, so one that
+  hasn't answered still counts) must also host the same plug-in with every slot
+  driving the same plug-in param
+  (`not copied: the source hosts Serum 2, not Diva`). One that doesn't answer,
+  whose slots can't be read, or that has no plug-in loaded is refused, naming
+  the side (`not copied: the target plug-in host didn't answer`). So a Max
+  device that lists `Slot NNN` params is treated as a plug-in host, and two such
+  devices that aren't hosts are refused. Two hosts of one plug-in can be refused
+  too, when one reports it by file name after a Set reload and the other by its
+  own name. The Producer Pal device itself (not a rack holding it) is refused as
+  a source or a target. On a chain or pad the arg is ignored, as any arg a chain
+  has no use for. If the refusal is all the call asked of the target, the target
+  is a skip.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes
