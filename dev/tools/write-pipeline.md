@@ -173,7 +173,11 @@ closes it after each write call: the write queue runs `endUndoStep`
 once V8 is done with a write, which sends `POST /undo/end` to the remote script.
 The next write waits for the answer (up to 1 s), so parallel calls get a step
 each; the caller and held reads don't wait. Past 1 s, the next write's changes
-may join the step. It never begins a step: a begin left open by a crash or
+may join the step: the end carries a deadline just under that second, and Live
+skips an end it reaches after it. One that starts runs whole before the next
+write changes anything, so the next write's step is never closed halfway. (A
+script older than the deadline field counts from when it takes the request, so
+it can't promise this.) It never begins a step: a begin left open by a crash or
 timeout would merge everything after it. A timed-out write gets its end once V8
 answers late; none if Node gives up waiting, since V8 may still be changing the
 Set. A Live without the remote script keeps one merged step. Checked on Live

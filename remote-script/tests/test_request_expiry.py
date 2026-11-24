@@ -3,7 +3,7 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""A request's `expires_in_ms`: Live skips a job it gets to too late.
+"""A request's `expires_in_ms` or `expires_at_ms`: Live skips a job it gets to too late.
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -337,6 +337,111 @@ class DispatchTest(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(handler.calls, 1)
+
+
+def epoch_ms(offset_ms):
+    """A wall-clock time `offset_ms` from now, in epoch ms."""
+    return time.time() * 1000.0 + offset_ms
+
+
+class AbsoluteDeadlineTest(unittest.TestCase):
+    def test_skips_a_job_whose_deadline_passed_before_it_was_taken(self):
+        # The request sat in the socket while Live's main thread held the GIL,
+        # so it is taken with all of its relative budget still unspent.
+        handler = Handler()
+
+        status, payload = dispatch(
+            handler, {"expires_in_ms": 900, "expires_at_ms": epoch_ms(-1000)}
+        )
+
+        self.assertEqual(status, 504)
+        self.assertIn("expired before Live ran it", payload["error"])
+        self.assertEqual(handler.calls, 0)
+
+    def test_the_deadline_wins_over_the_relative_budget(self):
+        late = Handler()
+        in_time = Handler()
+
+        self.assertEqual(
+            dispatch(late, {"expires_in_ms": 60000, "expires_at_ms": epoch_ms(-5)})[0],
+            504,
+        )
+        self.assertEqual(
+            dispatch(in_time, {"expires_in_ms": 0, "expires_at_ms": epoch_ms(60000)}),
+            (200, {"ok": True}),
+        )
+        self.assertEqual((late.calls, in_time.calls), (0, 1))
+
+    def test_takes_the_deadline_from_a_query_string(self):
+        handler = Handler()
+
+        status, _payload = dispatch(handler, {"expires_at_ms": str(epoch_ms(60000))})
+
+        self.assertEqual(status, 200)
+        self.assertEqual(handler.calls, 1)
+
+    def test_a_job_that_waits_past_its_deadline_is_skipped(self):
+        # Taken in time, but Live gets to it after the deadline.
+        handler = Handler()
+        pending = bridge._Job(
+            handler, None, {}, bridge._expires_at(None, epoch_ms(-1))
+        )
+
+        pending.run()
+
+        self.assertEqual(handler.calls, 0)
+
+    def test_relative_alone_still_works(self):
+        handler = Handler()
+
+        self.assertEqual(dispatch(handler, {"expires_in_ms": 60000})[0], 200)
+        self.assertEqual(dispatch(handler, {"expires_in_ms": 0})[0], 504)
+        self.assertEqual(handler.calls, 1)
+
+    def test_refuses_a_bad_deadline(self):
+        for value in ("soon", True, float("nan"), [5], float("inf")):
+            with self.subTest(value=value):
+                handler = Handler()
+
+                status, payload = dispatch(handler, {"expires_at_ms": value})
+
+                self.assertEqual(status, 400)
+                self.assertIn("expires_at_ms must be a number", payload["error"])
+                self.assertEqual(handler.calls, 0)
+
+    def test_refuses_a_deadline_that_is_not_epoch_ms(self):
+        # Negative, a relative time, or epoch seconds instead of ms.
+        for value in (-1, 0, 5000, time.time(), "1577836799999"):
+            with self.subTest(value=value):
+                handler = Handler()
+
+                status, payload = dispatch(handler, {"expires_at_ms": value})
+
+                self.assertEqual(status, 400)
+                self.assertIn("epoch milliseconds", payload["error"])
+                self.assertEqual(handler.calls, 0)
+
+    def test_still_checks_the_relative_budget_when_both_are_sent(self):
+        handler = Handler()
+
+        status, payload = dispatch(
+            handler, {"expires_in_ms": -1, "expires_at_ms": epoch_ms(60000)}
+        )
+
+        self.assertEqual(status, 400)
+        self.assertIn("expires_in_ms must be a number", payload["error"])
+        self.assertEqual(handler.calls, 0)
+
+    def test_refuses_a_deadline_too_far_off_to_wait_for(self):
+        handler = Handler()
+
+        status, payload = dispatch(
+            handler, {"expires_at_ms": epoch_ms(bridge.MAX_EXPIRES_IN_MS + 60000)}
+        )
+
+        self.assertEqual(status, 400)
+        self.assertIn("expires_at_ms must be at most", payload["error"])
+        self.assertEqual(handler.calls, 0)
 
 
 if __name__ == "__main__":

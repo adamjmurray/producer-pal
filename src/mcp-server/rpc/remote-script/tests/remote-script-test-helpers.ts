@@ -127,6 +127,11 @@ export interface FakeRemoteScript {
   /** The port it listens on. */
   port: number;
   requests: ReceivedRequest[];
+  /**
+   * The `expires_at_ms` each request carried, in step with `requests` (null for
+   * none). Kept out of `requests` so those match without a clock reading.
+   */
+  deadlines: Array<number | null>;
   close: () => Promise<void>;
 }
 
@@ -155,6 +160,7 @@ export async function startFakeRemoteScript(
   answer: (request: ReceivedRequest) => FakeAnswer,
 ): Promise<FakeRemoteScript> {
   const requests: ReceivedRequest[] = [];
+  const deadlines: Array<number | null> = [];
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
 
@@ -162,14 +168,27 @@ export async function startFakeRemoteScript(
     req.on("end", () => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       const text = Buffer.concat(chunks).toString("utf8");
+      const query = Object.fromEntries(url.searchParams);
+      const body: unknown = text === "" ? undefined : JSON.parse(text);
+      const sentInBody = (body as { expires_at_ms?: number } | undefined)
+        ?.expires_at_ms;
+      const deadline = Number(query.expires_at_ms ?? sentInBody ?? Number.NaN);
+
+      delete query.expires_at_ms;
+
+      if (body != null) {
+        delete (body as { expires_at_ms?: number }).expires_at_ms;
+      }
+
       const request: ReceivedRequest = {
         method: req.method ?? "",
         route: url.pathname,
-        query: Object.fromEntries(url.searchParams),
-        body: text === "" ? undefined : JSON.parse(text),
+        query,
+        body,
       };
 
       requests.push(request);
+      deadlines.push(Number.isNaN(deadline) ? null : deadline);
       respond(res, answer(request));
     });
   });
@@ -184,6 +203,7 @@ export async function startFakeRemoteScript(
   return {
     port,
     requests,
+    deadlines,
     close: async () => {
       // Back to the port nothing answers on, as test-setup.ts leaves it.
       process.env.PPAL_REMOTE_SCRIPT_PORT = "0";

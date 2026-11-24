@@ -112,17 +112,19 @@ Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
-skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
-and with every route whose result a caller waits on and that changes the Set
-(`/load`, `/hotswap`, `/replace-producer-pal`, `/device/duplicate`,
-`/clip/convert`, `/envelope/write`, `/envelope/clear`, `/device/simpler/write`,
-`/device/simpler/to-drum-rack`, `/track/to-drum-rack`,
+skipped with a 504 (a re-run is safe). `expires_at_ms` is the same deadline in
+epoch ms (2020 or later); it wins, and a bad one is a 400. A busy Live may take
+the request late, and `expires_in_ms` only counts from then. Producer Pal sends
+both with every `/list` and with every route whose result a caller waits on and
+that changes the Set (`/load`, `/hotswap`, `/replace-producer-pal`,
+`/device/duplicate`, `/clip/convert`, `/envelope/write`, `/envelope/clear`,
+`/device/simpler/write`, `/device/simpler/to-drum-rack`, `/track/to-drum-rack`,
 `/device/drum-pad/to-track`, `/undo/undo`, `/undo/redo`), a bit under the time
 it has left, so one deadline covers the lookup and the load, and a change it
-stopped waiting for isn't made later. `/undo/end` is fire-and-forget and sends
-none. A new route that changes the Set must be sent one too. A job Live started
-but didn't finish in 30s is also a 504, with `started: true`: Live may have made
-the change.
+stopped waiting for isn't made later. `/undo/end` carries a deadline too, just
+under the write queue's 1 s wait. A new route that changes the Set must carry
+one as well. A job Live started but didn't finish in 30s is also a 504, with
+`started: true`: Live may have made the change.
 
 ### `GET /ping`
 
@@ -152,8 +154,10 @@ The other routes, by what they work on:
 
 Closes Live's pending undo step and answers `{ok: true}`. Live merges every
 change since the last step into one, so Producer Pal sends this after each write
-tool call (without waiting for the answer) and one undo reverts one call. It
-does nothing when no step is pending. Max for Live's LOM can't do this.
+tool call and one undo reverts one call. The caller doesn't wait for it, but the
+next write does, up to 1 s. The request carries a deadline just under that, so
+an end Live reaches later is skipped (see `expires_at_ms` above). It does
+nothing when no step is pending. Max for Live's LOM can't do this.
 
 ### `POST /undo/undo`, `POST /undo/redo`
 
@@ -250,11 +254,13 @@ so each took about 600ms. Polling non-blocking sockets on the main thread
 instead (AbletonOSC's design) was passed over: it means our own HTTP parsing and
 buffering across ticks, and a blocking bug would freeze Live's UI. Each
 connection carries one request, since a Set reload replaces the script and a
-kept-alive connection would still reach the old one. With `expires_in_ms`, the
-HTTP thread waits for Live to start the job until then (a job still queued is
-skipped), and a started job gets its own 30s to finish, so time queued behind
-other jobs doesn't count against it. Without it, the thread waits 30s for the
-reply, and 30s more if the job started in that time.
+kept-alive connection would still reach the old one. With `expires_in_ms` or
+`expires_at_ms`, the HTTP thread waits for Live to start the job until then (a
+job still queued is skipped), and a started job gets its own 30s to finish, so
+time queued behind other jobs doesn't count against it. Without either, the
+thread waits 30s for the reply, and 30s more if the job started in that time.
+`expires_at_ms` is turned into a time from now when the thread takes the
+request, so the time it sat waiting for a busy Live has already counted.
 
 - `http_server.py`: the HTTP server and the port file; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control

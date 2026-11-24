@@ -170,6 +170,40 @@ describe("remoteScriptRequest", () => {
       ]);
     });
 
+    it("sends the deadline, counted from the call's start, with every expiring request", async () => {
+      const remote = await answerWith({ body: { ok: true } });
+      const before = Date.now();
+
+      await remoteScriptRequest({ route: "/list", expiresInMs: 8000 });
+      await remoteScriptRequest({
+        method: "POST",
+        route: "/load",
+        body: { type: "plugin" },
+        expiresInMs: 5000,
+      });
+      await remoteScriptRequest({ route: "/list" });
+
+      const [list, load, none] = remote.deadlines;
+
+      expect(list).toBeGreaterThanOrEqual(before + 8000);
+      expect(list).toBeLessThan(before + 8000 + 1000);
+      expect(load).toBeGreaterThanOrEqual(before + 5000);
+      expect(load).toBeLessThan(before + 5000 + 1000);
+      expect(none).toBeNull();
+    });
+
+    it("sends the deadline as the call's start plus the whole expiry", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(1_000_000);
+
+      const remote = await answerWith({ body: { ok: true } });
+
+      await remoteScriptRequest({ route: "/list", expiresInMs: 8000 });
+
+      // Time spent finding the port comes off `expires_in_ms`, not the deadline.
+      expect(remote.deadlines).toStrictEqual([1_008_000]);
+    });
+
     it("waits a moment past the expiry for the reply, not the fixed 35s", async () => {
       const remote = await answerWith(null);
 

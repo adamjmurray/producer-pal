@@ -17,6 +17,20 @@ import { type McpResponse } from "../../../max-api-adapter.ts";
 export const UNDO_END_WAIT_MS = 1000;
 
 /**
+ * Slack between the end's deadline and the queue's release: the end is sent a
+ * moment after the queue starts waiting.
+ */
+const UNDO_END_MARGIN_MS = 50;
+
+/**
+ * How long Live may leave the end queued, counted from this call. The deadline
+ * falls before the queue releases the next write, and `end_undo_step` runs whole
+ * on Live's main thread. So an end that starts by the deadline finishes before
+ * any later write changes anything, and one that starts later is skipped.
+ */
+export const UNDO_END_EXPIRES_IN_MS = UNDO_END_WAIT_MS - UNDO_END_MARGIN_MS;
+
+/**
  * Close Live's pending undo step after a write call, so each call is its own
  * step. Live merges every change into one step until something closes it.
  * The write queue runs this after each write and holds the next one until it
@@ -29,8 +43,10 @@ export const UNDO_END_WAIT_MS = 1000;
  * the Set, and an end would clear that guard.
  *
  * End only, never begin: a begin left open by a crash or timeout would merge
- * everything after it. Any failure is dropped; without a remote script, undo
- * behaves as it did before.
+ * everything after it. The end carries an expiry (UNDO_END_EXPIRES_IN_MS), so
+ * one Live gets to after the queue has moved on is skipped rather than closing
+ * the next write's step halfway. Any failure is dropped; without a remote
+ * script, undo behaves as it did before.
  *
  * @param tool - Tool name
  * @param args - The call's arguments
@@ -64,7 +80,7 @@ export function endUndoStep(
         remoteScriptRequest({
           method: "POST",
           route: "/undo/end",
-          timeoutMs: UNDO_END_WAIT_MS,
+          expiresInMs: UNDO_END_EXPIRES_IN_MS,
         }),
       )
       // No remote script, or it didn't answer: the step stays open, as before.

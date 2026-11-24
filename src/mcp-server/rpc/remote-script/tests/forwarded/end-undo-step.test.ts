@@ -13,6 +13,7 @@ import { markChangedNothing } from "../../forwarded/changed-nothing.ts";
 import { remoteScriptRequest } from "../../remote-script-client.ts";
 import { STANDARD_TOOL_DEFS } from "../../../../create-mcp-server.ts";
 import {
+  UNDO_END_EXPIRES_IN_MS,
   UNDO_END_WAIT_MS,
   endUndoStep,
 } from "../../forwarded/end-undo-step.ts";
@@ -50,8 +51,36 @@ describe("endUndoStep", () => {
 
     await endUndoStep("ppal-create-track", {}, OK);
     expect(script.requests).toStrictEqual([
-      { method: "POST", route: "/undo/end", query: {}, body: undefined },
+      {
+        method: "POST",
+        route: "/undo/end",
+        query: { expires_in_ms: expect.stringMatching(/^\d+$/) as string },
+        body: undefined,
+      },
     ]);
+  });
+
+  it("sends an expiry under the queue's wait, so a late end is dropped", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(2_000_000);
+
+    const script = await startScript();
+
+    await endUndoStep("ppal-create-track", {}, OK);
+    expect(UNDO_END_EXPIRES_IN_MS).toBeLessThan(UNDO_END_WAIT_MS);
+    expect(remoteScriptRequest).toHaveBeenLastCalledWith({
+      method: "POST",
+      route: "/undo/end",
+      expiresInMs: UNDO_END_EXPIRES_IN_MS,
+    });
+
+    // What reaches Live is what is left of that, never more, and the deadline
+    // is that long after the call.
+    const sent = Number(script.requests[0]?.query.expires_in_ms);
+
+    expect(sent).toBeLessThanOrEqual(UNDO_END_EXPIRES_IN_MS);
+    expect(sent).toBeGreaterThan(0);
+    expect(script.deadlines[0]).toBe(2_000_000 + UNDO_END_EXPIRES_IN_MS);
   });
 
   it("settles after UNDO_END_WAIT_MS when the remote script doesn't answer", async () => {

@@ -70,8 +70,11 @@ const WRITES: Record<string, { node: string; args: object }> = {
   "/undo/redo": { node: MANAGE_ROUTES.redo, args: {} },
 };
 
-/** Routes that change the Set but report nothing a caller waits on. */
-const FIRE_AND_FORGET = ["/undo/end"];
+/**
+ * Routes the write queue sends itself, after a write (`endUndoStep`, whose
+ * tests check its expiry).
+ */
+const QUEUE_SENT = ["/undo/end"];
 
 /**
  * Routes the portal sends itself, not through V8 (it sends the expiry too: see
@@ -105,9 +108,7 @@ describe("remote script routes that change the Set", () => {
 
     expect(postOnly.length).toBeGreaterThan(0);
     expect(postOnly.toSorted(byText)).toStrictEqual(
-      [...Object.keys(WRITES), ...FIRE_AND_FORGET, ...PORTAL_SENT].toSorted(
-        byText,
-      ),
+      [...Object.keys(WRITES), ...QUEUE_SENT, ...PORTAL_SENT].toSorted(byText),
     );
   });
 
