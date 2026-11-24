@@ -146,6 +146,9 @@ export function slotParameters(device: LiveAPI): Map<number, SlotParameter> {
   return found;
 }
 
+/** How a wrapper's error begins when it predates the op it was asked. */
+export const UNKNOWN_OP = "unknown op";
+
 /** What a wrapper failed at, by what was asked of it. */
 const FAILED = {
   read: "couldn't read the automation slots",
@@ -170,7 +173,7 @@ function refusal(error: string | undefined, what: keyof typeof FAILED): string {
     return "the device is still loading; try again in a moment";
   }
 
-  if (error.startsWith("unknown op")) {
+  if (error.startsWith(UNKNOWN_OP)) {
     return "this wrapper is out of date; create the hosted plug-in again";
   }
 

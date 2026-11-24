@@ -7,7 +7,14 @@
 // path and the plug-in's own name for the param.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  clearMockRegistry,
+  lookupMockObject,
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupMidiClipMock,
@@ -17,6 +24,7 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   infoReply,
   installWrapper,
+  registerWrapperDevice,
   type WrapperMessage,
 } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
 import {
@@ -147,6 +155,111 @@ describe("updateClip - envelopes on a hosted param named by path and name", () =
       );
     },
   );
+
+  it.each<[string, WrapperMessage]>([
+    ["no plug-in loaded", { success: false, error: NO_PLUGIN_LOADED }],
+    ["an outdated wrapper", { success: false, error: "unknown op: lookup" }],
+  ])(
+    "leaves a name to the wrapper's own params when the lookup fails (%s)",
+    async (_kind, reply) => {
+      installWrapper({
+        info: () => infoReply(null),
+        lookup: () => reply,
+      });
+
+      const params = [] as unknown[];
+
+      for (const name of ["Device On", "Slot 001"]) {
+        expect(await write(`t0/d0/${name}`)).toStrictEqual(
+          expect.objectContaining({ envelopes: 1 }),
+        );
+        params.push(routeArgs(ENVELOPE_ROUTES.write)?.parameter);
+        vi.mocked(requestNode).mockClear();
+      }
+
+      expect(params).toStrictEqual([0, 1]);
+    },
+  );
+
+  it.each<[string, WrapperMessage | undefined]>([
+    ["no answer", undefined],
+    ["a transient error", { success: false, error: "still loading" }],
+    ["any other error", { success: false, error: "boom" }],
+  ])(
+    "writes nothing for the wrapper's own name when the lookup has %s",
+    async (_kind, reply) => {
+      installWrapper({
+        info: () => infoReply("Plug"),
+        lookup: reply == null ? () => undefined as never : () => reply,
+      });
+
+      const result = await write("t0/d0/Device On");
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 0,
+          detail: expect.stringMatching(/^envelope "t0\/d0\/Device On": /),
+        }),
+      );
+      expect(routeArgs(ENVELOPE_ROUTES.write)).toBeUndefined();
+    },
+  );
+
+  it("reports a wrapper's own name that is ambiguous after a failed lookup", async () => {
+    installWrapper({
+      info: () => infoReply(null),
+      lookup: () => ({ success: false, error: NO_PLUGIN_LOADED }),
+    });
+    registerMockObject("device-on-2", {
+      path: livePath.track(0).device(0).parameter(9),
+      type: "DeviceParameter",
+      properties: { name: "Device On" },
+    });
+    (
+      lookupMockObject("device-123") as RegisteredMockObject
+    ).properties.parameters = ["id", "device-on", "id", "device-on-2"];
+
+    expect(await write("t0/d0/Device On")).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 0,
+        detail: expect.stringContaining('"Device On" names 2 params') as string,
+      }),
+    );
+  });
+
+  it("reports a wrapper on another track after a failed lookup", async () => {
+    installWrapper({
+      info: () => infoReply(null),
+      lookup: () => ({ success: false, error: NO_PLUGIN_LOADED }),
+    });
+    registerWrapperDevice({
+      id: "return-wrapper",
+      path: String(livePath.returnTrack(0).device(0)),
+    });
+
+    expect(await write("rt0/d0/Device On")).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 0,
+        detail: expect.stringContaining(
+          "rt0/d0 is not on the clip's track (t0)",
+        ) as string,
+      }),
+    );
+  });
+
+  it("still gives the lookup's reason for a name the wrapper's own params lack", async () => {
+    installWrapper({
+      info: () => infoReply(null),
+      lookup: () => ({ success: false, error: NO_PLUGIN_LOADED }),
+    });
+
+    expect(await write("t0/d0/Resonance")).toStrictEqual(
+      expect.objectContaining({
+        envelopes: 0,
+        detail: `envelope "t0/d0/Resonance": ${NO_PLUGIN_LOADED}`,
+      }),
+    );
+  });
 
   it.each<[WrapperMessage | undefined, string]>([
     [

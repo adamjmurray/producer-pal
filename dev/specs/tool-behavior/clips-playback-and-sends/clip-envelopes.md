@@ -128,9 +128,14 @@ matched exactly, else ignoring case); the wrapper numbers names the plug-in
 repeats in its order ("Attack", "Attack (2)"), so the plain name is the first. A
 name that still reaches several params (only once case is ignored) skips the
 line, listing their ids; one the plug-in doesn't have is left to the wrapper's
-own Live params ("Slot 001", "Device On"). A target that can't be read (`t3/hx`)
-refuses the call like any other. The rest skip that line, as
-`envelope "<target>": <why>`, and the other lines still run:
+own Live params ("Slot 001", "Device On"), as is any name when the wrapper has
+no plug-in to look it up in (none loaded or not installed, or a wrapper too old
+for the lookup). If the wrapper's own params lack the name too, the line is
+skipped with that reason. Any other lookup failure (no answer, timeout, error)
+skips the line with its reason and writes nothing, since the plug-in may own a
+param of that name. A target that can't be read (`t3/hx`) refuses the call like
+any other. The rest skip that line, as `envelope "<target>": <why>`, and the
+other lines still run:
 
 - **The wrapper must be on the clip's track**, reached by a path that clip
   automation can walk (devices and rack chains, not drum pads or return chains),

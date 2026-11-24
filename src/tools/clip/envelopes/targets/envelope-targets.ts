@@ -12,9 +12,14 @@ import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { mixerParameter } from "#src/tools/clip/read/helpers/clip-envelopes.ts";
 import { type EnvelopeLine } from "../envelope-lines.ts";
-import { parseNameTarget, resolveNameTarget } from "./envelope-name-target.ts";
+import {
+  NoParamNamedError,
+  parseNameTarget,
+  resolveNameTarget,
+} from "./envelope-name-target.ts";
 import { type EnvelopeTrack, isOnTrack, trackText } from "../envelope-track.ts";
 import {
+  type HostedLookupFailure,
   type HostedTarget,
   parseHostedTarget,
   resolveHostedNameTarget,
@@ -73,9 +78,9 @@ export function resolveEnvelopeLines(
     try {
       const hosted = hostedTarget(line.target, track);
 
-      return hosted == null
-        ? { line, target: envelopeTarget(line.target, track) }
-        : { line, hosted };
+      return hosted != null && "devicePath" in hosted
+        ? { line, hosted }
+        : { line, target: wrapperOwnTarget(line.target, track, hosted) };
     } catch (error) {
       return { line, error: errorMessage(error) };
     }
@@ -121,13 +126,14 @@ export function findSameParameter(
  * and the param's `h` id or its name.
  * @param target - The target as the call wrote it
  * @param track - The track the clip sits on
- * @returns The hosted param, or null when the target is no hosted param's
+ * @returns The hosted param; null when the target is no hosted param's; or why
+ *   the wrapper couldn't look the name up
  * @throws Error saying why it reaches no hosted param
  */
 function hostedTarget(
   target: string,
   track: EnvelopeTrack,
-): HostedTarget | null {
+): HostedTarget | HostedLookupFailure | null {
   const byId = parseHostedTarget(target);
 
   if (byId != null) {
@@ -137,6 +143,31 @@ function hostedTarget(
   const named = parseNameTarget(target);
 
   return named == null ? null : resolveHostedNameTarget(named, track);
+}
+
+/**
+ * Resolve a target that isn't a hosted param. A name a wrapper couldn't look up
+ * may still be one of its own Live params; if not, say why the lookup failed.
+ * @param target - The target as the call wrote it
+ * @param track - The track the clip sits on
+ * @param failure - The wrapper's failed lookup of the name, if any
+ * @returns The address the remote script takes
+ * @throws Error saying why the target reaches no parameter
+ */
+function wrapperOwnTarget(
+  target: string,
+  track: EnvelopeTrack,
+  failure: HostedLookupFailure | null,
+): EnvelopeTarget {
+  try {
+    return envelopeTarget(target, track);
+  } catch (error) {
+    if (failure != null && error instanceof NoParamNamedError) {
+      throw new Error(failure.lookupFailed, { cause: error });
+    }
+
+    throw error;
+  }
 }
 
 /**

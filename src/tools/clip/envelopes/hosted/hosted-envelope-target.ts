@@ -9,9 +9,13 @@
 import {
   hostedParamId,
   detectHostedPlugin,
+  NO_PLUGIN_LOADED,
 } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import { probePluginHost } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
-import { wrapperRefusal } from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
+import {
+  UNKNOWN_OP,
+  wrapperRefusal,
+} from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
 import { type EnvelopeTrack, isOnTrack, trackText } from "../envelope-track.ts";
 import {
   nothingAtPath,
@@ -123,6 +127,12 @@ export function resolveHostedTarget(
   };
 }
 
+/** A wrapper with no plug-in to look a name up in: the name falls to its own params. */
+export interface HostedLookupFailure {
+  /** Why, to tell the caller if the wrapper's own params don't have the name */
+  lookupFailed: string;
+}
+
 /**
  * Find the hosted param a name target names: a wrapper's path and one of its
  * plug-in's param names, like `t3/d0/Cutoff`.
@@ -131,14 +141,16 @@ export function resolveHostedTarget(
  * @param named.name - The param's name
  * @param track - The track the clip sits on
  * @returns The wrapper and the param; null when the device isn't a wrapper or
- *   its plug-in has no param of that name, which leaves the name to Live's own
- *   params
- * @throws Error saying why the name reaches no single hosted param
+ *   its plug-in has no param of that name; or why the wrapper has no plug-in
+ *   to look the name up in (none loaded, or an outdated wrapper). All leave the
+ *   name to Live's own params.
+ * @throws Error saying why the name reaches no single hosted param, or why the
+ *   lookup failed for any other reason
  */
 export function resolveHostedNameTarget(
   named: { devicePath: string; name: string },
   track: EnvelopeTrack,
-): HostedTarget | null {
+): HostedTarget | HostedLookupFailure | null {
   const resolved = resolvePathToLiveApi(named.devicePath, TARGET_PARAM);
   const device = LiveAPI.from(resolved.liveApiPath);
 
@@ -153,7 +165,17 @@ export function resolveHostedNameTarget(
   const reply = probePluginHost(device.id, "lookup", { name: named.name });
 
   if (reply?.success !== true) {
-    throw new Error(wrapperRefusal(device.id, reply?.error, "lookup"));
+    const error = reply?.error;
+    const refusal = wrapperRefusal(device.id, error, "lookup");
+
+    // Only an answer that says the plug-in can't own the name leaves it to the
+    // wrapper's own params. Any other failure might hide a plug-in param of the
+    // same name ("Device On"), and writing the wrapper's would hit the wrong one.
+    if (error === NO_PLUGIN_LOADED || error?.startsWith(UNKNOWN_OP) === true) {
+      return { lookupFailed: refusal };
+    }
+
+    throw new Error(refusal);
   }
 
   const matches = (reply.matches ?? []) as Array<{ index: number }>;

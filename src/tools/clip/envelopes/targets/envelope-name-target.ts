@@ -24,6 +24,9 @@ const WALK_SEGMENT = /^[cd]\d+$/;
 /** A longer path that ends on a mixer name spells a chain's mixer: `t0/d0/rc0/pan`. */
 const CHAIN_MIXER_TAIL = /\/(?:volume|pan|send\d+)$/;
 
+/** A device with no param of the name, as opposed to a target that can't be used. */
+export class NoParamNamedError extends Error {}
+
 /** A name target, read but not yet looked up. */
 export interface ParsedNameTarget {
   /** The device's path, as written */
@@ -112,7 +115,7 @@ export function resolveNameTarget(
       ? " (a device path here takes only dN and cN segments)"
       : "";
 
-    throw new Error(
+    throw new NoParamNamedError(
       `${resolved.path} has no param named "${parsed.name}"${hint}`,
     );
   }
