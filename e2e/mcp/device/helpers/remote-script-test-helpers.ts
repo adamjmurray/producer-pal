@@ -46,21 +46,16 @@ export const END_LANDS_MS = 300;
  * undo step to close.
  * @param client - Connected MCP client
  * @param count - How many tracks the one call makes
- * @returns When the call answered (Date.now()), before the wait
  */
 export async function appendTracksInOneCall(
   client: Client,
   count: number,
-): Promise<number> {
+): Promise<void> {
   await client.callTool({
     name: "ppal-create-track",
     arguments: { path: Array(count).fill("t+").join(",") },
   });
-  const answeredAt = Date.now();
-
   await sleep(END_LANDS_MS);
-
-  return answeredAt;
 }
 
 /** How long a just-opened Live gets for the remote script to answer. */

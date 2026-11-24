@@ -25,6 +25,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
+import { connectTimingClient } from "../device/helpers/in-flight-calls-test-helpers.ts";
 import { readTrackCount } from "../device/helpers/track-count-test-helpers.ts";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
@@ -77,19 +78,28 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
     const before = await trackCount();
 
     // The bigger call runs long enough for the other to arrive and queue.
-    const calls = [
-      appendTracksInOneCall(ctx.client!, 12),
-      appendTracksInOneCall(ctx.client!, 1),
-    ];
-    const bothSentAt = Date.now();
-    const answeredAt = await Promise.all(calls);
+    // Calls that never overlapped get a step each anyway, so the test checks
+    // at the HTTP level that both requests were in flight together.
+    const { client, toolCalls } = await connectTimingClient();
 
-    // Calls that never overlapped get a step each anyway, so this would pass
-    // without testing anything.
+    try {
+      await Promise.all([
+        appendTracksInOneCall(client, 12),
+        appendTracksInOneCall(client, 1),
+      ]);
+    } finally {
+      await client.close();
+    }
+
+    expect(toolCalls).toHaveLength(2);
     expect(
-      Math.min(...answeredAt),
-      "a call answered before both were sent; the calls didn't overlap",
-    ).toBeGreaterThan(bothSentAt);
+      toolCalls.every(({ answeredAt }) => answeredAt > 0),
+      "a response was never read",
+    ).toBe(true);
+    expect(
+      Math.max(...toolCalls.map(({ sentAt }) => sentAt)),
+      "the second request left after the first was answered; they didn't overlap",
+    ).toBeLessThan(Math.min(...toolCalls.map(({ answeredAt }) => answeredAt)));
     expect(await trackCount()).toBe(before + 13);
 
     await undoOnce();
