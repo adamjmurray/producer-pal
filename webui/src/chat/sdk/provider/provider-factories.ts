@@ -32,7 +32,7 @@ import {
 import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
 import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root";
 import { settleOllamaThinking } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
-import { withDefaultUrl } from "#webui/utils/provider-url";
+import { getBaseUrl } from "#webui/utils/provider-url";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
@@ -83,7 +83,7 @@ export function createProviderModel(
       return createOpenAICompatible({
         name: "lmstudio",
         apiKey: apiKey || "not-needed",
-        baseURL: withDefaultUrl(baseUrl, "http://localhost:1234/v1"),
+        baseURL: localAiUrl("lmstudio", baseUrl),
         // Without includeUsage the SDK omits `stream_options.include_usage`, so
         // OpenAI-compatible servers never emit a usage chunk and token counts
         // stay undefined (show as 0 in the UI).
@@ -91,7 +91,7 @@ export function createProviderModel(
       }).chatModel(modelId);
 
     case "ollama": {
-      const ollamaUrl = withDefaultUrl(baseUrl, "http://localhost:11434/v1");
+      const ollamaUrl = localAiUrl("ollama", baseUrl);
 
       return createOpenAICompatible({
         name: "ollama",
@@ -217,3 +217,14 @@ export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
     return settled || dropped || cached;
   },
 );
+
+/**
+ * A local AI server's `/v1` URL: the setting or the default, through the relay
+ * when the page was opened from another device (see `relayLocalAiUrl`).
+ * @param provider - "lmstudio" or "ollama"
+ * @param baseUrl - The URL setting, if any
+ * @returns The URL the SDK calls
+ */
+function localAiUrl(provider: "lmstudio" | "ollama", baseUrl?: string): string {
+  return getBaseUrl(provider, baseUrl) as string;
+}

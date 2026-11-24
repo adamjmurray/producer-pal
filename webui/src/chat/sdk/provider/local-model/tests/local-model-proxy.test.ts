@@ -5,22 +5,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
-
-/**
- * Serve the "page" from this origin for the test.
- * @param origin - The page's origin
- */
-function pageAt(origin: string): void {
-  const { hostname, port, protocol } = new URL(origin);
-
-  vi.stubGlobal("window", {
-    location: { origin, hostname, port, protocol },
-  });
-}
+import { servePageAt } from "#webui/test-utils/page-origin-test-helpers";
 
 describe("proxyFetchFor", () => {
   beforeEach(() => {
-    pageAt("http://localhost:3350");
+    servePageAt("http://localhost:3350");
   });
 
   afterEach(() => {
@@ -55,7 +44,7 @@ describe("proxyFetchFor", () => {
     "http://[::1]:3350",
     "http://localhost:5173",
   ])("proxies when the page is on this computer at %s", (origin) => {
-    pageAt(origin);
+    servePageAt(origin);
 
     expect(proxyFetchFor("custom", "http://127.0.0.1:8000/v1")).toBeTypeOf(
       "function",
@@ -70,7 +59,7 @@ describe("proxyFetchFor", () => {
     "https://demo.trycloudflare.com",
     "http://localhost.evil.com:3350",
   ])("calls directly when the page is at %s", (origin) => {
-    pageAt(origin);
+    servePageAt(origin);
 
     expect(proxyFetchFor("custom", "http://localhost:8000/v1")).toBeUndefined();
   });
@@ -100,7 +89,7 @@ describe("the proxying fetch", () => {
 
   beforeEach(() => {
     vi.stubGlobal("fetch", mockFetch);
-    pageAt("http://localhost:3350");
+    servePageAt("http://localhost:3350");
     mockFetch.mockResolvedValue(new Response("ok"));
   });
 

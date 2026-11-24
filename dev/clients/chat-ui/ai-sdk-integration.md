@@ -55,6 +55,28 @@ server side is `src/mcp-server/helpers/http/browser/local-model-proxy-route.ts`:
 - Its own errors carry `X-Producer-Pal-Proxy-Error` and an OpenAI-style
   `{ error: { message } }` body, which the AI SDK and Test connection show.
 
+**Local AI relay:** on a page opened from a phone, a tunnel or another computer,
+`localhost` is that device. So when the Ollama or LM Studio URL is the default
+address on a loopback host (path `""` or `/v1`),
+`chat/sdk/provider/local-model/local-ai-relay.ts` swaps it for
+`/local-ai/ollama` or `/local-ai/lmstudio` on the page's own server. It's
+applied where every local AI URL is resolved: `getBaseUrl`, the model catalog,
+and the provider factories. Custom URLs stay direct: settings live per browser,
+so the server can't know them. The server side is
+`src/mcp-server/helpers/http/browser/local-ai-relay-route.ts`:
+
+- Targets are fixed (`LOCAL_AI_DEFAULT_URLS` in `src/shared/config.ts`); the
+  request never names one, so it isn't an open relay.
+- Only the paths the chat UI calls pass, GET and POST only. Everything else is a
+  404, which keeps Ollama's delete and pull APIs off the network.
+- Callers: any whose `Origin`, if sent, is the server's own (LAN and tunnel
+  pages included), or the Vite dev origin in a dev build. No loopback check:
+  anyone who can reach Producer Pal may use the local AI, as they can use Live.
+- Forwarding is shared with the proxy (`model-server-forwarding.ts`): same
+  headers, streaming and disconnect handling, a 504 when the server doesn't
+  start answering within 5 minutes, and an SSE error event when a streamed reply
+  drops midway.
+
 **Locked Settings:**
 
 Provider, model, thinking level, small-model mode, the resolved system

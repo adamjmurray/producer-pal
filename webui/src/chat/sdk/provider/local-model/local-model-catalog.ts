@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { DEFAULT_LOCAL_URLS } from "#webui/lib/constants/provider-urls";
+import { relayLocalAiUrl } from "#webui/chat/sdk/provider/local-model/local-ai-relay";
 import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root";
 import { type Provider } from "#webui/types/settings";
 import { withDefaultUrl } from "#webui/utils/provider-url";
@@ -174,7 +175,10 @@ function serverRoot(
 ): string | undefined {
   try {
     return localServerRoot(
-      withDefaultUrl(baseUrl, DEFAULT_LOCAL_URLS[provider] as string),
+      relayLocalAiUrl(
+        provider,
+        withDefaultUrl(baseUrl, DEFAULT_LOCAL_URLS[provider] as string),
+      ),
     );
   } catch {
     return undefined;

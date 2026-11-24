@@ -110,6 +110,24 @@ export function isSameOriginRequest(origin: string, req: Request): boolean {
 }
 
 /**
+ * Whether a browser's Origin, if sent, is this server's own page: the chat UI
+ * served here (over loopback, the network or a tunnel), or in a dev build the
+ * Vite dev server. Origin-less (non-browser) clients pass.
+ *
+ * @param req - Express request
+ * @returns true unless a browser sent another site's Origin
+ */
+export function isOwnPageOrigin(req: Request): boolean {
+  const origin = req.get("Origin");
+
+  return (
+    origin == null ||
+    isSameOriginRequest(origin, req) ||
+    isViteDevOrigin(origin)
+  );
+}
+
+/**
  * Gate a browser CONTENT write, allowing same-origin remote clients. Same-origin
  * (the webui served by THIS server, including over LAN/tunnel), localhost, and
  * non-browser (Origin-less) clients pass; only a genuinely foreign browser

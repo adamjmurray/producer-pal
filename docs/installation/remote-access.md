@@ -45,8 +45,14 @@ Producer Pal Max for Live device.
    paste your API key again.
 
 Some things only work on Live's computer: voice mode, and device settings like
-small model mode. From a phone, use an [AI router](./ai-routers) or an
-[API key](./api-keys). Local AI isn't set up for this.
+small model mode.
+
+[Local AI](./local-ai) running on Live's computer works from a phone too: leave
+the Ollama or Bionic URL at its default (`http://localhost:11434` or
+`http://localhost:1234`), and Producer Pal passes the chat through to Live's
+computer. A custom URL is called straight from the phone. While Remote Control
+or a web tunnel is on, anyone who can reach Producer Pal can also use your local
+AI this way.
 
 ### API Keys Over Plain HTTP
 

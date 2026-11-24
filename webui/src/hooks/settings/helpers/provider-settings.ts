@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LOCAL_AI_DEFAULT_URLS } from "#src/shared/config";
 import { THINKING_LEVELS } from "#webui/components/settings/controls/helpers/thinking-levels";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { DEFAULT_MODELS } from "#webui/lib/constants/models";
@@ -63,13 +64,13 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
-    baseUrl: "http://localhost:1234",
+    baseUrl: LOCAL_AI_DEFAULT_URLS.lmstudio,
     thinking: "Default",
   },
   ollama: {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
-    baseUrl: "http://localhost:11434",
+    baseUrl: LOCAL_AI_DEFAULT_URLS.ollama,
     thinking: "Default",
   },
   custom: {

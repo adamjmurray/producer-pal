@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LOCAL_AI_DEFAULT_URLS } from "#src/shared/config";
+
 // Outbound links and defaults keyed by provider. Kept out of the settings
 // components so those files export only components and stay hot-reloadable.
 
@@ -26,7 +28,4 @@ export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
   ollama: "https://ollama.com/search",
 };
 
-export const DEFAULT_LOCAL_URLS: Record<string, string> = {
-  lmstudio: "http://localhost:1234",
-  ollama: "http://localhost:11434",
-};
+export const DEFAULT_LOCAL_URLS: Record<string, string> = LOCAL_AI_DEFAULT_URLS;

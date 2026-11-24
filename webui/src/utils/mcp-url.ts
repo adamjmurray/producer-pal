@@ -3,7 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { DEFAULT_MCP_URL, LOCAL_MODEL_PROXY_PATH } from "#src/shared/config";
+import {
+  DEFAULT_MCP_URL,
+  LOCAL_AI_RELAY_PATH,
+  LOCAL_MODEL_PROXY_PATH,
+  type LocalAiServer,
+} from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
 
@@ -267,6 +272,15 @@ export function getSubagentBriefingUrl(mcpUrl?: string): string {
  */
 export function getLocalModelProxyUrl(): string {
   return serverUrl(LOCAL_MODEL_PROXY_PATH);
+}
+
+/**
+ * Gets the local AI relay's URL for one server; append the server's own path.
+ * @param server - The local AI server
+ * @returns {string} The relay URL, without a trailing slash
+ */
+export function getLocalAiRelayUrl(server: LocalAiServer): string {
+  return serverUrl(`${LOCAL_AI_RELAY_PATH}/${server}`);
 }
 
 /**

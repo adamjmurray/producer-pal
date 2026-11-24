@@ -372,6 +372,10 @@ The default is almost always right. Change it if:
   on running Ableton Live. Replace `localhost` with the other computer's network
   address (e.g., `http://192.168.1.100:11434`)
 
+Keep the default to chat from a phone or another computer with the local AI on
+Live's computer: Producer Pal passes the chat through (see
+[Remote Access](/installation/remote-access#chat-from-a-phone-or-another-computer)).
+
 #### Voice
 
 There's no separate Voice tab. Select a voice model on this **Connection** tab
