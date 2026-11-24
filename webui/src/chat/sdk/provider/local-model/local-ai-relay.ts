@@ -8,7 +8,10 @@ import {
   type LocalAiServer,
   isLocalModelUrl,
 } from "#src/shared/config";
-import { getLocalAiRelayUrl } from "#webui/utils/mcp-url";
+import {
+  getLocalAiRelayUrl,
+  isPageOnAnotherDevice,
+} from "#webui/utils/mcp-url";
 
 /**
  * The URL to call Ollama or Bionic / LM Studio at. On a page opened from a
@@ -22,7 +25,10 @@ import { getLocalAiRelayUrl } from "#webui/utils/mcp-url";
  * @returns The relay URL (keeping `/v1` when given), or `url`
  */
 export function relayLocalAiUrl(provider: string, url: string): string {
-  if (!Object.hasOwn(LOCAL_AI_DEFAULT_URLS, provider) || !isPageRemote()) {
+  if (
+    !Object.hasOwn(LOCAL_AI_DEFAULT_URLS, provider) ||
+    !isPageOnAnotherDevice()
+  ) {
     return url;
   }
 
@@ -57,11 +63,4 @@ function defaultAddressPath(
     (path === "" || path === "/v1")
     ? path
     : undefined;
-}
-
-// Opened from another device: there is a page, and it isn't on localhost.
-function isPageRemote(): boolean {
-  return (
-    typeof window !== "undefined" && !isLocalModelUrl(window.location.origin)
-  );
 }

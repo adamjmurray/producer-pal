@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { renderHook } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 
 /** The two values the hook syncs between. */
@@ -98,5 +98,41 @@ describe("useSyncSmallModelMode", () => {
     rerender({ serverValue: false, activeValue: true });
 
     expect(postToServer).toHaveBeenCalledWith(true);
+  });
+
+  describe("on a page opened from another device", () => {
+    // Only `origin` is read, which a URL has too.
+    const pageAt = (url: string): void => {
+      vi.spyOn(window, "location", "get").mockReturnValue(
+        new URL(url) as unknown as Location,
+      );
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it.each([
+      "http://192.168.1.20:3350/chat",
+      "https://abc.trycloudflare.com/chat",
+    ])("doesn't post at %s, which the device would refuse", (url) => {
+      pageAt(url);
+
+      const { postToServer, setLocal } = renderSync({
+        serverValue: false,
+        activeValue: true,
+      });
+
+      expect(postToServer).not.toHaveBeenCalled();
+      expect(setLocal).not.toHaveBeenCalled();
+    });
+
+    it("still seeds local from the device's setting", () => {
+      pageAt("http://192.168.1.20:3350/chat");
+
+      const { setLocal } = renderSync({ serverValue: true, activeValue: null });
+
+      expect(setLocal).toHaveBeenCalledWith(true);
+    });
   });
 });

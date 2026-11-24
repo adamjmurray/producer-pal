@@ -4,12 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useRef } from "preact/hooks";
+import { isPageOnAnotherDevice } from "#webui/utils/mcp-url";
 
 /**
  * Syncs smallModelMode between server and local settings based on conversation lock state.
  * Two independent effects:
  * - Seed: updates local from server when server value changes and no conversation is active
- * - Post: sends locked value to server when a conversation starts or its SMM changes
+ * - Post: sends locked value to server when a conversation starts or its SMM changes.
+ *   Not from another device: the device refuses its settings from there, and
+ *   each chat request carries its own small model mode anyway.
  * Split to prevent the post effect from undoing a settings save while a conversation is active.
  * @param serverValue - Server-fetched smallModelMode value
  * @param activeValue - Conversation-locked value (null when no active conversation)
@@ -41,7 +44,7 @@ export function useSyncSmallModelMode(
 
   // Post locked value to server when conversation starts or its SMM changes
   useEffect(() => {
-    if (activeValue != null) {
+    if (activeValue != null && !isPageOnAnotherDevice()) {
       postRef.current(activeValue);
     }
   }, [activeValue]);

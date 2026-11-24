@@ -75,13 +75,6 @@ test.describe("local AI from another device", () => {
     expect(body).not.toContain("local ai relay");
     expect(relayed).toContain("/local-ai/ollama/v1/chat/completions");
     expect(direct).toStrictEqual([]);
-    // Every chat opened from another device logs this: a new conversation
-    // syncs small model mode to the device, which only takes device settings
-    // from Live's computer. Not the relay's doing.
-    captured.errors = captured.errors.filter(
-      (error) =>
-        !error.startsWith("POST /config (smallModelMode) returned 403"),
-    );
     expectNoConsoleOutput(captured);
   });
 });

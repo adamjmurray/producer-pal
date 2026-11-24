@@ -26,6 +26,7 @@ test.describe("local AI from another device", () => {
 
     const relayed = await routeOllama(page, `${PHONE_PAGE}/local-ai/ollama`);
     const direct = await routeOllama(page, OLLAMA);
+    const configWrites = await recordConfigWrites(page);
 
     await openOllamaChat(page, `${PHONE_PAGE}/chat-ui.html`);
     await sendChatMessage(page, "hello");
@@ -33,6 +34,8 @@ test.describe("local AI from another device", () => {
 
     expect(relayed).toContain("/v1/chat/completions");
     expect(direct).toStrictEqual([]);
+    // The device refuses its settings from another device.
+    expect(configWrites).toStrictEqual([]);
     expectNoConsoleOutput(captured);
   });
 
@@ -71,6 +74,26 @@ async function openOllamaChat(page: Page, url: string): Promise<void> {
     );
   }, OLLAMA);
   await page.goto(url);
+}
+
+/**
+ * Note each write to /config. Registered after installStubs, so it wins; reads
+ * still get the stub's all-off config.
+ * @param page - Playwright page
+ * @returns The written bodies, filled in as requests arrive
+ */
+async function recordConfigWrites(page: Page): Promise<string[]> {
+  const writes: string[] = [];
+
+  await page.route("**/config", async (route) => {
+    if (route.request().method() === "POST") {
+      writes.push(route.request().postData() ?? "");
+    }
+
+    await route.fallback();
+  });
+
+  return writes;
 }
 
 /**
