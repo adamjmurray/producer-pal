@@ -11,6 +11,11 @@ import { type MaybePromise } from "#src/tools/shared/write-pipeline/write-pipeli
 const EPSILON = 0.02;
 /** A loop start nearer than this is aimed past: the fire might land after it */
 const GUARD_SECONDS = 0.15;
+/**
+ * A later clip of a call fires a few ms after the first, which cleared the
+ * guard. Nearer than this to the loop start, its fire might land after it.
+ */
+const LATER_CLIP_MARGIN_SECONDS = 0.03;
 /** Left of the request's time once the wait is over */
 const DEADLINE_MARGIN_MS = 5000;
 /** The longest wait when the request carries no deadline */
@@ -45,6 +50,20 @@ export interface SyncedLaunch {
   unsynced?: string;
   /** Clock time a wait for the loop start gives up at */
   waitEndsAt?: number;
+  /**
+   * Fixed by the first clip fired, after any wait, so every clip of the call
+   * aims at the same loop start. Null: there is nothing to aim at.
+   */
+  aim?: Aim | null;
+}
+
+/** The loop start a call's clips all aim at */
+interface Aim {
+  startBeat: number;
+  /** The grid that lands a fire on it. Absent: fire without sync */
+  grid?: Grid;
+  /** Seconds to it, as of the first fire */
+  startsIn: number;
 }
 
 /** When to fire, as of now. */
@@ -178,12 +197,14 @@ export function awaitLaunchWindow(
 }
 
 /**
- * Fire a clip slot so its clip starts on the loop start. The clip's own launch
- * quantization is set for the fire and put back straight after: Live has
- * already scheduled the launch by then.
+ * Fire a clip slot so its clip starts on the loop start. The first slot fixes
+ * the loop start and its grid for the call: later slots aim at the same start
+ * while it is still safely ahead, and fire without sync once it isn't. The
+ * clip's own launch quantization is set for the fire and put back straight
+ * after: Live has already scheduled the launch by then.
  * @param liveSet - The live_set object
  * @param slot - The clip slot
- * @param launch - Where the clip is to start
+ * @param launch - Where the clip is to start; the first fire records its aim here
  * @returns Seconds until the clip starts, or null when it fired without sync
  */
 export function fireSynced(
@@ -192,10 +213,20 @@ export function fireSynced(
   launch: SyncedLaunch,
 ): number | null {
   const clip = slot.child("clip");
-  const timing = clip.exists() ? launchTiming(liveSet, launch) : null;
-  const grid = liveSet.getProperty("is_playing") ? timing?.grid : undefined;
 
-  if (timing == null || grid == null) {
+  if (!clip.exists()) {
+    slot.call("fire");
+
+    return null;
+  }
+
+  if (launch.aim === undefined) {
+    launch.aim = chooseAim(liveSet, launch);
+  }
+
+  const { aim } = launch;
+
+  if (aim?.grid == null || !stillAhead(liveSet, aim.startBeat, aim.grid)) {
     slot.call("fire");
 
     return null;
@@ -203,7 +234,7 @@ export function fireSynced(
 
   const own = clip.getProperty("launch_quantization") as number;
 
-  clip.set("launch_quantization", grid.value);
+  clip.set("launch_quantization", aim.grid.value);
 
   try {
     slot.call("fire");
@@ -211,7 +242,7 @@ export function fireSynced(
     clip.set("launch_quantization", own);
   }
 
-  return seconds(timing.remaining, timing.tempo);
+  return aim.startsIn;
 }
 
 // --- Helpers below main exports ---
@@ -258,6 +289,46 @@ function playingLoops(liveSet: LiveAPI): PlayingLoop[] {
   }
 
   return loops;
+}
+
+/**
+ * Whether the call's loop start is still safely ahead of a fire. Not when the
+ * transport has stopped or the start is too near to hit, nor when song time
+ * jumped back (a loop wrap or a locate): a line of the grid before it would
+ * then be the one the launch latches to.
+ * @param liveSet - The live_set object
+ * @param startBeat - The call's loop start
+ * @param grid - The grid the clips are fired with
+ * @returns True when a fire now lands on the loop start
+ */
+function stillAhead(liveSet: LiveAPI, startBeat: number, grid: Grid): boolean {
+  if (!((liveSet.getProperty("is_playing") as number) > 0)) {
+    return false;
+  }
+
+  const remaining =
+    startBeat - (liveSet.getProperty("current_song_time") as number);
+  const margin =
+    ((liveSet.getProperty("tempo") as number) / 60) * LATER_CLIP_MARGIN_SECONDS;
+
+  return remaining >= margin && remaining < grid.beats;
+}
+
+/**
+ * @param liveSet - The live_set object
+ * @param launch - Where the clips are to start
+ * @returns The loop start to aim at as of now, or null when there is none
+ */
+function chooseAim(liveSet: LiveAPI, launch: SyncedLaunch): Aim | null {
+  const timing = launchTiming(liveSet, launch);
+
+  return timing == null
+    ? null
+    : {
+        startBeat: timing.startBeat,
+        grid: timing.grid,
+        startsIn: seconds(timing.remaining, timing.tempo),
+      };
 }
 
 /**

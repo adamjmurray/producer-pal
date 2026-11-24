@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  DRIFTING_LOOP,
   LATE_LOOP,
   OWN_QUANTIZATION,
   setupSyncedWorld,
@@ -139,6 +140,65 @@ describe("playback play-session-clips-synced", () => {
     ]);
     expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
     expect(liveSet.call).not.toHaveBeenCalledWith("start_playing");
+  });
+
+  describe("when song time moves past the guard between clips", () => {
+    const DRIFTING = {
+      ...DRIFTING_LOOP,
+      fires: [
+        { track: 1, scene: 0 },
+        { track: 2, scene: 0 },
+        { track: 3, scene: 0 },
+      ],
+    };
+
+    it("aims every clip at the same loop start", async () => {
+      const { log } = world({ ...DRIFTING, driftPerFire: 0.02 });
+
+      const result = await playback({
+        action: SYNCED,
+        path: "t1/s0,t2/s0,t3/s0",
+      });
+
+      expect(log).toStrictEqual(
+        ["t1", "t2", "t3"].flatMap((track) => [
+          "quant 10",
+          `fire ${track}/s0`,
+          `quant ${OWN_QUANTIZATION}`,
+        ]),
+      );
+      expect(result.sync).toBe("starts in 0.2s, when t0/s0 loops");
+      expect(result.clip).toStrictEqual([
+        { id: "clip-1-0", path: "t1/s0" },
+        { id: "clip-2-0", path: "t2/s0" },
+        { id: "clip-3-0", path: "t3/s0" },
+      ]);
+    });
+
+    it("fires a clip plainly, and says so, once the loop start has passed", async () => {
+      const { log } = world({ ...DRIFTING, driftPerFire: 0.2 });
+
+      const result = await playback({
+        action: SYNCED,
+        path: "t1/s0,t2/s0,t3/s0",
+      });
+
+      expect(log).toStrictEqual([
+        "quant 10",
+        "fire t1/s0",
+        `quant ${OWN_QUANTIZATION}`,
+        "quant 10",
+        "fire t2/s0",
+        `quant ${OWN_QUANTIZATION}`,
+        "fire t3/s0",
+      ]);
+      expect(result.sync).toBe("starts in 0.2s, when t0/s0 loops");
+      expect(result.clip).toStrictEqual([
+        { id: "clip-1-0", path: "t1/s0" },
+        { id: "clip-2-0", path: "t2/s0" },
+        { id: "clip-3-0", path: "t3/s0", detail: "fired without sync" },
+      ]);
+    });
   });
 
   it("syncs to the fired tracks' own loops when no other track loops", async () => {

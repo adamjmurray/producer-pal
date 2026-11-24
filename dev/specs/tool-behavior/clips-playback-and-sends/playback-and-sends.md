@@ -78,11 +78,17 @@ restarting nothing. How: `dev/live-api/launch-quantization.md`.
   `sync: "a group or return slot has no clip to sync"`. Beside a clip, such a
   slot's entry gets `detail: "fired without sync"`. A return slot always fires
   plainly.
-- **A slot the plan couldn't reach fires plainly** (the transport stopped, or
-  the wait ran out): `detail: "fired without sync"` on its entry, and
-  `sync: "nothing fired in sync"`. create-clip warns
-  `auto: the loop start was missed; fired without sync`.
-- **Success says when**: `sync: "starts in 2.2s, when t7/s1 loops"`.
+- **One loop start per call.** The first clip fired, after any wait, fixes the
+  loop start and its grid; every later clip aims at that same start, never at a
+  later one. A first clip with no grid makes the whole call plain.
+- **A slot that can't reach it fires plainly**: `detail: "fired without sync"`
+  on its entry, and, when none synced, `sync: "nothing fired in sync"`.
+  create-clip warns `auto: the loop start was missed; fired without sync`. That
+  is a stopped transport, a wait that ran out, or, for a later clip, a start
+  less than 30 ms ahead or a full grid length or more ahead (song time jumped
+  back). The 0.15 s guard applies to the first clip only.
+- **Success says when**: `sync: "starts in 2.2s, when t7/s1 loops"`, the time to
+  the one loop start as of the first fire.
 - **A synced launch restarts the transport for two or more clips only when it
   was stopped before the call**, as `play-session-clips` always does. It never
   restarts a transport that was playing.

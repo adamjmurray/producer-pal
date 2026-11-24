@@ -53,6 +53,8 @@ export interface WorldOptions {
   trackCount?: number;
   loops?: LoopSpec[];
   fires?: FireSpec[];
+  /** Beats song time moves on after each fire, as it does while a call runs */
+  driftPerFire?: number;
 }
 
 export interface SyncedWorld {
@@ -123,13 +125,15 @@ export function setupSyncedWorld(options: WorldOptions = {}): SyncedWorld {
     registerLoop(loop, clock);
   }
 
-  for (const spec of fires) {
-    registerFiredSlot(spec, log, slots);
-  }
-
   const advance = (beats: number): void => {
     clock.songTime += beats;
   };
+
+  const onFire = (): void => advance(options.driftPerFire ?? 0);
+
+  for (const spec of fires) {
+    registerFiredSlot(spec, log, slots, onFire);
+  }
 
   vi.stubGlobal(
     "Task",
@@ -201,11 +205,13 @@ function registerLoop(loop: LoopSpec, clock: Clock): void {
  * @param spec - A slot about to be fired
  * @param log - Where the fire and the quantization writes are noted
  * @param slots - Where the slot is kept, by name
+ * @param onFire - Runs after each fire is logged
  */
 function registerFiredSlot(
   spec: FireSpec,
   log: string[],
   slots: Map<string, RegisteredMockObject>,
+  onFire: () => void,
 ): void {
   const path = livePath.track(spec.track).clipSlot(spec.scene);
   const name = `t${spec.track}/s${spec.scene}`;
@@ -223,6 +229,7 @@ function registerFiredSlot(
       },
       fire: () => {
         log.push(`fire ${name}`);
+        onFire();
 
         if (spec.throws === true) {
           throw new Error("fire failed");
@@ -286,4 +293,14 @@ export function slowDownAfter(world: SyncedWorld, after: number): void {
 export const LATE_LOOP: WorldOptions = {
   songTime: 2,
   loops: [{ track: 0, length: 8, position: 0 }],
+};
+
+/**
+ * A 4 beat loop that restarts at song time 28, with the transport 0.31 beats
+ * before it: just outside the 0.3 beat guard at 120 BPM. With `driftPerFire`,
+ * later clips of a call fire inside the guard, or past the loop start.
+ */
+export const DRIFTING_LOOP: WorldOptions = {
+  songTime: 27.69,
+  loops: [{ track: 0, length: 4, position: 3.69 }],
 };

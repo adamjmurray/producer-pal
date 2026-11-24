@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
+  DRIFTING_LOOP,
   LATE_LOOP,
   OWN_QUANTIZATION,
   setupSyncedWorld,
@@ -108,6 +109,45 @@ describe("createClip auto: play-clip-synced", () => {
       "fire t2/s0",
     ]);
     expect(log.filter((entry) => entry === "quant 4")).toHaveLength(2);
+  });
+
+  describe("when song time moves past the guard between clips", () => {
+    const DRIFTING = {
+      ...DRIFTING_LOOP,
+      fires: [
+        CLIP,
+        { track: 2, scene: 0, creating: true },
+        { track: 3, scene: 0, creating: true },
+      ],
+    };
+    const PATHS = "t1/s0,t2/s0,t3/s0";
+
+    it("aims every clip at the same loop start", async () => {
+      const { log } = world({ ...DRIFTING, driftPerFire: 0.02 });
+
+      await createClip({ path: PATHS, auto: "play-clip-synced" });
+
+      expect(log).toStrictEqual(
+        ["t1", "t2", "t3"].flatMap((track) => [
+          "quant 10",
+          `fire ${track}/s0`,
+          `quant ${OWN_QUANTIZATION}`,
+        ]),
+      );
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("warns when a clip fires after the loop start has passed", async () => {
+      const { log } = world({ ...DRIFTING, driftPerFire: 0.2 });
+
+      await createClip({ path: PATHS, auto: "play-clip-synced" });
+
+      expect(log.filter((entry) => entry === "quant 10")).toHaveLength(2);
+      expect(log.at(-1)).toBe("fire t3/s0");
+      expect(capturedWarnings()).toStrictEqual([
+        "auto: the loop start was missed; fired without sync",
+      ]);
+    });
   });
 
   it("fires plainly, and says nothing, when nothing is playing", async () => {

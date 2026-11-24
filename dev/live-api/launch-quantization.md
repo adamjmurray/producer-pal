@@ -36,7 +36,9 @@ why the obvious way doesn't work. Code:
   the loop start is aimed past before such a grid's last line comes, since the
   fire could land after it. A loop start nearer than 0.15 s is skipped for the
   next one for the same reason. A loop start only on grids too short to use is
-  treated as on no grid.
+  treated as on no grid. This applies to the first fire of a call only: its loop
+  start and grid are then kept for the call's other clips (see the tool-behavior
+  spec for when a later clip fires plainly).
 - A loop start on no grid at all (the loop was launched unquantized) can't be
   hit, so the clip fires plainly and the result says so.
 - Every playing loop must restart at the longest loop's start, so each one's
