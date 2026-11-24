@@ -4,12 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../../create-clip.ts";
 import { buildClipPlans } from "../../helpers/clip-plans.ts";
 import { twoSessionSlots } from "../notes/session-slot-test-helpers.ts";
-import { registerArrangementTrack } from "../create-clip-test-helpers.ts";
+import {
+  registerArrangementTrack,
+  registerLiveSetInFourFour,
+} from "../create-clip-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   maxError: vi.fn(),
@@ -25,10 +26,7 @@ describe("createClip - a length that spans nothing", () => {
   });
 
   it("refuses it in the arrangement before touching Live", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
+    registerLiveSetInFourFour();
     const track = registerArrangementTrack(0);
 
     await expect(
@@ -99,10 +97,7 @@ describe("createClip - a length that spans nothing", () => {
   });
 
   it("fails only the arrangement position whose meter makes it empty", async () => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
+    registerLiveSetInFourFour();
     const track = registerArrangementTrack(0);
 
     const result = (await createClip({

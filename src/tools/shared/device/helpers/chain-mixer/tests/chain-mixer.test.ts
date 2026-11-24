@@ -21,6 +21,7 @@ import {
   chainApi,
   chainPath,
   registerChainWithMixer,
+  registerChainWithSends,
   registerReturnChains,
 } from "./chain-mixer-test-helpers.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
@@ -269,25 +270,6 @@ describe("applyChainMixer", () => {
   });
 
   describe("sends", () => {
-    const silent = { value: 0, display_value: -70 };
-
-    /**
-     * Register the chain with two silent sends and name the rack's return chains
-     * @param returnNames - Return chain names in send order
-     * @returns The registered send parameters
-     */
-    function registerChainWithSends(
-      returnNames: string[] = ["a Delay", "b Reverb"],
-    ): RegisteredMockObject[] {
-      registerChainWithMixer({ sends: [silent, silent] });
-      registerReturnChains(...returnNames);
-
-      return [
-        registerMockObject("send-0", { type: "DeviceParameter" }),
-        registerMockObject("send-1", { type: "DeviceParameter" }),
-      ];
-    }
-
     /**
      * A chain with the usual sends, whose first send reads back `kept`
      * whatever is written to it — the way Live clamps and snaps one.

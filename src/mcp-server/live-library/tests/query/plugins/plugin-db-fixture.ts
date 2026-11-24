@@ -7,7 +7,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
+import { listBrowserPlugins } from "../../../../rpc/remote-script/browser/browser-plugins.ts";
+import {
+  findLiveFilesDbPath,
+  findLivePluginsDbPath,
+} from "../../../live-db-path.ts";
 
 // [name, vendor, enabled, dev_identifier, module path]
 export type PluginSeed = [string, string | null, number, string, string];
@@ -77,4 +82,23 @@ export function useTempDir(prefix: string): () => string {
   });
 
   return () => dir;
+}
+
+/**
+ * Before each test, point the mocked plug-in sources at a database, with no
+ * files database and no browser plug-ins; clear the mocks after. The suite must
+ * `vi.mock` `live-db-path.ts` and `browser-plugins.ts`.
+ *
+ * @param getDb - Gives the plug-in database path (read when each test starts)
+ */
+export function useMockedPluginSources(getDb: () => string): void {
+  beforeEach(() => {
+    vi.mocked(findLivePluginsDbPath).mockResolvedValue(getDb());
+    vi.mocked(findLiveFilesDbPath).mockResolvedValue(null);
+    vi.mocked(listBrowserPlugins).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
 }

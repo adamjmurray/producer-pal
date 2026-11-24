@@ -12,11 +12,8 @@ import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-pro
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
-import {
-  livePath,
-  registerMockObject,
-  updateDevice,
-} from "../update-device-test-helpers.ts";
+import { livePath, registerMockObject } from "../update-device-test-helpers.ts";
+import { updateAsync } from "./update-device-async-test-helpers.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -73,19 +70,6 @@ function conversionAnswers(reply: {
   });
 }
 
-/**
- * Update a device, never throwing synchronously.
- * @param args - The update-device args
- * @param ctx - The request context
- * @returns What the call answered
- */
-async function update(
-  args: Parameters<typeof updateDevice>[0],
-  ctx?: Partial<ToolContext>,
-): Promise<unknown> {
-  return await Promise.resolve().then(() => updateDevice(args, ctx));
-}
-
 describe("updateDevice sliceToDrumRack", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,7 +83,9 @@ describe("updateDevice sliceToDrumRack", () => {
       result: { available: true, result: { pads: 8 } },
     });
 
-    expect(await update({ id: "simpler-1", actions: [ACTION] })).toStrictEqual({
+    expect(
+      await updateAsync({ id: "simpler-1", actions: [ACTION] }),
+    ).toStrictEqual({
       id: "rack-9",
       path: "t0/d0",
       actions: [{ action: ACTION }],
@@ -120,7 +106,7 @@ describe("updateDevice sliceToDrumRack", () => {
     });
 
     expect(
-      await update({ id: "simpler-1", actions: [ACTION, "reverse"] }),
+      await updateAsync({ id: "simpler-1", actions: [ACTION, "reverse"] }),
     ).toStrictEqual(
       expect.objectContaining({
         id: "rack-9",
@@ -133,7 +119,7 @@ describe("updateDevice sliceToDrumRack", () => {
     registerSimpler(1);
 
     await expect(
-      update({ id: "simpler-1", actions: [ACTION] }),
+      updateAsync({ id: "simpler-1", actions: [ACTION] }),
     ).rejects.toThrow(
       `no action landed — "${ACTION}": the Simpler isn't in slicing mode: set playbackMode to slicing`,
     );
@@ -144,7 +130,7 @@ describe("updateDevice sliceToDrumRack", () => {
     conversionAnswers({ success: true, result: { available: false } });
 
     await expect(
-      update({ id: "simpler-1", actions: [ACTION] }),
+      updateAsync({ id: "simpler-1", actions: [ACTION] }),
     ).rejects.toThrow(
       `no action landed — "${ACTION}": needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`,
     );
@@ -159,7 +145,7 @@ describe("updateDevice sliceToDrumRack", () => {
     });
 
     await expect(
-      update({ id: "simpler-1", actions: [ACTION] }),
+      updateAsync({ id: "simpler-1", actions: [ACTION] }),
     ).rejects.toThrow(`no action landed — "${ACTION}": ${outdated}`);
   });
 
@@ -170,7 +156,7 @@ describe("updateDevice sliceToDrumRack", () => {
     });
 
     expect(
-      await update({ id: "simpler-1", name: "Loop", actions: [ACTION] }),
+      await updateAsync({ id: "simpler-1", name: "Loop", actions: [ACTION] }),
     ).toStrictEqual({
       id: "simpler-1",
       path: "t0/d0",
@@ -188,7 +174,7 @@ describe("updateDevice sliceToDrumRack", () => {
     conversionAnswers({ success: true, result: { available: false } });
 
     expect(
-      await update({ id: "simpler-1", actions: ["reverse", ACTION] }),
+      await updateAsync({ id: "simpler-1", actions: ["reverse", ACTION] }),
     ).toStrictEqual(
       expect.objectContaining({
         id: "simpler-1",
@@ -207,7 +193,9 @@ describe("updateDevice sliceToDrumRack", () => {
   it("says the Simpler may have been converted when nothing answers", async () => {
     conversionAnswers({ success: false });
 
-    expect(await update({ id: "simpler-1", actions: [ACTION] })).toStrictEqual(
+    expect(
+      await updateAsync({ id: "simpler-1", actions: [ACTION] }),
+    ).toStrictEqual(
       expect.objectContaining({
         detail: expect.stringContaining(
           "already changed: may have been converted to a Drum Rack",
@@ -219,7 +207,9 @@ describe("updateDevice sliceToDrumRack", () => {
   it("says so too when the route throws", async () => {
     vi.mocked(requestNode).mockRejectedValue(new Error("channel closed"));
 
-    expect(await update({ id: "simpler-1", actions: [ACTION] })).toStrictEqual(
+    expect(
+      await updateAsync({ id: "simpler-1", actions: [ACTION] }),
+    ).toStrictEqual(
       expect.objectContaining({
         detail: expect.stringContaining(
           `may have converted: ${NO_ANSWER} (channel closed); read the device to check`,

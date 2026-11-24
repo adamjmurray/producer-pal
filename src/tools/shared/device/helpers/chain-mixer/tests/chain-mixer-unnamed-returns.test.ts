@@ -4,35 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import {
-  type RegisteredMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
 import { type ChainMixerApplied, applyChainMixer } from "../chain-mixer.ts";
 import {
   chainApi,
-  registerChainWithMixer,
-  registerReturnChains,
+  registerChainWithSends,
 } from "./chain-mixer-test-helpers.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-
-const silent = { value: 0, display_value: -70 };
-
-/**
- * Register a chain with two silent sends feeding the named return chains.
- * @param returnNames - Return chain names in send order; "" is a nameless one
- * @returns The registered send parameters
- */
-function registerSends(returnNames: string[]): RegisteredMockObject[] {
-  registerChainWithMixer({ sends: [silent, silent] });
-  registerReturnChains(...returnNames);
-
-  return [
-    registerMockObject("send-0", { type: "DeviceParameter" }),
-    registerMockObject("send-1", { type: "DeviceParameter" }),
-  ];
-}
 
 /**
  * Send to a return of the registered chain.
@@ -50,7 +28,7 @@ function sendTo(sendReturn: string): ChainMixerApplied {
 // A read names a nameless return chain "Return <n>", so a write takes that.
 describe("applyChainMixer sends to a nameless return chain", () => {
   it("takes the label a read gives it", () => {
-    const [first, second] = registerSends(["a Delay", ""]);
+    const [first, second] = registerChainWithSends(["a Delay", ""]);
 
     const applied = sendTo("return 2");
 
@@ -60,7 +38,7 @@ describe("applyChainMixer sends to a nameless return chain", () => {
   });
 
   it("prefers a return chain really named that", () => {
-    const [first, second] = registerSends(["", "Return 1"]);
+    const [first, second] = registerChainWithSends(["", "Return 1"]);
 
     sendTo("Return 1");
 
@@ -69,7 +47,7 @@ describe("applyChainMixer sends to a nameless return chain", () => {
   });
 
   it("lists it by that label when nothing matches", () => {
-    registerSends(["a Delay", ""]);
+    registerChainWithSends(["a Delay", ""]);
 
     expect(sendTo("Chorus").sends).toStrictEqual([
       {

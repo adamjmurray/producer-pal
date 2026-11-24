@@ -6,21 +6,14 @@
 import {
   buildPluginDb,
   type PluginSeed,
+  useMockedPluginSources,
   useTempDir,
 } from "./plugin-db-fixture.ts";
 import { resolvePlugin } from "../../../query/plugins/resolve-plugin.ts";
 import { type BrowserPlugin } from "../../../../rpc/remote-script/browser/browser-plugins.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock(
   import("../../../../rpc/remote-script/browser/browser-plugins.ts"),
@@ -174,15 +167,7 @@ describe("resolvePlugin by format", () => {
     );
   });
 
-  beforeEach(() => {
-    vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(db);
-    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
-    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  useMockedPluginSources(() => db);
 
   /**
    * @param listed - What Live's browser lists

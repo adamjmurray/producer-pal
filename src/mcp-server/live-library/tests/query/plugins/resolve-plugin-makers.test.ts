@@ -8,20 +8,13 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { type BrowserPlugin } from "../../../../rpc/remote-script/browser/browser-plugins.ts";
 import { resolvePlugin } from "../../../query/plugins/resolve-plugin.ts";
 import {
   buildPluginDb,
   type PluginSeed,
+  useMockedPluginSources,
   useTempDir,
 } from "./plugin-db-fixture.ts";
 
@@ -36,7 +29,6 @@ vi.mock(import("../../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("../../../live-db-path.ts");
 const browserMod =
   await import("../../../../rpc/remote-script/browser/browser-plugins.ts");
 
@@ -111,15 +103,7 @@ describe("resolvePlugin with several makers of one name", () => {
     addBundle("DuoA", "Acme: Duo");
   });
 
-  beforeEach(() => {
-    vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(db);
-    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
-    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  useMockedPluginSources(() => db);
 
   describe("a path's vendor picks among them", () => {
     it.each([

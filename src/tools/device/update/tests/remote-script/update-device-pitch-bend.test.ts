@@ -31,6 +31,7 @@ import {
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { updateAsync } from "./update-device-async-test-helpers.ts";
 
 /** What the remote script is told to say when it is too old. */
 const OUTDATED =
@@ -62,20 +63,6 @@ function registerSecondSimpler(): void {
 }
 
 /**
- * Update a device. A call that writes pitch bend params answers as a promise
- * whatever the type says, so this takes either and never throws synchronously.
- * @param args - The update-device args
- * @param ctx - The request context
- * @returns What the call answered
- */
-async function update(
-  args: Parameters<typeof updateDevice>[0],
-  ctx?: Partial<ToolContext>,
-): Promise<unknown> {
-  return await Promise.resolve().then(() => updateDevice(args, ctx));
-}
-
-/**
  * Answer every remote-script call the same way.
  * @param reply - What `requestNode` resolves with
  */
@@ -99,7 +86,7 @@ describe("updateDevice pitch bend params", () => {
     remoteScriptWrites(bend(12, 24));
 
     expect(
-      await update({ id: "simpler-1", params: [PITCH, NOTE] }),
+      await updateAsync({ id: "simpler-1", params: [PITCH, NOTE] }),
     ).toStrictEqual({
       ...HIT,
       params: [
@@ -115,7 +102,7 @@ describe("updateDevice pitch bend params", () => {
   it("sends only the setting named, whatever the case or spacing", async () => {
     remoteScriptWrites(bend(5, 0));
 
-    await update({
+    await updateAsync({
       id: "simpler-1",
       params: [{ name: "  NOTEpitchBENDrange ", value: " 0 " }],
     });
@@ -129,7 +116,7 @@ describe("updateDevice pitch bend params", () => {
     remoteScriptWrites(bend(12, 48));
 
     expect(
-      await update({
+      await updateAsync({
         id: "simpler-1",
         params: [{ name: "pitchBendRange", value: "3" }, PITCH],
       }),
@@ -148,7 +135,7 @@ describe("updateDevice pitch bend params", () => {
     remoteScriptWrites(bend(12, 48));
 
     expect(
-      await update({
+      await updateAsync({
         id: "simpler-1,simpler-2",
         name: "Lead",
         params: [PITCH],
@@ -171,7 +158,7 @@ describe("updateDevice pitch bend params", () => {
     remoteScriptWrites(bend(12, 48));
 
     expect(
-      await update({
+      await updateAsync({
         id: "simpler-1",
         params: [PITCH, { name: "notePitchBendRange", value: "49" }],
       }),
@@ -190,7 +177,7 @@ describe("updateDevice pitch bend params", () => {
       { devicePath: FIRST, pitchBendRange: 12 },
     ]);
     await expect(
-      update({
+      updateAsync({
         id: "simpler-1",
         params: [{ name: "pitchBendRange", value: "1.5" }],
       }),
@@ -201,7 +188,7 @@ describe("updateDevice pitch bend params", () => {
     remoteScriptWrites(bend(11, 24));
 
     expect(
-      await update({ id: "simpler-1", params: [PITCH, NOTE] }),
+      await updateAsync({ id: "simpler-1", params: [PITCH, NOTE] }),
     ).toStrictEqual({
       ...HIT,
       params: [
@@ -230,7 +217,7 @@ describe("updateDevice pitch bend params", () => {
     }));
 
     expect(
-      await update({ id: "simpler-1", preset: "A", params: [PITCH] }),
+      await updateAsync({ id: "simpler-1", preset: "A", params: [PITCH] }),
     ).toStrictEqual({
       ...HIT,
       params: [{ name: "pitchBendRange", value: 12 }],
@@ -255,15 +242,15 @@ describe("updateDevice pitch bend params without a good answer", () => {
   it("refuses a lone target without the remote script, saying what it needs", async () => {
     remoteScriptAnswers({ success: true, result: { available: false } });
 
-    await expect(update({ id: "simpler-1", params: [PITCH] })).rejects.toThrow(
-      `no param landed — "pitchBendRange": ${NEEDS_IT}`,
-    );
+    await expect(
+      updateAsync({ id: "simpler-1", params: [PITCH] }),
+    ).rejects.toThrow(`no param landed — "pitchBendRange": ${NEEDS_IT}`);
   });
 
   it("sends a caller without ppal-manage to the chat UI", async () => {
     remoteScriptAnswers({ success: true, result: { available: false } });
 
-    const refused = update(
+    const refused = updateAsync(
       { id: "simpler-1", params: [PITCH] },
       { manageAvailable: false },
     );
@@ -280,16 +267,16 @@ describe("updateDevice pitch bend params without a good answer", () => {
       result: { available: false, outdated: OUTDATED },
     });
 
-    await expect(update({ id: "simpler-1", params: [PITCH] })).rejects.toThrow(
-      `no param landed — "pitchBendRange": ${OUTDATED}`,
-    );
+    await expect(
+      updateAsync({ id: "simpler-1", params: [PITCH] }),
+    ).rejects.toThrow(`no param landed — "pitchBendRange": ${OUTDATED}`);
   });
 
   it("keeps the rest of the update and says so in the entry", async () => {
     remoteScriptAnswers({ success: true, result: { available: false } });
 
     expect(
-      await update({ id: "simpler-1", name: "Lead", params: [PITCH] }),
+      await updateAsync({ id: "simpler-1", name: "Lead", params: [PITCH] }),
     ).toStrictEqual({
       ...HIT,
       params: [{ name: "pitchBendRange", ok: false, detail: NEEDS_IT }],
@@ -302,7 +289,9 @@ describe("updateDevice pitch bend params without a good answer", () => {
       result: { available: true, error: "'Reverb' is not a Simpler" },
     });
 
-    await expect(update({ id: "simpler-1", params: [NOTE] })).rejects.toThrow(
+    await expect(
+      updateAsync({ id: "simpler-1", params: [NOTE] }),
+    ).rejects.toThrow(
       `"notePitchBendRange": not set: 'Reverb' is not a Simpler`,
     );
   });
@@ -311,7 +300,7 @@ describe("updateDevice pitch bend params without a good answer", () => {
     remoteScriptAnswers({ success: false });
 
     expect(
-      await update({ id: "simpler-1", params: [PITCH, NOTE] }),
+      await updateAsync({ id: "simpler-1", params: [PITCH, NOTE] }),
     ).toStrictEqual({
       ...HIT,
       detail: expect.stringContaining("already changed: pitch bend range"),
@@ -321,7 +310,9 @@ describe("updateDevice pitch bend params without a good answer", () => {
   it("keeps the entry when the route throws", async () => {
     vi.mocked(requestNode).mockRejectedValue(new Error("channel closed"));
 
-    expect(await update({ id: "simpler-1", params: [PITCH] })).toStrictEqual({
+    expect(
+      await updateAsync({ id: "simpler-1", params: [PITCH] }),
+    ).toStrictEqual({
       ...HIT,
       detail: expect.stringContaining(
         `may have changed: ${NO_ANSWER} (channel closed); read the device to check`,
@@ -340,7 +331,9 @@ describe("updateDevice pitch bend params without a good answer", () => {
       },
     });
 
-    expect(await update({ id: "simpler-1", params: [PITCH] })).toStrictEqual({
+    expect(
+      await updateAsync({ id: "simpler-1", params: [PITCH] }),
+    ).toStrictEqual({
       ...HIT,
       detail: expect.stringContaining(
         "may have changed: the connection to the Producer Pal remote script was lost before it answered; read the device to check",
@@ -352,7 +345,7 @@ describe("updateDevice pitch bend params without a good answer", () => {
     registerSecondSimpler();
     remoteScriptAnswers({ success: false });
 
-    const result = (await update({
+    const result = (await updateAsync({
       id: "simpler-1,simpler-2",
       name: "Lead",
       params: [PITCH],
