@@ -91,17 +91,33 @@ export function syncedLaunchCalls(ctx: McpTestContext): {
     });
   };
 
-  // Park the playhead at the top first: a loop fired on a stopped transport
-  // then starts at song time 0, which is on every launch grid.
+  // On a stopped transport, park the playhead at the top first: the loop then
+  // starts at song time 0, which is on every launch grid. Setting the start
+  // marker alone isn't enough: Live sometimes starts a fired clip from where
+  // the playhead stopped (bar 9 in a freshly opened e2e Set).
   const startLoop = async (slot: Slot): Promise<void> => {
+    const stopped = !(await isPlaying());
+
     await ctx.client!.callTool({
       name: PLAYBACK,
       arguments: { action: "update-arrangement", startTime: "1|1" },
     });
+
+    if (stopped) {
+      await liveApi([
+        { type: "set-property", property: "current_song_time", value: 0 },
+      ]);
+      await waitFor(async () => (await snapshot([])).songTime === 0);
+    }
+
     await ctx.client!.callTool({
       name: PLAYBACK,
       arguments: { action: "play-session-clips", path: slotPath(slot) },
     });
+
+    if (stopped) {
+      await waitFor(isPlaying);
+    }
   };
 
   const playbackSynced = async (slot: Slot): Promise<unknown> =>
@@ -145,23 +161,11 @@ export function syncedLaunchCalls(ctx: McpTestContext): {
     ]);
   };
 
+  const isPlaying = async (): Promise<boolean> =>
+    (await liveApi([{ type: GET, property: "is_playing" }]))[0] === 1;
+
   const isClipPlaying = async (slot: Slot): Promise<boolean> =>
     (await clipValue(slot, "is_playing")) === 1;
-
-  const waitFor = async (
-    what: () => Promise<boolean>,
-    timeoutMs = 10_000,
-  ): Promise<void> => {
-    const until = Date.now() + timeoutMs;
-
-    while (!(await what())) {
-      if (Date.now() > until) {
-        throw new Error("timed out waiting for Live");
-      }
-
-      await sleep(50);
-    }
-  };
 
   const stopAll = async (): Promise<void> => {
     await ctx.client!.callTool({
@@ -218,4 +222,24 @@ export function restartError(
     (before.positions[index]! + (after.songTime - before.songTime)) % length;
 
   return loopDistance(after.positions[index]!, expected, length);
+}
+
+/**
+ * Poll until a check passes.
+ * @param what - The check
+ * @param timeoutMs - How long to keep trying
+ */
+async function waitFor(
+  what: () => Promise<boolean>,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const until = Date.now() + timeoutMs;
+
+  while (!(await what())) {
+    if (Date.now() > until) {
+      throw new Error("timed out waiting for Live");
+    }
+
+    await sleep(50);
+  }
 }

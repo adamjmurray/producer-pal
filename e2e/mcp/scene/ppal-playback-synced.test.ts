@@ -123,12 +123,13 @@ describe("ppal-playback play-session-clips-synced", () => {
     // loop starts are 12, 20, ..., which only a 1 bar grid has a line on.
     await sleep(200);
     await calls.startLoop(REFERENCE);
-    // Once the restart has happened (a playhead under 1 beat after beat 4.3),
-    // while the loop start at 12 is still more than a bar off (song time < 8).
+    // Once the restart has happened (the playhead runs 4 beats behind song
+    // time), while the loop start at 12 is still more than a bar off (song
+    // time < 8, with room for the reads before the fire).
     await calls.waitFor(async () => {
       const { songTime, positions } = await calls.snapshot([REFERENCE]);
 
-      return songTime > 4.3 && songTime < 7 && positions[0]! < 1;
+      return Math.abs(songTime - positions[0]! - 4) < 0.1 && songTime < 6.5;
     });
 
     const quantization = await calls.clipValue(FIRED, "launch_quantization");
