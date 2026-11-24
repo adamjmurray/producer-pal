@@ -1267,8 +1267,8 @@ function setParams(changes) {
 // number is in the unit the param shows now: 3 on "2.50 kHz" means 3 kHz.
 // Result per entry: {ok, index, name, value, display, scale?}, where `scale`
 // is what a bare number was multiplied by to reach the compare units.
-// | {ok: false, kind: "missing" | "ambiguous" | "nomatch" | "unreadable", error,
-//   matches?}
+// | {ok: false, kind: "missing" | "ambiguous" | "nomatch" | "unreadable" |
+//   "failed" | "changed", error, matches?}
 // | {superseded: <position of the entry that replaces it>, index, name}.
 const SAMPLES = 128;
 const BISECT_STEPS = 30;
@@ -1365,32 +1365,45 @@ function indexesOf(test) {
   return found;
 }
 
+// A throw answers for this entry alone, so the entries already written are
+// still reported. One after `keep()` left the param moved: kind "changed".
 function writeOne(target, entry) {
   const { index } = target;
-  const original = readOriginal(index);
+  let kept = false;
 
-  if (original == null) {
-    return { ok: false, kind: "unreadable", error: UNREADABLE };
-  }
+  try {
+    const original = readOriginal(index);
 
-  return searching(index, original, (keep) => {
-    const found = searchValue(index, entry, original.display);
+    if (original == null) {
+      return { ok: false, kind: "unreadable", error: UNREADABLE };
+    }
 
-    if (found.error) return { ok: false, kind: "nomatch", error: found.error };
+    return searching(index, original, (keep) => {
+      const found = searchValue(index, entry, original.display);
 
-    outlet(0, index, found.value);
-    keep();
+      if (found.error) return { ok: false, kind: "nomatch", error: found.error };
 
-    const landed = readParam(index);
+      outlet(0, index, found.value);
+      keep();
+      kept = true;
 
+      const landed = readParam(index);
+
+      return {
+        ok: true,
+        ...identity(target),
+        value: landed.value,
+        display: landed.display,
+        ...(found.scale ? { scale: found.scale } : {}),
+      };
+    });
+  } catch (error) {
     return {
-      ok: true,
-      ...identity(target),
-      value: landed.value,
-      display: landed.display,
-      ...(found.scale ? { scale: found.scale } : {}),
+      ok: false,
+      kind: kept ? "changed" : "failed",
+      error: String(error?.message ?? error),
     };
-  });
+  }
 }
 
 const UNREADABLE = "the plug-in gave no value for this param, so it wasn't moved";

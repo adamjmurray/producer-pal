@@ -293,7 +293,13 @@ describe("wrapper write that can't read the param", () => {
   it("puts the param back when a read throws mid-search", () => {
     const rig = rigWith((n) => (n === 50 ? "throw" : true));
 
-    expect(() => rig.run(write("-6 dB"))).toThrow("vst~ gone");
+    const [landed] = JSON.parse(rig.run(write("-6 dB")) as string) as Landed[];
+
+    expect(landed).toStrictEqual({
+      ok: false,
+      kind: "failed",
+      error: "vst~ gone",
+    });
     expect(rig.sent.length).toBeGreaterThan(0);
     expect(rig.current()).toBe(0.3);
   });

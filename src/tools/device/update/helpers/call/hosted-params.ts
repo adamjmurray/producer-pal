@@ -212,7 +212,7 @@ async function settle(
   );
 
   return reply.success
-    ? readReply(target, settled, sent, reply)
+    ? readReply(target, settled, sent, reply, call)
     : refuseUnanswered(settled, sent, reply, stall, call);
 }
 
@@ -249,6 +249,7 @@ function wrapperEntry({ entry, key, byId }: SentEntry): object {
  * @param settled - What is settled so far, added to
  * @param sent - The entries sent, in order
  * @param reply - The wrapper's reply
+ * @param call - What to tell of a write that may have landed
  * @returns The settled entries
  */
 function readReply(
@@ -256,11 +257,16 @@ function readReply(
   settled: SettledParams,
   sent: SentEntry[],
   reply: PluginHostResponse,
+  call: HostedCall,
 ): SettledParams {
   const results = (reply.params ?? []) as WrapperResult[];
 
   if (results.length !== sent.length) {
     return refuseAll(settled, sent, WRAPPER_SILENT);
+  }
+
+  if (results.some((result) => "kind" in result && result.kind === "changed")) {
+    call.landed("params");
   }
 
   const outcomes = sent.map((item, i) =>
@@ -341,6 +347,11 @@ function failureReason(
     const ids = (result.matches ?? []).map(({ index }) => hostedParamId(index));
 
     return `names ${ids.length} params on ${targetLabel(target)} (${ids.join(", ")}), so nothing was written. Send {id, value} to pick one.`;
+  }
+
+  // The wrapper threw after moving the param, so it may not be where it was.
+  if (result.kind === "changed") {
+    return `may have changed: ${result.error}; read the device to check`;
   }
 
   return `not set: ${result.error}`;
