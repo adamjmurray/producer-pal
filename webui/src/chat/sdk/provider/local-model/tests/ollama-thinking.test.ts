@@ -10,8 +10,8 @@ import {
 } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
 import { rewritingFetch } from "#webui/chat/sdk/provider/rewriting-fetch";
 
-const BASE_URL = "http://localhost:11434/v1";
-const CHAT_URL = `${BASE_URL}/chat/completions`;
+const ROOT = "http://localhost:11434";
+const CHAT_URL = `${ROOT}/v1/chat/completions`;
 
 type Show = { capabilities?: unknown } | "http-error" | "network-error";
 
@@ -23,7 +23,7 @@ type Show = { capabilities?: unknown } | "http-error" | "network-error";
  */
 function stubFetch(show: Show): ReturnType<typeof vi.fn> {
   const mock = vi.fn((input: string | URL) => {
-    if (!new URL(input).pathname.endsWith("/api/show")) {
+    if (!String(input).endsWith("/api/show")) {
       return Promise.resolve(new Response("{}"));
     }
 
@@ -48,19 +48,22 @@ function stubFetch(show: Show): ReturnType<typeof vi.fn> {
  * @param mock - The fetch mock
  * @param unknown - What to do when the server can't say
  * @param body - Chat request body
+ * @param root - The server's root URL
  * @returns The chat body as sent
  */
 async function send(
   mock: ReturnType<typeof vi.fn>,
   unknown: "keep" | "drop",
   body: Record<string, unknown>,
+  root = ROOT,
 ): Promise<Record<string, unknown>> {
-  await rewritingFetch((parsed) =>
-    settleOllamaThinking(parsed, BASE_URL, unknown),
-  )(CHAT_URL, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  await rewritingFetch((parsed) => settleOllamaThinking(parsed, root, unknown))(
+    CHAT_URL,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 
   const chat = mock.mock.calls.findLast(([url]) => url === CHAT_URL);
   const init = chat?.[1] as { body: string } | undefined;
@@ -85,10 +88,25 @@ describe("settleOllamaThinking", () => {
     });
 
     expect(sent.reasoning_effort).toBe("high");
-    expect(mock.mock.calls[0]?.[0]).toStrictEqual(
-      new URL("http://localhost:11434/api/show"),
-    );
+    expect(mock.mock.calls[0]?.[0]).toBe("http://localhost:11434/api/show");
   });
+
+  // Behind a proxy the server's API sits under the same prefix as chat.
+  it.each(["https://host/ollama", "https://host/a/b"])(
+    "asks %s for /api/show under its path prefix",
+    async (root) => {
+      const mock = stubFetch({ capabilities: ["thinking"] });
+      const sent = await send(
+        mock,
+        "drop",
+        { model: "m", reasoning_effort: "high" },
+        root,
+      );
+
+      expect(sent.reasoning_effort).toBe("high");
+      expect(mock.mock.calls[0]?.[0]).toBe(`${root}/api/show`);
+    },
+  );
 
   it("drops the effort for a model that can't think", async () => {
     const mock = stubFetch({ capabilities: ["completion", "tools"] });

@@ -30,6 +30,7 @@ import {
   type RewritingFetch,
 } from "#webui/chat/sdk/provider/rewriting-fetch";
 import { proxyFetchFor } from "#webui/chat/sdk/provider/local-model/local-model-proxy";
+import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root";
 import { settleOllamaThinking } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
@@ -99,7 +100,7 @@ export function createProviderModel(
         // See lmstudio note.
         includeUsage: true,
         fetch: rewritingFetch((body) =>
-          settleOllamaThinking(body, ollamaUrl, "drop"),
+          settleOllamaThinking(body, localServerRoot(ollamaUrl), "drop"),
         ),
       }).chatModel(modelId);
     }

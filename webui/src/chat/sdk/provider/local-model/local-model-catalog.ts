@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { DEFAULT_LOCAL_URLS } from "#webui/lib/constants/provider-urls";
+import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root";
 import { type Provider } from "#webui/types/settings";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
@@ -167,18 +168,14 @@ function withContextLength(
     : model;
 }
 
-// The URL setting minus a trailing `/v1`, keeping any path prefix a proxy needs.
 function serverRoot(
   provider: LocalProvider,
   baseUrl: string | undefined,
 ): string | undefined {
   try {
-    const url = new URL(
+    return localServerRoot(
       withDefaultUrl(baseUrl, DEFAULT_LOCAL_URLS[provider] as string),
     );
-    const prefix = url.pathname.replace(/\/+$/, "").replace(/\/v1$/, "");
-
-    return `${url.origin}${prefix}`;
   } catch {
     return undefined;
   }

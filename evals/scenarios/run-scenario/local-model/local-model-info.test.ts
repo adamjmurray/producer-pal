@@ -107,6 +107,23 @@ describe("fetchLocalModelInfo", () => {
     );
   });
 
+  // Behind a proxy the server's API sits under the same prefix as `/v1`.
+  it.each([
+    "https://host/lmstudio/v1",
+    "https://host/lmstudio/v1/",
+    "https://host/lmstudio",
+    "https://host/lmstudio/",
+  ])("keeps the path prefix of %s", async (baseUrl) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLocalModelInfo("llama3", baseUrl);
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://host/lmstudio/api/v1/models",
+    );
+  });
+
   it("returns undefined when the server has no LM Studio API", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 
