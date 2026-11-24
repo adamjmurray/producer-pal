@@ -110,5 +110,23 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
       expect(release.unit).toBe("s");
       expectNear(release.number, 2);
     });
+
+    // The number alone is in range, so this used to write 50 ms without a word.
+    it("refuses a unit the param doesn't show, changing nothing", async () => {
+      const { path } = await hostOnNewTrack("Serum 2");
+      const before = (await readDevice(path, "Env 1 Decay")).parameters?.[0]
+        ?.value;
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { path, params: [{ name: "Env 1 Decay", value: "50 %" }] },
+      });
+
+      expect(JSON.stringify(result)).toContain(
+        "not set: wrong unit: the param shows",
+      );
+      expect(
+        (await readDevice(path, "Env 1 Decay")).parameters?.[0]?.value,
+      ).toBe(before);
+    });
   },
 );

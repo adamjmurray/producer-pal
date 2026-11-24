@@ -190,4 +190,41 @@ describe("wrapper write of a number with a unit", () => {
 
     expect(shownNumber(landed)).toBeCloseTo(0.8, 2);
   });
+
+  it("refuses a unit the param doesn't show, leaving it as it was", () => {
+    let current = 0.3;
+    const rig = loadWrapper("Plug", (...args) => {
+      if (args[1] === "get") {
+        rig.run(`pval(1, ${current}, ${JSON.stringify(hzOrKhz(current))})`);
+      } else if (typeof args[2] === "number") {
+        current = args[2];
+      }
+    });
+
+    rig.run('pname("P")');
+
+    // Through JSON, as a reply goes: the result is from another realm.
+    const [landed] = JSON.parse(
+      rig.run(
+        'JSON.stringify(writeParams([{ name: "P", text: "500 ms", number: 500 }]))',
+      ) as string,
+    ) as Landed[];
+
+    expect(landed).toStrictEqual({
+      ok: false,
+      kind: "nomatch",
+      error: "wrong unit: the param shows Hz/kHz, not ms",
+    });
+    expect(current).toBe(0.3);
+  });
+
+  it("takes any unit on a param whose unit it doesn't know", () => {
+    const landed = writeTo((v) => `${(v * 10).toFixed(2)} x`, 0.5, {
+      text: "50 %",
+      number: 50,
+    });
+
+    expect(landed.ok).toBe(true);
+    expect(landed.display).toBe("10.00 x");
+  });
 });

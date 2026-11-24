@@ -245,11 +245,13 @@ between the two samples that bracket it, comparing the leading number of the
 text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. `number` is
 already in Hz or ms; with `bare` (the text had no unit) it is in the unit the
 param showed before the search, so the wrapper scales it by that (1000 for kHz
-or s) and answers with the `scale` it used. If nothing matches, it puts the
-param back and says what the param does show. One request covers a whole
-`params` list. It resolves names exactly, then ignoring case and padding; a name
-that matches more than one param is refused; two entries reaching one param
-write the last.
+or s) and answers with the `scale` it used. A number whose unit is a different
+kind from every unit the param shows (`ms` on Hz, `%` on dB) is refused, naming
+the units it shows; an unknown unit on either side isn't compared. If nothing
+matches, it puts the param back and says what the param does show. One request
+covers a whole `params` list. It resolves names exactly, then ignoring case and
+padding; a name that matches more than one param is refused; two entries
+reaching one param write the last.
 
 ### Naming the plug-in
 
