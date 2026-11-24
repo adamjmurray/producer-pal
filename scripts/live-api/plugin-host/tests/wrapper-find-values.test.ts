@@ -163,7 +163,7 @@ describe("wrapper find", () => {
     expect(current).toBe(START);
   });
 
-  it("never sends a value it couldn't read back", () => {
+  it("refuses before moving anything when the first read gets no answer", () => {
     let current = START;
     let gets = 0;
     const sent: unknown[] = [];
@@ -180,9 +180,56 @@ describe("wrapper find", () => {
     });
 
     rig.run('pname("P")');
-    rig.run('findValues({ index: 1, values: [{ text: "-6 dB" }] })');
 
-    expect(sent.every((value) => Number.isFinite(value))).toBe(true);
+    expect(() =>
+      rig.run('findValues({ index: 1, values: [{ text: "-6 dB" }] })'),
+    ).toThrow("gave no value");
+    expect(sent).toStrictEqual([]);
+    expect(current).toBe(START);
+  });
+
+  it("puts the param back when no value matches", () => {
+    const { found, current } = find([{ text: "Banana" }]);
+
+    expect(found.values[0]?.error).toBeDefined();
+    expect(current()).toBe(START);
+  });
+
+  it("puts the param back when a later value finds no match", () => {
+    const { found, current } = find([
+      { text: "-6 dB", number: -6 },
+      { text: "Banana" },
+    ]);
+
+    expect(found.values[0]?.value).toBeCloseTo(0.75, 5);
+    expect(found.values[1]?.error).toBeDefined();
+    expect(current()).toBe(START);
+  });
+
+  it("puts the param back when a read throws while finding a later value", () => {
+    let current = START;
+    let gets = 0;
+    const rig = loadWrapper("Plug", (...args) => {
+      if (args[1] === "get") {
+        // After the original read and 129 samples: during the second value.
+        if (++gets === 135) {
+          throw new Error("vst~ gone");
+        }
+
+        rig.run(`pval(1, ${current}, ${JSON.stringify(decibels(current))})`);
+      } else if (typeof args[2] === "number") {
+        current = args[2];
+      }
+    });
+
+    rig.run('pname("P")');
+
+    expect(() =>
+      rig.run(
+        'findValues({ index: 1, values: [{ text: "-6 dB" }, { text: "-5.5 dB", number: -5.5 }] })',
+      ),
+    ).toThrow("vst~ gone");
+    expect(current).toBe(START);
   });
 
   it("refuses a param the plug-in doesn't have", () => {

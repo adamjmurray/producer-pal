@@ -33,7 +33,8 @@ remote script. A line it can't write is a `detail` on that clip's entry
   straight in raw values. For a hosted plug-in's param the wrapper is asked: it
   moves the param to find each value and then puts it back, so the plug-in's
   sound can change for an instant, and a number between two values the param
-  shows takes the nearest.
+  shows takes the nearest. A param the plug-in gives no value for isn't moved:
+  the line is skipped (`couldn't convert a display value: …`).
 - **A line that stalls may still have landed; one Live skipped didn't.** When
   the route doesn't answer, or its connection is lost after the request went
   out, the line's `detail` says its points may still have landed (or that it may

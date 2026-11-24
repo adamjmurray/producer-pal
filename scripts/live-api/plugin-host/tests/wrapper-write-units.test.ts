@@ -10,6 +10,7 @@ interface Landed {
   ok: boolean;
   display?: string;
   scale?: number;
+  value?: number;
   error?: string;
 }
 
@@ -235,5 +236,88 @@ describe("wrapper write of a number with a unit", () => {
 
     expect(landed.ok).toBe(true);
     expect(landed.display).toBe("10.00 x");
+  });
+});
+
+describe("wrapper write that can't read the param", () => {
+  interface Rig2 {
+    run: (code: string) => unknown;
+    sent: unknown[];
+    current: () => number;
+  }
+
+  // One param "P" at 0.3. `answer` says whether the nth `get` is answered.
+  function rigWith(answer: (n: number) => boolean | "throw"): Rig2 {
+    let current = 0.3;
+    let gets = 0;
+    const sent: unknown[] = [];
+    const rig = loadWrapper("Plug", (...args) => {
+      if (args[1] === "get") {
+        const reply = answer(++gets);
+
+        if (reply === "throw") {
+          throw new Error("vst~ gone");
+        }
+
+        if (reply) {
+          rig.run(`pval(1, ${current}, ${JSON.stringify(decibels(current))})`);
+        }
+      } else if (args[1] === 1) {
+        sent.push(args[2]);
+        current = args[2] as number;
+      }
+    });
+
+    rig.run('pname("P")');
+
+    return { run: rig.run, sent, current: () => current };
+  }
+
+  const write = (text: string, number?: number): string =>
+    `JSON.stringify(writeParams([{ name: "P", text: ${JSON.stringify(text)}, number: ${number} }]))`;
+
+  it("moves nothing when the first read gets no answer", () => {
+    const rig = rigWith((n) => n > 1);
+
+    const [landed] = JSON.parse(rig.run(write("Banana")) as string) as Landed[];
+
+    expect(landed).toStrictEqual({
+      ok: false,
+      kind: "unreadable",
+      error: "the plug-in gave no value for this param, so it wasn't moved",
+    });
+    expect(rig.sent).toStrictEqual([]);
+    expect(rig.current()).toBe(0.3);
+  });
+
+  it("puts the param back when a read throws mid-search", () => {
+    const rig = rigWith((n) => (n === 50 ? "throw" : true));
+
+    expect(() => rig.run(write("-6 dB"))).toThrow("vst~ gone");
+    expect(rig.sent.length).toBeGreaterThan(0);
+    expect(rig.current()).toBe(0.3);
+  });
+
+  it("leaves the param at the written value on success", () => {
+    const rig = rigWith(() => true);
+
+    const [landed] = JSON.parse(
+      rig.run(write("-6 dB", -6)) as string,
+    ) as Landed[];
+
+    expect(landed?.ok).toBe(true);
+    expect(rig.current()).toBeCloseTo(0.75, 5);
+    expect(rig.current()).toBe(landed?.value);
+  });
+
+  it("puts the param back when nothing matches", () => {
+    const rig = rigWith(() => true);
+
+    const [landed] = JSON.parse(rig.run(write("Banana")) as string) as Landed[];
+
+    expect(landed?.ok).toBe(false);
+    expect(landed?.error).toContain("nothing displays");
+    expect(rig.sent.every((value) => Number.isFinite(value))).toBe(true);
+    expect(rig.current()).toBe(0.3);
   });
 });

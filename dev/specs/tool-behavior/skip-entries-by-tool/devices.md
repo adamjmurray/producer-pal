@@ -100,18 +100,19 @@ Part of [Skip entries, tool by tool](README.md).
   (`not set:` plus what it does show), or a number has a unit the param doesn't
   show (`800 ms` on a Hz param:
   `not set: wrong unit: the param shows Hz/kHz, not ms`), and the param is left
-  as it was. Two entries reaching one param, by name and by id, write the last.
-  A wrapper that doesn't answer may have written: the entries say
-  `may have changed` and the hosted devices after it say they weren't tried. A
-  list too big for one request (a few hundred entries; Max cuts a message near
-  30 KB) is refused unsent, each entry
-  `not set: too large for one call; split the params across calls`: nothing
-  changed, so it never says `may have changed` and the devices after it are not
-  stopped by it. create-device's `params` follow the same rule, however the
-  wrapper was made (`hosted`, or just its browser name): the device is created
-  and its entries say so. A wrapper made by its browser name is given a few
-  seconds to start answering, and its params are written once the temp track is
-  gone; one that never answers has every entry
+  as it was. A param the plug-in gives no value for isn't searched or moved
+  (`not set: the plug-in gave no value for this param, so it wasn't moved`). Two
+  entries reaching one param, by name and by id, write the last. A wrapper that
+  doesn't answer may have written: the entries say `may have changed` and the
+  hosted devices after it say they weren't tried. A list too big for one request
+  (a few hundred entries; Max cuts a message near 30 KB) is refused unsent, each
+  entry `not set: too large for one call; split the params across calls`:
+  nothing changed, so it never says `may have changed` and the devices after it
+  are not stopped by it. create-device's `params` follow the same rule, however
+  the wrapper was made (`hosted`, or just its browser name): the device is
+  created and its entries say so. A wrapper made by its browser name is given a
+  few seconds to start answering, and its params are written once the temp track
+  is gone; one that never answers has every entry
   `not set: the hosted plug-in didn't answer`, never written to its own Live
   params. A wrapper from before this write existed says to create the hosted
   plug-in again. A wrapper with no plug-in loaded takes nothing: every entry is

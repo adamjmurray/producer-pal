@@ -1267,7 +1267,8 @@ function setParams(changes) {
 // number is in the unit the param shows now: 3 on "2.50 kHz" means 3 kHz.
 // Result per entry: {ok, index, name, value, display, scale?}, where `scale`
 // is what a bare number was multiplied by to reach the compare units.
-// | {ok: false, kind: "missing" | "ambiguous" | "nomatch", error, matches?}
+// | {ok: false, kind: "missing" | "ambiguous" | "nomatch" | "unreadable", error,
+//   matches?}
 // | {superseded: <position of the entry that replaces it>, index, name}.
 const SAMPLES = 128;
 const BISECT_STEPS = 30;
@@ -1366,26 +1367,57 @@ function indexesOf(test) {
 
 function writeOne(target, entry) {
   const { index } = target;
-  const original = readParam(index);
-  const found = searchValue(index, entry, original.display);
+  const original = readOriginal(index);
 
-  if (found.error) {
-    outlet(0, index, Number(original.value));
-
-    return { ok: false, kind: "nomatch", error: found.error };
+  if (original == null) {
+    return { ok: false, kind: "unreadable", error: UNREADABLE };
   }
 
-  outlet(0, index, found.value);
+  return searching(index, original, (keep) => {
+    const found = searchValue(index, entry, original.display);
 
-  const landed = readParam(index);
+    if (found.error) return { ok: false, kind: "nomatch", error: found.error };
 
-  return {
-    ok: true,
-    ...identity(target),
-    value: landed.value,
-    display: landed.display,
-    ...(found.scale ? { scale: found.scale } : {}),
-  };
+    outlet(0, index, found.value);
+    keep();
+
+    const landed = readParam(index);
+
+    return {
+      ok: true,
+      ...identity(target),
+      value: landed.value,
+      display: landed.display,
+      ...(found.scale ? { scale: found.scale } : {}),
+    };
+  });
+}
+
+const UNREADABLE = "the plug-in gave no value for this param, so it wasn't moved";
+
+// A param before a search moves it, with `back` (a number) to put it back to.
+// Null when the plug-in gave no value: with nothing to put back, the search
+// must not start.
+function readOriginal(index) {
+  const read = readParam(index);
+  const back = read.value == null ? NaN : Number(read.value);
+
+  return Number.isFinite(back) ? { ...read, back } : null;
+}
+
+// Runs a search that moves the param, then puts the param back where
+// `original` had it, even if the search throws. `run` calls `keep()` once it
+// has set the param to stay.
+function searching(index, original, run) {
+  let keeping = false;
+
+  try {
+    return run(() => {
+      keeping = true;
+    });
+  } finally {
+    if (!keeping) outlet(0, index, original.back);
+  }
 }
 
 // Where a param shows each text or number, without leaving it moved: the
@@ -1403,12 +1435,11 @@ function findValues({ index, name, values = [] }) {
 
   if (target.error) throw new Error(target.error);
 
-  const original = readParam(target.index);
-  const back = Number(original.value);
+  const original = readOriginal(target.index);
 
-  // Put the param back however the search ends, but never send a value that
-  // wasn't read (NaN).
-  try {
+  if (original == null) throw new Error(UNREADABLE);
+
+  return searching(target.index, original, () => {
     const samples = sampleParam(target.index);
     const found = values.map((wanted) => {
       const hit = searchValue(target.index, wanted, original.display, samples);
@@ -1430,11 +1461,7 @@ function findValues({ index, name, values = [] }) {
       high: samples[SAMPLES].display,
       values: found,
     };
-  } finally {
-    if (original.value != null && Number.isFinite(back)) {
-      outlet(0, target.index, back);
-    }
-  }
+  });
 }
 
 // What the param shows at SAMPLES + 1 values across 0-1.
