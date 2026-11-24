@@ -40,6 +40,11 @@ interface DeviceRead {
   type: string;
 }
 
+interface TrackRead {
+  path: string;
+  hasProducerPalDevice?: boolean;
+}
+
 /** The test Set's "Child": no clips, and the only track in its group. */
 const ONLY_CHILD = "t10";
 /** The test Set's "Lead": a Drift and a Compressor, with clips. */
@@ -86,6 +91,43 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("update-track convert", () => {
 
     // Still answering, and the track is still there with its instrument.
     expect(await deviceType(`${ONLY_CHILD}/d0`)).toContain("instrument");
+  });
+
+  /**
+   * The Set's tracks, to count them and to find the Producer Pal host.
+   * @returns Every regular track
+   */
+  async function readTracks(): Promise<TrackRead[]> {
+    const liveSet = parseToolResult<{ tracks: TrackRead[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["tracks"] },
+      }),
+    );
+
+    return liveSet.tracks;
+  }
+
+  it("refuses the track holding the Producer Pal device, and changes nothing", async () => {
+    const before = await readTracks();
+    const host = before.find((track) => track.hasProducerPalDevice);
+
+    expect(host).toBeDefined();
+
+    const refused = await update({ path: host!.path, convert: "drum-rack" });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "not converted: the track holds the Producer Pal device",
+    );
+
+    await sleep(150);
+
+    const after = await readTracks();
+
+    expect(after).toHaveLength(before.length);
+    expect(after.find((track) => track.hasProducerPalDevice)?.path).toBe(
+      host!.path,
+    );
   });
 
   it("refuses a track with no devices, a group track and a return track", async () => {

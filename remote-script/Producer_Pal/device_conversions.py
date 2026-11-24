@@ -19,6 +19,7 @@ from . import hotswap
 from .clip_address import regular_track
 from .errors import RouteError
 from .params import parse_whole
+from .producer_pal_device import holds_producer_pal
 
 
 def track_to_drum_rack(bridge, params):
@@ -33,6 +34,9 @@ def track_to_drum_rack(bridge, params):
         raise RouteError(409, "a group track has no devices to convert")
     if len(track.devices) == 0:
         raise RouteError(409, "the track has no devices")
+    # Its devices would move to the new track, or Live would delete this one.
+    if any(holds_producer_pal(device) for device in track.devices):
+        raise RouteError(409, "the track holds the Producer Pal device")
     # Live crashes when it deletes a group's only track here.
     if not _has_clips(track) and _is_only_child(song, track):
         raise RouteError(
@@ -76,6 +80,9 @@ def drum_pad_to_track(bridge, params):
     pad = pads[note]
     if len(pad.chains) == 0:
         raise RouteError(409, "the pad is empty")
+    # A second Producer Pal would fight the first for its ports.
+    if any(holds_producer_pal(device) for chain in pad.chains for device in chain.devices):
+        raise RouteError(409, "the pad holds the Producer Pal device")
 
     convert = _conversion("create_midi_track_from_drum_pad")
     before = _keys(song)

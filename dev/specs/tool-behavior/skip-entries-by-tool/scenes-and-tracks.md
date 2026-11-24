@@ -19,10 +19,12 @@ Part of [Skip entries, tool by tool](README.md).
   has no clips: the entry then says so in `detail`, has
   `converted.sourceRemoved: true`, and drops its own `path`, which names another
   track by then. A conversion that didn't happen is a `detail`
-  (`not converted: …`): a return or main track, a group track, a track with no
-  devices, a clip-less track that is its group's only child (Live crashes on
-  it), or no remote script. With nothing else asked of the track it is a skip.
-  With no answer the entry says it _may have converted_.
+  (`not converted: …`): a return or main track, a track holding the Producer Pal
+  device (directly or inside a rack or pad: it would move or be deleted), a
+  group track, a track with no devices, a clip-less track that is its group's
+  only child (Live crashes on it), or no remote script. With nothing else asked
+  of the track it is a skip. With no answer the entry says it _may have
+  converted_.
 - **update-track answers per target named.** Its targets, tracks and take lanes,
   resolve up front. A path that can't be parsed refuses the call (a lane on a
   return or main track included); one that parses but names no track holds its

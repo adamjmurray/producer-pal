@@ -32,15 +32,39 @@ class FakeSlot:
         self.has_clip = has_clip
 
 
+class FakeEffect:
+    name = "EQ"
+    class_name = "Eq8"
+    can_have_drum_pads = False
+    chains = ()
+
+
+class FakeChain:
+    def __init__(self, devices=()):
+        self.devices = list(devices)
+
+
+class FakeGroupDevice:
+    """A rack holding devices in chains."""
+
+    class_name = "InstrumentGroupDevice"
+    can_have_drum_pads = False
+
+    def __init__(self, name, chains):
+        self.name = name
+        self.chains = chains
+
+
 class FakeTrack:
     def __init__(
         self,
-        devices=("device",),
+        devices=None,
         clips=False,
         arrangement_clips=0,
         foldable=False,
         group=None,
     ):
+        devices = [FakeEffect()] if devices is None else devices
         self.devices = list(devices)
         self.clip_slots = [FakeSlot(False), FakeSlot(clips)]
         self.arrangement_clips = [object()] * arrangement_clips
@@ -88,8 +112,9 @@ class FakeConversions:
 
 
 class FakePad:
-    def __init__(self, chains):
-        self.chains = [object()] * chains
+    def __init__(self, chains, devices=None):
+        devices = [FakeEffect()] if devices is None else devices
+        self.chains = [FakeChain(devices) for _ in range(chains)]
 
 
 class FakeRack:
@@ -99,12 +124,6 @@ class FakeRack:
 
     def __init__(self, pads=None):
         self.drum_pads = pads if pads is not None else [FakePad(0)] * 128
-
-
-class FakeEffect:
-    name = "EQ"
-    class_name = "Eq8"
-    can_have_drum_pads = False
 
 
 class ConversionTest(unittest.TestCase):
@@ -180,6 +199,31 @@ class TrackToDrumRackTest(ConversionTest):
 
         self.assertEqual(
             self.refused(TRACK_ROUTE, {"track": "t0"}, 409), "the track has no devices"
+        )
+        self.assertEqual(self.conversions.calls, [])
+
+    def test_refuses_a_track_holding_producer_pal_without_asking_live(self):
+        for name in ("Producer_Pal", "producer_pal.amxd"):
+            with self.subTest(name=name):
+                host = FakeEffect()
+                host.name = name
+                self.start([FakeTrack(devices=[FakeEffect(), host], clips=True)])
+
+                self.assertEqual(
+                    self.refused(TRACK_ROUTE, {"track": "t0"}, 409),
+                    "the track holds the Producer Pal device",
+                )
+                self.assertEqual(self.conversions.calls, [])
+
+    def test_refuses_a_track_holding_producer_pal_inside_a_rack(self):
+        host = FakeEffect()
+        host.name = "Producer_Pal"
+        rack = FakeGroupDevice("Rack", [FakeChain([FakeEffect(), host])])
+        self.start([FakeTrack(devices=[rack])])
+
+        self.assertEqual(
+            self.refused(TRACK_ROUTE, {"track": "t0"}, 409),
+            "the track holds the Producer Pal device",
         )
         self.assertEqual(self.conversions.calls, [])
 
@@ -316,6 +360,26 @@ class DrumPadToTrackTest(ConversionTest):
             "the pad is empty",
         )
         self.assertEqual(self.conversions.calls, [])
+
+    def test_refuses_a_pad_holding_producer_pal_without_asking_live(self):
+        host = FakeEffect()
+        host.name = "Producer_Pal"
+        pads = [FakePad(1)] * 36 + [FakePad(1, [FakeEffect(), host])] + [FakePad(1)] * 91
+        self.start_with_rack(FakeRack(pads))
+
+        self.assertEqual(
+            self.refused(PAD_ROUTE, {"device_path": PAD_PATH, "note": 36}, 409),
+            "the pad holds the Producer Pal device",
+        )
+        self.assertEqual(self.conversions.calls, [])
+
+    def test_copies_another_pad_when_one_holds_producer_pal(self):
+        host = FakeEffect()
+        host.name = "Producer_Pal"
+        pads = [FakePad(1)] * 36 + [FakePad(1, [host])] + [FakePad(1)] * 91
+        self.start_with_rack(FakeRack(pads))
+
+        self.assertEqual(self.convert(note=40), {"track_index": 2})
 
     def test_a_bad_note_is_a_400(self):
         self.start_with_rack()

@@ -135,6 +135,10 @@ pad with `toPath: "t+"`, through the remote script's
 Not probed for either call: a pad with several chains, return tracks and Live
 12.3.
 
+Both routes refuse, before asking Live, a track or pad that holds the Producer
+Pal device (found by name, inside racks too): the first would move it or delete
+its track, the second would add a second copy. The tools check by path first.
+
 ## Undo
 
 Probed on Live 12.4.16 through the tools, for all three device conversions:

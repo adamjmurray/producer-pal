@@ -165,9 +165,10 @@ it, using `Live.Conversions.move_devices_on_track_to_new_drum_rack_pad`. Takes
 new track is now, and whether Live deleted the source, which it does when the
 source has no clips. Live selects and arms the new track.
 
-A group track, a track with no devices, or a refusal from Live is a 409. So is a
-track with no clips that is the only track in its group: Live crashes on that
-one, so the route never asks. See
+A group track, a track with no devices, a track holding the Producer Pal device
+(directly or inside a rack, found by name), or a refusal from Live is a 409. So
+is a track with no clips that is the only track in its group: Live crashes on
+that one, so the route never asks. See
 [conversions.md](../../dev/live-api/conversions.md#track-devices-to-a-drum-rack-pad).
 
 ```sh
@@ -181,7 +182,8 @@ Copies a drum pad's chain onto a new MIDI track after the last track, using
 `device_path` and the pad's `note` (0-127), and answers `{track_index}`. The pad
 keeps its chain and no clips are copied. Live selects and arms the new track. A
 device that isn't a Drum Rack, a rack with no pads of its own (one nested in
-another rack), or an empty pad is a 409.
+another rack), an empty pad, or a pad holding the Producer Pal device (found by
+name) is a 409.
 
 ```sh
 curl -s -X POST localhost:3349/device/drum-pad/to-track -d '{"device_path": "live_set tracks 0 devices 0", "note": 36}'

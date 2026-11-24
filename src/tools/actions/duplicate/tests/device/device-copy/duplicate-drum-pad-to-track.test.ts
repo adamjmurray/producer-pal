@@ -242,6 +242,20 @@ describe("duplicate drum-pad to a new track", () => {
       );
     });
 
+    it("passes on the remote script's refusal of a pad holding Producer Pal", async () => {
+      copyAnswers({
+        success: true,
+        result: {
+          available: true,
+          error: "the pad holds the Producer Pal device",
+        },
+      });
+
+      await expect(copyKickToNewTrack()).rejects.toThrow(
+        "not copied: the pad holds the Producer Pal device",
+      );
+    });
+
     it.each([
       ["a caller with ppal-manage", true],
       ["a caller without it", false],

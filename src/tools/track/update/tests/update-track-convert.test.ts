@@ -203,6 +203,80 @@ describe("updateTrack - convert", () => {
     });
   });
 
+  describe("a track holding the Producer Pal device", () => {
+    const HOLDS = "not converted: the track holds the Producer Pal device";
+
+    it.each([
+      ["directly", `${livePath.track(0)} devices 2`],
+      [
+        "inside a rack chain",
+        `${livePath.track(0)} devices 0 chains 1 devices 0`,
+      ],
+      [
+        "inside a rack's return chain",
+        `${livePath.track(0)} devices 0 return_chains 0 devices 0`,
+      ],
+      [
+        "inside a drum pad's chain",
+        `${livePath.track(0)} devices 0 chains 0 devices 0 chains 0 devices 0`,
+      ],
+    ])("refuses it %s, without asking the remote script", async (_n, host) => {
+      registerMockObject("this_device", { path: host });
+
+      await expect(
+        updateTrack({ id: "123", convert: "drum-rack" }),
+      ).rejects.toThrow(HOLDS);
+      expect(requestNode).not.toHaveBeenCalled();
+    });
+
+    it("keeps the entry and says so beside an edit that landed", async () => {
+      registerMockObject("this_device", {
+        path: `${livePath.track(0)} devices 0`,
+      });
+
+      expect(
+        await updateTrack({ id: "123", name: "Kit", convert: "drum-rack" }),
+      ).toStrictEqual({ id: "123", path: "t0", detail: HOLDS });
+      expect(source.set).toHaveBeenCalledWith("name", "Kit");
+      expect(requestNode).not.toHaveBeenCalled();
+    });
+
+    it("converts another track, and refuses only the one that holds it", async () => {
+      registerMockObject("456", { path: livePath.track(1) });
+      registerMockObject("this_device", {
+        path: `${livePath.track(1)} devices 0`,
+      });
+      conversionAnswers(converted(5));
+
+      expect(
+        await updateTrack({
+          ids: "123,456",
+          name: "Kit",
+          convert: "drum-rack",
+        }),
+      ).toStrictEqual([
+        {
+          id: "123",
+          path: "t0",
+          converted: { track: { id: "made-5", path: "t5", name: "Kit 5" } },
+        },
+        { id: "456", path: "t1", detail: HOLDS },
+      ]);
+      expect(requestNode).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the remote script's own refusal as the same one", async () => {
+      conversionAnswers({
+        available: true,
+        error: "the track holds the Producer Pal device",
+      });
+
+      await expect(
+        updateTrack({ id: "123", convert: "drum-rack" }),
+      ).rejects.toThrow(HOLDS);
+    });
+  });
+
   describe("a conversion that didn't happen", () => {
     it("says why when the remote script refuses", async () => {
       conversionAnswers({ available: true, error: "Live said no" });

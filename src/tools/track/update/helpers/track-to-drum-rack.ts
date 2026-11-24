@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -49,6 +50,14 @@ export async function trackToDrumRack(
   // Return and main tracks aren't among the tracks Live converts.
   if (index == null) {
     refuseTargetWork(notes, ["convert"], notConverted(ONLY_REGULAR));
+
+    return undefined;
+  }
+
+  // Its devices would move to the new track, or Live would delete this one.
+  // The path check covers the device inside a rack or a drum pad too.
+  if (isProducerPalDevice(track)) {
+    refuseTargetWork(notes, ["convert"], notConverted(HOLDS_PRODUCER_PAL));
 
     return undefined;
   }
@@ -103,6 +112,7 @@ export async function trackToDrumRack(
 // --- Helpers below main exports ---
 
 const ONLY_REGULAR = "only a regular track can be converted";
+const HOLDS_PRODUCER_PAL = "the track holds the Producer Pal device";
 
 /**
  * Word why a conversion didn't happen.
