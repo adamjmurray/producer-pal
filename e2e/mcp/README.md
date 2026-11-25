@@ -23,6 +23,21 @@ npm run e2e:mcp
 npm run e2e:mcp:watch
 ```
 
+### Install check
+
+Before any test runs, the suite checks what Live will load, and stops with the
+command to fix anything that's off:
+
+- the device is a debug build (`npm run build:debug`); it doesn't check the
+  build is current
+- the User Library's remote script matches, and so does the one a running Live
+  loaded (`npm run install:remote-script -- --probe --reload`)
+- the plug-in wrappers match (`npm run install:plugin-host`)
+
+A version number can't catch this: two branches can share one. To test a
+different build on purpose, set `E2E_INSTALL_CHECK=false`. It's skipped when
+`MCP_URL` names another machine.
+
 ### Before a full run: restart Live
 
 Quit Live completely and reopen it (or leave it closed — the tests open it)
