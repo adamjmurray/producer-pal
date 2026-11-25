@@ -14,6 +14,7 @@
  */
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, vi, type Mock } from "vitest";
+import { z } from "zod";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { type BridgeOptions } from "../../portal-settings.ts";
 import { StdioHttpBridge } from "../../stdio-http-bridge.ts";
@@ -42,12 +43,12 @@ export const mockStandardTools = {
   "ppal-read-live-set": {
     title: "Read Live Set",
     description: "Read comprehensive information about the Live Set",
-    inputSchema: { type: "object", properties: {} },
+    inputSchema: z.object({}),
   },
   "ppal-create-clip": {
     title: "Create Clip",
     description: "Creates MIDI clips in Session or Arrangement",
-    inputSchema: { type: "object", properties: {} },
+    inputSchema: z.object({}),
   },
 };
 
@@ -55,7 +56,7 @@ export const mockLiveApiTool = {
   "ppal-live-api": {
     title: "Live API",
     description: "Direct access to the Ableton Live Object Model.",
-    inputSchema: { type: "object", properties: {} },
+    inputSchema: z.object({}),
   },
 };
 

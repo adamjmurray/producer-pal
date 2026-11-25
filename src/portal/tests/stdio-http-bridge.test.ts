@@ -108,13 +108,6 @@ vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
   ),
 }));
 
-// @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("zod"), () => ({
-  z: {
-    toJSONSchema: vi.fn((schema: unknown) => schema), // Pass through for testing
-  },
-}));
-
 vi.mock(import("../file-logger.ts"), () => ({
   logger: {
     info: vi.fn(),

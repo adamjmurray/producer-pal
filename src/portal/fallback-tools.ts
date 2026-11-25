@@ -3,11 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { z } from "zod";
+import { type z } from "zod";
 import {
   type CallLiveApiFunction,
   createMcpServer,
 } from "#src/mcp-server/create-mcp-server.ts";
+import { listedInputSchema } from "#src/tools/shared/schema/listed-input-schema.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { ALL_TOOL_IDS } from "#src/shared/tool-groups.ts";
 
@@ -21,7 +22,7 @@ export interface FallbackTool {
 interface RegisteredToolInfo {
   title?: string;
   description: string;
-  inputSchema?: z.ZodType;
+  inputSchema?: z.ZodObject;
 }
 
 export interface FallbackToolsOptions {
@@ -71,8 +72,9 @@ export function buildFallbackTools(options: FallbackToolsOptions = {}): {
       name: name,
       title: toolInfo.title,
       description: toolInfo.description,
+      // Converted as tools/list does: a param with a default isn't required.
       inputSchema: toolInfo.inputSchema
-        ? z.toJSONSchema(toolInfo.inputSchema)
+        ? listedInputSchema(toolInfo.inputSchema)
         : {
             type: "object",
             properties: {},

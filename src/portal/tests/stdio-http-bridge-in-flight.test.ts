@@ -101,10 +101,6 @@ vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () =>
   }),
 );
 
-vi.mock(import("zod"), () =>
-  partialModule({ z: { toJSONSchema: vi.fn((schema: unknown) => schema) } }),
-);
-
 vi.mock(import("../file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
