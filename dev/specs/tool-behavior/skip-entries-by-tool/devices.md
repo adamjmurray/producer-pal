@@ -20,10 +20,11 @@ Part of [Skip entries, tool by tool](README.md).
   reaches or passes the target or stops moving. An odd count is rounded up to
   the next even one (`macroCount rounded from 3 to 4 (macros come in pairs)`),
   except 1, which lands on 1 with nothing to report. The entry says where it
-  landed (`macroCount landed at 14, not 16`); a throw after the count moved is
-  the same entry with `Live said: <error>` added. A count above the rack's own
-  macro total (the highest "Macro N" among its params) is refused with that
-  limit.
+  landed (`macroCount landed at 14, not 16`), and when one step jumped past the
+  target it names that step, read off the rack
+  (`: Live goes from 32 straight to 14`); a throw after the count moved is the
+  same entry with `Live said: <error>` added. A count above the rack's own macro
+  total (the highest "Macro N" among its params) is refused with that limit.
 - **update-device's skip can name a chain a pad move re-numbered.** A drum chain
   move changes which chain `pD1/c0` names, so a skipped chain's entry adds
   `that chain is now <path> (id N)`; see

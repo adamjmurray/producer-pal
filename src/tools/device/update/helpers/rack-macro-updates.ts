@@ -210,10 +210,15 @@ export function updateMacroCount(
 
   const hadMappings = (device.getProperty("has_macro_mappings") as number) > 0;
   const before = device.getProperty("visible_macro_count") as number;
-  const { landed, stoppedBy } = stepMacroCount(device, before, target, notes);
+  const { landed, stoppedBy, jump } = stepMacroCount(
+    device,
+    before,
+    target,
+    notes,
+  );
 
   reportMacroCount(
-    { before, landed, target, hadMappings, mapped, stoppedBy },
+    { before, landed, target, hadMappings, mapped, stoppedBy, jump },
     notes,
   );
 }
@@ -245,7 +250,8 @@ function macroLimit(device: LiveAPI, targetCount: number): number {
  * @param before - The count the rack showed beforehand
  * @param target - The count to reach
  * @param notes - Told each step that lands
- * @returns The count it ended on, and the error that cut it short, if any
+ * @returns The count it ended on, the error that cut it short, if any, and
+ *   the last step when it jumped past the target
  * @throws Error when Live throws before the count has changed at all
  */
 function stepMacroCount(
@@ -253,9 +259,10 @@ function stepMacroCount(
   before: number,
   target: number,
   notes: TargetNotes,
-): { landed: number; stoppedBy?: string } {
+): Pick<MacroCountWrite, "landed" | "stoppedBy" | "jump"> {
   const adding = target > before;
   let count = before;
+  let from = before;
 
   try {
     while (adding ? count < target : count > target) {
@@ -268,6 +275,7 @@ function stepMacroCount(
         break;
       }
 
+      from = count;
       count = next;
       noteLanded(notes, "macroCount");
     }
@@ -285,7 +293,12 @@ function stepMacroCount(
     return { landed: now, stoppedBy: errorMessage(error) };
   }
 
-  return { landed: count };
+  // Ending past the target means the last step jumped over it.
+  const passed = adding ? count > target : count < target;
+
+  return passed
+    ? { landed: count, jump: { from, to: count } }
+    : { landed: count };
 }
 
 /**
@@ -319,6 +332,8 @@ interface MacroCountWrite {
   mapped?: MappedMacros;
   /** What Live threw when it cut the steps short */
   stoppedBy?: string;
+  /** The one step that jumped past the target (Live 13: 14 straight to 32) */
+  jump?: { from: number; to: number };
 }
 
 /**
@@ -344,20 +359,34 @@ function roundedMacroCount(targetCount: number): number {
  * @param write.hadMappings - Whether a macro was mapped beforehand
  * @param write.mapped - Which macros were mapped beforehand, when known
  * @param write.stoppedBy - What Live threw when it cut the steps short
+ * @param write.jump - The step that jumped past the target, if one did
  * @param notes - What this device's entry has to say, added to
  */
 function reportMacroCount(
-  { before, landed, target, hadMappings, mapped, stoppedBy }: MacroCountWrite,
+  {
+    before,
+    landed,
+    target,
+    hadMappings,
+    mapped,
+    stoppedBy,
+    jump,
+  }: MacroCountWrite,
   notes: TargetNotes,
 ): void {
   if (landed !== target) {
+    // Says why, so a model doesn't take the skipped count for a bug.
+    const skip =
+      jump == null
+        ? ""
+        : `: Live goes from ${jump.from} straight to ${jump.to}`;
     // Live stops at 1 macro: removing from 2 leaves 1, never 0.
     const why = target === 0 && landed === 1 ? "; Live keeps at least 1" : "";
     const cut = stoppedBy == null ? "" : `; Live said: ${stoppedBy}`;
 
     noteTarget(
       notes,
-      `macroCount landed at ${landed}, not ${target}${why}${cut}`,
+      `macroCount landed at ${landed}, not ${target}${skip}${why}${cut}`,
     );
   }
 
