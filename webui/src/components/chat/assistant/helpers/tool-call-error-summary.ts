@@ -39,9 +39,8 @@ function unquoteJsonString(s: string): string {
   }
 
   try {
-    const parsed: unknown = JSON.parse(s);
-
-    return typeof parsed === "string" ? parsed : s;
+    // Valid JSON starting with a quote is always a string.
+    return String(JSON.parse(s));
   } catch {
     return s;
   }

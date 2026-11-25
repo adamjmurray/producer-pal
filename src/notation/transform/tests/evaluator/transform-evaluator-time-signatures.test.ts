@@ -161,19 +161,18 @@ describe("transform timing/duration in non-4/4 time signatures", () => {
       });
     });
 
-    describe("waveforms with note.duration period", () => {
-      it("cos() with note.duration period works correctly", () => {
+    describe("waveforms with clip.barDuration period", () => {
+      it("cos() with clip.barDuration period works correctly", () => {
         const notes = createTestNote({
           start_time: 0,
           duration: 1.5,
           velocity_deviation: 0,
         });
 
-        // duration 1.5 Ableton beats = 3 eighth notes = 3 musical beats
-        // cos with period of 3 musical beats at position 0 should be 1
+        // cos with a one-bar period at position 0 should be 1
         applyTransforms(
           notes,
-          "velocity = note.velocity * cos(note.duration)",
+          "velocity = note.velocity * cos(clip.barDuration)",
           6,
           8,
         );

@@ -160,13 +160,13 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     expect(clipsInBarRange(track, 81, 100_000)).toHaveLength(0);
   });
 
-  // A 6-bar copy of the looped 4-bar clip lands as two tiles: 4 bars, then 2.
+  // A 6-bar copy of the looped 4-bar clip is one clip, longer than its loop.
   it.each([
-    { arrangementLength: "2bar", at: 90, lastTiles: [2] },
-    { arrangementLength: "6bar", at: 110, lastTiles: [4, 2] },
+    { arrangementLength: "2bar", at: 90, lastBars: 2 },
+    { arrangementLength: "6bar", at: 110, lastBars: 6 },
   ])(
     "two copies onto the source with arrangementLength $arrangementLength: both cut from the full source",
-    async ({ arrangementLength, at, lastTiles }) => {
+    async ({ arrangementLength, at, lastBars }) => {
       const base = await dupToArr(midi4barId, `${at}|1`);
 
       await dupManyToArr(
@@ -183,7 +183,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
       );
       // The original and the first copy are cut to a bar each; the last copy
       // fills its whole length.
-      const expected = [1, 1, ...lastTiles];
+      const expected = [1, 1, lastBars];
       let bar = at;
       const starts = expected.map((bars) => {
         const start = `${bar}|1`;

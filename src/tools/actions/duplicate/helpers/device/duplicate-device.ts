@@ -8,6 +8,7 @@ import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type DeviceCopy } from "./device-copy-entry.ts";
+import { checkDeviceCopyDestination } from "./device-copy-finish.ts";
 import { copyDeviceInPlace } from "./remote-script-copy/in-place-device-copy.ts";
 import { copyThroughTempTrack } from "./temp-track-device-copy.ts";
 
@@ -19,6 +20,9 @@ import { copyThroughTempTrack } from "./temp-track-device-copy.ts";
  * 2. Move the duplicated device to the destination
  * 3. Delete the temporary track
  *
+ * A destination that can't take the copy is refused before any copy is made.
+ * What only Live's refusal shows, once the copy is moved, still deletes it.
+ *
  * Once the copy is placed, the device exists: a name that won't take, or a
  * temp track that won't go, is on its entry rather than a throw.
  * @param device - LiveAPI device object to duplicate
@@ -26,7 +30,8 @@ import { copyThroughTempTrack } from "./temp-track-device-copy.ts";
  * @param name - Optional name for the duplicated device
  * @param deadline - The request deadline from ToolContext
  * @returns The new device's id
- * @throws Error when no copy was made
+ * @throws Error when no copy was made, including a destination that can't
+ *   take it
  */
 export async function duplicateDevice(
   device: LiveAPI,
@@ -47,6 +52,13 @@ export async function duplicateDevice(
   // so a path read inside the copy would name the wrong track.
   const sourceLabel = targetLabel(device);
   const notes = newTargetNotes();
+
+  // Before either route makes a copy, so a destination that can't take it
+  // leaves nothing to delete. The default spot, just after the source, always can.
+  if (toPath != null) {
+    checkDeviceCopyDestination(device, toPath, sourceLabel);
+  }
+
   const copy =
     (await copyDeviceInPlace(
       device,

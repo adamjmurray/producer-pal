@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -91,7 +91,7 @@ describe("deleteObject drum-pad deletion", () => {
   });
 
   it("reports a pad note the rack doesn't have as nothing to delete", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     setupDrumPadPathMocks({
       devicePath: "live_set tracks 0 devices 0",
@@ -161,7 +161,7 @@ describe("deleteObject drum-pad deletion", () => {
   });
 
   it("refuses a path that resolves to a device instead of a drum-pad", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     expect(() => deleteObject({ path: "t0/d0", type: "drum-pad" })).toThrow(
       'path "t0/d0" resolves to device, not drum-pad',
@@ -172,7 +172,7 @@ describe("deleteObject drum-pad deletion", () => {
 
 describe("deleteObject drum-pad refusals", () => {
   it("refuses a DrumChain id, which delete_all_chains ignores", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
     const chain = registerMockObject("drum-chain-1", {
       path: "live_set tracks 0 devices 0 chains 0",
       type: "DrumChain",
@@ -189,7 +189,7 @@ describe("deleteObject drum-pad refusals", () => {
   });
 
   it("refuses a plain Chain id without the drum pad advice", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("chain-1", {
       path: "live_set tracks 0 devices 0 chains 0",
@@ -236,7 +236,7 @@ describe("deleteObject drum-pad refusals", () => {
   });
 
   it("refuses the call when the pad's chains survive it", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("stuck-pad", {
       path: "live_set tracks 0 devices 0 drum_pads 36",
@@ -302,7 +302,7 @@ describe("deleteObject drum-pad refusals", () => {
   });
 
   it("refuses a chain path, which would clear the whole pad", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const { pad } = setupDrumPadPathMocks({
       devicePath: "live_set tracks 0 devices 0",
@@ -321,7 +321,7 @@ describe("deleteObject drum-pad refusals", () => {
   });
 
   it("refuses a device path inside a pad", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     setupDrumPadPathMocks({
       devicePath: "live_set tracks 0 devices 0",
@@ -339,7 +339,7 @@ describe("deleteObject drum-pad refusals", () => {
   });
 
   it("refuses a pad of a nested Drum Rack, which has no pad to delete", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     setupDrumPadPathMocks({
       devicePath: "live_set tracks 0 devices 0",

@@ -293,7 +293,7 @@ describe("orderArrangementMoves", () => {
     expect(order).toStrictEqual([0, 1, 2]);
   });
 
-  // arrangementLength runs after the move, at the destination, and tiles across
+  // arrangementLength runs after the move, at the destination, and grows across
   // the span it clears. Dropping these clips as movers switched the whole guard
   // off — one broadcast length covers every id, so nothing was left to order.
   it("still orders a row shifted later when the call also resizes it", () => {
@@ -311,8 +311,8 @@ describe("orderArrangementMoves", () => {
     expect(order).toStrictEqual([2, 1, 0]);
   });
 
-  // Main lane to main lane, a shortened clip is cut down before it moves, so
-  // its move clears only the new length.
+  // A shortened clip is cut down before it moves, so its move clears only the
+  // new length.
   it("counts only the new length for a clip shortened on its way", () => {
     const clips = registerRow([
       { id: "113", start: 0, end: 16 },
@@ -328,23 +328,34 @@ describe("orderArrangementMoves", () => {
     expect(blockedIds).toStrictEqual(new Set());
   });
 
-  it("counts the full length for a clip shortened on its way to a take lane", () => {
+  it("counts only the new length for a clip shortened on its way to a take lane", () => {
     const [main] = registerRow([{ id: "113", start: 0, end: 16 }]);
     const [onLane] = registerLaneRow([{ id: "115", start: 40, end: 48 }]);
 
-    // A move onto a take lane re-creates the clip at its full length.
     const { blockedIds } = orderMoves(
       [main as LiveAPI, onLane as LiveAPI],
       moves({ "113": 32 }, new Map([["113", lane(0)]]), { "113": 4 }),
     );
 
-    expect(blockedIds).toStrictEqual(new Set(["113"]));
+    expect(blockedIds).toStrictEqual(new Set());
   });
 
-  it("refuses a resize that tiles over a clip staying put", () => {
+  // A take-lane clip stops growing at the next clip rather than clearing it.
+  it("lets a take-lane clip grow toward a clip staying put", () => {
+    const clips = registerLaneRow(row);
+
+    const { blockedIds } = orderMoves(
+      clips,
+      moves({}, undefined, { "113": 32 }),
+    );
+
+    expect(blockedIds).toStrictEqual(new Set());
+  });
+
+  it("refuses a resize that grows over a clip staying put", () => {
     const clips = registerRow(row);
 
-    // 113 stays at 1|1 but grows to 8 bars, which tiles over 114 at 5|1 — and
+    // 113 stays at 1|1 but grows to 8 bars, which reaches over 114 at 5|1 — and
     // 114 is going nowhere, so nothing can clear that span first.
     const { blockedIds } = orderMoves(
       clips,

@@ -167,7 +167,7 @@ describe("updateDevice - written param values", () => {
     );
   });
 
-  it("reports every param when none of them named anything", () => {
+  it("states a reason every param shares once", () => {
     registerLadderParam();
 
     const message = noParamLanded(() =>
@@ -181,8 +181,7 @@ describe("updateDevice - written param values", () => {
     );
 
     expect(message).toBe(
-      'no param landed — "Nope": not found on t0/d0 (id dev1); ' +
-        '"Also nope": not found on t0/d0 (id dev1)',
+      "no param landed — all 2: not found on t0/d0 (id dev1)",
     );
   });
 

@@ -19,8 +19,12 @@ export interface GrowingRackFixture {
   track: number;
   /** How many chains the rack starts with */
   existing: number;
+  /** What chain ids start with, to keep clear of other chains a test has */
+  chainIdPrefix?: string;
   /** Methods on every chain, e.g. one that turns down an insert */
   chainMethods?: RegisteredMockObjectOptions["methods"];
+  /** More properties on the rack, e.g. its `type` */
+  rackProperties?: Record<string, unknown>;
 }
 
 /**
@@ -37,7 +41,7 @@ export function registerGrowingRack(
 
   const addChain = (): string => {
     const index = chainIds.length / 2;
-    const id = `chain-${index}`;
+    const id = `${fixture.chainIdPrefix ?? "chain"}-${index}`;
 
     registerMockObject(id, {
       path: rackPath.chain(index),
@@ -57,7 +61,12 @@ export function registerGrowingRack(
   return registerMockObject("rack", {
     path: rackPath,
     type: "RackDevice",
-    properties: { chains: chainIds, can_have_chains: 1, can_have_drum_pads: 0 },
+    properties: {
+      chains: chainIds,
+      can_have_chains: 1,
+      can_have_drum_pads: 0,
+      ...fixture.rackProperties,
+    },
     methods: { insert_chain: () => ["id", addChain()] },
   });
 }

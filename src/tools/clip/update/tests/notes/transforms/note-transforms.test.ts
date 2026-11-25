@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { newCallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
@@ -47,7 +48,14 @@ describe("note-transforms", () => {
     it("uses content length for session clips", () => {
       const mockClip = createSessionClipMock();
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+        newCallScale(),
+      );
 
       expect(ctx.clipDuration).toBe(8);
       expect(ctx.arrangementStart).toBeUndefined();
@@ -58,7 +66,14 @@ describe("note-transforms", () => {
 
       const mockClip = createSessionClipMock();
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+        newCallScale(),
+      );
 
       expect(ctx.scalePitchClassMask).toBe(2741);
     });
@@ -72,7 +87,14 @@ describe("note-transforms", () => {
         is_arrangement_clip: 0,
       });
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+        newCallScale(),
+      );
 
       expect(ctx.clipDuration).toBe(12);
       expect(ctx.arrangementStart).toBeUndefined();
@@ -99,7 +121,14 @@ describe("note-transforms", () => {
         sample_length: 4 * 48000,
       });
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+        newCallScale(),
+      );
 
       expect(ctx.clipDuration).toBe(8);
     });
@@ -114,7 +143,14 @@ describe("note-transforms", () => {
         length: 8,
       });
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        8,
+        newCallScale(),
+      );
 
       expect(ctx.clipDuration).toBe(12);
       expect(ctx.arrangementStart).toBe(8);
@@ -128,7 +164,14 @@ describe("note-transforms", () => {
         length: 8, // content length, shorter than the arrangement span
       });
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+        newCallScale(),
+      );
 
       // Should use end_time - start_time = 16, NOT length = 8
       expect(ctx.clipDuration).toBe(16);
@@ -164,6 +207,7 @@ describe("note-transforms", () => {
         1,
         4,
         8,
+        newCallScale(),
       );
       const unloopedCtx = buildClipContext(
         unlooped as unknown as LiveAPI,
@@ -171,6 +215,7 @@ describe("note-transforms", () => {
         1,
         4,
         4,
+        newCallScale(),
       );
 
       expect([loopingCtx.startMarker, loopingCtx.clipEnd]).toStrictEqual([
@@ -192,6 +237,7 @@ describe("note-transforms", () => {
         1,
         4,
         4,
+        newCallScale(),
       );
 
       expect([ctx.startMarker, ctx.clipEnd]).toStrictEqual([
@@ -496,7 +542,14 @@ describe("note-transforms", () => {
 
       const mockClip = createSessionClipMock(4);
 
-      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+      const ctx = buildClipContext(
+        mockClip as unknown as LiveAPI,
+        0,
+        1,
+        4,
+        4,
+        newCallScale(),
+      );
 
       expect(ctx.scalePitchClassMask).toBeUndefined();
     });

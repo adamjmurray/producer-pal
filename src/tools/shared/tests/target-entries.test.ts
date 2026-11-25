@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 describe("targetEntries", () => {
   it("splits a param with real entries, without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(targetEntries("t0, t1", "id")).toStrictEqual(["t0", "t1"]);
     expect(warn).not.toHaveBeenCalled();
@@ -27,7 +27,7 @@ describe("targetEntries", () => {
   // An omitted param is nullish by the time it gets here, and there is nothing
   // to tell a caller about a param they never sent.
   it("takes an omitted param without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(targetEntries(undefined, "id")).toStrictEqual([]);
     expect(targetEntries(null, "path")).toStrictEqual([]);
@@ -56,7 +56,7 @@ describe("targetEntries", () => {
   // The commonest typo in a hand-written list, and it moves nothing: there is
   // no later entry to shift. Read the way most languages read a list literal.
   it("takes one trailing comma without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(targetEntries("t0,t1, ", "id")).toStrictEqual(["t0", "t1"]);
     expect(warn).not.toHaveBeenCalled();

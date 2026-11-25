@@ -247,6 +247,45 @@ export function registerParamMock(
 }
 
 /**
+ * Register a device with continuous 0..1 params, each owned by it.
+ * @param names - The params' names, in order
+ * @param extra - Properties to add to every param
+ * @param deviceName - The device's class_display_name
+ * @returns The registered param mocks, in order
+ */
+export function registerNamedParams(
+  names: string[],
+  extra: Record<string, unknown> = {},
+  deviceName = "Reverb",
+): RegisteredMockObject[] {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: {
+      class_display_name: deviceName,
+      parameters: children(...names.map((_, index) => `p${index}`)),
+    },
+  });
+
+  return names.map((name, index) =>
+    registerMockObject(`p${index}`, {
+      properties: {
+        name,
+        original_name: name,
+        is_quantized: 0,
+        is_enabled: 1,
+        value: 0.5,
+        min: 0,
+        max: 1,
+        canonical_parent: children("dev1"),
+        ...extra,
+      },
+      methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
+    }),
+  );
+}
+
+/**
  * Register a Drum Rack at t0/d0 whose one pad chain sits on C1 (MIDI 36).
  * @param padDeviceIds - Ids of the devices already on the pad chain
  * @param chainMethods - Methods the chain answers, such as `insert_device`
@@ -418,6 +457,13 @@ export interface MacroRackSpec {
   floor?: number;
   /** Which device slot on track 0 it sits in; the first when absent */
   slot?: number;
+  /**
+   * The counts Live visits, ascending, for a rack that doesn't step by 2. Adding
+   * at the last throws, as Live 13 does at its maximum.
+   */
+  steps?: number[];
+  /** How many macro params it has, for a rack asked for more than 16 */
+  macros?: number;
 }
 
 /**
@@ -429,11 +475,13 @@ export interface MacroRackSpec {
  * @param spec.mapped - Whether one of its macros is mapped
  * @param spec.floor - The fewest macros it will hide down to
  * @param spec.slot - Which device slot on track 0 it sits in
+ * @param spec.steps - The counts Live visits, when it doesn't step by 2
+ * @param spec.macros - How many macro params it has
  * @returns The registered rack mock
  */
 export function registerMacroRack(
   id: string,
-  { count, mapped = false, floor = 0, slot = 0 }: MacroRackSpec,
+  { count, mapped = false, floor = 0, slot = 0, steps, macros }: MacroRackSpec,
 ): RegisteredMockObject {
   const properties: Record<string, unknown> = {
     can_have_chains: 1,
@@ -441,11 +489,29 @@ export function registerMacroRack(
     has_macro_mappings: mapped ? 1 : 0,
   };
 
-  // Live moves macros a pair at a time.
-  const move = (by: number) => (): null => {
+  if (macros != null) {
+    properties.parameters = registerMacroParams(id, macros);
+  }
+
+  // Live 12 moves macros a pair at a time; the steps option is Live 13's.
+  const move = (by: 1 | -1) => (): null => {
     const now = properties.visible_macro_count as number;
 
-    properties.visible_macro_count = Math.max(floor, now + by);
+    if (steps == null) {
+      properties.visible_macro_count = Math.max(floor, now + 2 * by);
+
+      return null;
+    }
+
+    const next = steps[steps.indexOf(now) + by];
+
+    if (next != null) {
+      properties.visible_macro_count = next;
+    } else if (by === 1) {
+      throw new Error(
+        "The maximum number of macro controls is already reached!",
+      );
+    }
 
     return null;
   };
@@ -454,6 +520,29 @@ export function registerMacroRack(
     path: livePath.track(0).device(slot),
     type: "RackDevice",
     properties,
-    methods: { add_macro: move(2), remove_macro: move(-2) },
+    methods: { add_macro: move(1), remove_macro: move(-1) },
   });
+}
+
+/**
+ * Register Device On and the rack's macro params, as a rack lists them.
+ * @param rackId - The rack's mock ID, to name its params
+ * @param macros - How many macros it has
+ * @returns The rack's `parameters` list
+ */
+function registerMacroParams(rackId: string, macros: number): unknown[] {
+  const names = [
+    "Device On",
+    ...Array.from({ length: macros }, (_, i) => `Macro ${i + 1}`),
+  ];
+
+  for (const [i, name] of names.entries()) {
+    registerMockObject(`${rackId}-p${i}`, {
+      path: `id ${rackId}-p${i}`,
+      type: "DeviceParameter",
+      properties: { name, original_name: name },
+    });
+  }
+
+  return names.flatMap((_, i) => ["id", `${rackId}-p${i}`]);
 }

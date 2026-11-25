@@ -210,14 +210,11 @@ describe("freezeDeviceFromRoot", () => {
     ).toBe("svg ");
   });
 
-  it("warns about project files that are missing and skips them", () => {
+  it("refuses when a project file is missing", () => {
     writeDevice(["a-license", "missing-license"]);
     writeSources();
-    const { files, warnings } = freezeDeviceFromRoot(root);
 
-    expect(files.map((f) => f.name)).not.toContain("missing-license");
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("missing-license");
+    expect(() => freezeDeviceFromRoot(root)).toThrow("missing-license");
   });
 
   it("refuses an unbuilt device", () => {

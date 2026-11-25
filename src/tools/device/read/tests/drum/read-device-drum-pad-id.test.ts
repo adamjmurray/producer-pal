@@ -65,6 +65,8 @@ describe("readOneDevice with a drum pad id", () => {
         name: "Layer 1",
         type: "drum-chain",
         mappedPitch: "C1",
+        gainDb: 0,
+        pan: 0,
         devices: [],
       },
       {
@@ -73,6 +75,8 @@ describe("readOneDevice with a drum pad id", () => {
         name: "Layer 2",
         type: "drum-chain",
         mappedPitch: "C1",
+        gainDb: 0,
+        pan: 0,
         devices: [],
       },
     ]);

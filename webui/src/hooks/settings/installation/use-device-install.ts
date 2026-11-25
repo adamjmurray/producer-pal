@@ -5,51 +5,42 @@
 
 import { useCallback, useState } from "preact/hooks";
 import {
+  type DeviceInstallProblem,
+  type DeviceInstallStatus as ServerDeviceInstallStatus,
+  type DeviceState,
+} from "#src/shared/max/device-install-status";
+import {
   getDeviceInstallActionUrl,
   getDeviceInstallUrl,
+  getDevicePluginHostUrl,
 } from "#webui/utils/mcp-url";
 import { postInstallRequest } from "./helpers/post-install-request";
+import {
+  type PluginHostWrapperState,
+  wrapperInstallFailed,
+} from "./helpers/plugin-host-wrappers";
 import {
   useInstallStatus,
   type UseInstallStatusReturn,
 } from "./helpers/use-install-status";
 
-/** How the User Library copy compares with the running device. */
-export type DeviceState =
-  | "not-installed"
-  | "same"
-  | "installed-older"
-  | "installed-newer"
-  | "different";
-
-/** Why the running device can't be copied. */
-export type DeviceInstallProblem =
-  | "unknown-source"
-  | "unreadable-source"
-  | "not-frozen"
-  | "no-user-library";
-
 /** What the server knows about the device's own installation, as `GET /device-install`. */
-export interface DeviceInstallStatus {
-  /** The running device's file, or null before it has said where it is. */
-  source: string | null;
-  /** Why it can't be installed, or null when it can. */
-  problem: DeviceInstallProblem | null;
-  /** Live's User Library, or null when the server couldn't find it. */
-  userLibrary: string | null;
-  /** Where the copy is, or would be. */
-  path: string | null;
-  /** Whether the running device is the User Library file itself. */
-  inUserLibrary: boolean;
-  /** The copy compared with the running device; null with a problem. */
-  state: DeviceState | null;
-  /** This device's version. */
-  version: string;
-  installedVersion: string | null;
-  /** Other Producer_Pal .amxd files in the User Library. */
-  otherCopies: string[];
+export interface DeviceInstallStatus extends ServerDeviceInstallStatus {
   /** Whether the running device can be swapped for the User Library copy. */
   swap: { allowed: boolean; reason: string | null };
+  /** Each plug-in host wrapper's state. */
+  pluginHost?: PluginHostWrapperState[];
+}
+
+export type { DeviceInstallProblem, DeviceState };
+
+/** What a finished install did, as the chat UI shows it. */
+export interface DeviceInstallDone {
+  detail: string;
+  /** Where the device went; null for the wrappers alone, which have several files. */
+  path: string | null;
+  /** Whether part of the install failed, which the detail says. */
+  failed: boolean;
 }
 
 export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceInstallStatus> {
@@ -58,9 +49,11 @@ export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceIns
   /** Why the install was refused or failed, or null. */
   installError: string | null;
   /** What the last install did and where, or null. */
-  installResult: { detail: string; path: string } | null;
+  installResult: DeviceInstallDone | null;
   /** Copy the device into `userLibrary`, replacing a newer one only with `force`, then re-read the status. */
   install: (userLibrary: string, force: boolean) => void;
+  /** Install only the plug-in wrapper devices into `userLibrary`, then re-read the status. */
+  installWrappers: (userLibrary: string) => void;
 }
 
 /**
@@ -73,8 +66,9 @@ export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceIns
 export function useDeviceInstall(): UseDeviceInstallReturn {
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
-  const [installResult, setInstallResult] =
-    useState<UseDeviceInstallReturn["installResult"]>(null);
+  const [installResult, setInstallResult] = useState<DeviceInstallDone | null>(
+    null,
+  );
   // The status is now out of step with an "Installed to X" message.
   const clearInstallResult = useCallback(() => setInstallResult(null), []);
   const read = useInstallStatus<DeviceInstallStatus>({
@@ -84,12 +78,12 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
   });
   const { refresh } = read;
 
-  const install = useCallback(
-    (userLibrary: string, force: boolean): void => {
+  const run = useCallback(
+    (post: Promise<PostResult>): void => {
       setInstalling(true);
       setInstallError(null);
 
-      void postInstall(userLibrary, force).then((result) => {
+      void post.then((result) => {
         setInstalling(false);
 
         setInstallError(result.error);
@@ -101,14 +95,31 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
     [refresh],
   );
 
-  return { ...read, installing, installError, installResult, install };
+  const install = useCallback(
+    (userLibrary: string, force: boolean): void =>
+      run(postInstall(userLibrary, force)),
+    [run],
+  );
+  const installWrappers = useCallback(
+    (userLibrary: string): void => run(postWrappers(userLibrary)),
+    [run],
+  );
+
+  return {
+    ...read,
+    installing,
+    installError,
+    installResult,
+    install,
+    installWrappers,
+  };
 }
 
 // --- Helpers below main export ---
 
 /** What a POST came back with: what was done, or why it wasn't. */
 interface PostResult {
-  done: { detail: string; path: string } | null;
+  done: DeviceInstallDone | null;
   error: string | null;
 }
 
@@ -122,10 +133,11 @@ async function postInstall(
   userLibrary: string,
   force: boolean,
 ): Promise<PostResult> {
-  const posted = await postInstallRequest<{ detail: string; path: string }>(
-    getDeviceInstallActionUrl(),
-    { userLibrary, force },
-  );
+  const posted = await postInstallRequest<{
+    detail: string;
+    path: string;
+    pluginHost: { ok?: boolean }[];
+  }>(getDeviceInstallActionUrl(), { userLibrary, force });
 
   if (posted.error != null) {
     return { done: null, error: posted.error };
@@ -141,5 +153,47 @@ async function postInstall(
     };
   }
 
-  return { done: { detail: body.detail, path: body.path }, error: null };
+  return {
+    done: {
+      detail: body.detail,
+      path: body.path,
+      failed: wrapperInstallFailed(body),
+    },
+    error: null,
+  };
+}
+
+/**
+ * POST the wrapper-only install, folding every failure into one `error` string.
+ * @param userLibrary - The User Library to install into
+ * @returns What was done, or the error to show
+ */
+async function postWrappers(userLibrary: string): Promise<PostResult> {
+  const posted = await postInstallRequest<{
+    detail: string;
+    pluginHost: { ok?: boolean }[];
+  }>(getDevicePluginHostUrl(), { userLibrary });
+
+  if (posted.error != null) {
+    return { done: null, error: posted.error };
+  }
+
+  const { body } = posted;
+
+  if (typeof body?.detail !== "string" || !Array.isArray(body.pluginHost)) {
+    // A 200 owes us what it did to each wrapper.
+    return {
+      done: null,
+      error: "Install failed: the server didn't say what it did",
+    };
+  }
+
+  return {
+    done: {
+      detail: body.detail,
+      path: null,
+      failed: wrapperInstallFailed(body),
+    },
+    error: null,
+  };
 }

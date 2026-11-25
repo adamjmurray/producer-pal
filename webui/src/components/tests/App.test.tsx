@@ -6,9 +6,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, fireEvent, render } from "@testing-library/preact";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "./App-mocks-test-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -25,6 +25,34 @@ import {
 } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
+/**
+ * Mock the view state.
+ * @param setViewState - Spy standing in for the state setter
+ * @param viewState - Fields to override: Settings closed on Connection by default
+ */
+function mockViewState(
+  setViewState = vi.fn(),
+  viewState: Partial<ReturnType<typeof useViewState>["viewState"]> = {},
+): void {
+  (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+    viewState: {
+      historyPanelOpen: false,
+      settingsOpen: false,
+      settingsTab: "connection",
+      ...viewState,
+    },
+    setViewState,
+  });
+}
+
+/**
+ * Mock the view state with Settings open.
+ * @param setViewState - Spy standing in for the state setter
+ */
+function mockSettingsOpen(setViewState = vi.fn()): void {
+  mockViewState(setViewState, { settingsOpen: true });
+}
+
 describe("App", () => {
   installAppTestSetup();
 
@@ -32,14 +60,7 @@ describe("App", () => {
     it("carries the tab a header indicator asks for", () => {
       const setViewState = vi.fn();
 
-      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
-        viewState: {
-          historyPanelOpen: false,
-          settingsOpen: false,
-          settingsTab: "connection",
-        },
-        setViewState,
-      });
+      mockViewState(setViewState);
 
       const { container } = render(<App />);
       const toolsButton = container.querySelector(
@@ -56,6 +77,70 @@ describe("App", () => {
     });
   });
 
+  describe("first visit before chat is set up", () => {
+    const notSetUp = () =>
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        chatSetUp: false,
+      });
+
+    afterEach(() => {
+      window.history.replaceState(null, "", "/");
+    });
+
+    it("opens Settings on the Connection tab", () => {
+      const setViewState = vi.fn();
+
+      notSetUp();
+      mockViewState(setViewState, { settingsTab: "preferences" });
+      render(<App />);
+
+      expect(setViewState).toHaveBeenCalledWith({
+        settingsOpen: true,
+        settingsTab: "connection",
+      });
+    });
+
+    it("lets a deep link pick the tab instead", () => {
+      const setViewState = vi.fn();
+
+      window.history.replaceState(null, "", "/chat?settings=installation");
+      notSetUp();
+      mockViewState(setViewState);
+      render(<App />);
+
+      expect(setViewState).toHaveBeenCalledExactlyOnceWith({
+        settingsOpen: true,
+        settingsTab: "installation",
+      });
+    });
+
+    it("does not open Settings once chat is set up", () => {
+      const setViewState = vi.fn();
+
+      mockViewState(setViewState);
+      render(<App />);
+
+      expect(setViewState).not.toHaveBeenCalled();
+    });
+
+    it("opens the Connection tab from the Set up chat button", () => {
+      const setViewState = vi.fn();
+
+      notSetUp();
+      mockViewState(setViewState, { settingsTab: "installation" });
+      render(<App />);
+      setViewState.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: "Set up chat" }));
+
+      expect(setViewState).toHaveBeenCalledWith({
+        settingsOpen: true,
+        settingsTab: "connection",
+      });
+    });
+  });
+
   describe("screen routing", () => {
     it("renders ChatScreen when settings are configured", () => {
       render(<App />);
@@ -65,11 +150,8 @@ describe("App", () => {
       expect(header).toBeDefined();
     });
 
-    it("renders SettingsScreen when settings are not configured", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        settingsConfigured: false,
-      });
+    it("renders SettingsScreen when settings are open", () => {
+      mockSettingsOpen();
       render(<App />);
       // SettingsScreen contains the settings form
       // Look for something unique to settings screen like the provider selector label
@@ -78,21 +160,29 @@ describe("App", () => {
       expect(settingsContent).toContain("Provider");
     });
 
-    it("initializes with SettingsScreen when settingsConfigured is false", () => {
+    it("shows the chat, not Settings, when chat isn't set up and Settings is closed", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: false,
+        chatSetUp: false,
       });
+      const { container } = render(<App />);
+
+      expect(container.textContent).not.toContain("Provider");
+      expect(screen.getByRole("button", { name: "Set up chat" })).toBeDefined();
+    });
+
+    it("initializes with SettingsScreen when settings are open", () => {
+      mockSettingsOpen();
       const { container } = render(<App />);
 
       // Settings screen should be visible
       expect(container.textContent).toContain("Provider");
     });
 
-    it("initializes with ChatScreen when settingsConfigured is true", () => {
+    it("initializes with ChatScreen when chatSetUp is true", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: true,
+        chatSetUp: true,
       });
       render(<App />);
       // Chat screen should be visible
@@ -270,9 +360,10 @@ describe("App", () => {
       vi.useFakeTimers();
       const mockSaveSettings = vi.fn().mockResolvedValue(true);
 
+      mockSettingsOpen();
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: false,
+        chatSetUp: false,
         saveSettings: mockSaveSettings,
       });
       const { container } = render(<App />);
@@ -306,7 +397,7 @@ describe("App", () => {
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: true, // Start with chat screen
+        chatSetUp: true, // Start with chat screen
         cancelSettings: mockCancelSettings,
       });
       (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -330,7 +421,7 @@ describe("App", () => {
       // Re-render to show settings screen (settingsOpen was set to true by click)
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: true,
+        chatSetUp: true,
         cancelSettings: mockCancelSettings,
       });
       (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -367,16 +458,17 @@ describe("App", () => {
       const mockSetTheme = vi.fn();
       const initialTheme = "light";
 
+      mockSettingsOpen();
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: false,
+        chatSetUp: false,
       });
       (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
         theme: initialTheme,
         setTheme: mockSetTheme,
       });
 
-      // Render with settings screen open (settingsConfigured: false)
+      // Render with settings screen open (chatSetUp: false)
       const { rerender } = render(<App />);
 
       // Verify settings screen is shown
@@ -402,7 +494,7 @@ describe("App", () => {
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: true, // Start with chat screen
+        chatSetUp: true, // Start with chat screen
       });
       (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
         theme: initialTheme,
@@ -457,11 +549,13 @@ describe("App", () => {
     });
 
     it("passes onTabChange to SettingsScreen", () => {
-      const mockSetViewState = mockViewStateWithSetter();
+      const mockSetViewState = vi.fn();
+
+      mockSettingsOpen(mockSetViewState);
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: false,
+        chatSetUp: false,
       });
       const { container } = render(<App />);
       const tab = Array.from(container.querySelectorAll("button")).find(

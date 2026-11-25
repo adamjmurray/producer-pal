@@ -7,18 +7,21 @@
 // Max message: that line is refused, and the others still go.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import {
   setupMidiClipMock,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** 900 points with long values, too many for one Max message. */
 const DENSE = Array.from(
@@ -31,7 +34,7 @@ describe("updateClip - an envelope line too large to send", () => {
     setupMidiClipMock(setupUpdateClipMocks().clip123);
     // Stands in for requestNode's own size check.
     vi.mocked(requestNode).mockImplementation(async (_route, args) =>
-      JSON.stringify(args).length > MAX_CHUNK_SIZE
+      JSON.stringify(args).length > MAX_SINGLE_MESSAGE_BYTES
         ? { success: false, error: "too large", tooLarge: true }
         : { success: true, result: { available: true, result: {} } },
     );
@@ -72,7 +75,7 @@ describe("updateClip - an envelope line too large to send", () => {
 
     expect(fit).toBeGreaterThan(0);
     expect(JSON.stringify({ route, args: fitting }).length).toBeLessThanOrEqual(
-      MAX_CHUNK_SIZE,
+      MAX_SINGLE_MESSAGE_BYTES,
     );
   });
 });

@@ -79,13 +79,13 @@ describe("buildProviderOptions for the Vercel gateway", () => {
       buildProviderOptions("vercel", "Default", "openai/gpt-6-luna"),
     ).toStrictEqual({
       ...caching,
-      openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
+      openai: { reasoningSummary: "auto" },
     });
     expect(
       buildProviderOptions("vercel", "Default", "google/gemini-3.8-flash"),
     ).toStrictEqual({
       ...caching,
-      google: { thinkingConfig: { thinkingBudget: -1, includeThoughts: true } },
+      google: { thinkingConfig: { includeThoughts: true } },
     });
   });
 
@@ -142,11 +142,25 @@ describe("buildProviderOptions for Ollama", () => {
     ).toBeUndefined();
   });
 
-  it("sends nothing at Max and none at Off", () => {
-    expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toBeUndefined();
-    expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
-      openai: { reasoningEffort: "none" },
+  it("sends high at Max and none at Off", () => {
+    expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toStrictEqual({
+      ollama: { reasoningEffort: "high" },
     });
+    expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
+      ollama: { reasoningEffort: "none" },
+    });
+  });
+});
+
+describe("buildProviderOptions for LM Studio", () => {
+  it("sends xhigh at Max, none at Off and nothing at Default", () => {
+    expect(buildProviderOptions("lmstudio", "Max", "m")).toStrictEqual({
+      lmstudio: { reasoningEffort: "xhigh" },
+    });
+    expect(buildProviderOptions("lmstudio", "Off", "m")).toStrictEqual({
+      lmstudio: { reasoningEffort: "none" },
+    });
+    expect(buildProviderOptions("lmstudio", "Default", "m")).toBeUndefined();
   });
 });
 

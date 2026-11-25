@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   remoteScriptChange,
   remoteScriptRoute,
@@ -12,10 +12,13 @@ import {
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const MISSING = "no remote script";
 
@@ -34,9 +37,43 @@ beforeEach(() => {
 
 describe("remoteScriptRoute", () => {
   it("sends a read no expiry", async () => {
-    await remoteScriptRoute("r", { a: 1 }, null, MISSING);
+    await remoteScriptRoute("r", { a: 1 }, null, MISSING, true);
 
     expect(vi.mocked(requestNode).mock.calls[0]?.[1]).toStrictEqual({ a: 1 });
+  });
+});
+
+describe("an out-of-date remote script", () => {
+  const OUTDATED = {
+    available: false,
+    outdated: "old; update it with ppal-manage",
+    outdatedWithoutManage: "old; have the user update it",
+  };
+
+  it("names ppal-manage to a caller that has it", async () => {
+    answers(OUTDATED);
+
+    expect(await remoteScriptRoute("r", {}, null, MISSING, true)).toStrictEqual(
+      {
+        ok: false,
+        reason: OUTDATED.outdated,
+        available: false,
+        outdated: true,
+      },
+    );
+  });
+
+  it("leaves it out for a caller that doesn't", async () => {
+    answers(OUTDATED);
+
+    expect(
+      await remoteScriptChange("w", {}, null, MISSING, false),
+    ).toStrictEqual({
+      ok: false,
+      reason: OUTDATED.outdatedWithoutManage,
+      available: false,
+      outdated: true,
+    });
   });
 });
 
@@ -44,7 +81,7 @@ describe("remoteScriptChange", () => {
   it("sends the expiry for the wait it gives the route", async () => {
     const deadline = Date.now() + 10_000;
 
-    await remoteScriptChange("w", { a: 1 }, deadline, MISSING);
+    await remoteScriptChange("w", { a: 1 }, deadline, MISSING, true);
 
     const [, args, waitMs] = vi.mocked(requestNode).mock.calls[0] ?? [];
 
@@ -57,7 +94,7 @@ describe("remoteScriptChange", () => {
 
   it("sends nothing once the request has no time left", async () => {
     expect(
-      await remoteScriptChange("w", {}, Date.now() - 1, MISSING),
+      await remoteScriptChange("w", {}, Date.now() - 1, MISSING, true),
     ).toStrictEqual({
       ok: false,
       reason: REQUEST_OUT_OF_TIME,
@@ -70,7 +107,9 @@ describe("remoteScriptChange", () => {
   it("calls a change that may have started unanswered, keeping the reason", async () => {
     answers({ available: true, error: "it broke", unfinished: true });
 
-    expect(await remoteScriptChange("w", {}, null, MISSING)).toStrictEqual({
+    expect(
+      await remoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({
       ok: false,
       reason: "it broke",
       available: true,
@@ -81,7 +120,9 @@ describe("remoteScriptChange", () => {
   it("calls a refusal a plain failure", async () => {
     answers({ available: true, error: "nothing changed" });
 
-    expect(await remoteScriptChange("w", {}, null, MISSING)).toStrictEqual({
+    expect(
+      await remoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({
       ok: false,
       reason: "nothing changed",
       available: true,
@@ -95,7 +136,9 @@ describe("remoteScriptChange", () => {
       tooLarge: true,
     });
 
-    expect(await remoteScriptChange("w", {}, null, MISSING)).toStrictEqual({
+    expect(
+      await remoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({
       ok: false,
       reason: "too large to send to the remote script, so nothing was sent",
       available: true,
@@ -106,7 +149,9 @@ describe("remoteScriptChange", () => {
   it("calls no answer at all unanswered", async () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
-    expect(await remoteScriptChange("w", {}, null, MISSING)).toStrictEqual({
+    expect(
+      await remoteScriptChange("w", {}, null, MISSING, true),
+    ).toStrictEqual({
       ok: false,
       reason: "the Producer Pal remote script did not answer in time",
       available: true,

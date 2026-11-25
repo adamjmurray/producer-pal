@@ -32,7 +32,7 @@ import {
 } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 /** One path entry's lookup, for the types that live in the Set itself. */
-type IdAtPath = (entry: string) => IdLookup;
+type IdAtPath = (entry: string, label?: string) => IdLookup;
 
 /** The types that live in the Set itself, rather than in a device chain. */
 const SET_LOOKUPS: Record<string, IdAtPath> = {
@@ -46,13 +46,15 @@ const SET_LOOKUPS: Record<string, IdAtPath> = {
  * warning: the resolution says what the entry named, or why it named nothing.
  * @param type - Object type ("track", "scene", "clip", "device", "drum-pad", or "chain")
  * @param entry - One path, as the caller wrote it
+ * @param label - Param name the path came from, for the reason
  * @returns What that entry named
  */
 export function resolvePathForType(
   type: string,
   entry: string,
+  label = "path",
 ): PathResolution {
-  return resolvePathEntry(entry, idAtPathForType(type));
+  return resolvePathEntry(entry, (path) => idAtPathForType(type)(path, label));
 }
 
 // --- Helpers below main exports ---
@@ -63,7 +65,9 @@ export function resolvePathForType(
  * @returns The lookup for one path entry of that type
  */
 function idAtPathForType(type: string): IdAtPath {
-  return SET_LOOKUPS[type] ?? ((entry) => chainIdAtPath(entry, type));
+  return (
+    SET_LOOKUPS[type] ?? ((entry, label) => chainIdAtPath(entry, type, label))
+  );
 }
 
 /**
@@ -71,42 +75,45 @@ function idAtPathForType(type: string): IdAtPath {
  * pad, or a chain.
  * @param entry - One path, as the caller wrote it
  * @param type - The target type ("device", "drum-pad", or "chain")
+ * @param label - Param name the path came from, for the reason
  * @returns The object's id, or why there isn't one
  */
-function chainIdAtPath(entry: string, type: string): IdLookup {
-  const resolved = resolvePathToLiveApi(entry);
+function chainIdAtPath(entry: string, type: string, label = "path"): IdLookup {
+  const resolved = resolvePathToLiveApi(entry, label);
 
   // A type segment that named no device leaves an index nothing occupies, so
   // the place stands empty exactly like an out-of-range `d<n>` — but say what
   // the container does hold, which the bare miss below can't.
   if (resolved.namesNothing != null) {
-    return nothingThere(nothingAtPath(entry, resolved.namesNothing));
+    return nothingThere(nothingAtPath(entry, resolved.namesNothing, label));
   }
 
-  return resolvePathToId(resolved, entry, type);
+  return resolvePathToId(resolved, entry, label, type);
 }
 
 /**
  * Resolves a single path resolution result to an ID
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path, for the reason
+ * @param label - Param name the path came from, for the reason
  * @param type - The target type ("device", "drum-pad", or "chain")
  * @returns The resolved id, or why there isn't one
  */
 function resolvePathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  label: string,
   type: string,
 ): IdLookup {
   if (type === "drum-pad") {
-    return resolveDrumPadPathToId(resolved, targetPath);
+    return resolveDrumPadPathToId(resolved, targetPath, label);
   }
 
   if (type === "chain") {
-    return resolveChainPathToId(resolved, targetPath);
+    return resolveChainPathToId(resolved, targetPath, label);
   }
 
-  return resolveDevicePathToId(resolved, targetPath);
+  return resolveDevicePathToId(resolved, targetPath, label);
 }
 
 /**
@@ -116,15 +123,17 @@ function resolvePathToId(
  * than the caller asked.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path, for the reason
+ * @param label - Param name the path came from, for the reason
  * @returns The pad's id, or why the path doesn't name one
  */
 function resolveDrumPadPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  label: string,
 ): IdLookup {
   if (resolved.targetType !== "drum-pad") {
     throw new Error(
-      `path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+      `${label} "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
     );
   }
 
@@ -134,8 +143,8 @@ function resolveDrumPadPathToId(
   if (resolved.remainingSegments.length > 0) {
     throw new Error(
       resolved.remainingSegments.some((segment) => segment.startsWith("p"))
-        ? `path "${targetPath}" names a pad of a nested Drum Rack, which has no pad objects — name a chain or a device inside it instead`
-        : `path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
+        ? `${label} "${targetPath}" names a pad of a nested Drum Rack, which has no pad objects — name a chain or a device inside it instead`
+        : `${label} "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
   }
 
@@ -145,7 +154,7 @@ function resolveDrumPadPathToId(
 
   if (!pad) {
     return nothingThere(
-      `drum-pad at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+      `drum-pad at ${label} "${targetPath}" does not exist${padMissHint(resolved)}`,
     );
   }
 
@@ -157,14 +166,16 @@ function resolveDrumPadPathToId(
  * ("t0/d0/pC1/c1"), a rack chain ("t0/d0/c1"), or a rack return chain.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path, for the reason
+ * @param label - Param name the path came from, for the reason
  * @returns The chain's id, or why the path doesn't name one
  */
 function resolveChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  label: string,
 ): IdLookup {
   if (resolved.targetType === "drum-pad") {
-    return resolveDrumChainPathToId(resolved, targetPath);
+    return resolveDrumChainPathToId(resolved, targetPath, label);
   }
 
   if (
@@ -172,14 +183,14 @@ function resolveChainPathToId(
     resolved.targetType !== "return-chain"
   ) {
     throw new Error(
-      `path "${targetPath}" resolves to ${resolved.targetType}, not chain`,
+      `${label} "${targetPath}" resolves to ${resolved.targetType}, not chain`,
     );
   }
 
   const chain = LiveAPI.from(resolved.liveApiPath);
 
   if (!chain.exists()) {
-    return nothingThere(`chain at path "${targetPath}" does not exist`);
+    return nothingThere(`chain at ${label} "${targetPath}" does not exist`);
   }
 
   return { id: chain.id };
@@ -190,15 +201,17 @@ function resolveChainPathToId(
  * the whole pad, so it takes the drum-pad type rather than this one.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path, for the reason
+ * @param label - Param name the path came from, for the reason
  * @returns The chain's id, or why the path doesn't name one
  */
 function resolveDrumChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  label: string,
 ): IdLookup {
   if (resolved.remainingSegments.length === 0) {
     throw new Error(
-      `path "${targetPath}" names a whole drum pad; use ` +
+      `${label} "${targetPath}" names a whole drum pad; use ` +
         `type="drum-pad", or name one layer like "${targetPath}/c0"`,
     );
   }
@@ -211,7 +224,7 @@ function resolveDrumChainPathToId(
 
   if (!result.target || result.targetType !== "chain") {
     return nothingThere(
-      `chain at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+      `chain at ${label} "${targetPath}" does not exist${padMissHint(resolved)}`,
     );
   }
 
@@ -222,18 +235,20 @@ function resolveDrumChainPathToId(
  * Resolves a path to the device it names, including a device inside a drum pad.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path, for the reason
+ * @param label - Param name the path came from, for the reason
  * @returns The device's id, or why the path doesn't name one
  */
 function resolveDevicePathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  label: string,
 ): IdLookup {
   // Direct device path (not through drum pad)
   if (resolved.targetType === "device") {
     const target = LiveAPI.from(resolved.liveApiPath);
 
     if (!target.exists()) {
-      return nothingThere(`device at path "${targetPath}" does not exist`);
+      return nothingThere(`device at ${label} "${targetPath}" does not exist`);
     }
 
     return { id: target.id };
@@ -258,7 +273,7 @@ function resolveDevicePathToId(
 
     if (!result.target || result.targetType !== "device") {
       return nothingThere(
-        `device at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+        `device at ${label} "${targetPath}" does not exist${padMissHint(resolved)}`,
       );
     }
 
@@ -266,7 +281,7 @@ function resolveDevicePathToId(
   }
 
   throw new Error(
-    `path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+    `${label} "${targetPath}" resolves to ${resolved.targetType}, not device`,
   );
 }
 

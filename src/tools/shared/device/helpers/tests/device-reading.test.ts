@@ -602,7 +602,7 @@ describe("device-reading", () => {
       // result must NOT carry value/min/max fields.
       const device = mockDeviceWithParams([mockParam("p1", "Cutoff")]);
 
-      expect(readDeviceParameters(device)).toStrictEqual([
+      expect(readDeviceParameters(device).parameters).toStrictEqual([
         { id: "p1", name: "Cutoff" },
       ]);
     });
@@ -615,7 +615,9 @@ describe("device-reading", () => {
         mockParam("p2", "Cutoff"),
       ]);
 
-      const result = readDeviceParameters(device, { search: "  rev  " });
+      const result = readDeviceParameters(device, {
+        search: "  rev  ",
+      }).parameters;
 
       expect(result).toStrictEqual([{ id: "p1", name: "Reverb" }]);
     });
@@ -624,7 +626,9 @@ describe("device-reading", () => {
       // `.toLowerCase()` on that used to throw while filtering by paramSearch.
       const device = mockDeviceWithParams([mockParam("p1", 5678)]);
 
-      const result = readDeviceParameters(device, { search: "567" });
+      const result = readDeviceParameters(device, {
+        search: "567",
+      }).parameters;
 
       expect(result).toStrictEqual([{ id: "p1", name: "5678" }]);
     });

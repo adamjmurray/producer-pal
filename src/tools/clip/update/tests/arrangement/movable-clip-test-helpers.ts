@@ -18,8 +18,12 @@ export const MOVABLE_CLIP_ID = "123";
  * track and a 4/4 song. Everything else is non-existent, so a destination has
  * to be registered by the test.
  * @param trackIndex - The track the clip sits on
+ * @param extra - Properties the clip reports beyond the defaults
  */
-export function registerMovableClip(trackIndex: number): void {
+export function registerMovableClip(
+  trackIndex: number,
+  extra: Record<string, unknown> = {},
+): void {
   const length = 8;
 
   mockNonExistentObjects();
@@ -44,6 +48,7 @@ export function registerMovableClip(trackIndex: number): void {
       looping: 1,
       signature_numerator: 4,
       signature_denominator: 4,
+      ...extra,
     },
     methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
   });

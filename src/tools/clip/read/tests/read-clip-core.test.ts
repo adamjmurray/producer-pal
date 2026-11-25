@@ -238,7 +238,7 @@ describe("readOneClip", () => {
   });
 
   it("returns null values when no clip exists at valid track/scene", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
+    const consoleSpy = vi.spyOn(consoleModule, "emitWarning");
 
     // Track and scene exist, but clip does not
     registerMockObject("track2", {

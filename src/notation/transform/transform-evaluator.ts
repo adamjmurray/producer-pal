@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast } from "#src/notation/helpers/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "./transform-warning-label.ts";
+import { clipDetail } from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import { formatTransformSyntaxError } from "./parser/transform-syntax-error.ts";
 import { applyTransformResult } from "./helpers/apply-transform-result.ts";
@@ -76,20 +76,12 @@ export function applyTransforms(
   );
 
   for (const reason of wrongClipTypeStatements(ast, false).reasons) {
-    console.clipDetail(reason);
+    clipDetail(reason);
   }
 
-  // Sort by start_time then pitch so note.index reflects musical order
-  // (Ableton's get_notes_extended returns notes sorted by pitch)
-  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
+  sortInMusicalOrder(notes);
 
-  // Calculate the overall clip timeRange in musical beats
-  const firstNote = notes[0] as NoteEvent;
-  const clipStartTime = firstNote.start_time * (timeSigDenominator / 4);
-  const lastNote = notes.at(-1) as NoteEvent;
-  const clipEndTime =
-    (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
-  const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
+  const clipTimeRange = clipSpan(notes, timeSigDenominator, clipContext);
 
   // Track which notes a MIDI transform selected, by object: note ops rebuild
   // the array, so indices don't survive them. What counts as changed or
@@ -97,6 +89,8 @@ export function applyTransforms(
   const touched = new Set<NoteEvent>();
   const original = new Map(notes.map((note) => [note, { ...note }]));
   const roots = new Map<NoteEvent, ReadonlySet<NoteEvent>>();
+  let anySelected = false;
+  let failed = false;
 
   // Process statements sequentially (statement-major order).
   // Each statement is fully applied before the next one runs.
@@ -107,15 +101,17 @@ export function applyTransforms(
 
     // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
-      applyTrackedNoteOp(
-        stmt,
-        notes,
-        timeSigNumerator,
-        timeSigDenominator,
-        arrangementOrigin(clipContext),
-        touched,
-        roots,
-      );
+      anySelected = true;
+      failed =
+        applyTrackedNoteOp(
+          stmt,
+          notes,
+          timeSigNumerator,
+          timeSigDenominator,
+          arrangementOrigin(clipContext),
+          touched,
+          roots,
+        ) || failed;
 
       continue;
     }
@@ -130,21 +126,38 @@ export function applyTransforms(
       continue;
     }
 
-    applyAssignmentToNotes(
-      stmt,
-      pitchRange,
-      notes,
-      timeSigNumerator,
-      timeSigDenominator,
-      clipTimeRange,
-      clipContext,
-      touched,
-    );
+    // An earlier line may have moved notes, so put them back in order.
+    sortInMusicalOrder(notes);
+
+    anySelected = true;
+    failed =
+      applyAssignmentToNotes(
+        stmt,
+        pitchRange,
+        notes,
+        timeSigNumerator,
+        timeSigDenominator,
+        clipTimeRange,
+        clipContext,
+        touched,
+      ) || failed;
   }
 
   deleteZeroedNotes(notes);
 
-  return buildOutcome(original, roots, touched, notes);
+  return buildOutcome(original, roots, touched, notes, {
+    selected: anySelected,
+    failed,
+  });
+}
+
+/**
+ * Sort by start time then pitch, so note.index, next.* and legato() follow
+ * musical order (Live returns notes sorted by pitch).
+ * @param notes - Notes to sort in place
+ */
+function sortInMusicalOrder(notes: NoteEvent[]): void {
+  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
 }
 
 /**
@@ -158,6 +171,7 @@ export function applyTransforms(
  * @param originBeats - Arrangement position of note time 0, or undefined
  * @param touched - Set to track which notes were transformed
  * @param roots - Records, for each note an op made, the starting notes it came from
+ * @returns True when the op was skipped
  */
 function applyTrackedNoteOp(
   op: NoteOp,
@@ -167,14 +181,12 @@ function applyTrackedNoteOp(
   originBeats: number | undefined,
   touched: Set<NoteEvent>,
   roots: Map<NoteEvent, ReadonlySet<NoteEvent>>,
-): void {
-  const { notes: produced, parents } = applyNoteOp(
-    op,
-    notes,
-    timeSigNumerator,
-    timeSigDenominator,
-    originBeats,
-  );
+): boolean {
+  const {
+    notes: produced,
+    parents,
+    skipped,
+  } = applyNoteOp(op, notes, timeSigNumerator, timeSigDenominator, originBeats);
 
   for (const note of produced) {
     touched.add(note);
@@ -190,6 +202,8 @@ function applyTrackedNoteOp(
       );
     }
   }
+
+  return skipped;
 }
 
 /**
@@ -223,7 +237,7 @@ function deleteZeroedNotes(notes: NoteEvent[]): void {
   ).length;
 
   if (droppedForDuration > 0) {
-    console.clipDetail(
+    clipDetail(
       `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
     );
   }
@@ -246,7 +260,8 @@ function deleteZeroedNotes(notes: NoteEvent[]): void {
  * @param timeSigDenominator - Time signature denominator
  * @param clipTimeRange - Clip time range for expression evaluation
  * @param clipContext - Optional clip-level context for clip variables
- * @param touched - Set to track which notes were transformed
+ * @param touched - Set to track the notes selected (changed or not)
+ * @returns True when the selector's where() or the expression failed on a note
  */
 function applyAssignmentToNotes(
   assignment: TransformAssignment,
@@ -257,23 +272,31 @@ function applyAssignmentToNotes(
   clipTimeRange: TimeRange,
   clipContext: ClipContext | undefined,
   touched: Set<NoteEvent>,
-): void {
+): boolean {
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,
   // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
   // 0-based, selection-local index instead of one offset by earlier same-pitch
   // notes outside the window.
-  const selectedIndices = selectAssignmentNotes(
-    assignment,
-    pitchRange,
-    notes,
-    timeSigNumerator,
-    timeSigDenominator,
-    clipTimeRange,
-    clipContext,
-  );
+  const { indices: selectedIndices, failed: selectionFailed } =
+    selectAssignmentNotes(
+      assignment,
+      pitchRange,
+      notes,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipTimeRange,
+      clipContext,
+    );
 
   const selectedCount = selectedIndices.length;
+
+  // Selected counts as matched even if the expression then fails or changes
+  // nothing, so a result can tell "matched none" from "matched, no change".
+  for (const idx of selectedIndices) {
+    touched.add(notes[idx] as NoteEvent);
+  }
+
   const beatScale = timeSigDenominator / 4;
 
   // Pre-compute selected start times in musical beats for legato() tolerance scan
@@ -303,6 +326,7 @@ function applyAssignmentToNotes(
   // touched is cumulative across the whole transform, so it can't
   // tell whether THIS assignment applied anything. Count what this one wrote.
   let appliedCount = 0;
+  let evaluationFailed = false;
 
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
@@ -358,11 +382,13 @@ function applyAssignmentToNotes(
       touched.add(note);
       appliedCount++;
     } catch (error) {
+      evaluationFailed = true;
+
       const message = `${assignment.parameter} transform failed: ${errorMessage(error)}`;
 
       if (!warnedFailures.has(message)) {
         warnedFailures.add(message);
-        console.clipDetail(message);
+        clipDetail(message);
       }
     }
   }
@@ -377,6 +403,8 @@ function applyAssignmentToNotes(
       timeSigDenominator,
     );
   }
+
+  return selectionFailed || evaluationFailed;
 }
 
 /**
@@ -444,4 +472,36 @@ export function tryParseTransform(
   checkTransformArgs(ast, timeSigNumerator ?? 4, timeSigDenominator, clipType);
 
   return ast;
+}
+
+/**
+ * The range an unscoped ramp()/curve() runs over: the clip's region, or the
+ * notes' own span when the caller gave no clip.
+ * @param notes - Notes in musical order, at least one
+ * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Optional clip-level context
+ * @returns The range in musical beats
+ */
+function clipSpan(
+  notes: NoteEvent[],
+  timeSigDenominator: number,
+  clipContext: ClipContext | undefined,
+): TimeRange {
+  if (clipContext) {
+    const start = clipContext.startMarker ?? 0;
+    const end = clipContext.clipEnd ?? clipContext.clipDuration;
+
+    if (end > start) {
+      return { start, end };
+    }
+  }
+
+  const beatScale = timeSigDenominator / 4;
+  const first = notes[0] as NoteEvent;
+  const last = notes.at(-1) as NoteEvent;
+
+  return {
+    start: first.start_time * beatScale,
+    end: (last.start_time + last.duration) * beatScale,
+  };
 }

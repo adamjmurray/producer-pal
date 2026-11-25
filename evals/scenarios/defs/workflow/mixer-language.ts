@@ -8,8 +8,9 @@
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_TRACK = "ppal-update-track";
+const TOOL_UPDATE_TRACK = TOOLS.updateTrack;
 
 /** Tracks of the basic-midi-4-track Live Set this scenario touches. */
 const DRUMS = 0;
@@ -36,7 +37,7 @@ function assertMixer(
 ): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex, include: ["mixer"] },
     expect: (result) => expect(result as MixerRead),
     explain: (result) => explain(result as MixerRead),
@@ -70,7 +71,7 @@ export const mixerLanguage: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 1 },
     assertMixer(

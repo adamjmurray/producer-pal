@@ -88,11 +88,9 @@ describe("duplicate over a long lane", () => {
       arrangementLength: "2bar",
     });
 
-    // Each copy is two clips (the copy and its tile) over the clip it landed on.
+    // Each copy grew over the clip it landed on, and its entry says so.
     expect(
-      (result as Array<{ clips: Array<{ detail?: string }> }>).map(
-        ({ clips }) => clips[0]?.detail,
-      ),
+      (result as Array<{ detail?: string }>).map(({ detail }) => detail),
     ).toStrictEqual(
       Array.from(
         { length: 6 },
@@ -109,8 +107,8 @@ describe("duplicate over a long lane", () => {
     it("leaves a shorter copy a longer one buries unwritten, and the longer one overwrote what was there", async () => {
       makeLooping(ids[0] as string);
 
-      // A one-bar copy at bar 21, then a four-bar copy at bar 19 whose tiles
-      // cover it, then a four-bar copy further on.
+      // A one-bar copy at bar 21, then a four-bar copy at bar 19 that grows
+      // over it, then a four-bar copy further on.
       const result = await duplicate({
         type: "clip",
         id: ids[0] as string,
@@ -124,43 +122,25 @@ describe("duplicate over a long lane", () => {
           detail: "overwritten later in this call by t0[19|1]",
         },
         {
-          path: "t0",
-          clips: [
-            {
-              id: expect.any(String),
-              path: "t0[19|1]",
-              detail:
-                "overwrote the clip at t0[19|1]; overwrote the clip at t0[21|1]",
-            },
-            { id: expect.any(String), path: "t0[20|1]" },
-            { id: expect.any(String), path: "t0[21|1]" },
-            { id: expect.any(String), path: "t0[22|1]" },
-          ],
+          id: expect.any(String),
+          path: "t0[19|1]",
+          detail:
+            "overwrote the clip at t0[19|1]; overwrote the clip at t0[21|1]",
         },
         {
-          path: "t0",
-          clips: [
-            {
-              id: expect.any(String),
-              path: "t0[41|1]",
-              detail:
-                "overwrote the clip at t0[41|1]; overwrote the clip at t0[43|1]",
-            },
-            { id: expect.any(String), path: "t0[42|1]" },
-            { id: expect.any(String), path: "t0[43|1]" },
-            { id: expect.any(String), path: "t0[44|1]" },
-          ],
+          id: expect.any(String),
+          path: "t0[41|1]",
+          detail:
+            "overwrote the clip at t0[41|1]; overwrote the clip at t0[43|1]",
         },
       ]);
 
-      // The lane as Live would leave it: the clip at bar 23 (beat 88) survives.
+      // The lane as Live would leave it: one four-bar clip from bar 19, and
+      // the clip at bar 23 (beat 88) survives.
       expect(
         stackedLaneSpans().filter(([start]) => start >= 72 && start < 96),
       ).toStrictEqual([
-        [72, 76],
-        [76, 80],
-        [80, 84],
-        [84, 88],
+        [72, 88],
         [88, 92],
       ]);
 

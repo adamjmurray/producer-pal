@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -15,7 +16,11 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { moveDeviceToPath } from "../../helpers/move-device.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
+import {
+  checkMoveDestination,
+  moveDeviceToPath,
+} from "../../helpers/move-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { mockWorkingDeviceMoves } from "../update-device-test-helpers.ts";
@@ -33,6 +38,45 @@ function registerDestination(trackIndex: number, ...deviceIds: string[]): void {
     type: "Track",
     properties: { devices: children(...deviceIds) },
   });
+}
+
+const ONE_INSTRUMENT = {
+  outcome: "refused",
+  reason: "the destination already has an instrument, and only one is allowed",
+};
+
+/**
+ * Move an instrument from t0/d0 to t1, which already holds an instrument.
+ * @param residentType - The mock type of the instrument already there
+ * @param residentProperties - More properties for it
+ * @returns The move's answer
+ */
+function moveInstrumentOnto(
+  residentType: LiveObjectType,
+  residentProperties: Record<string, unknown> = {},
+): ReturnType<typeof moveDeviceToPath> {
+  registerMockObject("live_set", { path: livePath.liveSet });
+  const device = registerMockObject("device-0", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+  });
+
+  registerMockObject("resident", {
+    path: livePath.track(1).device(0),
+    type: residentType,
+    properties: {
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      ...residentProperties,
+    },
+  });
+  registerMockObject("track-1", {
+    path: livePath.track(1),
+    type: "Track",
+    properties: { devices: children("resident") },
+  });
+
+  return moveDeviceToPath(LiveAPI.from(device.path), "t1/d0");
 }
 
 describe("moveDeviceToPath", () => {
@@ -143,58 +187,14 @@ describe("moveDeviceToPath", () => {
   });
 
   it("names the one refusal Live's own state explains", () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("device-0", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("resident", {
-      path: livePath.track(1).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident") },
-    });
-
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
-      outcome: "refused",
-      reason:
-        "the destination already has an instrument, and only one is allowed",
-    });
+    expect(moveInstrumentOnto("Device")).toStrictEqual(ONE_INSTRUMENT);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("counts an empty rack as the destination's instrument", () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("device-0", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("resident", {
-      path: livePath.track(1).device(0),
-      type: "RackDevice",
-      properties: {
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        can_have_chains: 1,
-        chains: [],
-      },
-    });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident") },
-    });
-
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
-      outcome: "refused",
-      reason:
-        "the destination already has an instrument, and only one is allowed",
-    });
+    expect(
+      moveInstrumentOnto("RackDevice", { can_have_chains: 1, chains: [] }),
+    ).toStrictEqual(ONE_INSTRUMENT);
   });
 
   // Live drops these with no reason, so the refusal names it.
@@ -441,7 +441,7 @@ describe("moveDeviceToPath - out of a trimmed chain", () => {
 
     expect(move.outcome).toBe("moved");
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 
@@ -452,5 +452,246 @@ describe("moveDeviceToPath - out of a trimmed chain", () => {
 
     expect(move.outcome).toBe("moved");
     expect(capturedWarnings()).toHaveLength(0);
+  });
+});
+
+/**
+ * Register a device on t0 of the given type.
+ * @param type - Its Live device type
+ * @returns The device
+ */
+function registerSource(type: number): LiveAPI {
+  const source = registerMockObject("source", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { type, class_display_name: "Thing" },
+  });
+
+  return LiveAPI.from(source.path);
+}
+
+describe("checkMoveDestination", () => {
+  let liveSet: ReturnType<typeof mockWorkingDeviceMoves>;
+
+  beforeEach(() => {
+    liveSet = mockWorkingDeviceMoves();
+  });
+
+  it("finds nothing against a track that takes the device", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("a"), has_midi_input: 1 },
+    });
+
+    expect(
+      checkMoveDestination(
+        registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+        "t1/d1",
+      ),
+    ).toBeNull();
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("answers a path naming no place as the move does", () => {
+    const source = registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT);
+
+    expect(checkMoveDestination(source, "x9/d0")).toStrictEqual(
+      moveDeviceToPath(source, "x9/d0"),
+    );
+  });
+
+  it("answers a track that isn't there", () => {
+    const source = registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT);
+
+    mockNonExistentObjects();
+
+    expect(checkMoveDestination(source, "t9/d0")).toStrictEqual({
+      outcome: "no-destination",
+    });
+  });
+
+  it("refuses an index past the end, in the move's words", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("a"), has_midi_input: 1 },
+    });
+    registerMockObject("a", { path: livePath.track(1).device(0) });
+
+    expect(
+      checkMoveDestination(
+        registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+        "t1/d5",
+      ),
+    ).toStrictEqual({
+      outcome: "refused",
+      reason: '"t1/d5" is past the end of a container holding 1 device',
+    });
+  });
+
+  it("refuses a kind of device the place takes none of, in the move's words", () => {
+    registerMockObject("return-0", {
+      path: livePath.returnTrack(0),
+      type: "Track",
+      properties: { devices: children() },
+    });
+    const source = registerSource(LIVE_API_DEVICE_TYPE_MIDI_EFFECT);
+    const refusal = checkMoveDestination(source, "rt0/d+");
+
+    expect(refusal).toStrictEqual({
+      outcome: "refused",
+      reason:
+        'return track rt0 (id return-0) takes only audio effects; "Thing" is a MIDI effect',
+    });
+  });
+
+  it("leaves a device Live gives no kind to the move", () => {
+    registerMockObject("return-0", {
+      path: livePath.returnTrack(0),
+      type: "Track",
+      properties: { devices: children() },
+    });
+    const source = registerMockObject("kindless", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+
+    expect(
+      checkMoveDestination(LiveAPI.from(source.path), "rt0/d+"),
+    ).toBeNull();
+  });
+
+  it("answers no destination for a pad path on a rack with no pads", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("rack") },
+    });
+    registerMockObject("rack", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: { chains: [], can_have_chains: 1, can_have_drum_pads: 0 },
+    });
+
+    expect(
+      checkMoveDestination(
+        registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+        "t1/d0/pC1/d+",
+      ),
+    ).toStrictEqual({ outcome: "no-destination" });
+  });
+
+  it("leaves a chain on a drum pad to the write", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("drum-rack") },
+    });
+    registerMockObject("drum-rack", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: { chains: [], can_have_chains: 1, can_have_drum_pads: 1 },
+    });
+
+    expect(
+      checkMoveDestination(
+        registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+        "t1/d0/pC1/d+",
+      ),
+    ).toBeNull();
+  });
+
+  it("leaves a second instrument to Live's refusal", () => {
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident"), has_midi_input: 1 },
+    });
+    registerMockObject("resident", {
+      path: livePath.track(1).device(0),
+      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+    });
+
+    expect(
+      checkMoveDestination(
+        registerSource(LIVE_API_DEVICE_TYPE_INSTRUMENT),
+        "t1/d+",
+      ),
+    ).toBeNull();
+  });
+
+  describe("a destination chain the path would make", () => {
+    beforeEach(() => {
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { devices: children("rack") },
+      });
+      registerMockObject("chain-0", {
+        path: `${livePath.track(1).device(0)} chains 0`,
+        type: "Chain",
+      });
+      registerMockObject("rack", {
+        path: livePath.track(1).device(0),
+        type: "RackDevice",
+        properties: {
+          chains: ["id", "chain-0"],
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+        },
+      });
+    });
+
+    it("takes the device at its start, and makes nothing", () => {
+      const rackCall = LiveAPI.from(livePath.track(1).device(0)).call;
+
+      expect(
+        checkMoveDestination(
+          registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+          "t1/d0/c3/d0",
+        ),
+      ).toBeNull();
+      expect(rackCall).not.toHaveBeenCalled();
+    });
+
+    it.each(["t1/d0/c+", "t1/d0/c3/d0"])(
+      "refuses an instrument for a chain %s of an audio effect rack would make",
+      (toPath) => {
+        registerMockObject("rack", {
+          path: livePath.track(1).device(0),
+          type: "RackDevice",
+          properties: {
+            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            chains: ["id", "chain-0"],
+            can_have_chains: 1,
+            can_have_drum_pads: 0,
+          },
+        });
+
+        const refusal = checkMoveDestination(
+          registerSource(LIVE_API_DEVICE_TYPE_INSTRUMENT),
+          toPath,
+        );
+
+        expect(refusal).toStrictEqual({
+          outcome: "refused",
+          reason: `chain t1/d0/c${toPath.endsWith("+") ? 1 : 3} takes only audio effects; "Thing" is an instrument`,
+        });
+      },
+    );
+
+    it("refuses an index past the end of what is empty", () => {
+      expect(
+        checkMoveDestination(
+          registerSource(LIVE_API_DEVICE_TYPE_AUDIO_EFFECT),
+          "t1/d0/c3/d2",
+        ),
+      ).toStrictEqual({
+        outcome: "refused",
+        reason:
+          '"t1/d0/c3/d2" is past the end of a container holding 0 devices',
+      });
+    });
   });
 });

@@ -6,7 +6,8 @@
 """Clip automation envelopes.
 
 Max for Live's LOM can't reach clip envelopes; Live's Python API can, for
-Session clips only. Arrangement clips raise on write and read as empty, so a
+Session clips only (a regular track's, or a Live 13 return track's envelope
+clip, addressed `rt0`). Arrangement clips raise on write and read as empty, so a
 Session clip is the only way in - duplicate it to the Arrangement afterwards.
 
 Only automation on track and device parameters is reachable: modulation,
@@ -26,8 +27,9 @@ seconds), not raw. Times are beats (quarter notes) from the clip start.
 import math
 import re
 
-from .clip_address import clip_in_track, regular_track, whole_number
+from .clip_address import clip_in_track, clip_track, whole_number
 from .errors import RouteError
+from .producer_pal_device import members
 
 MAX_EVENTS = 1000
 EPSILON = 1e-6
@@ -41,7 +43,7 @@ STRAIGHT = (0.5, 0.5, 0.5, 0.5)
 
 def list_envelopes(bridge, params):
     """Every parameter this clip automates, with its event count."""
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     clip = clip_in_track(track, params)
     out = [
         dict(
@@ -56,15 +58,15 @@ def list_envelopes(bridge, params):
 
 def read(bridge, params):
     """One envelope's events between `from` and `to` (beats), up to `limit`."""
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     param = _parameter(track, params)
     clip = clip_in_track(track, params)
     env = clip.automation_envelope(param)
     if env is None:
         return {"exists": False, "parameter": _describe(param)}
 
-    start = _num(params.get("from", 0))
-    end = _num(params.get("to", MAX_TIME))
+    start = _query_num(params.get("from", 0))
+    end = _query_num(params.get("to", MAX_TIME))
     limit = MAX_EVENTS
     if params.get("limit") is not None:
         limit = min(whole_number(params["limit"], "limit", 1), MAX_EVENTS)
@@ -98,7 +100,7 @@ def write(bridge, params):
     unless the next has `jump`, which holds until its time and then jumps. A
     point may carry `coefficients`: the curve of the segment it starts."""
     song = bridge.song
-    track = regular_track(song, params.get("track"))
+    track = clip_track(song, params.get("track"))
     param = _parameter(track, params)
     clip = clip_in_track(track, params)
     if not param.is_enabled:
@@ -252,7 +254,7 @@ def clear(bridge, params):
     (`cleared`) and whether envelopes are still on the clip (`remaining`):
     modulation, clip-level and MIDI CC envelopes survive it.
     """
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     clip = clip_in_track(track, params)
     if "parameter" not in params and "device" not in params:
         removed = any(True for _ in _automated(track, clip))
@@ -268,14 +270,18 @@ def clear(bridge, params):
 # --- resolving ---------------------------------------------------------
 
 
+# A path's word for a rack's chains -> where the rack keeps them.
+_CHAIN_LISTS = {"c": "chains", "rc": "return_chains"}
+
+
 def _device(track, path):
-    """Walk d0, d0/c1/d0... to a device or chain."""
+    """Walk d0, d0/c1/d0, d0/rc0/d0... to a device or chain."""
     obj = track
     for part in str(path).split("/"):
-        m = re.fullmatch(r"([dc])(\d+)", part)
+        m = re.fullmatch(r"(d|c|rc)(\d+)", part)
         if not m:
             raise RouteError(400, "device must be d0, or d0/c0/d1 for rack chains")
-        children = obj.devices if m[1] == "d" else obj.chains
+        children = members(obj, "devices" if m[1] == "d" else _CHAIN_LISTS[m[1]])
         i = int(m[2])
         if i >= len(children):
             raise RouteError(404, "no %s in %s" % (part, path))
@@ -284,33 +290,49 @@ def _device(track, path):
 
 
 def _parameter(track, params):
-    """A device parameter by name or index, or a mixer parameter by name."""
+    """A device parameter by name or index, or a mixer parameter by name: the
+    track's own, or a rack chain's when `device` ends on the chain."""
     name = params.get("parameter", "volume")
-    if params.get("device"):
-        device = _device(track, params["device"])
-        parameters = list(device.parameters)
-        if isinstance(name, int) or str(name).isdigit():
-            i = whole_number(name, "parameter")
-            if i >= len(parameters):
-                raise RouteError(404, "no parameter %s" % i)
-            return parameters[i]
-        hits = [p for p in parameters if p.name.casefold() == str(name).casefold()]
-        if len(hits) != 1:
-            raise RouteError(
-                400,
-                "parameter must match exactly one name",
-                available=[p.name for p in parameters],
-            )
-        return hits[0]
-    mixer = track.mixer_device
+    if not params.get("device"):
+        return _mixer_parameter(track.mixer_device, name)
+    device = _device(track, params["device"])
+    if re.search(r"c\d+$", str(params["device"])):
+        return _mixer_parameter(device.mixer_device, name)
+    parameters = list(device.parameters)
+    if isinstance(name, int) or str(name).isdigit():
+        i = whole_number(name, "parameter")
+        if i >= len(parameters):
+            raise RouteError(404, "no parameter %s" % i)
+        return parameters[i]
+    hits = [p for p in parameters if p.name.casefold() == str(name).casefold()]
+    if len(hits) != 1:
+        raise RouteError(
+            400,
+            "parameter must match exactly one name",
+            available=[p.name for p in parameters],
+        )
+    return hits[0]
+
+
+def _mixer_parameter(mixer, name):
+    """volume, pan or send0.. on a track's or a chain's mixer."""
     if name == "volume":
         return mixer.volume
     if name == "pan":
         return mixer.panning
+    sends = members(mixer, "sends")
     m = re.fullmatch(r"send(\d+)", str(name))
-    if m and int(m[1]) < len(mixer.sends):
-        return mixer.sends[int(m[1])]
+    if m and int(m[1]) < len(sends):
+        return sends[int(m[1])]
     raise RouteError(400, "mixer parameter must be volume, pan or send0..")
+
+
+def _mixer_parameters(mixer):
+    """(name, parameter) for a mixer's volume, pan and sends."""
+    yield "volume", mixer.volume
+    yield "pan", mixer.panning
+    for i, send in enumerate(members(mixer, "sends")):
+        yield "send%d" % i, send
 
 
 def _automated(track, clip):
@@ -324,24 +346,33 @@ def _automated(track, clip):
 
 
 def _automatable(track):
-    """(target, parameter) for every mixer and device parameter on the track."""
-    mixer = track.mixer_device
-    yield {"parameter_name": "volume"}, mixer.volume
-    yield {"parameter_name": "pan"}, mixer.panning
-    for i, send in enumerate(mixer.sends):
-        yield {"parameter_name": "send%d" % i}, send
-    for path, device in _devices(track, ""):
-        for i, param in enumerate(device.parameters):
-            yield {"device": path, "parameter_index": i}, param
+    """(target, parameter) for every mixer and device parameter on the track,
+    a rack chain's own mixer included."""
+    for name, param in _mixer_parameters(track.mixer_device):
+        yield {"parameter_name": name}, param
+    for path, found in _devices(track, ""):
+        if hasattr(found, "parameters"):
+            for i, param in enumerate(found.parameters):
+                yield {"device": path, "parameter_index": i}, param
+        else:
+            for name, param in _mixer_parameters(found.mixer_device):
+                yield {"device": path, "parameter_name": name}, param
 
 
 def _devices(holder, prefix):
+    """(path, object) for every device under `holder`, and every rack chain
+    just ahead of the devices in it."""
     for i, device in enumerate(holder.devices):
         path = "%sd%d" % (prefix, i)
         yield path, device
-        if getattr(device, "can_have_chains", False):
-            for j, chain in enumerate(device.chains):
-                for found in _devices(chain, "%s/c%d/" % (path, j)):
+        if not getattr(device, "can_have_chains", False):
+            continue
+        # Only a Drum Rack has return chains.
+        for word, chains in _CHAIN_LISTS.items():
+            for j, chain in enumerate(members(device, chains)):
+                chain_path = "%s/%s%d" % (path, word, j)
+                yield chain_path, chain
+                for found in _devices(chain, chain_path + "/"):
                     yield found
 
 
@@ -380,6 +411,16 @@ def _num(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
         raise RouteError(400, "expected a finite number, got %r" % (v,))
     return float(v)
+
+
+def _query_num(v):
+    """A number that may have come as a query-string value, so as text."""
+    if isinstance(v, str):
+        try:
+            v = float(v)
+        except ValueError:
+            pass
+    return _num(v)
 
 
 def _curve(raw):

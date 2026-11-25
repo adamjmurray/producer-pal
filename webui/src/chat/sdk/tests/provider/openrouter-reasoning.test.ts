@@ -102,7 +102,18 @@ describe("settleOpenRouterReasoningOff", () => {
     );
   });
 
-  it("drops reasoning when the fetch fails, and retries on a later call", async () => {
+  it.each([
+    "anthropic/claude-sonnet-5.5:nitro",
+    "anthropic/claude-sonnet-5.5:floor",
+  ])("reads a routing variant (%s) as its base model", async (model) => {
+    const body = offBody(model);
+
+    expect(await settleOpenRouterReasoningOff(body)).toBe(true);
+    expect(body.reasoning).toStrictEqual({ effort: "low" });
+  });
+
+  it("drops reasoning when the fetch fails, and retries a minute later", async () => {
+    vi.useFakeTimers();
     fetchMock.mockRejectedValueOnce(new Error("offline"));
 
     const first = offBody("anthropic/claude-sonnet-5.5");
@@ -110,14 +121,24 @@ describe("settleOpenRouterReasoningOff", () => {
     await settleOpenRouterReasoningOff(first);
     expect(first.reasoning).toBeUndefined();
 
-    const second = offBody("anthropic/claude-sonnet-5.5");
+    // Not on every step of a send: each could wait out the timeout.
+    const soon = offBody("anthropic/claude-sonnet-5.5");
 
-    await settleOpenRouterReasoningOff(second);
-    expect(second.reasoning).toStrictEqual({ effort: "low" });
+    vi.advanceTimersByTime(59_000);
+    await settleOpenRouterReasoningOff(soon);
+    expect(soon.reasoning).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const later = offBody("anthropic/claude-sonnet-5.5");
+
+    vi.advanceTimersByTime(1000);
+    await settleOpenRouterReasoningOff(later);
+    expect(later.reasoning).toStrictEqual({ effort: "low" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("drops reasoning on an HTTP error and retries later", async () => {
+    vi.useFakeTimers();
     fetchMock.mockResolvedValueOnce(new Response("nope", { status: 503 }));
 
     const body = offBody("deepseek/deepseek-v4.1-flash");
@@ -125,6 +146,7 @@ describe("settleOpenRouterReasoningOff", () => {
     await settleOpenRouterReasoningOff(body);
     expect(body.reasoning).toBeUndefined();
 
+    vi.advanceTimersByTime(60_000);
     await settleOpenRouterReasoningOff(offBody("deepseek/deepseek-v4.1-flash"));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -164,6 +186,7 @@ describe("settleOpenRouterReasoningOff", () => {
 
     const next = offBody("anthropic/claude-sonnet-5.5");
 
+    vi.advanceTimersByTime(60_000);
     await settleOpenRouterReasoningOff(next);
     expect(next.reasoning).toStrictEqual({ effort: "low" });
     expect(fetchMock).toHaveBeenCalledTimes(2);

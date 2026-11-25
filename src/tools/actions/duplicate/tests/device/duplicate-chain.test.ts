@@ -17,9 +17,9 @@ vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
 }));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import {
@@ -227,7 +227,7 @@ describe("duplicate - chain", () => {
         ),
       },
     ]);
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
+    expect(vi.mocked(consoleMock.emitWarning).mock.calls.join()).not.toContain(
       "own kind",
     );
   });
@@ -422,7 +422,7 @@ describe("duplicate - chain", () => {
 
     expect(result.detail).toContain("macro mappings");
     // The entry carries it, so nothing warns about it.
-    expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
+    expect(vi.mocked(consoleMock.emitWarning)).not.toHaveBeenCalled();
   });
 
   it("stays quiet about macros on a rack that has none", async () => {
@@ -453,14 +453,14 @@ describe("duplicate - chain", () => {
         name: "Source",
         mute: 0,
         solo: 0,
-        color: 0xff0000,
+        color: 0xff3636,
         devices: [],
       },
     });
 
     await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(created.set).toHaveBeenCalledWith("color", 0xff0000);
+    expect(created.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("copies into a rack nested under a drum pad", async () => {
@@ -558,7 +558,7 @@ describe("duplicate - chain", () => {
       id: "chain-new",
       detail: expect.stringContaining("no addressable path"),
     });
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
+    expect(vi.mocked(consoleMock.emitWarning).mock.calls.join()).not.toContain(
       "no addressable path",
     );
   });
@@ -626,5 +626,74 @@ describe("duplicate - chain", () => {
         "t0/d0/c0/d0 could not be copied into the new chain: it is not on the temp track",
     });
     expect(moveDeviceToPathMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Register a rack off the regular tracks, holding one chain.
+ * @param rackPath - The rack's Live path
+ * @param deviceIds - The devices on its chain
+ * @returns The rack mock
+ */
+function setupOffTrackRack(rackPath: string, deviceIds: string[] = []) {
+  registerMockObject("live_set", { path: livePath.liveSet });
+
+  const rack = registerMockObject("rack-0", {
+    path: rackPath,
+    type: "RackDevice",
+    properties: {
+      class_name: "AudioEffectGroupDevice",
+      has_macro_mappings: 0,
+      return_chains: [],
+    },
+    methods: { insert_chain: () => ["id", "chain-new"] },
+  });
+
+  registerMockObject("chain-0", {
+    path: `${rackPath} chains 0`,
+    type: "Chain",
+    properties: {
+      name: "Source",
+      mute: 0,
+      solo: 0,
+      devices: children(...deviceIds),
+    },
+  });
+  registerMockObject("chain-new", {
+    path: `${rackPath} chains 1`,
+    type: "Chain",
+    properties: { name: "", mute: 0, solo: 0, devices: [] },
+  });
+
+  return rack;
+}
+
+describe("duplicate - chain on a return or main track", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ["a return track", String(livePath.returnTrack(0).device(0))],
+    ["the main track", String(livePath.masterTrack().device(0))],
+  ])(
+    "refuses a chain with devices on %s, creating nothing",
+    async (_, rackPath) => {
+      const rack = setupOffTrackRack(rackPath, ["d-0"]);
+
+      await expect(duplicate({ type: "chain", id: "chain-0" })).rejects.toThrow(
+        "its devices cannot be copied off a return or main track",
+      );
+      expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+    },
+  );
+
+  it("still copies an empty chain there, which has no devices to carry", async () => {
+    const rack = setupOffTrackRack(String(livePath.returnTrack(0).device(0)));
+
+    const result = await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(rack.call).toHaveBeenCalledWith("insert_chain");
+    expect(result).toStrictEqual({ id: "chain-new", path: "rt0/d0/c1" });
   });
 });

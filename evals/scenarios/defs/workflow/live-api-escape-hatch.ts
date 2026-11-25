@@ -19,6 +19,7 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const TOOL_LIVE_API = "ppal-live-api";
 
@@ -100,7 +101,7 @@ export const liveApiEscapeHatch: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: answered without the escape hatch. Deliberately NOT "called
     // ppal-read-live-set" — ppal-connect already reported the tempo this

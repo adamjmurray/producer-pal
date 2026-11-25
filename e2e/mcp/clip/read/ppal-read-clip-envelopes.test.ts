@@ -5,8 +5,7 @@
 
 /**
  * E2E tests for ppal-read-clip's `envelopes` include, which only the Producer
- * Pal remote script can answer. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
- * and failed, not skipped, when that's set but the script isn't answering.
+ * Pal remote script can answer.
  *
  * The envelope under test is written over the remote script's own HTTP route,
  * so the read is checked against automation Producer Pal didn't produce.
@@ -14,7 +13,7 @@
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/read/ppal-read-clip-envelopes
+ * Run with: npm run e2e:mcp -- clip/read/ppal-read-clip-envelopes
  */
 import { describe, expect, it } from "vitest";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";

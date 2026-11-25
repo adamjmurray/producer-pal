@@ -38,6 +38,9 @@ export interface CreateClipArgs {
   /** Time signature in format "4/4" */
   timeSignature?: string | null;
 
+  /** The clip's own scale like "C Major", or "" for none; MIDI clips only */
+  scale?: string | null;
+
   /** Bar|beat position where loop/clip region begins */
   start?: string | null;
 

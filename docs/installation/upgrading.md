@@ -30,14 +30,14 @@ update a 2.4 device, so do this by hand. It takes a few minutes.
 6. <!--@include: ../_partials/control-surface.md-->
    If you'd already set up the remote script, Live remembers your Control
    Surface choice, so only the restart is needed.
-7. **Claude Desktop only:** go to Settings → Extensions, click the `...` menu on
-   Producer Pal and choose **Uninstall**. Then open the new
+7. **Claude Desktop only:** go to Settings → Desktop app → Extensions, click the
+   `...` menu on Producer Pal and choose **Uninstall**. Then open the new
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    (see [Claude Desktop installation](./claude-desktop)).
 8. Restart your AI app and start a fresh conversation.
 
-Apps set up with `npx -y producer-pal@latest` (Claude Code, Codex, Gemini CLI
-and others) update themselves, and so does the built-in chat.
+Apps set up with `npx -y producer-pal@latest` (Claude Code, Codex, Antigravity
+CLI and others) update themselves, and so does the built-in chat.
 
 ## Let your AI update it
 
@@ -90,8 +90,9 @@ version. See
 ### Calling Producer Pal from your own scripts
 
 Over [MCP](/guide/npx-cli), the [REST API](/guide/rest-api), or an
-[agent skill](/guide/skills), some input and output formats changed in 2.3.0.
-See the [Migration Guide](/guide/migration).
+[agent skill](/guide/skills), input and output formats can change a little in
+each release. See the [Migration Guide](/guide/migration) for what changed since
+your version.
 
 ## If something's not working
 

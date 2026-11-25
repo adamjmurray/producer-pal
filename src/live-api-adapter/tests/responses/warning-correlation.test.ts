@@ -10,9 +10,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { END_OF_CHUNKS, reassembleChunks } from "#src/shared/mcp-responses.ts";
-import { warn } from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
-import { installCapturingTask } from "../v8-protocol-test-helpers.ts";
+import { installCapturingTask } from "../../protocols/tests/v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -42,7 +42,7 @@ const { readTrack } = await import("#src/tools/track/read/read-track.ts");
 const { reportLiveApiBuildStats } =
   await import("#src/live-api-adapter/live-api-build-stats.ts");
 const { requestNode } =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 const { mcp_request, node_response } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
@@ -123,14 +123,14 @@ describe("warning correlation", () => {
     // The only way V8 suspends mid-request is a round trip to Node, so that is
     // where the other request gets to run.
     vi.mocked(createClip).mockImplementation(async () => {
-      warn("slow tool, before the round trip");
+      emitWarning("slow tool, before the round trip");
       await requestNode("any-route");
-      warn("slow tool, after the round trip");
+      emitWarning("slow tool, after the round trip");
 
       return {};
     });
     vi.mocked(readTrack).mockImplementation(() => {
-      warn("fast tool");
+      emitWarning("fast tool");
 
       return {};
     });
@@ -160,14 +160,14 @@ describe("warning correlation", () => {
 
     try {
       vi.mocked(createClip).mockImplementation(async () => {
-        warn("slow tool, before the sleep");
+        emitWarning("slow tool, before the sleep");
         await waitUntil(() => false, { maxRetries: 1 });
-        warn("slow tool, after the sleep");
+        emitWarning("slow tool, after the sleep");
 
         return {};
       });
       vi.mocked(readTrack).mockImplementation(() => {
-        warn("fast tool");
+        emitWarning("fast tool");
 
         return {};
       });
@@ -205,7 +205,7 @@ describe("warning correlation", () => {
 
     vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {
       unwind++;
-      warn(`unwinding ${unwind}`);
+      emitWarning(`unwinding ${unwind}`);
     });
     vi.mocked(createClip).mockImplementation(async () => {
       await requestNode("any-route");
@@ -250,7 +250,7 @@ describe("warning correlation", () => {
 
   it("sends a warning on the response and nowhere else", async () => {
     vi.mocked(readTrack).mockImplementation(() => {
-      warn("mine");
+      emitWarning("mine");
 
       return {};
     });
@@ -270,10 +270,10 @@ describe("warning correlation", () => {
   it("does not attach a warning raised with no request in flight", async () => {
     // What editing the Project Context box on a read-only folder does: the backup
     // is fired and forgotten, so it warns long after its own response went out.
-    warn("stray, from no request at all");
+    emitWarning("stray, from no request at all");
 
     vi.mocked(readTrack).mockImplementation(() => {
-      warn("mine");
+      emitWarning("mine");
 
       return {};
     });
@@ -331,7 +331,7 @@ describe("tool error response shape", () => {
 describe("oversized response fallback", () => {
   it("chunks the fallback so an oversized response still carries its warnings", async () => {
     vi.mocked(readTrack).mockImplementation(() => {
-      warn("warning from an oversized response");
+      emitWarning("warning from an oversized response");
 
       return { text: "x".repeat(3_500_000) };
     });

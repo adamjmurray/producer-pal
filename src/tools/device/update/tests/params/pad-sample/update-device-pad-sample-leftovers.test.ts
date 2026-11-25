@@ -20,6 +20,7 @@ import {
   registerDrumSamplerOn,
   registerPadRack,
   registerUnbuiltPadChain,
+  skipSampleWrite,
 } from "./pad-sample-fixtures.ts";
 
 // A sample write that fails doesn't undo what the call made for it: that stays,
@@ -94,6 +95,7 @@ describe("updateDevice - what a failed pad sample write left, by the rack", () =
   it("says the same after a forced swap", () => {
     registerDrumRackWithDrumSamplerOnC1();
     registerSimplerThatLoadsNothing();
+    skipSampleWrite("t0/d0", "pC1/sample");
 
     expect(writeSample("t0/d0", "pC1/sample", MISSING, true)).toStrictEqual(
       failed("pC1/sample", `${NOTHING_READ}; ${LEFT_SIMPLER}`),
@@ -172,6 +174,7 @@ describe("updateDevice - what a failed pad sample write left, by the pad", () =>
 
     registerDrumSamplerOn(chain as RegisteredMockObject);
     registerSimplerThatLoadsNothing();
+    skipSampleWrite("t0/d0/pC1", "sample");
 
     expect(writeSample("t0/d0/pC1", "sample", MISSING, true)).toStrictEqual(
       failed("sample", `${NOTHING_READ}; ${LEFT_SIMPLER}`),

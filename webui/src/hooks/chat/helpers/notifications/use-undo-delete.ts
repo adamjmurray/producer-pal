@@ -12,6 +12,7 @@ import {
   loadConversation,
   saveConversation,
 } from "#webui/lib/conversation-db";
+import { pinConversationImages } from "#webui/lib/conversations/conversation-images";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -72,7 +73,18 @@ export function useUndoDelete(): UndoDeleteReturn {
   // record (redundant saves + refreshes); released once the restore settles.
   const undoInFlightRef = useRef(false);
 
+  // Snapshots taken without their image bytes keep their stored images from
+  // sweeps for as long as they sit on the stack.
+  const pinsRef = useRef(new Map<ConversationRecord, () => void>());
+
   const sync = useCallback((next: ConversationRecord[]) => {
+    for (const [record, release] of pinsRef.current) {
+      if (!next.includes(record)) {
+        release();
+        pinsRef.current.delete(record);
+      }
+    }
+
     stackRef.current = next;
     setStack(next);
   }, []);
@@ -126,13 +138,25 @@ export function useUndoDelete(): UndoDeleteReturn {
   // Load before deleting: the row is the only copy of the transcript, so the
   // snapshot has to be taken while it still exists. Pushed only once the delete
   // resolves, so a failed delete doesn't offer to restore a record still there.
+  // If the image bytes can't be read, snapshot the stored refs instead and pin
+  // them so a sweep can't delete the bytes while the undo is on offer.
   const deleteWithUndo = useCallback(
     async (id: string) => {
-      const record = await loadConversation(id);
+      const { record, release } = await snapshotForUndo(id);
 
-      await deleteConversation(id);
+      try {
+        await deleteConversation(id);
+      } catch (error) {
+        release?.();
+
+        throw error;
+      }
 
       if (record) {
+        if (release) {
+          pinsRef.current.set(record, release);
+        }
+
         pushDeleted(record);
       }
     },
@@ -179,6 +203,27 @@ export function useUndoDelete(): UndoDeleteReturn {
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Read a conversation to restore after it's deleted. When its image bytes
+ * can't be read, take it with its image refs and pin them (see
+ * {@link pinConversationImages}) rather than refuse the delete.
+ * @param id - Conversation ID
+ * @returns The record, and a function that unpins its images if they were pinned
+ */
+async function snapshotForUndo(
+  id: string,
+): Promise<{ record?: ConversationRecord; release?: () => void }> {
+  try {
+    return { record: await loadConversation(id) };
+  } catch (error) {
+    console.error("Failed to read conversation images for undo", error);
+  }
+
+  const record = await loadConversation(id, { images: false });
+
+  return record ? { record, release: pinConversationImages(record) } : {};
+}
 
 /**
  * Build a short, truncated label for a deleted conversation. Falls back to a

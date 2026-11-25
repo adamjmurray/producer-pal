@@ -7,10 +7,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 import { LIVE_API_OPERATION_ALIASES } from "#src/tools/advanced/live-api-operations.ts";
-import {
-  LIBRARY_SORT_ALIASES,
-  LIBRARY_SOURCE_ALIASES,
-} from "#src/tools/session/library-query-schema.ts";
+import { LIBRARY_SORT_ALIASES } from "#src/tools/session/library-query-schema.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { TOOL_DEF_CASES, TOOL_DEFS } from "./tool-defs-test-helpers.ts";
 
@@ -19,7 +16,7 @@ import { TOOL_DEF_CASES, TOOL_DEFS } from "./tool-defs-test-helpers.ts";
 // spelling, and are listed here by param name.
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const OLD_SPELLINGS =
-  /listTags|listCategories|listPlugins|findSimilar|findDuplicates|searchBatch|use_count|mod_date|sampleFolder|set_property|get_property|set_path|set_mode|set_id|call_method|getProperty|getChildIds|getColor|setColor/;
+  /listTags|listCategories|listPlugins|findSimilar|findDuplicates|searchBatch|use_count|mod_date|set_property|get_property|set_path|set_mode|set_id|call_method|getProperty|getChildIds|getColor|setColor/;
 const LIVES_OWN_SPELLING = ["quantizeGrid", "format"];
 
 /**
@@ -97,12 +94,8 @@ describe("tool enum values", () => {
       }
     });
 
-    it("ppal-library source and sort map to their kebab value", () => {
+    it("ppal-library sort maps to its kebab value", () => {
       const schema = z.object(validating("ppal-library"));
-
-      for (const [old, kebab] of Object.entries(LIBRARY_SOURCE_ALIASES)) {
-        expect(schema.parse({ source: old }).source).toBe(kebab);
-      }
 
       for (const [old, kebab] of Object.entries(LIBRARY_SORT_ALIASES)) {
         expect(schema.parse({ sort: old }).sort).toBe(kebab);
@@ -110,11 +103,11 @@ describe("tool enum values", () => {
 
       // Inside a `searches` entry too.
       const parsed = schema.parse({
-        searches: [{ source: "sampleFolder", sort: "use_count" }],
+        searches: [{ sort: "use_count" }],
       });
 
       expect(parsed.searches).toStrictEqual([
-        expect.objectContaining({ source: "sample-folder", sort: "use-count" }),
+        expect.objectContaining({ sort: "use-count" }),
       ]);
     });
 
@@ -165,7 +158,7 @@ describe("tool enum values", () => {
       });
 
       expect(source).toContain(
-        'Invalid option: expected one of "sample-folder"|"user"|"pack"|"builtin"|"cloud"|"plugin"',
+        'Invalid option: expected one of "user"|"pack"|"builtin"|"cloud"|"plugin"',
       );
       expect(action).toContain(
         'Invalid option: expected one of "search"|"list-tags"|"list-categories"|"list-plugins"|"find-similar"|"find-duplicates"',

@@ -5,9 +5,9 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { sceneClips } from "#src/tools/shared/clip/slot-contents/scene-slot-clips.ts";
 import { withCreatedScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   ensureSceneCountForIndex,
@@ -98,22 +98,10 @@ export function captureScene(
     newScene.set("name", name);
   }
 
-  // Collect captured clips
-  const clips: CapturedClip[] = [];
-  const trackIds = liveSet.getChildIds("tracks");
-
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clip = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(newSceneIndex).clip(),
-    );
-
-    if (clip.exists()) {
-      clips.push({
-        id: clip.id,
-        path: slotPath(trackIndex, newSceneIndex),
-      });
-    }
-  }
+  // Whatever the new scene holds, read rather than assumed: return tracks too.
+  const clips: CapturedClip[] = sceneClips(newSceneIndex).map(
+    ({ clip, path: clipPath }) => ({ id: clip.id, path: clipPath }),
+  );
 
   // Build optimistic result object
   return {

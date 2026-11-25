@@ -17,12 +17,13 @@ import { syncDeviceInstallNotice } from "./device-install-notice.ts";
 
 /**
  * - `done`: it's in the User Library now (`installed`, `updated` or `current`).
+ *   `library` is the User Library folder it went into, resolved.
  * - `refused`: nothing was tried. The running device can't be copied, or the
  *   copy there is newer or can't be told apart and `force` wasn't set.
  * - `failed`: tried and couldn't. `result` says what changed anyway.
  */
 export type RunningDeviceInstall =
-  | { status: "done"; result: DeviceInstallResult }
+  | { status: "done"; result: DeviceInstallResult; library: string }
   | { status: "refused"; error: string; result?: DeviceInstallResult }
   | { status: "failed"; error: string; result?: DeviceInstallResult };
 
@@ -87,5 +88,5 @@ export function installRunningDevice(
   // The notice is about a missing or older copy, which this just fixed.
   void syncDeviceInstallNotice();
 
-  return { status: "done", result };
+  return { status: "done", result, library };
 }

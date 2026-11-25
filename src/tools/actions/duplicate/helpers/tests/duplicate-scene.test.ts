@@ -28,44 +28,6 @@ vi.mock(import("#src/tools/clip/update/update-clip.ts"), () => ({
   }),
 }));
 
-// Mock arrangement-tiling helpers
-// @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
-  clearClipAtDuplicateTarget: vi.fn(() => true),
-  createShortenedClipInHolding: vi.fn(() => ({
-    holdingClipId: "holding_clip_id",
-    holdingClip: { id: "holding_clip_id" },
-  })),
-  moveClipFromHolding: vi.fn(
-    (_holdingClipId: string, track: { path: string }, _startBeats: number) => {
-      const clipId = `${track.path} arrangement_clips 0`;
-
-      return {
-        id: clipId,
-        path: clipId,
-        set: vi.fn(),
-        setAll: vi.fn(),
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "is_arrangement_clip") {
-            return 1;
-          }
-
-          if (prop === "start_time") {
-            return _startBeats;
-          }
-
-          return null;
-        }),
-        get trackIndex() {
-          const match = clipId.match(/tracks (\d+)/);
-
-          return match ? Number.parseInt(match[1]!) : null;
-        },
-      };
-    },
-  ),
-}));
-
 describe("duplicate-scene", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,7 +162,7 @@ describe("duplicate-scene", () => {
       const slot0 = registerClipSlot(0, 1, true);
 
       registerClipSlot(1, 1, true);
-      // Register clip objects so forEachClipInScene finds them
+      // Register clip objects so the scene's clips are found
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
         path: livePath.track(0).clipSlot(1).clip(),
       });

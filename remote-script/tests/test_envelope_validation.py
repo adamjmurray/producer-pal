@@ -146,6 +146,17 @@ class EnvelopeValidationTest(unittest.TestCase):
         for bad in (-2, 0, "x", "0", 1.5, True):
             self.assert_400("read", limit=bad)
 
+    def test_from_and_to_may_come_as_query_string_text(self):
+        out = call("read", **{"from": "1.5", "to": "8"})
+        self.assertEqual((out["from"], out["to"]), (1.5, 8.0))
+        out = call("read", **{"from": 2, "to": 4.5})
+        self.assertEqual((out["from"], out["to"]), (2.0, 4.5))
+
+    def test_from_and_to_must_be_finite_numbers(self):
+        for bad in ("x", "", "nan", "inf", True, None, [1]):
+            self.assert_400("read", **{"from": bad})
+            self.assert_400("read", to=bad)
+
     def test_malformed_points(self):
         for bad in (["a"], [{"time": 1}], [None], "abc", {"time": 1}, 5, [], None):
             self.assert_400("write", points=bad)
@@ -155,12 +166,13 @@ class EnvelopeValidationTest(unittest.TestCase):
         too_many = [{"time": i, "value": 0.5} for i in range(envelopes.MAX_EVENTS + 1)]
         self.assert_400("write", points=too_many)
 
-    def test_return_and_master_tracks_have_no_clips(self):
-        for bad in ("rt0", "mt", "t-1", "x", None):
-            self.assert_400("list", track=bad)
-        with self.assertRaises(routes.RouteError) as caught:
-            call("list", track="t5")
-        self.assertEqual(caught.exception.status, 404)
+    def test_the_main_track_has_no_clips(self):
+        for bad in ("mt", "t-1", "rt-1", "x", None):
+            self.assertIn("the main track has no clips", self.assert_400("list", track=bad))
+        for missing in ("t5", "rt5"):
+            with self.assertRaises(routes.RouteError) as caught:
+                call("list", track=missing)
+            self.assertEqual(caught.exception.status, 404)
 
 
 if __name__ == "__main__":

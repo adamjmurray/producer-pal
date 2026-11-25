@@ -55,6 +55,12 @@ More detail:
 and
 [Some Moves Drop Clip Envelopes](/features/limitations#some-moves-drop-clip-envelopes).
 
+## Plug-ins With Full Control {#hosted-plug-ins}
+
+Parameters of a plug-in added with [full control](/guide/plugins) can be
+automated too. Live shows them under generic slot names, like "Slot 002". See
+[Full Plug-in Control: Automation](/guide/plugins#automation).
+
 ## Try Asking
 
 - "Read the automation on the clip in track 2, scene 1."
@@ -81,6 +87,9 @@ bars, holds it until bar 4, jumps to 0.2, then curves up to 1 at bar 5.
 - **Values are raw**, usually 0 to 1, not the units Live shows (a filter in Hz,
   a percentage). Mixer volume 0.85 is 0 dB. Pan runs from -1 (hard left) to 1
   (hard right).
+- **Mod wheel, pitch bend and other MIDI CCs** are automated through Live's CC
+  Control MIDI effect, placed before the instrument. Its values use MIDI's range
+  (0 to 127; pitch bend -64 to 64), not 0 to 1.
 - **Each line replaces that parameter's whole envelope.** On a session clip, an
   empty line clears it.
 - **On an arrangement clip**, bar 1 is where the clip starts. The points run

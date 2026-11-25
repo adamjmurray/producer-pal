@@ -34,11 +34,13 @@
   // negative and the position resolves to negative time (Live accepts notes
   // before the clip start). Never throws — negative time is a valid result.
   function borrowBars(bar, beat, beatsPerBar) {
-    while (beat < 1) {
-      beat += beatsPerBar;
-      bar -= 1;
-    }
-    return { bar, beat };
+    if (!(beat < 1)) return { bar, beat };
+    // Closed form of "add a bar until beat >= 1", so a huge offset stays fast.
+    // The ceil can land one off from float rounding, so nudge.
+    let bars = Math.ceil((1 - beat) / beatsPerBar);
+    if (beat + bars * beatsPerBar < 1) bars += 1;
+    else if (bars > 1 && beat + (bars - 1) * beatsPerBar >= 1) bars -= 1;
+    return { bar: bar - bars, beat: beat + bars * beatsPerBar };
   }
 
   // Normalize one timePoints entry into a canonical { bar, beat }. The entry is
@@ -220,23 +222,23 @@ probability "probability value"
 
 velocity "velocity value"
   = "v" start:unsignedInt "-" end:unsignedInt {
-    // Velocity range = humanized random velocity (base velocity + deviation).
-    // Reject a 0 lower bound: `vA-B` desugars to base velocity = min(start,end),
-    // and base velocity 0 is the delete sentinel (applyV0Deletions), so a
-    // `v0-N` / `vN-0` / `v0-0` range would silently delete every note it touches.
-    // The single `min === 0` check covers both orderings and v0-0. Deliberate
-    // exception to the "values clamp+warn in the interpreter; the grammar never
-    // throws on a velocity value" rule above: this is not an out-of-range value
-    // (0 is valid) but a contradictory token whose delete-vs-humanize meaning is
-    // intrinsic, with no per-note recovery. Mirrored byte-for-byte in
-    // transform-grammar.peggy; pinned by velocity-range-parity.test.ts.
+    // Velocity range = humanized random velocity: velocity = start, deviation =
+    // end - start. The order is kept, so a descending range (`v100-80`) is a
+    // negative deviation.
+    //
+    // Reject a 0 on either side: base velocity 0 is the delete sentinel
+    // (applyV0Deletions), so `v0-N` would silently delete every note it touches,
+    // and `vN-0` has no valid meaning. The single `Math.min(...) === 0` check
+    // covers both orderings and v0-0. Deliberate exception to the "values
+    // clamp+warn in the interpreter; the grammar never throws on a velocity
+    // value" rule above: this is not an out-of-range value (0 is valid) but a
+    // contradictory token whose delete-vs-humanize meaning is intrinsic, with no
+    // per-note recovery. Mirrored byte-for-byte in transform-grammar.peggy;
+    // pinned by velocity-range-parity.test.ts.
     if (Math.min(start, end) === 0) {
-      throw new Error(`"${text()}" is invalid: velocity ranges must start at 1 or higher — v0 is the delete sentinel, not a range floor. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
+      throw new Error(`"${text()}" is invalid: both ends of a velocity range must be 1 or higher — v0 is the delete sentinel, not a range bound. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
     }
-    return {
-      velocityMin: Math.min(start, end),
-      velocityMax: Math.max(start, end),
-    };
+    return { velocityStart: start, velocityEnd: end };
   }
   / "v" val:unsignedInt {
     return { velocity: val };

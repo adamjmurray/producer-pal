@@ -552,7 +552,7 @@ describe("duplicate - clip duplication", () => {
     it("skips a silent duplicate failure (Ableton returns ['id', 0]) without a phantom clip", async () => {
       // Regression (#21): the no-length arrangement-duplicate path pushed a
       // phantom clip when Ableton silently failed the dup (["id", 0]), unlike its
-      // siblings in arrangement-tiling and update-clip which guard with exists().
+      // siblings in arrangement-length and update-clip which guard with exists().
       registerSourceClip();
 
       // Same shape as registerTrackWithArrangementDup, but the dup silently fails.
@@ -572,7 +572,7 @@ describe("duplicate - clip duplication", () => {
 
     it("skips a silent duplicate failure on the with-length path too (no phantom clip)", async () => {
       // Sibling of the no-length guard above: the arrangementLength path
-      // (createClipsForLength, Case 2) read newClip.id and proceeded to
+      // (createClipForLength, Case 2) read newClip.id and proceeded to
       // lengthen/label it without an exists() check. A silent dup (["id", 0])
       // must skip here as well rather than push a phantom clip.
       registerMockObject("clip1", {

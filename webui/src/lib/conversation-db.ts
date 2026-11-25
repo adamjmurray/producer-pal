@@ -11,6 +11,17 @@ import {
   collapseBranchFamilies,
 } from "#webui/lib/conversation-branches";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-open";
+import {
+  clearConversationImages,
+  loadConversationImages,
+  storeConversationImages,
+  sweepConversationImages,
+} from "#webui/lib/conversations/conversation-images";
+import {
+  resetDbRetired,
+  retiredDbError,
+} from "#webui/lib/conversations/open-tracked-db";
+import { resetImageDbCache } from "#webui/lib/conversations/image-db";
 
 export const MAX_CONVERSATIONS = 200;
 
@@ -104,7 +115,23 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
  * @returns IndexedDB database instance
  */
 export function getConversationDb(): Promise<IDBPDatabase> {
-  dbPromise ??= tryOpenDb();
+  const retired = retiredDbError();
+
+  if (retired) {
+    return Promise.reject(retired);
+  }
+
+  if (dbPromise == null) {
+    const opening = tryOpenDb();
+
+    dbPromise = opening;
+    // A failed open isn't kept: the next call tries again.
+    opening.catch(() => {
+      if (dbPromise === opening) {
+        dbPromise = null;
+      }
+    });
+  }
 
   return dbPromise;
 }
@@ -114,6 +141,8 @@ export function getConversationDb(): Promise<IDBPDatabase> {
  *
  * The existence check, the limit trim, and the write share one transaction, so
  * a delete can't land between them. See {@link SaveConversationOptions.expectPersisted}.
+ * The images are written first, in the image database, and swept last: a crash
+ * in between leaves an unused image, never a record pointing at a missing one.
  * @param record - The conversation to save
  * @param options - Limit protection and the anti-resurrection check
  * @returns Whether the record was written, and what the limit evicted
@@ -124,8 +153,10 @@ export async function saveConversation(
 ): Promise<SaveConversationResult> {
   const { protectedIds, expectPersisted = false } = options;
   const db = await getConversationDb();
+  const stored = await storeConversationImages(record);
   const tx = db.transaction(STORE_NAME, "readwrite");
-  const all = (await tx.store.getAll()) as ConversationRecord[];
+  const store = tx.store;
+  const all = (await store.getAll()) as ConversationRecord[];
   const exists = all.some((r) => r.id === record.id);
 
   if (expectPersisted && !exists) {
@@ -137,11 +168,17 @@ export async function saveConversation(
   const trim = selectLimitTrim(all, record, exists, protectedIds);
 
   for (const id of trim.ids) {
-    void tx.store.delete(id);
+    void store.delete(id);
   }
 
-  void tx.store.put(record);
+  const trimmed = new Set(trim.ids);
+
+  void store.put(stored);
   await tx.done;
+  await sweepConversationImages([
+    ...all.filter((r) => r.id !== record.id && !trimmed.has(r.id)),
+    stored,
+  ]);
 
   return {
     deletedCount: trim.ids.length,
@@ -150,24 +187,59 @@ export async function saveConversation(
   };
 }
 
+/** What {@link loadConversation} reads. */
+export interface LoadConversationOptions {
+  /**
+   * False skips reading image bytes, for callers that only need the record's
+   * metadata. Its messages then keep their stored image refs, so never show or
+   * resave them. Default true.
+   */
+  images?: boolean;
+  /**
+   * True opens the conversation with its text when its image bytes can't be
+   * read, leaving the images out, instead of rejecting. For callers that show
+   * the conversation. A later save keeps the images. Default false.
+   */
+  tolerateImageFailure?: boolean;
+}
+
 /**
  * Load a single conversation by ID.
  * @param id - Conversation ID
+ * @param options - Whether to read image bytes
  * @returns The conversation record, or undefined if not found
  */
 export async function loadConversation(
   id: string,
+  options: LoadConversationOptions = {},
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
   const raw = (await db.get(STORE_NAME, id)) as
     | Partial<ConversationRecord>
     | undefined;
+  const normalized = raw ? normalizeLegacyRecord(raw) : undefined;
 
-  if (!raw) {
-    return undefined;
+  return normalized && options.images !== false
+    ? await loadConversationImages(normalized, {
+        tolerateFailure: options.tolerateImageFailure,
+      })
+    : normalized;
+}
+
+/**
+ * Load every conversation in full, images included, as stored (no legacy
+ * defaults filled in).
+ * @returns All conversation records
+ */
+export async function loadAllConversations(): Promise<ConversationRecord[]> {
+  const db = await getConversationDb();
+  const records: ConversationRecord[] = [];
+
+  for (const raw of (await db.getAll(STORE_NAME)) as ConversationRecord[]) {
+    records.push(await loadConversationImages(raw));
   }
 
-  return normalizeLegacyRecord(raw);
+  return records;
 }
 
 /**
@@ -175,9 +247,7 @@ export async function loadConversation(
  * @param id - Conversation ID to delete
  */
 export async function deleteConversation(id: string): Promise<void> {
-  const db = await getConversationDb();
-
-  await db.delete(STORE_NAME, id);
+  await deleteWhere((record) => record.id === id);
 }
 
 /**
@@ -185,8 +255,11 @@ export async function deleteConversation(id: string): Promise<void> {
  */
 export async function deleteAllConversations(): Promise<void> {
   const db = await getConversationDb();
+  const tx = db.transaction(STORE_NAME, "readwrite");
 
-  await db.clear(STORE_NAME);
+  void tx.store.clear();
+  await tx.done;
+  await clearConversationImages();
 }
 
 /**
@@ -195,17 +268,7 @@ export async function deleteAllConversations(): Promise<void> {
  * {@link saveConversation}).
  */
 export async function deleteUnbookmarkedConversations(): Promise<void> {
-  const db = await getConversationDb();
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const all = (await tx.store.getAll()) as ConversationRecord[];
-
-  for (const record of all) {
-    if (!record.bookmarked) {
-      void tx.store.delete(record.id);
-    }
-  }
-
-  await tx.done;
+  await deleteWhere((record) => !record.bookmarked);
 }
 
 /**
@@ -362,15 +425,40 @@ export async function resetDbCache(): Promise<void> {
   const cached = dbPromise;
 
   dbPromise = null;
+  resetDbRetired();
+  await resetImageDbCache();
 
-  if (cached) {
-    const db = await cached;
+  // A failed open has nothing to close.
+  const db = await cached?.catch(() => null);
 
-    db.close();
-  }
+  db?.close();
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Delete the matching conversations, then the images only they used.
+ * @param shouldDelete - Picks the records to delete
+ */
+async function deleteWhere(
+  shouldDelete: (record: ConversationRecord) => boolean,
+): Promise<void> {
+  const db = await getConversationDb();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.store;
+  const kept: ConversationRecord[] = [];
+
+  for (const record of (await store.getAll()) as ConversationRecord[]) {
+    if (shouldDelete(record)) {
+      void store.delete(record.id);
+    } else {
+      kept.push(record);
+    }
+  }
+
+  await tx.done;
+  await sweepConversationImages(kept);
+}
 
 /**
  * Change one stored conversation; a missing one is left alone. Reads and

@@ -12,6 +12,7 @@ import {
 import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { getConfigUrl } from "#webui/utils/mcp-url";
+import { type ProducerPalConfig } from "#src/shared/config";
 
 export interface UseRemoteConfigReturn {
   serverSmallModelMode: boolean;
@@ -74,12 +75,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
       const response = await fetch(getConfigUrl(), { signal });
 
       if (response.ok) {
-        const config = (await response.json()) as {
-          smallModelMode?: boolean;
-          liveApiEnabled?: boolean;
-          liveApiForcedOn?: boolean;
-          notation?: unknown;
-        };
+        const config = (await response.json()) as Partial<
+          Pick<
+            ProducerPalConfig,
+            "smallModelMode" | "liveApiEnabled" | "liveApiForcedOn"
+          >
+        > & { notation?: unknown };
 
         // Drop a response a newer operation already owns, and otherwise claim
         // ownership at apply time (not call time) so a GET that never applies

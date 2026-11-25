@@ -14,6 +14,7 @@
 import { type Command } from "commander";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { PROVIDERS } from "#evals/shared/provider-configs.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface ModelSpec {
   provider: EvalProvider;
@@ -65,7 +66,7 @@ export function parseModelArgOrExit(program: Command, arg: string): ModelSpec {
   try {
     return parseModelArg(arg);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     return program.error(`${message} ${LIST_MODELS_HINT}`);
   }

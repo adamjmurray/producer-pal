@@ -3,25 +3,26 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
-import {
-  abletonBeatsToBarBeat,
-  abletonBeatsToDuration,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatNotation } from "#src/notation/notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
-import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/group-track-clips.ts";
+import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/slot-contents/group-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import {
+  clipKind,
+  type ClipKind,
+} from "#src/tools/shared/clip/slot-contents/clip-kind.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -29,10 +30,20 @@ import { type TargetSkip } from "#src/tools/shared/validation/lists/named-target
 import {
   readFanOut,
   type ReadResult,
+  type ReadTargetParams,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
-import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
 import {
-  clipRegionBeats,
+  type CallScale,
+  newCallScale,
+} from "#src/tools/shared/schema/scale/call-scale.ts";
+import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
+import { addClipScale } from "./helpers/clip-scale-fields.ts";
+import {
+  addTimingProperties,
+  type ClipMeter,
+} from "./helpers/clip-timing-fields.ts";
+import { addBooleanStateProperties } from "./helpers/clip-state-flags.ts";
+import {
   processWarpMarkers,
   WARP_MODE_MAPPING,
 } from "./helpers/clip-region-and-warp.ts";
@@ -40,18 +51,16 @@ import {
   isDrumRackTrack,
   resolveClip,
   resolveClipLocation,
+  resolveReturnClip,
+  type ResolveClipResult,
 } from "./helpers/clip-resolution.ts";
 
-export interface ReadClipArgs {
-  /** Clip slot, "t<track>/s<scene>" */
+/** The args of a read-clip call; the fan-out adds the names the targets came under. */
+export interface ReadClipArgs extends ReadTargetParams {
+  /** Clip slot, "t<track>/s<scene>" ("rt<return>/s<scene>" on Live 13) */
   path?: string | null;
-  /** Hidden alias for path */
-  paths?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
-  id?: string | null;
-  /** Hidden alias for id */
-  ids?: string | null;
   /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
@@ -59,6 +68,9 @@ export interface ReadClipArgs {
   trackIndex?: number | null;
   /** Hidden alias for path; also used by batch readers with parsed indices */
   sceneIndex?: number | null;
+  /** @internal A batch reader walking a return track's slots passes its index
+   * with `sceneIndex`; the Live version was checked by the reader */
+  returnTrackIndex?: number | null;
   /** @internal Precomputed drum mode from a batch reader, so N clips of one
    * track don't each re-walk the track's device tree */
   drumMode?: boolean;
@@ -68,6 +80,9 @@ export interface ReadClipArgs {
   /** @internal Told the track of a slot that is really empty; may throw to
    * say why that slot holds no clip */
   onEmptySlot?: (track: LiveAPI) => void;
+  /** @internal The call's scale questions, shared across its clips. Only
+   * read-clip passes it, and only it shows a MIDI clip's own scale. */
+  callScale?: CallScale;
 }
 
 interface WarpMarker {
@@ -75,17 +90,13 @@ interface WarpMarker {
   beatTime: number;
 }
 
-/** A clip's own meter, which spells both its positions and its notes. */
-interface ClipMeter {
-  numerator: number;
-  denominator: number;
-}
-
 /** Result returned by readClip */
 export interface ReadClipResult {
   // Core properties
   id: string | null;
-  type: "midi" | "audio" | null;
+  /** "step-sequencer" is a Live 13 MIDI clip whose steps can't be read;
+   * "envelope" is a Live 13 clip of automation only (no notes, no sample) */
+  type: ClipKind | null;
   name?: string | null;
   color?: string | null;
   timeSignature?: string | null;
@@ -113,6 +124,11 @@ export interface ReadClipResult {
   arrangementLength?: string;
 
   // MIDI clip properties
+  /** The clip's own scale ("C Major"), only when it differs from the Live Set's;
+   * "" when the clip's scale is off and the Live Set's is on. */
+  scale?: string;
+  /** The notes of `scale`, like "C,D,E,F,G,A,B"; left out with `scale: ""`. */
+  scalePitches?: string;
   notes?: string;
   /** How many muted notes are hidden from `notes`; edits leave them alone. */
   mutedNotes?: number;
@@ -149,6 +165,8 @@ export async function readClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ReadResult<ReadClipResult>> {
+  // Asked once for the whole call, however many clips it reads.
+  const callScale = newCallScale();
   const result = readFanOut(
     args,
     {
@@ -159,7 +177,7 @@ export async function readClip(
       pathSpellings: ["slot"],
       deadline: context.deadline,
     },
-    (one) => readNamedClip(one, context),
+    (one) => readNamedClip({ ...one, callScale }, context),
   );
 
   // Envelopes are read after the fan-out, not inside it: they are the one part
@@ -167,7 +185,7 @@ export async function readClip(
   // them — read-track and read-scene share the per-clip read and stay sync.
   if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
     for (const entry of Array.isArray(result) ? result : [result]) {
-      await addClipEnvelopes(entry, context.deadline);
+      await addClipEnvelopes(entry, context.deadline, manageOffered(context));
     }
   }
 
@@ -179,10 +197,12 @@ export async function readClip(
  * that can't reach the remote script still answers with everything else.
  * @param entry - One clip the read produced, or a target it skipped
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  */
 async function addClipEnvelopes(
   entry: ReadClipResult | TargetSkip,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<void> {
   if ("ok" in entry || entry.id == null) {
     return;
@@ -196,6 +216,7 @@ async function addClipEnvelopes(
       (clip.getProperty("is_arrangement_clip") as number) > 0,
       clipMeterReader(clip),
       deadline,
+      manage,
     );
   } catch (error) {
     entry.envelopes = errorMessage(error);
@@ -243,7 +264,7 @@ export function readOneClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadClipResult {
-  const { clipId, trackIndex, sceneIndex } = resolveClipLocation(args);
+  const location = resolveClipLocation(args);
 
   const {
     includeSample,
@@ -253,17 +274,7 @@ export function readOneClip(
     includeWarp,
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
-  if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error(idOrPathRequired());
-  }
-
-  const resolved = resolveClip(
-    clipId,
-    trackIndex,
-    sceneIndex,
-    args.slotValidated,
-    args.onEmptySlot,
-  );
+  const resolved = resolveClipToRead(args, location);
 
   if (!resolved.found) {
     return resolved.emptySlotResponse;
@@ -274,11 +285,12 @@ export function readOneClip(
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
+  const type = clipKind(clip, isMidiClip);
   const clipName = clip.getName();
 
   const result: ReadClipResult = {
     id: clip.id,
-    type: isMidiClip ? "midi" : "audio",
+    type,
     ...(clipName && { name: clipName }),
     ...(includeColor && { color: clip.getColor() }),
   };
@@ -293,7 +305,17 @@ export function readOneClip(
     addTimingProperties(result, clip, result.type === "audio", clipMeter);
   }
 
-  if (result.type === "midi") {
+  if (
+    result.type !== "audio" &&
+    result.type !== "envelope" &&
+    args.callScale != null
+  ) {
+    addClipScale(result, clip, args.callScale);
+  }
+
+  if (type === "step-sequencer") {
+    appendDetail(result, STEPS_UNREADABLE);
+  } else if (result.type === "midi") {
     processMidiClip(
       result,
       clip,
@@ -311,42 +333,46 @@ export function readOneClip(
   return result;
 }
 
+/** What a step sequencer clip's entry says in place of its notes. */
+const STEPS_UNREADABLE = "steps can't be read";
+
 /**
- * Add boolean state properties (playing, triggered, recording, overdubbing,
- * muted, envs). Only includes properties that are true
- * @param result - Result object to add properties to
- * @param clip - LiveAPI clip object
- * @param isArrangementClip - Arrangement clips never get `envs`: their
- *   envelopes can't be read or written
+ * Find the clip a location names: by id, in a regular track's slot or in a
+ * return track's.
+ * @param args - The read-clip args
+ * @param location - What the args resolved to
+ * @returns The clip, or the response for an empty slot
+ * @throws Error when the location names no clip at all
  */
-function addBooleanStateProperties(
-  result: ReadClipResult,
-  clip: LiveAPI,
-  isArrangementClip: boolean,
-): void {
-  if ((clip.getProperty("is_playing") as number) > 0) {
-    result.playing = true;
+function resolveClipToRead(
+  args: ReadClipArgs,
+  location: ReturnType<typeof resolveClipLocation>,
+): ResolveClipResult {
+  const { clipId, trackIndex, sceneIndex, returnIndex } = location;
+
+  if (
+    clipId == null &&
+    (sceneIndex == null || (trackIndex == null && returnIndex == null))
+  ) {
+    throw new Error(idOrPathRequired("clip"));
   }
 
-  if ((clip.getProperty("is_triggered") as number) > 0) {
-    result.triggered = true;
+  if (clipId == null && returnIndex != null) {
+    return resolveReturnClip(
+      returnIndex,
+      sceneIndex as number,
+      args.slotValidated,
+    );
   }
 
-  if ((clip.getProperty("is_recording") as number) > 0) {
-    result.recording = true;
-  }
-
-  if ((clip.getProperty("is_overdubbing") as number) > 0) {
-    result.overdubbing = true;
-  }
-
-  if ((clip.getProperty("muted") as number) > 0) {
-    result.muted = true;
-  }
-
-  if (!isArrangementClip && (clip.getProperty("has_envelopes") as number) > 0) {
-    result.envs = true;
-  }
+  return resolveClip(
+    clipId,
+    trackIndex,
+    sceneIndex,
+    args.slotValidated,
+    args.onEmptySlot,
+    args.targetNames?.idParam,
+  );
 }
 
 /**
@@ -364,57 +390,6 @@ function clipMeterReader(clip: LiveAPI): () => ClipMeter {
       numerator: clip.getProperty("signature_numerator") as number,
       denominator: clip.getProperty("signature_denominator") as number,
     });
-}
-
-/**
- * Add timing properties (timeSignature, looping, start, end, length, firstStart)
- * @param result - Result object to add properties to
- * @param clip - LiveAPI clip object
- * @param isAudioClip - Whether the clip is an audio clip, whose marker
- *   properties are in seconds rather than beats when it is not warped
- * @param clipMeter - Getter for the clip's meter
- */
-function addTimingProperties(
-  result: ReadClipResult,
-  clip: LiveAPI,
-  isAudioClip: boolean,
-  clipMeter: () => ClipMeter,
-): void {
-  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
-    clipMeter();
-  const isLooping = (clip.getProperty("looping") as number) > 0;
-
-  const { startBeats, endBeats, startMarkerBeats } = clipRegionBeats(
-    clip,
-    isAudioClip,
-    isLooping,
-  );
-
-  result.timeSignature = `${String(timeSigNumerator)}/${String(timeSigDenominator)}`;
-  result.looping = isLooping;
-  result.start = abletonBeatsToBarBeat(
-    startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  result.end = abletonBeatsToBarBeat(
-    endBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  result.length = abletonBeatsToDuration(
-    endBeats - startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  if (Math.abs(startMarkerBeats - startBeats) > SAME_TIME_EPSILON) {
-    result.firstStart = abletonBeatsToBarBeat(
-      startMarkerBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-  }
 }
 
 /**
@@ -557,6 +532,8 @@ function addClipLocationProperties(
       numerator,
       denominator,
     );
+  } else if (clip.returnClipSlotIndex != null) {
+    result.path = objectPathForApi(clip);
   } else {
     result.path = slotPath(
       clip.trackIndex as number,

@@ -75,3 +75,26 @@ describe("validateAndSanitizeNote() rejection reasons", () => {
     expect(result).not.toHaveProperty("reason");
   });
 });
+
+describe("validateAndSanitizeNote() velocity deviation", () => {
+  const deviationOf = (velocityDeviation: number): number | false => {
+    const result = validateAndSanitizeNote({
+      pitch: 60,
+      start: 0,
+      duration: 1,
+      velocity: 100,
+      velocityDeviation,
+    });
+
+    return result.valid && result.note.velocityDeviation;
+  };
+
+  it("keeps a negative deviation, which is what Live reads back", () => {
+    expect(deviationOf(-20)).toBe(-20);
+  });
+
+  it("holds it within -127 to 127", () => {
+    expect(deviationOf(-200)).toBe(-127);
+    expect(deviationOf(200)).toBe(127);
+  });
+});

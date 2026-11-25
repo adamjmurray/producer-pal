@@ -16,8 +16,9 @@ import {
   getTransforms,
   requireToolCall,
 } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 export const melodyTransforms: EvalScenario = {
   id: "melody-transforms",
@@ -39,7 +40,7 @@ export const melodyTransforms: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clips found and notes read
     assertNotesRead(1),
@@ -140,7 +141,7 @@ export const melodyTransforms: EvalScenario = {
         const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
 
         if (
-          !/duration\s*(?:\/=\s*2|\*=\s*0\.5|=\s*duration\s*\/\s*2)/.test(
+          !/duration\s*(?:\/=\s*2|\*=\s*0?\.5|=\s*(?:note\.)?duration\s*(?:\/\s*2|\*\s*0?\.5))/.test(
             transforms,
           )
         ) {

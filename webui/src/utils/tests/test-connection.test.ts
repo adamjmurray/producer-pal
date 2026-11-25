@@ -189,6 +189,116 @@ describe("testConnection", () => {
     });
   });
 
+  describe("custom provider on this computer", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://localhost:3350",
+          hostname: "localhost",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+    });
+
+    it("calls the server directly from a page opened over the LAN", async () => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://192.168.1.20:3350",
+          hostname: "192.168.1.20",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+      mockFetch.mockResolvedValue(okResponse());
+      await testConnection("custom", "", "http://localhost:8000/v1");
+
+      const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+
+      expect(url).toBe("http://localhost:8000/v1/models");
+    });
+
+    it("tests through the local model proxy", async () => {
+      mockFetch.mockResolvedValue(okResponse());
+      const result = await testConnection(
+        "custom",
+        "my-key",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+      const headers = options.headers as Headers;
+
+      expect(result.ok).toBe(true);
+      expect(url).toBe("http://localhost:3350/local-model-proxy");
+      expect(headers.get("x-local-model-url")).toBe(
+        "http://127.0.0.1:8000/v1/models",
+      );
+      expect(headers.get("authorization")).toBe("Bearer my-key");
+    });
+
+    it("shows why the proxy couldn't reach the server", async () => {
+      mockFetch.mockResolvedValue(
+        Response.json(
+          { error: { message: "Couldn't reach the local model server." } },
+          { status: 502, headers: { "x-producer-pal-proxy-error": "true" } },
+        ),
+      );
+      const result = await testConnection(
+        "custom",
+        "",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      expect(result).toStrictEqual({
+        ok: false,
+        message: "Couldn't reach the local model server.",
+      });
+    });
+
+    it("falls back to the status for a proxy error with no message", async () => {
+      mockFetch.mockResolvedValue(
+        new Response("nope", {
+          status: 403,
+          statusText: "Forbidden",
+          headers: { "x-producer-pal-proxy-error": "true" },
+        }),
+      );
+      const result = await testConnection(
+        "custom",
+        "",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      expect(result).toStrictEqual({
+        ok: false,
+        message: "Error: 403 Forbidden",
+      });
+    });
+
+    it("still reports a rejected key from the model server", async () => {
+      mockFetch.mockResolvedValue(errorResponse(401, "Unauthorized"));
+      const result = await testConnection(
+        "custom",
+        "bad",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      expect(result).toStrictEqual({ ok: false, message: "Invalid API key" });
+    });
+
+    it("calls lmstudio and ollama directly", async () => {
+      mockFetch.mockResolvedValue(okResponse());
+      await testConnection("lmstudio", "", "http://127.0.0.1:1234");
+      await testConnection("ollama", "", "http://127.0.0.1:11434");
+
+      expect(mockFetch.mock.calls.map((call) => call[0])).toStrictEqual([
+        "http://127.0.0.1:1234/v1/models",
+        "http://127.0.0.1:11434/v1/models",
+      ]);
+    });
+  });
+
   describe("response handling", () => {
     it("returns success on 200", async () => {
       mockFetch.mockResolvedValue(okResponse());

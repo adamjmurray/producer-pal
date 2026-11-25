@@ -133,6 +133,31 @@ Every model routed the ids into `id` and the names into `name`. The OpenAI habit
 of filling the unused field with `""` is why the tool treats a blank `name` or
 `id` as absent rather than as "both given".
 
+### `list-wording-*` (opt-in)
+
+Which wording tells a model to pair a comma list with the targets, at the fewest
+tokens. Four prompts on trimmed update-track / update-clip schemas: reordered
+tracks, shared params (mute, loop), one value for every clip. Run with
+`--variant='list-wording-*'` (not in the default run). A draw scores ok when
+every target gets its own value, in any order.
+
+**Date:** 2026-11-01 · `mistral-small-latest`, 16 draws per cell. Every wording
+passed the three easy prompts 16/16. Only "reordered tracks" differs, and it is
+about a coin flip for every wording (6–13 of 16, with no pattern between repeat
+batches). `codex-code/luna` passed all 5 wordings 12/12. `gpt-5-nano` and
+`gemini-3.8-flash` (8 draws, earlier scoring) showed no difference except:
+
+- A bare `(list)` marker with a tool-level definition made `gpt-5-nano` send
+  JSON arrays and was the worst wording there (24/32 vs 28–30).
+- "comma list per X" scored 1/16 on reordered tracks in one mistral batch and
+  12/16 in another, so it is not clearly worse, but it is no safer either.
+
+Kept the current "comma-separated one per X": the best cut ("per X", dropping
+"one") saved only ~45 tokens and drops the word that signals pairing, and these
+draws are too noisy to show it does no harm. Dropping the tool-level "Params
+with no list form apply to every X" sentence also held up, but these prompts
+barely exercise it.
+
 ### Agent-CLI snapshot
 
 **Date:** 2026-08-31 · **`codex-code/luna`, 1 draw per cell.** All eight

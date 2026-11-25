@@ -231,8 +231,9 @@ JavaScript field on the LiveAPI object) are different operations, so the second
 is `get-field`.
 
 ```typescript
-source: aliasedEnum(["sample-folder", "user"], {
-  sampleFolder: "sample-folder",
+sort: aliasedEnum(["use-count", "mod-date"], {
+  use_count: "use-count",
+  mod_date: "mod-date",
 });
 ```
 
@@ -254,7 +255,9 @@ result.
 
 Both MCP registration and `GET /api/tools` build their schemas through
 `resolveToolSchema()` — go through it rather than filtering a schema yourself,
-or the two catalogs drift.
+or the two catalogs drift. REST and the portal's offline list convert to JSON
+Schema with `listedInputSchema(registeredInputSchema(published))`, which mirrors
+what the SDK publishes for MCP.
 
 `deprecatedParam()` and `param()` compose in either order, and their tags follow
 the schema through the Zod builders — `.optional()`, `.nullable()`,

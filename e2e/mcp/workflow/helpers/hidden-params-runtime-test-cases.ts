@@ -162,6 +162,7 @@ export const CASES: Case[] = [
     }),
     verify: (d) => expect(d.id).toBe(state.emptyTrackId),
   },
+  ...sendPairCases(UPDATE_TRACK, `t${EMPTY_MIDI_TRACK}`, "B"),
   {
     tool: READ_SCENE,
     param: "sceneId",
@@ -362,6 +363,8 @@ export const CASES: Case[] = [
     "Aliased Device",
     "Path Aliased Device",
   ),
+  // The Clap pad's chain, sending to the Drum Rack's return chain.
+  ...sendPairCases(UPDATE_DEVICE, "t0/d0/pEb1", "A"),
   {
     tool: DELETE,
     param: "ids",
@@ -651,4 +654,21 @@ function addressAliasCases(
       verify,
     },
   ];
+}
+
+/**
+ * The cases for the deprecated sendGainDb/sendReturn pair. The pair only writes
+ * together, so both cases send both.
+ * @param tool - Tool name
+ * @param path - The track or chain to write the send on
+ * @param sendReturn - The return to send to
+ * @returns The two cases
+ */
+function sendPairCases(tool: string, path: string, sendReturn: string): Case[] {
+  return ["sendGainDb", "sendReturn"].map((param) => ({
+    tool,
+    param,
+    args: () => ({ path, sendGainDb: -12, sendReturn }),
+    verify: (d) => expect(d.id).toBeDefined(),
+  }));
 }

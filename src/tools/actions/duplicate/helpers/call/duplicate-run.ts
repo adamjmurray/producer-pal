@@ -9,6 +9,12 @@
 // with it: nothing here may be held past the request.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type EnvelopeTrack } from "#src/tools/clip/envelopes/envelope-track.ts";
+import {
+  droppedEnvelopes,
+  leavesTrack,
+} from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type SongMeter,
   songMeter,
@@ -17,7 +23,7 @@ import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import {
   resolveSlotCopySource,
   type SlotCopySource,
-} from "../clip/duplicate-clip-slot.ts";
+} from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { readScene, type ScenePass } from "../sources/scene-clips.ts";
 import { type DuplicateRun } from "./duplicate-call-types.ts";
 
@@ -36,6 +42,8 @@ export function newDuplicateRun(context: Partial<ToolContext>): DuplicateRun {
     objects: new Map(),
     spares: new Map(),
     slotSources: new Map(),
+    envelopeLosses: new Map(),
+    envelopeReads: { stalled: false },
     takeLaneName: undefined,
     namesTakeLane: false,
     lastScene: new Map(),
@@ -119,6 +127,40 @@ export function slotSourceFor(
   run.slotSources.set(clip.id, resolved);
 
   return resolved;
+}
+
+/**
+ * What copying a session clip onto another track drops, read once per source
+ * clip however many copies the call makes of it.
+ * @param run - The call's shared state
+ * @param clip - The source clip, still in its slot
+ * @param to - The track the copy lands on
+ * @returns The note, or null
+ */
+export async function envelopeLossFor(
+  run: DuplicateRun,
+  clip: LiveAPI,
+  to: EnvelopeTrack,
+): Promise<string | null> {
+  if (!leavesTrack(clip, to)) {
+    return null;
+  }
+
+  const known = run.envelopeLosses.get(clip.id);
+
+  if (known !== undefined) {
+    return known;
+  }
+
+  const loss = await droppedEnvelopes(clip, {
+    deadline: run.context.deadline,
+    manage: manageOffered(run.context),
+    reads: run.envelopeReads,
+  });
+
+  run.envelopeLosses.set(clip.id, loss);
+
+  return loss;
 }
 
 /**

@@ -9,12 +9,24 @@ import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { type SetupPurpose, SetupFailed, sentence } from "./setup-failure.ts";
 
+/** The remote script isn't running, which a caller may be able to work around. */
+export class RemoteScriptNotRunning extends SetupFailed {
+  constructor(
+    message: string,
+    /** The ping that found it not running */
+    readonly ping: RemoteScriptPing,
+  ) {
+    super(message);
+  }
+}
+
 /**
  * Check the remote script is running and new enough for the call.
  * @param deps - The ping
  * @param purpose - What the call is for
  * @returns The ping, which names the User Library when the script knows it
- * @throws SetupFailed when the script isn't running or is too old
+ * @throws RemoteScriptNotRunning when the script isn't running
+ * @throws SetupFailed when the script is too old
  */
 export async function remoteScriptReady(
   deps: Pick<OfflineDeps, "ping">,
@@ -23,8 +35,9 @@ export async function remoteScriptReady(
   const ping = await deps.ping();
 
   if (!ping.running) {
-    throw new SetupFailed(
+    throw new RemoteScriptNotRunning(
       `the Producer Pal remote script isn't running, and ${purpose.doing} needs it, so ${purpose.unchanged}. Run ${INSTALL_WITH_TOOL} (if it isn't installed), then ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Tempo & MIDI. Then call ${purpose.action} again.`,
+      ping,
     );
   }
 

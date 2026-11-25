@@ -11,104 +11,18 @@ import {
 } from "../../../helpers/entries/clip-reasons.ts";
 import { applyTransformsToExistingNotes } from "../../../helpers/notes/note-transforms.ts";
 import { type CopiedNote } from "#src/tools/shared/clip/clip-notes.ts";
-import { reportMutedNoteEffects } from "../../../helpers/notes/muted-note-effects.ts";
+import { reportNoteWriteEffects } from "../../../helpers/notes/muted-note-effects.ts";
 import { handleNoteUpdates } from "../../../helpers/notes/note-updates.ts";
 import {
   setupMidiClipMock,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { clipRegionProperty } from "../notes-mock-test-helpers.ts";
-
-interface HeldNote {
-  pitch: number;
-  start_time: number;
-  duration: number;
-  velocity: number;
-  mute: number;
-  probability: number;
-  velocity_deviation: number;
-  release_velocity: number;
-}
-
-const held = (
-  pitch: number,
-  start_time: number,
-  overrides: Partial<HeldNote> = {},
-): HeldNote => ({
-  pitch,
-  start_time,
-  duration: 1,
-  velocity: 100,
-  mute: 0,
-  probability: 1,
-  velocity_deviation: 0,
-  release_velocity: 64,
-  ...overrides,
-});
+import { held, type HeldNote, liveClip } from "../notes-mock-test-helpers.ts";
 
 const E3 = 64;
 const C3 = 60;
 const CS3 = 61;
-
-/**
- * What Live keeps when notes are added: whichever of two same-pitch notes
- * starts earlier is cut at the later one's start.
- * @param notes - Notes as written
- * @returns The notes as Live would hold them
- */
-function liveKeeps(notes: HeldNote[]): HeldNote[] {
-  const sorted = notes.toSorted(
-    (a, b) => a.pitch - b.pitch || a.start_time - b.start_time,
-  );
-
-  return sorted.map((note, i) => {
-    const next = sorted[i + 1];
-
-    return next?.pitch === note.pitch &&
-      next.start_time < note.start_time + note.duration
-      ? { ...note, duration: next.start_time - note.start_time }
-      : note;
-  });
-}
-
-/**
- * A clip that holds notes the way Live does: the write goes through liveKeeps.
- * @param existing - Notes the clip starts with
- * @returns The clip
- */
-function liveClip(existing: HeldNote[]): LiveAPI {
-  let notesInClip = existing;
-
-  return {
-    id: "123",
-    getProperty: vi.fn(clipRegionProperty()),
-    call: vi.fn((method: string, ...args: unknown[]) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: notesInClip });
-      }
-
-      if (method === "remove_notes_extended") {
-        notesInClip = [];
-      }
-
-      if (method === "add_new_notes") {
-        const notes = (args[0] as { notes: Partial<HeldNote>[] }).notes;
-
-        notesInClip = liveKeeps(
-          notes.map((n) => ({ ...writtenDefaults(), ...n }) as HeldNote),
-        );
-      }
-
-      return "[]";
-    }),
-  } as unknown as LiveAPI;
-}
-
-/** @returns Defaults for the fields a freshly written note leaves out */
-function writtenDefaults(): Partial<HeldNote> {
-  return { mute: 0, probability: 1, velocity_deviation: 0 };
-}
 
 const ctx: ClipContext = {
   clipDuration: 4,
@@ -268,14 +182,16 @@ describe("muted notes a note write lands on", () => {
       expect(update([held(E3, 1, { mute: 1 })], "E3 1|1")).toBeUndefined();
     });
 
-    it("says nothing when two visible notes overlap", () => {
-      expect(update([held(E3, 1)], "n/2 E3 1|1")).toBeUndefined();
+    it("leaves two overlapping visible notes to the plain overlap note", () => {
+      expect(update([held(E3, 1)], "n/2 E3 1|1")).toBe(
+        "1 note shortened by the next note at the same pitch",
+      );
     });
 
     it("says what was replaced without reading the clip when nothing was written", () => {
       const clip = liveClip([]);
 
-      reportMutedNoteEffects(
+      reportNoteWriteEffects(
         clip,
         reasons,
         {
@@ -292,7 +208,7 @@ describe("muted notes a note write lands on", () => {
       expect(clip.call).not.toHaveBeenCalled();
     });
 
-    it("reads the clip back only when it holds muted notes", () => {
+    it("reads the clip back only when it holds muted notes or same-pitch overlaps", () => {
       const clip = liveClip([held(E3, 1)]);
 
       handleNoteUpdates(

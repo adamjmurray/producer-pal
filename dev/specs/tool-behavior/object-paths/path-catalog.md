@@ -15,6 +15,7 @@ objects. The grammar is in [README.md](README.md#grammar).
 | `rt+`          | a new return track                | —                                      |
 | `s+`           | a new scene, appended             | —                                      |
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
+| `rt0/s3`       | return track clip slot (Live 13)  | `return_tracks 0 clip_slots 3`         |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
 | `t0/l+`        | a new take lane, appended         | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
@@ -33,6 +34,38 @@ objects. The grammar is in [README.md](README.md#grammar).
 | `t0[5\|1]`     | arrangement clip on the main lane | `tracks 0 arrangement_clips N`         |
 | `t0/l1[5\|1]`  | arrangement clip on a take lane   | `... take_lanes 1 arrangement_clips N` |
 | `[5\|1]`       | a song position, lane unspecified | —                                      |
+
+## Return-track clips (Live 13)
+
+A Live 13 return track has a clip slot per scene (the main track has none). A
+clip in one is an **envelope clip**: neither MIDI nor audio, holding automation
+only. `rt0/s3` parses like `t0/s3` but is its own path kind, so the code that
+reads a null `sceneIndex` as "arrangement clip" never mistakes one for a regular
+slot.
+
+- Reads take it: read-clip by path or id, read-track, read-scene and
+  read-live-set list and count these clips (see
+  [read tool includes](../../../tools/read-tool-includes/README.md)).
+- A Live 12 call naming one refuses it: `return-track clips need Live 13`. Live
+  12 is never asked for a return track's slots.
+- Write tools act on one by path or by id, as on a session clip, minus what
+  needs notes or a sample: update-clip (name, color, region, meter and the
+  like), delete, duplicate, playback and select. The temporary refusal is gone.
+- A return slot is a destination only for an envelope clip, and an envelope clip
+  has no other destination: update-clip's `toPath` moves it there (Live's copy,
+  then deleting the original) and duplicate's copies it. A regular clip sent to
+  `rt0/s3` is refused with `a return-track slot only takes an envelope clip`; an
+  envelope clip sent to a regular slot, a track's arrangement, a take lane or an
+  `arrangementStart` is refused with
+  `an envelope clip can only go to a return-track slot` (update-clip's says
+  `not moved: ` first). Both are per-destination skips, thrown when alone.
+  Envelope clips can't be rebuilt (the API can't create one), so no path that
+  re-creates a clip takes one.
+- create-clip refuses a return slot for good:
+  `envelope clips can't be created; make one in Live`.
+- play-scene takes a return slot like a regular one: it names its scene.
+- A return track has no arrangement and no take lanes: `rt0[1|1]` and `rt0/l0`
+  stay refused.
 
 ## Creating by path
 
@@ -96,8 +129,26 @@ The exception is `ppal-duplicate`, since a copy carries its source's `in_note`:
 `toPath: "t0/d0/c+"` into a Drum Rack lands on the source's own pad, the same
 place the bare rack path names.
 
+**Racks with fixed chains.** Live 13's Mid-Side Rack (2 chains) and Multiband
+Rack (3) turn every `insert_chain` down, and read their limit as
+`max_num_chains`. A path that would add a chain to a rack that already holds
+that many (`c+`, or a `c<n>` at or past the count) is refused before any chain
+is made, naming the rack, the limit and its chains:
+`Multiband Rack (id 7) has a fixed 3 chains (Low, Mid, High), so it can't take another`.
+A `c<n>` that would need more chains than the limit is refused the same way even
+when the rack isn't full: `... (Low, Mid), so it can't take chain c5`. The limit
+is believed only on Live 13 or later, and only as a positive whole number the
+rack has reached; Live 12 answers the unknown property with a bare 1, and any
+other value (none, 0, a number not yet reached) means no limit. It applies
+wherever a path adds a chain: create-device, update-device `toPath` and
+`wrapInRack`, and `ppal-duplicate` of a chain or a device into a rack. A device
+copy is refused before it is made, like any other destination it can't take. A
+path into a chain the rack has (`t1/d1/c0/d+`) is unaffected. A device read
+shows the limit as `maxChains` on such a rack, read by the same check (a whole
+number up to 1000; Live 13's unlimited racks read INT_MAX and show none).
+
 ## Naming a return in a send
 
-`sendReturn` and `sends[].return` take an id, name, path (`rt0`) or letter
-prefix. The order and clash rules are in
+`sends[].return` (and the deprecated `sendReturn`) take an id, name, path
+(`rt0`) or letter prefix. The order and clash rules are in
 [Sends](../clips-playback-and-sends/playback-and-sends.md#sends).

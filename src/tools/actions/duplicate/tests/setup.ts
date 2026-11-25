@@ -24,7 +24,7 @@ interface MockClipResult {
 }
 
 /**
- * Mock implementation for updateClip that returns tiled clip array format.
+ * Mock implementation for updateClip that returns a clip array.
  * The real updateClip is async, so the default returns a Promise — this keeps
  * the mock faithful and ensures a missing `await` in a caller (e.g. the
  * arrangement-length lengthen path) surfaces as a test failure. Tests may still

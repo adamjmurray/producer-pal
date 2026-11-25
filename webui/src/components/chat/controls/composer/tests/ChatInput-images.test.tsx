@@ -145,6 +145,17 @@ describe("ChatInput image attachments", () => {
     expect(await screen.findByAltText("Attachment 1")).toBeDefined();
   });
 
+  it("drops the file name a Finder copy adds beside the image", async () => {
+    const reachedEditor = renderWatchingEditorPastes();
+
+    fireEvent.paste(editor(), {
+      clipboardData: clipboard([makeFile("shot.png", "image/png")], "shot.png"),
+    });
+
+    expect(reachedEditor).not.toHaveBeenCalled();
+    expect(await screen.findByAltText("Attachment 1")).toBeDefined();
+  });
+
   it("lets a plain text paste reach the editor, but not an image paste", () => {
     const reachedEditor = renderWatchingEditorPastes();
 

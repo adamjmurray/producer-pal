@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   setupReturnTrackNames,
@@ -398,7 +398,9 @@ describe("readOneTrack - mixer properties", () => {
   });
 
   it("says on the track's own entry when the send count doesn't match", () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const consoleSpy = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     setupTrackMixerMocks({
       sendIds: ["send_1", "send_2"],

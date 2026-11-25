@@ -57,7 +57,8 @@ export function freezeDeviceFromRoot(
   const json = JSON.parse(body.toString("utf8").replace(/\0+$/, "")) as {
     patcher: Parameters<typeof listDeviceFiles>[1];
   };
-  const { files, warnings } = listDeviceFiles(deviceDir, json.patcher);
+  const { files } = listDeviceFiles(deviceDir, json.patcher);
+  const warnings: string[] = [];
 
   const entries: FrozenEntry[] = [
     {

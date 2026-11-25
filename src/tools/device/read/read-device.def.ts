@@ -73,5 +73,13 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
       .describe(
         "Filter parameters by case-insensitive substring match on name (implies params)",
       ),
+    paramOffset: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "params to skip, counted within paramSearch matches (above 0 implies params). When more remain, the device's detail gives the next offset",
+      ),
   },
 });

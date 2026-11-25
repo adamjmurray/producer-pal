@@ -18,10 +18,13 @@ import {
   registerLaneWorld,
 } from "./lane-world-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** The parked copy is the first clip Live makes, a bar past the Set's end. */
 const PARKED_ID = "800";

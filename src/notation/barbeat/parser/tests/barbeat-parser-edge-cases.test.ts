@@ -8,16 +8,16 @@ import * as parser from "../barbeat-parser.ts";
 
 describe("BarBeatScript Parser - edge cases", () => {
   describe("velocity range edge cases", () => {
-    it("handles reversed velocity ranges correctly", () => {
+    it("keeps the order of a descending velocity range", () => {
       expect(parser.parse("v120-80 C3")).toStrictEqual([
-        { velocityMin: 80, velocityMax: 120 },
+        { velocityStart: 120, velocityEnd: 80 },
         { pitch: 60 },
       ]);
     });
 
     it("handles same value velocity ranges", () => {
       expect(parser.parse("v100-100 C3")).toStrictEqual([
-        { velocityMin: 100, velocityMax: 100 },
+        { velocityStart: 100, velocityEnd: 100 },
         { pitch: 60 },
       ]);
     });

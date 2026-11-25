@@ -43,4 +43,13 @@ describe("deleteObject when id or path names nothing", () => {
       "id or path is required",
     );
   });
+
+  it("gives an example for the type being deleted", () => {
+    expect(() => deleteObject({ type: "scene" })).toThrow(
+      'id or path is required, e.g. path: "s0"',
+    );
+    expect(() => deleteObject({ type: "device" })).toThrow(
+      'id or path is required, e.g. path: "t0/d0"',
+    );
+  });
 });

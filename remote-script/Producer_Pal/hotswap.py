@@ -60,8 +60,9 @@ def locate_device(song, device_path):
         holder = obj
         try:
             obj = getattr(obj, word)
-        except AttributeError:
-            # e.g. 'chains' on a device that isn't a rack
+        except (AttributeError, RuntimeError):
+            # e.g. 'chains' on a device that isn't a rack. Live raises
+            # RuntimeError for 'drum_pads' on a rack that isn't a Drum Rack.
             raise DevicePathError("device_path has nothing at %r here" % word)
         i += 1
         if _PATH_WORDS[word]:

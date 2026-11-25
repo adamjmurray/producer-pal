@@ -17,7 +17,7 @@ import {
   type McpResponse,
   type RequestOverrides,
 } from "../../max-api-adapter.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 
 /** A wrapped callLiveApi with the same signature as the inner one. */
 export type WrappedCallLiveApi = (
@@ -76,7 +76,7 @@ async function produceBlockSafely(
   try {
     return await produceBlock();
   } catch (error) {
-    console.warn(`ppal-connect: skipped a block: ${errorMessage(error)}`);
+    nodeWarn(`ppal-connect: skipped a block: ${errorMessage(error)}`);
 
     return null;
   }

@@ -6,10 +6,11 @@
 import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import { streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetOllamaThinkingCache } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
 import { resetOpenRouterReasoningCache } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
-import { isAlwaysOnThinkingModel } from "#webui/hooks/settings/config-builders";
+import { isAlwaysOnThinkingModel } from "#webui/chat/sdk/provider/thinking-effort";
 import { PROVIDER_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
@@ -58,12 +59,14 @@ function presetModels(provider: Provider): string[] {
  * @param provider - Provider id
  * @param model - Model id
  * @param providerOptions - Options from `buildProviderOptions`
+ * @param capabilities - What Ollama's `/api/show` lists; it fails when omitted
  * @returns The JSON body the provider would have received
  */
 async function wireBody(
   provider: Provider,
   model: string,
   providerOptions: ReturnType<typeof buildProviderOptions>,
+  capabilities?: string[],
 ): Promise<Body> {
   let body: Body = {};
 
@@ -72,6 +75,10 @@ async function wireBody(
     vi.fn((url: unknown, init?: RequestInit) => {
       if (url === "https://openrouter.ai/api/v1/models") {
         return Promise.resolve(Response.json(OPENROUTER_LIST));
+      }
+
+      if (capabilities && String(url).endsWith("/api/show")) {
+        return Promise.resolve(Response.json({ capabilities }));
       }
 
       body = JSON.parse(init?.body as string) as Body;
@@ -98,6 +105,7 @@ async function wireBody(
 describe("provider wire conformance", () => {
   beforeEach(() => {
     resetOpenRouterReasoningCache();
+    resetOllamaThinkingCache();
   });
 
   afterEach(() => {
@@ -148,7 +156,7 @@ describe("provider wire conformance", () => {
       }
     });
 
-    it("sends adaptive thinking at the Default effort", async () => {
+    it("sends adaptive thinking with no effort at Default", async () => {
       const body = await wireBody(
         "anthropic",
         model,
@@ -156,7 +164,7 @@ describe("provider wire conformance", () => {
       );
 
       expect(body.thinking?.type).toBe("adaptive");
-      expect(body.output_config?.effort).toBe("high");
+      expect(body.output_config?.effort).toBeUndefined();
     });
 
     it("sends adaptive thinking at the Max effort", async () => {
@@ -184,6 +192,16 @@ describe("provider wire conformance", () => {
         expect(body.reasoning?.effort).toBe(wanted);
       },
     );
+
+    it("asks for a reasoning summary with no effort at Default", async () => {
+      const body = await wireBody(
+        "openai",
+        model,
+        buildProviderOptions("openai", "Default", model),
+      );
+
+      expect(body.reasoning).toStrictEqual({ summary: "auto" });
+    });
 
     it("asks for no reasoning summary when Off", async () => {
       const body = await wireBody(
@@ -247,6 +265,16 @@ describe("provider wire conformance", () => {
         expect(body.reasoning?.effort).toBe(reasoning?.effort);
       },
     );
+
+    it("enables reasoning with no effort at Default", async () => {
+      const body = await wireBody(
+        "openrouter",
+        model,
+        buildProviderOptions("openrouter", "Default", model),
+      );
+
+      expect(body.reasoning).toStrictEqual({ enabled: true });
+    });
   });
 
   describe.each([
@@ -282,6 +310,24 @@ describe("provider wire conformance", () => {
 
       expect(body.reasoning_effort).toBe(effort);
     });
+
+    it.each([
+      ["Default", undefined],
+      ["Max", "high"],
+      ["Off", "none"],
+    ])(
+      "sends reasoning_effort for %s when the model thinks",
+      async (level, effort) => {
+        const body = await wireBody(
+          "ollama",
+          model,
+          buildProviderOptions("ollama", level, model),
+          ["completion", "thinking"],
+        );
+
+        expect(body.reasoning_effort).toBe(effort);
+      },
+    );
   });
 
   describe.each(presetModels("gemini"))("gemini %s", (model) => {

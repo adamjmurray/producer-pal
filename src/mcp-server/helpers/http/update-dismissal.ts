@@ -5,7 +5,7 @@
 
 import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import { updateGlobalSettings } from "../config-store/global-settings-store.ts";
 import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { getUpdate } from "./update-check.ts";
@@ -24,9 +24,7 @@ export async function dismissUpdate(): Promise<void> {
     try {
       updateGlobalSettings({ dismissedUpdateVersion: update.version });
     } catch (error) {
-      console.warn(
-        `Could not save the update dismissal: ${errorMessage(error)}`,
-      );
+      nodeWarn(`Could not save the update dismissal: ${errorMessage(error)}`);
 
       return;
     }

@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { findSourceFiles, projectRoot } from "./meta-test-helpers.ts";
+import { findSourceFiles, projectRoot, repoPath } from "./meta-test-helpers.ts";
 
 /** Trees the comment budget covers, non-test sources only. */
 export const COMMENT_TREES = [
@@ -105,7 +105,7 @@ export function scanCommentFile(
   const source = fs.readFileSync(filePath, "utf8");
 
   return {
-    file: path.relative(projectRoot, filePath),
+    file: repoPath(filePath),
     ...scanComments(source, filePath, maxBlockLines),
   };
 }

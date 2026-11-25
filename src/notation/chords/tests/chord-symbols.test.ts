@@ -209,26 +209,33 @@ describe("chordSymbolPitches — unrealizable inputs return null", () => {
   });
 });
 
-describe("realizeChordSymbol — clamping and de-duplication", () => {
-  it("clamps out-of-range pitches to 0–127", () => {
+describe("realizeChordSymbol — out-of-range pitches", () => {
+  // Left as they are for the caller to skip: a clamped pitch is a wrong note.
+  it("returns pitches past 127 unclamped", () => {
     const high = realizeChordSymbol(
       { rootPc: 0, intervals: [0, 4, 7], bassPc: null },
       120,
-      1,
+      0,
     );
 
-    expect(high).toStrictEqual([127]); // 132/136/139 all clamp+dedupe to 127
+    expect(high).toStrictEqual([120, 124, 127]);
+    expect(
+      realizeChordSymbol(
+        { rootPc: 0, intervals: [0, 4, 7], bassPc: null },
+        120,
+        1,
+      ),
+    ).toStrictEqual([132, 136, 139]);
   });
 
-  it("de-duplicates a bass that collapses onto a chord tone at 0", () => {
+  it("returns a bass below 0 unclamped", () => {
     const pitches = realizeChordSymbol(
       { rootPc: 0, intervals: [0, 7], bassPc: 7 },
       0,
       0,
     );
 
-    // root 0, fifth 7; bass 7 drops below 0 → -5 → clamps to 0 → dedup with root.
-    expect(pitches).toStrictEqual([0, 7]);
+    expect(pitches).toStrictEqual([-5, 0, 7]);
   });
 });
 

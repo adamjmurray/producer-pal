@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -114,7 +114,7 @@ describe("playback arrangement params on a session action", () => {
   });
 
   it("says nothing when the caller sent none of them", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     registerTargets();
     playback({ action: "stop-all-session-clips" });
@@ -133,7 +133,7 @@ describe("playback arrangement params on an arrangement action", () => {
   it.each(["play-arrangement", "update-arrangement", "stop"])(
     "still applies startTime on %s",
     (action) => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       playback({ action, startTime: "5|1" });
 

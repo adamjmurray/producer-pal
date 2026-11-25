@@ -3,8 +3,9 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""A POST with a bad Content-Length is answered with a 400, not dropped, and
-one declaring a body over the cap with a 413, before the body is read.
+"""A POST with a bad Content-Length or a too-deeply nested JSON body is answered
+with a 400, not dropped, and one declaring a body over the cap with a 413,
+before the body is read.
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -36,10 +37,11 @@ def free_port():
 class ContentLengthTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
+        self.logged = []
         self.server = BridgeHTTPServer(
             [free_port()],
             lambda method, path, params: (200, {"params": params}),
-            lambda _message: None,
+            self.logged.append,
             os.path.join(self.dir, "port.txt"),
         )
         self.assertTrue(self.server.start())
@@ -88,6 +90,13 @@ class ContentLengthTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload, {"params": {"a": "body"}})
 
+    def test_a_request_is_not_logged(self):
+        # Answered or refused: the log is Live's, called from a worker thread.
+        self.post(b"2")
+        self.post(b"abc")
+
+        self.assertEqual([line for line in self.logged if line.startswith("http: ")], [])
+
     def test_missing_or_zero_length_means_no_body(self):
         for header in (None, b"0"):
             with self.subTest(header=header):
@@ -104,6 +113,13 @@ class ContentLengthTest(unittest.TestCase):
             payload,
             {"error": "request body too large: %d bytes, max %d" % (MAX_BODY_BYTES + 1, MAX_BODY_BYTES)},
         )
+
+    def test_deeply_nested_json_is_a_400(self):
+        body = b"[" * 200000
+        status, payload = self.post(str(len(body)).encode(), body)
+
+        self.assertEqual(status, 400)
+        self.assertEqual(payload, {"error": "invalid JSON body: nested too deeply"})
 
     def test_body_at_the_cap_is_read(self):
         body = b'{"a":"' + b"x" * (MAX_BODY_BYTES - 8) + b'"}'

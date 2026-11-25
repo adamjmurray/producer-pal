@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createProviderModel,
   transformAnthropicRequest,
@@ -19,9 +19,8 @@ const getModelId = (model: unknown): string =>
 // factory (Responses API). @ai-sdk/openai-compatible tags "<name>.chat" (e.g.
 // "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
 // only implement Chat Completions and reject the Responses API's `input` field
-// with "Invalid type for 'input'". LM Studio and custom endpoints route through
-// @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
-// Ollama stays on @ai-sdk/openai (its `reasoning_effort` option needs that namespace).
+// with "Invalid type for 'input'". LM Studio, Ollama and custom endpoints route
+// through @ai-sdk/openai-compatible so their thinking shows.
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 
@@ -146,6 +145,77 @@ describe("createProviderModel", () => {
     expect(getModelId(model)).toBe("my-model");
   });
 
+  // A local server may send no CORS headers, so a custom URL on this computer
+  // goes through the Producer Pal server. Nothing else does.
+  describe("local model proxy routing", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://localhost:3350",
+          hostname: "localhost",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const hasProxyFetch = (model: unknown): boolean =>
+      (
+        (model as Record<string, unknown>).config as {
+          fetch?: unknown;
+        }
+      ).fetch != null;
+
+    it("proxies a custom provider on this computer", () => {
+      const model = createProviderModel(
+        "custom",
+        "m",
+        "k",
+        "http://127.0.0.1:8000/v1",
+      );
+
+      expect(hasProxyFetch(model)).toBe(true);
+    });
+
+    it("calls a loopback custom URL directly from a page over the LAN", () => {
+      vi.stubGlobal("window", {
+        location: {
+          origin: "http://192.168.1.20:3350",
+          hostname: "192.168.1.20",
+          port: "3350",
+          protocol: "http:",
+        },
+      });
+
+      const model = createProviderModel(
+        "custom",
+        "m",
+        "k",
+        "http://localhost:8000/v1",
+      );
+
+      expect(hasProxyFetch(model)).toBe(false);
+    });
+
+    it("calls a custom provider elsewhere directly", () => {
+      const model = createProviderModel("custom", "m", "k", "https://x.com/v1");
+
+      expect(hasProxyFetch(model)).toBe(false);
+    });
+
+    it("calls lmstudio directly, even on this computer", () => {
+      expect(
+        hasProxyFetch(
+          createProviderModel("lmstudio", "m", "k", "http://127.0.0.1:1234"),
+        ),
+      ).toBe(false);
+    });
+  });
+
   it("throws an actionable error for custom provider without a URL", () => {
     // baseUrl defaults to "" in settings, so the empty-string path is the real
     // failure mode; whitespace-only and missing baseUrl take the same branch.
@@ -195,7 +265,7 @@ describe("createProviderModel", () => {
   it("uses the Chat Completions API for ollama (not Responses)", () => {
     const model = createProviderModel("ollama", "llama3", "");
 
-    expect(getApiProvider(model)).toBe("openai.chat");
+    expect(getApiProvider(model)).toBe("ollama.chat");
   });
 
   it("uses the Chat Completions API for custom (not Responses)", () => {
@@ -212,11 +282,14 @@ describe("createProviderModel", () => {
 
   // Regression: without includeUsage, OpenAI-compatible servers (LM Studio,
   // custom) never report token usage in streaming responses, so the UI shows 0.
-  it("enables usage reporting for lmstudio (includeUsage)", () => {
-    const model = createProviderModel("lmstudio", "local-model", "");
+  it.each(["lmstudio", "ollama"] as const)(
+    "enables usage reporting for %s (includeUsage)",
+    (provider) => {
+      const model = createProviderModel(provider, "local-model", "");
 
-    expect(getIncludeUsage(model)).toBe(true);
-  });
+      expect(getIncludeUsage(model)).toBe(true);
+    },
+  );
 
   it("enables usage reporting for custom (includeUsage)", () => {
     const model = createProviderModel("custom", "m", "k", "https://x/v1");
@@ -306,7 +379,7 @@ describe("transformAnthropicRequest", () => {
       expect(parsed.thinking?.display).toBe("summarized");
     });
 
-    it("does not modify enabled thinking (Haiku 4.5)", async () => {
+    it("does not modify enabled thinking", async () => {
       const parsed = await transform({
         thinking: { type: "enabled", budget_tokens: 10240 },
       });
@@ -483,12 +556,12 @@ describe("transformAnthropicRequest", () => {
     });
 
     it("leaves a request with no cacheable prefix untouched", async () => {
-      // Haiku is excluded from disabled-thinking injection, so this body needs
+      // Opus is excluded from disabled-thinking injection, so this body needs
       // no transform at all and must pass through byte-for-byte.
       await expectPassthrough(
         transformAnthropicRequest,
         url,
-        JSON.stringify({ model: "claude-haiku-4-5", messages: [] }),
+        JSON.stringify({ model: "claude-opus-5-5", messages: [] }),
       );
     });
   });

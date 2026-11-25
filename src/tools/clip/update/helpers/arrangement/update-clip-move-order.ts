@@ -9,7 +9,7 @@
  *
  * Two things clear a span before writing to it: a move clears its whole
  * destination span before the copy lands, and an arrangementLength clears the
- * span it tiles across. When that span holds another clip in the same batch,
+ * span it grows into. When that span holds another clip in the same batch,
  * the batch later reaches a dead object and reports it as updated — the loss
  * the 1:1 pairing exists to prevent. Shifting a row of clips hits it every
  * time: each destination sits on the next clip's current position.
@@ -233,7 +233,7 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
   // No position of its own means "same place, other lane".
   const targetStart = intent.startBeats ?? start;
   const landing = intent.landing ?? { trackIndex, takeLane };
-  const cleared = clearedLength(start, end, takeLane, landing, intent);
+  const cleared = clearedLength(start, end, landing, intent);
 
   return {
     current,
@@ -245,7 +245,6 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
  * How much of the destination a clip's move and resize clear.
  * @param start - The clip's start_time
  * @param end - The clip's end_time
- * @param takeLane - The clip's take lane, or null for the main lane
  * @param landing - The lane it lands on
  * @param intent - What the call does to its span
  * @returns The cleared length in beats, from the landing position
@@ -253,24 +252,24 @@ function clipSpan(clip: LiveAPI, intent: MoveIntent | null): ClipSpan | null {
 function clearedLength(
   start: number,
   end: number,
-  takeLane: number | null,
   landing: ArrangementTrack,
   intent: MoveIntent,
 ): number {
   const { lengthBeats } = intent;
 
-  // update-clip never tiles on a take lane.
-  if (landing.takeLane != null || lengthBeats == null) {
-    return end - start;
-  }
-
-  // Main lane to main lane, a shortened clip is shortened before it moves, so
-  // the move clears only the new length.
-  if (takeLane == null && shortensArrangementClip(start, end, lengthBeats)) {
+  // A shortened clip is shortened before it moves, so the move clears only the
+  // new length.
+  if (lengthBeats != null && shortensArrangementClip(start, end, lengthBeats)) {
     return lengthBeats;
   }
 
-  // A longer arrangementLength tiles forward and clears the span it fills.
+  // On a take lane a clip grows only into empty space, stopping at the next
+  // clip, so growing clears nothing.
+  if (lengthBeats == null || landing.takeLane != null) {
+    return end - start;
+  }
+
+  // A longer arrangementLength grows forward and clears the span it fills.
   return Math.max(end - start, lengthBeats);
 }
 
@@ -454,7 +453,7 @@ function noteBlockedMoves(
     );
     const blockerIndex = (waitIndex ?? firstIndex) as number;
     const blocker = clips[blockerIndex] as LiveAPI;
-    // A resize clears the span it tiles across, so leaving it to run would
+    // A resize clears the span it grows into, so leaving it to run would
     // destroy the clip the refusal is protecting.
     const skipped =
       intents[index]?.lengthBeats == null

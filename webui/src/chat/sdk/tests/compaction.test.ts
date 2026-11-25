@@ -102,3 +102,42 @@ describe("summarizeHistory", () => {
     expect(call.messages[0].content).toContain("Summarize the conversation");
   });
 });
+
+describe("compacting a conversation that was compacted before", () => {
+  const history: ChatMessage[] = [
+    { role: "user", content: "make a beat" },
+    { role: "assistant", content: "done, 120 bpm" },
+    { role: "user", content: "Key: C minor.", isCompactionSummary: true },
+    { role: "user", content: "add a bass" },
+    { role: "assistant", content: "added" },
+  ];
+
+  it("renders only from the last summary on", () => {
+    expect(renderTranscript(history)).toBe(
+      "SUMMARY OF THE EARLIER CONVERSATION: Key: C minor.\n" +
+        "USER: add a bass\n" +
+        "ASSISTANT: added",
+    );
+  });
+
+  it("starts at the newest of several summaries", () => {
+    const twice: ChatMessage[] = [
+      ...history,
+      {
+        role: "user",
+        content: "Key: C minor. Bass added.",
+        isCompactionSummary: true,
+      },
+      { role: "user", content: "now drums" },
+    ];
+
+    expect(renderTranscript(twice)).toBe(
+      "SUMMARY OF THE EARLIER CONVERSATION: Key: C minor. Bass added.\n" +
+        "USER: now drums",
+    );
+  });
+
+  it("tells the model to carry the earlier summary forward", () => {
+    expect(COMPACTION_PROMPT).toContain("summary of the earlier conversation");
+  });
+});

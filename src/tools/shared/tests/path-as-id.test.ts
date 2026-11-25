@@ -41,6 +41,15 @@ describe("a path sent as an id", () => {
     );
   });
 
+  it("names the alias it was sent as, in the fix too", () => {
+    expect(idDoesNotExist("t0/d1", undefined, "deviceId")).toBe(
+      'deviceId "t0/d1" does not exist; "t0/d1" is a path, so send it as path, not deviceId',
+    );
+    expect(() => validateIdType("t0/d1", "device", "ids")).toThrow(
+      'ids "t0/d1" does not exist',
+    );
+  });
+
   it.each(["123", "2/3", "invalid-id", "id gone", ""])(
     "adds no hint to %j, which is not a path",
     (id) => {

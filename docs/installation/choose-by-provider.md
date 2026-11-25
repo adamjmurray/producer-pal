@@ -20,7 +20,7 @@ the built-in chat UI — and recommends the easiest path.
 | [Local / Offline](./choose-local)        | Running fully offline on your hardware |
 | [Multi / AI Routers](./choose-multi)     | Mixing and matching as you go          |
 
-Claude Code, Codex CLI, and Gemini CLI can also use the portable
+Claude Code, Codex CLI, and Antigravity CLI can also use the portable
 [Agent Skill](/guide/skills) instead of MCP.
 
 Not sure yet? The [installation overview](/installation) groups setups by _how_

@@ -133,7 +133,9 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 ## Validation
 
-**Maximum repetitions**: Interpreter warns if `times > 100` (excessive notes)
+**Maximum repetitions**: `times` over 10000 is a parse error. Over 100 warns. A
+whole string may make at most 10000 notes (the clip's existing notes don't
+count); past that it is an error.
 
 **Step size**: Must be greater than 0 (validated in grammar)
 

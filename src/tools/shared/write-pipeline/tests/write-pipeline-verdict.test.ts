@@ -14,7 +14,7 @@ import {
 } from "#src/shared/max/v8-warning-capture.ts";
 import { markSetChanged } from "../set-changed.ts";
 import { runWrite } from "../write-pipeline.ts";
-import { newToyLog, toySpec, type ToyArgs } from "./toy-write-spec.ts";
+import { newToyLog, toySpec, type ToyArgs } from "./helpers/toy-write-spec.ts";
 
 /**
  * Run the toy tool in a fresh request and say whether it provably changed

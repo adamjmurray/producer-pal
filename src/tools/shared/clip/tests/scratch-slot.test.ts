@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
 import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
-import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { registerTrackSlots } from "./track-slots-test-helpers.ts";
 
 describe("withScratchSlot", () => {

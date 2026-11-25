@@ -6,32 +6,30 @@
 import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
-import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { finishCopy, type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { type CopyAttempt } from "./duplicate-one-copy.ts";
 import { withLaneWriteNote } from "./stamp-automation.ts";
 import {
-  createClipsForLength,
+  createClipForLength,
   parseArrangementLength,
 } from "./arrangement-length.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Duplicate a clip to the arrangement view
  * @param clipId - Clip ID to duplicate
  * @param arrangementStartBeats - Start position in beats
  * @param destTrackIndex - Track to place the copy on (may differ from the source's)
- * @param name - Optional name for the duplicated clip(s)
- * @param color - Optional color for the duplicated clip(s)
+ * @param name - Optional name for the duplicated clip
+ * @param color - Optional color for the duplicated clip
  * @param arrangementLength - Optional length (<count>bar, n<fraction>, or <count>bar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
  * @param context - Context object with silenceWavPath
  * @param sourceClip - The clip, when the caller already resolved it
  * @param tracks - The destination tracks, keyed by index
- * @returns The copy — one clip, or the destination track's path with the tiled
- *   clips under it — or why the destination got none
+ * @returns The copy, or why the destination got none
  */
 export async function duplicateClipToArrangement(
   clipId: string,
@@ -42,7 +40,7 @@ export async function duplicateClipToArrangement(
   arrangementLength?: string,
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
-  context: Partial<ToolContext & TilingContext> = {},
+  context: Partial<ToolContext & ScratchClipContext> = {},
   sourceClip: LiveAPI | null = null,
   tracks: Map<number, LiveAPI> = new Map(),
 ): Promise<CopyAttempt> {
@@ -59,15 +57,11 @@ export async function duplicateClipToArrangement(
     throw new Error(idDoesNotExist(clipId));
   }
 
-  const trackIndex = destTrackIndex ?? clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
+  const trackIndex = destTrackIndex ?? requireTrackIndex(clip);
 
   const track =
     tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex));
-  const duplicatedClips: MinimalClipInfo[] = [];
+  let copy: MinimalClipInfo | undefined;
 
   if (arrangementLength != null) {
     // Resolve bars against the SONG meter, consistent with every other
@@ -78,7 +72,8 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
-    const clipsCreated = await createClipsForLength(
+
+    copy = await createClipForLength(
       clip,
       track,
       arrangementStartBeats,
@@ -89,8 +84,6 @@ export async function duplicateClipToArrangement(
       context,
       color,
     );
-
-    duplicatedClips.push(...clipsCreated);
   } else {
     // No length specified - use original behavior. Routes a self-overlapping
     // source through the holding area (overwrite semantics) instead of skipping;
@@ -102,32 +95,17 @@ export async function duplicateClipToArrangement(
       clip.id,
       arrangementStartBeats,
       isMidiClip,
-      context as TilingContext,
+      context as ScratchClipContext,
       clip,
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
-    // clip, matching the guards in arrangement-tiling and update-clip.
+    // clip, matching the guard in update-clip.
     if (newClip.exists()) {
-      duplicatedClips.push(
-        ...withLaneWriteNote(clip, [finishCopy(newClip, name, color)]),
-      );
+      copy = withLaneWriteNote(clip, finishCopy(newClip, name, color));
     }
   }
 
-  // Nothing landed: Live declines a duplicate it can't do without raising, and
-  // the tiling helpers report what they couldn't place.
-  if (duplicatedClips.length === 0) {
-    return { refused: "Live made no copy there" };
-  }
-
-  // One clip directly, or the track the tiled copies share
-  const [single] = duplicatedClips;
-
-  return {
-    copy:
-      duplicatedClips.length === 1 && single != null
-        ? single
-        : { path: arrangementPath(trackIndex), clips: duplicatedClips },
-  };
+  // Nothing landed: Live declines a duplicate it can't do without raising.
+  return copy == null ? { refused: "Live made no copy there" } : { copy };
 }

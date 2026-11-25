@@ -35,7 +35,7 @@ import { drumModeForTrack } from "./track-optional-fields.ts";
 /** The take lane a read names: the object an id found, or the path it spells. */
 export type TakeLaneTarget =
   | { from: "id"; lane: LiveAPI }
-  | { from: "path"; path: TakeLanePath; entry: string };
+  | { from: "path"; path: TakeLanePath; entry: string; label: string };
 
 /** A lane a read reached, and the track it sits on when that was resolved. */
 interface LocatedLane {
@@ -61,7 +61,14 @@ export function takeLaneRead(args: ReadTrackArgs): TakeLaneTarget | undefined {
 
   const path = takeLanePathEntry(args.path);
 
-  return path == null ? undefined : { from: "path", path, entry: args.path };
+  return path == null
+    ? undefined
+    : {
+        from: "path",
+        path,
+        entry: args.path,
+        label: args.targetNames?.pathParam ?? "path",
+      };
 }
 
 /**
@@ -128,11 +135,11 @@ function locateLane(target: TakeLaneTarget): LocatedLane {
     return { lane: target.lane, track: null };
   }
 
-  const { path, entry } = target;
+  const { path, entry, label } = target;
 
   if (path.kind === "new-take-lane") {
     throw pathError(
-      "path",
+      label,
       entry,
       `${NEW_TAKE_LANE_ADVICE}; read an existing lane as "t<track>/l<lane>"`,
     );
@@ -141,7 +148,7 @@ function locateLane(target: TakeLaneTarget): LocatedLane {
   const track = LiveAPI.from(livePath.track(path.trackIndex));
 
   if (!track.exists()) {
-    throw new Error(`nothing at path "${entry}"`);
+    throw new Error(`nothing at ${label} "${entry}"`);
   }
 
   assertTrackTakesLanes(track, path.trackIndex);
@@ -149,7 +156,7 @@ function locateLane(target: TakeLaneTarget): LocatedLane {
   const lane = track.child("take_lanes", String(path.laneIndex));
 
   if (!lane.exists()) {
-    throw new Error(`nothing at path "${entry}"`);
+    throw new Error(`nothing at ${label} "${entry}"`);
   }
 
   return { lane, track };

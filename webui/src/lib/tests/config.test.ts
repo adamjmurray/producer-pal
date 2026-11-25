@@ -39,14 +39,12 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-3.8-flash", () => {
-      expect(getModelName("gemini-3.8-flash")).toBe("Gemini 3.8 Flash");
+    it("returns display name for gemini-4-carbon", () => {
+      expect(getModelName("gemini-4-carbon")).toBe("Gemini 4 Carbon");
     });
 
-    it("returns display name for gemini-3.5-flash-lite", () => {
-      expect(getModelName("gemini-3.5-flash-lite")).toBe(
-        "Gemini 3.5 Flash-Lite",
-      );
+    it("returns display name for gemini-4-hydrogen", () => {
+      expect(getModelName("gemini-4-hydrogen")).toBe("Gemini 4 Hydrogen");
     });
 
     it("returns display name for Anthropic models", () => {
@@ -57,8 +55,8 @@ describe("config", () => {
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3.8-flash")).toBe(
-        "Google Gemini 3.8 Flash",
+      expect(getModelName("google/gemini-4-carbon")).toBe(
+        "Google Gemini 4 Carbon",
       );
     });
 

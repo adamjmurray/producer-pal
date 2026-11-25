@@ -39,6 +39,13 @@ class FakeRack(FakeDevice):
         self.chains = list(chains)
 
 
+class FakeEffectRack(FakeRack):
+    @property
+    def drum_pads(self):
+        # What Live does for a rack that isn't a Drum Rack.
+        raise RuntimeError("Only drum racks can have pads!")
+
+
 class FakeChain:
     def __init__(self, devices):
         self.devices = devices
@@ -100,6 +107,21 @@ class RackMacrosTest(unittest.TestCase):
 
         self.assertEqual(
             result["racks"], [{"error": "device_path has nothing at devices 3"}]
+        )
+
+    def test_drum_pads_on_a_rack_that_is_not_a_drum_rack_is_an_error_in_its_own_entry(self):
+        track = FakeTrack([FakeEffectRack("Effects"), FakeRack("Rack", mapped=(1,))])
+        result = ask(
+            [track],
+            [
+                "live_set tracks 0 devices 0 drum_pads 36 chains 0 devices 0",
+                "live_set tracks 0 devices 1",
+            ],
+        )
+
+        self.assertEqual(
+            result["racks"],
+            [{"error": "device_path has nothing at 'drum_pads' here"}, {"mapped": [1]}],
         )
 
     def test_refuses_a_request_without_paths(self):

@@ -6,7 +6,10 @@
 import { useState } from "preact/hooks";
 import { type UseInstallationReturn } from "#webui/hooks/settings/installation/use-installation";
 import { DeviceSection } from "./DeviceSection";
-import { InstallationOptions } from "./InstallationOptions";
+import {
+  InstallationOptions,
+  NetworkAccessOption,
+} from "./InstallationOptions";
 import { RemoteScriptSection } from "./RemoteScriptSection";
 import { UserLibraryField } from "./UserLibraryField";
 
@@ -45,6 +48,7 @@ export function InstallationTab({
       />
       <RemoteScriptSection remote={remote} path={path} detected={detected} />
       <InstallationOptions />
+      <NetworkAccessOption />
     </div>
   );
 }

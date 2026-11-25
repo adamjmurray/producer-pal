@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Page, expect, test } from "@playwright/test";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /**
  * Network errors the stubs make unavoidable: 405 on /mcp (a stateless
@@ -94,7 +95,7 @@ export async function navigateToChat(page: Page): Promise<void> {
   try {
     await page.goto("/chat");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     throw new Error(
       "Could not connect to Producer Pal. Make sure:\n" +

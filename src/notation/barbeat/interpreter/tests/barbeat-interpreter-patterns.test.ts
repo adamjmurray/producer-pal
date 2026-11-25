@@ -405,3 +405,86 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
   });
 });
+
+const FOUR_FOUR = { timeSigNumerator: 4, timeSigDenominator: 4 };
+const FIVE_FOUR = { timeSigNumerator: 5, timeSigDenominator: 4 };
+
+/**
+ * Start times of the notes a bar|beat string makes.
+ * @param notation - bar|beat string
+ * @param options - Time signature
+ * @returns Start times, in the order emitted
+ */
+function startTimes(
+  notation: string,
+  options: { timeSigNumerator: number; timeSigDenominator: number },
+): number[] {
+  return interpretNotation(notation, options).map((note) => note.start_time);
+}
+
+describe("bar|beat interpretNotation() - repeat steps that sum to a bar line", () => {
+  it.each([
+    ["C3 1|1x7@n/6", 6],
+    ["C3 1|1x7@n/4t", 6],
+    ["C3 1|1x11@n/10", 10],
+  ])("%s puts its last note on the next bar line", (notation, lastIndex) => {
+    const times = startTimes(notation, FOUR_FOUR);
+
+    expect(times).toHaveLength(lastIndex + 1);
+    expect(times[lastIndex]).toBe(4);
+    expect(times.filter((time) => time === 0)).toHaveLength(1);
+  });
+
+  it.each([
+    ["C3 1|1x16@n/12", 15],
+    ["C3 1|1x61@n/48", 60],
+  ])("%s lands on the bar line in 5/4", (notation, index) => {
+    const times = startTimes(notation, FIVE_FOUR);
+
+    expect(times[index]).toBe(5);
+    expect(times.filter((time) => time === 0)).toHaveLength(1);
+  });
+
+  it("keeps every repeat in ascending order", () => {
+    const times = startTimes("C3 1|1x25@n/24", FOUR_FOUR);
+
+    expect(times).toStrictEqual(times.toSorted((a, b) => a - b));
+    expect(times[24]).toBe(4);
+  });
+
+  it("still places a repeat that starts before the clip", () => {
+    const times = startTimes("C3 1|1-n/8x2@n/8", FOUR_FOUR);
+
+    expect(times).toStrictEqual([-0.5, 0]);
+  });
+});
+
+describe("bar|beat interpretNotation() - bar copy of a note on a drifted bar line", () => {
+  it("copies the repeat that lands on bar 2", () => {
+    const result = interpretNotation("C3 1|1x25@n/24 @3=2", FOUR_FOUR);
+
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(result).toHaveLength(26);
+    expect(result[25]!.start_time).toBe(8);
+  });
+
+  it("does not copy that repeat as part of bar 1", () => {
+    const times = startTimes("C3 1|1x25@n/24 @2=1", FOUR_FOUR);
+
+    // 25 originals + bar 1's 24 notes copied to bar 2
+    expect(times).toHaveLength(49);
+    expect(times.filter((time) => time >= 8)).toStrictEqual([]);
+  });
+
+  it("files an existing note just under a bar line under the next bar", () => {
+    const existing = createNote({ pitch: 60, start_time: 3.9999999999999996 });
+    const result = interpretNotation("@3=2", {
+      ...FOUR_FOUR,
+      existingNotes: [existing],
+    });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(result).toHaveLength(2);
+    expect(result[1]!.start_time).toBe(8);
+  });
+});

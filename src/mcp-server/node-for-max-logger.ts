@@ -4,6 +4,10 @@
 
 import Max from "max-api";
 
+// Import these by name (`import { nodeError } from ...`), never as a namespace
+// called `console`: a file that forgot the import would silently use Node's
+// native console, which never reaches the Max console.
+
 const now = (): string => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
 const format = (loggerArgs: unknown[]): string =>
@@ -13,20 +17,20 @@ let verbose = false;
 
 Max.addHandler("verbose", (input: unknown) => (verbose = Boolean(input)));
 
-export const log = (...args: unknown[]): void => {
+export const nodeLog = (...args: unknown[]): void => {
   void Max.post(format(args));
 };
 
-export const info = (...args: unknown[]): void => {
+export const nodeInfo = (...args: unknown[]): void => {
   if (verbose) {
     void Max.post(format(args));
   }
 };
 
-export const warn = (...args: unknown[]): void => {
+export const nodeWarn = (...args: unknown[]): void => {
   void Max.post(format(args), Max.POST_LEVELS.WARN);
 };
 
-export const error = (...args: unknown[]): void => {
+export const nodeError = (...args: unknown[]): void => {
   void Max.post(format(args), Max.POST_LEVELS.ERROR);
 };

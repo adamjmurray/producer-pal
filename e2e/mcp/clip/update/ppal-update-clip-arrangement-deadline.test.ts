@@ -4,12 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E test for arrangementLength running out of time mid-tiling.
+ * E2E test that a long arrangementLength fits a short request budget.
  *
- * How far it got is about the one clip being lengthened, so it belongs on that
- * clip's entry, not in a warning. Only a real Live is slow enough to hit it:
- * the deadline comes from the request timeout, which the REST endpoint lets a
- * caller shorten with ?timeoutMs=.
+ * A looping clip is resized in place, not copied loop by loop, so even 500 bars
+ * is a handful of Live calls. The deadline comes from the request timeout,
+ * which the REST endpoint lets a caller shorten with ?timeoutMs=.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track)
  *
@@ -20,7 +19,9 @@ import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import {
   type CreateClipResult,
+  parseToolResult,
   parseToolResultWithWarnings,
+  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -31,9 +32,8 @@ const ctx = setupMcpTestContext({ once: true });
 const TRACK = `t${EMPTY_MIDI_TRACK}`;
 
 /**
- * Short enough that Live cannot tile 500 bars inside it. Half of it is the
- * safety buffer, so tiling stops at about 500ms and the response still comes
- * back well before the request itself times out.
+ * Half of it is the safety buffer, so the work has about 500ms. Copying 499
+ * one-bar loops took far longer than that.
  */
 const SHORT_TIMEOUT_MS = 1000;
 
@@ -47,25 +47,30 @@ interface RestResponse {
   warnings?: string[];
 }
 
-describe("arrangementLength that runs out of time", () => {
-  it("says how far it tiled on the clip's own entry", async () => {
+describe("arrangementLength under a short request budget", () => {
+  it("lengthens a looping clip by 500 bars in time", async () => {
     const clip = await createLoopedClip(`${TRACK}[801|1]`);
-
-    // 499 one-bar tiles after the bar it has: far more than half a second
-    // of duplicating.
     const { result, warnings } = await updateClipOverRest(
       { id: clip.id, arrangementLength: "500bar" },
       SHORT_TIMEOUT_MS,
     );
 
-    const entry = Array.isArray(result) ? result[0] : result;
-
-    expect(entry?.id).toBe(clip.id);
-    expect(entry?.detail).toMatch(
-      /^ran out of time: placed \d+ of 499 tiles, reaching \d+(\.\d+)? beats instead of \d+(\.\d+)?; re-run to continue/,
-    );
-    // The clip's entry carries it, so nothing is left for a warning to say.
+    // One entry: the clip itself, with nothing to say.
+    expect(Array.isArray(result)).toBe(false);
+    expect((result as RestClipEntry).id).toBe(clip.id);
+    expect((result as RestClipEntry).detail).toBeUndefined();
     expect(warnings ?? []).toStrictEqual([]);
+
+    const read = parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: clip.id, include: ["timing"] },
+      }),
+    );
+
+    expect(read).toStrictEqual(
+      expect.objectContaining({ looping: true, arrangementLength: "500bar" }),
+    );
   });
 });
 
@@ -87,7 +92,7 @@ async function createLoopedClip(path: string): Promise<CreateClipResult> {
 
 /**
  * Call ppal-update-clip over REST, which is the only caller that can shorten
- * the request timeout the tiling deadline is derived from.
+ * the request timeout the deadline is derived from.
  * @param args - Tool arguments
  * @param timeoutMs - The request budget to impose
  * @returns The parsed tool result and any warnings beside it

@@ -13,7 +13,9 @@ import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 
 describe("focusSelect", () => {
   it("warns instead of throwing when the id resolves to nothing", () => {
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(v8Console, "emitWarning")
+      .mockImplementation(() => {});
 
     mockNonExistentObjects();
 

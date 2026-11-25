@@ -11,9 +11,13 @@ import {
   runAgentCliChat,
 } from "#evals/chat/agent-cli/agent-cli-chat.ts";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
+import { applyContextOrExit } from "#evals/shared/ollama/apply-context-to-models.ts";
 import { listModels } from "#evals/shared/list-models.ts";
+import { LOCAL_DEFAULT_BASE_URL } from "#evals/shared/provider-configs.ts";
+import { parseContextTokens } from "#evals/shared/ollama/parse-context-tokens.ts";
 import {
   LIST_MODELS_HINT,
+  type ModelSpec,
   parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
@@ -29,6 +33,7 @@ interface RawChatOptions extends Omit<ChatOptions, "provider" | "model"> {
   model?: string | boolean;
   listModels?: string | boolean;
   baseUrl?: string;
+  context?: number;
 }
 
 program
@@ -37,7 +42,7 @@ program
   .showHelpAfterError(true)
   .option(
     "-m, --model [model]",
-    "Model as provider/model (e.g., google/gemini-3.8-flash). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5-5)",
+    "Model as provider/model (e.g., google/gemini-4-argon). The provider can be omitted for claude-*, gpt-* and gemini-* models (e.g., claude-sonnet-5-5)",
   )
   .option(
     "--list-models [provider]",
@@ -71,7 +76,12 @@ program
   .option("-u, --usage", "Show per-step token usage")
   .option(
     "-b, --base-url <url>",
-    "Base URL for local provider (default: http://localhost:11434/v1)",
+    `Base URL for local provider (default: ${LOCAL_DEFAULT_BASE_URL})`,
+  )
+  .option(
+    "--context <tokens>",
+    "Context size for a local/... model (Ollama only): runs it as a <model>-ctx<tokens> copy created with that num_ctx",
+    parseContextTokens,
   )
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], rawOptions: RawChatOptions) => {
@@ -99,7 +109,15 @@ program
 
     const initialText = textArray.join(" ");
 
-    const { provider, model } = parseModelArgOrExit(program, modelArg);
+    let { provider, model } = parseModelArgOrExit(program, modelArg);
+
+    if (rawOptions.context != null) {
+      [{ provider, model }] = (await applyContextOrExit(
+        program,
+        [{ provider, model }],
+        rawOptions.context,
+      )) as [ModelSpec];
+    }
 
     // The agent-CLI providers run through a spawned subprocess, not the AI SDK
     // this CLI streams from, so they get their own loop.

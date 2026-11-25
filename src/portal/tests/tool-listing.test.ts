@@ -43,9 +43,9 @@ vi.mock(
       createMcpServer: vi.fn(
         (_callLiveApi: unknown, opts?: { tools?: string[] }) => {
           const registered = {
-            "ppal-connect": { description: "Connect" },
-            "ppal-read-clip": { description: "Read clip" },
-            "ppal-create-clip": { description: "Create clip" },
+            "ppal-connect": { description: "Connect", enabled: true },
+            "ppal-read-clip": { description: "Read clip", enabled: true },
+            "ppal-create-clip": { description: "Create clip", enabled: true },
           };
           const whitelist = opts?.tools;
 

@@ -10,7 +10,7 @@ head:
     - name: keywords
       content:
         Agent Skills, Coding Agent Skills, Claude Skills, Claude Code Skills,
-        Codex Skills, Codex CLI Skills, Gemini Skills, Gemini CLI Skills,
+        Codex Skills, Codex CLI Skills, Gemini Skills, Antigravity CLI Skills,
         SKILL.md, Ableton Live Agent Skill, Ableton Skill, Ableton Live skill,
         Ableton AI agent, AI music production skill, Producer Pal skill
   - - meta
@@ -20,8 +20,8 @@ head:
     - property: og:description
       content:
         Drop-in Agent Skill for Ableton Live. Works with Claude Code, Codex CLI,
-        Gemini CLI, and any coding agent that supports the SKILL.md convention.
-        No MCP client required.
+        Antigravity CLI, and any coding agent that supports the SKILL.md
+        convention. No MCP client required.
 ---
 
 # Ableton Live Agent Skills
@@ -49,7 +49,7 @@ agent decides the skill is relevant. The same folder works across all three:
 | ----------------------------------------------------------------- | ---------------------------------- |
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/skills) | `~/.claude/skills/<name>/SKILL.md` |
 | [Codex CLI](https://developers.openai.com/codex/skills/)          | `~/.codex/skills/<name>/SKILL.md`  |
-| [Gemini CLI](https://geminicli.com/docs/cli/skills/)              | `~/.gemini/skills/<name>/SKILL.md` |
+| [Antigravity CLI](https://antigravity.google/docs/skills)         | `~/.gemini/skills/<name>/SKILL.md` |
 
 ::: info When to use this vs MCP or REST
 

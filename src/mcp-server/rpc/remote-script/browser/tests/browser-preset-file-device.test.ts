@@ -147,13 +147,42 @@ describe("presetFileIsFor", () => {
     expect(await presetFileIsFor(nested, "Operator")).toBe(false);
   });
 
-  it("is for a named rack only when the file's own rack is that class", async () => {
+  it("is for a Drum Rack when an Instrument Rack's first chain starts with one", async () => {
     const drums = rackPreset("Drums.adg", "InstrumentGroupDevice", [
+      ["DrumGroupDevice"],
+      ["Reverb"],
+    ]);
+
+    expect(await presetFileIsFor(drums, "Drum Rack")).toBe(true);
+    expect(await presetFileIsFor(drums, "Instrument Rack")).toBe(true);
+    expect(await presetFileIsFor(drums, "Audio Effect Rack")).toBe(false);
+  });
+
+  it("is not for a Drum Rack when an Instrument Rack's Drum Rack isn't first", async () => {
+    const plain = rackPreset("Plain.adg", "InstrumentGroupDevice", [
+      ["Operator"],
+    ]);
+    const later = rackPreset("Later.adg", "InstrumentGroupDevice", [
+      ["Operator"],
+      ["DrumGroupDevice"],
+    ]);
+    const second = rackPreset("Second.adg", "InstrumentGroupDevice", [
+      ["Operator", "DrumGroupDevice"],
+    ]);
+    const empty = rackPreset("Empty.adg", "InstrumentGroupDevice");
+
+    expect(await presetFileIsFor(plain, "Drum Rack")).toBe(false);
+    expect(await presetFileIsFor(later, "Drum Rack")).toBe(false);
+    expect(await presetFileIsFor(second, "Drum Rack")).toBe(false);
+    expect(await presetFileIsFor(empty, "Drum Rack")).toBe(false);
+  });
+
+  it("is for no other rack when it holds a rack first", async () => {
+    const effects = rackPreset("Effects.adg", "AudioEffectGroupDevice", [
       ["DrumGroupDevice"],
     ]);
 
-    expect(await presetFileIsFor(drums, "Instrument Rack")).toBe(true);
-    expect(await presetFileIsFor(drums, "Drum Rack")).toBe(false);
+    expect(await presetFileIsFor(effects, "Drum Rack")).toBe(false);
   });
 
   it("can't tell for a device with no known class, so it allows the load", async () => {

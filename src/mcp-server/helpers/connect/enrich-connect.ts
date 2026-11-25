@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { pluginHostStates } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import { MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
+import { manageToolOffered } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withGlobalContext,
@@ -14,9 +15,14 @@ import { withMemory } from "../memory/memory-inject.ts";
 import { withSkills } from "../skills-inject.ts";
 import { type WrappedCallLiveApi } from "./connect-append.ts";
 import { shareConnectPing } from "./connect-ping.ts";
+import { isNewUser } from "./new-user.ts";
 import { withNextStep } from "./next-step-inject.ts";
+import { withPluginHostNotice } from "./plugin-host-notice-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
+import { type RemoteScriptCaller } from "./remote-script-line.ts";
+import { deviceInstallStatus } from "../../rpc/device-install/device-install-status.ts";
 import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
+import { withUpToDate } from "./up-to-date-inject.ts";
 
 /** The live device settings the connect-enrichment blocks depend on. */
 export interface ConnectEnrichmentConfig {
@@ -41,10 +47,14 @@ export interface ConnectEnrichmentConfig {
  *
  * Order is the point of this function. Blocks land inner-to-outer, so a
  * successful connect response reads: portal version, remote script notice,
- * skills, project context, global context, memory index, next step.
+ * plug-in wrapper notice, skills, project context, global context, memory index, next step.
  * withNextStep MUST stay outermost — it reads the same context and memory the
  * blocks before it carry (to decide whether this is a user we know nothing
  * about) and its instruction only works as the final word.
+ *
+ * A `versionCheck: true` call gets only the portal, remote script and plug-in
+ * wrapper lines, plus the new-chat line when all are current.
+ *
  * Settings arrive through a getter because the device can change them between
  * requests; createMcpServer is rebuilt per POST /mcp for the same reason.
  *
@@ -56,15 +66,28 @@ export function enrichConnect(
   inner: CallLiveApiFunction,
   getConfig: () => ConnectEnrichmentConfig,
 ): WrappedCallLiveApi {
-  // The skills and the remote script notice both need the script's ping.
+  // The skills and the remote script blocks share one ping and one status read.
   const connectPing = shareConnectPing(inner);
-  const portalVersioned = withRemoteScriptNotice(
-    withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
-    connectPing.getPing,
-    () => manageToolAvailable(getConfig()),
+  const getCaller = (): RemoteScriptCaller => ({
+    manage: manageToolOffered(getConfig().smallModelMode, getConfig().tools),
+    smallModel: getConfig().smallModelMode,
+  });
+  const wrapperReaders = {
+    states: pluginHostStates,
+    device: deviceInstallStatus,
+  };
+  const portalVersioned = withPluginHostNotice(
+    withRemoteScriptNotice(
+      withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
+      connectPing.getStatus,
+      getCaller,
+    ),
+    connectPing.getStatus,
+    getCaller,
+    wrapperReaders,
   );
 
-  return withNextStep(
+  const full = withNextStep(
     withMemory(
       withGlobalContext(
         withProjectContext(
@@ -74,6 +97,7 @@ export function enrichConnect(
               notation: getConfig().notation,
               smallModelMode: getConfig().smallModelMode,
               tools: getConfig().tools,
+              newUser: isNewUser(getConfig()),
             }),
             connectPing.getPing,
           ),
@@ -91,18 +115,23 @@ export function enrichConnect(
       tools: getConfig().tools,
     }),
   );
+  const versionCheck = withUpToDate(
+    portalVersioned,
+    connectPing.getStatus,
+    () => getConfig().portalVersion,
+    wrapperReaders,
+  );
+
+  return (tool, args, overrides) =>
+    tool === "ppal-connect" && isVersionCheck(args)
+      ? versionCheck(tool, args, overrides)
+      : full(tool, args, overrides);
 }
 
 /**
- * Whether the caller can use ppal-manage: small-model mode never offers it, and
- * a toolset that leaves it out withholds it.
- *
- * @param config - Current device settings
- * @returns True when the connect notice may point at the tool
+ * @param args - The ppal-connect args
+ * @returns True when the call asks for the version check only
  */
-function manageToolAvailable(config: ConnectEnrichmentConfig): boolean {
-  return (
-    !config.smallModelMode &&
-    (config.tools == null || config.tools.includes(MANAGE_TOOL_ID))
-  );
+function isVersionCheck(args: object): boolean {
+  return (args as { versionCheck?: unknown }).versionCheck === true;
 }

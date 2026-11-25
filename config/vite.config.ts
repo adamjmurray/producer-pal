@@ -16,10 +16,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
-const buildInputsPath = join(
+// Where the chat UI is written. The build-contents test and the gen-UI browser
+// test point it away from the device's folder so they never touch it. A
+// relative path is from the repo root.
+const outDir = resolve(
   rootDir,
-  "max-for-live-device/chat-ui.inputs.json",
+  process.env.CHAT_UI_OUT_DIR ?? "max-for-live-device",
 );
+const buildInputsPath = join(outDir, "chat-ui.inputs.json");
+// The unfinished generative-UI panel is build-flagged; a release UI must carry
+// none of its code.
+const genUi = process.env.ENABLE_GEN_UI === "true";
 
 let buildInputs: string[] = [];
 let buildStartedAt = 0;
@@ -29,6 +36,7 @@ export default defineConfig({
   // no `process`, so this must always substitute to a literal.
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
+    "process.env.ENABLE_GEN_UI": JSON.stringify(String(genUi)),
   },
   resolve: {
     alias: {
@@ -43,7 +51,6 @@ export default defineConfig({
     {
       name: "rename-output",
       closeBundle() {
-        const outDir = join(rootDir, "max-for-live-device");
         const oldPath = join(outDir, "index.html");
         const newPath = join(outDir, "chat-ui.html");
 
@@ -62,7 +69,6 @@ export default defineConfig({
     {
       name: "add-license-header",
       closeBundle() {
-        const outDir = join(rootDir, "max-for-live-device");
         const filePath = join(outDir, "chat-ui.html");
 
         try {
@@ -75,6 +81,7 @@ This file includes bundled dependencies:
 - Marked (MIT)
 - DOMPurify (Apache-2.0 OR MPL-2.0)
 - idb (ISC)
+- @noble/ciphers (MIT)
 - Tailwind CSS, incl. @tailwindcss/typography (MIT)
 - Vercel AI SDK: ai, @ai-sdk/{anthropic,google,mistral,openai,provider-utils} (Apache-2.0)
 - @openrouter/ai-sdk-provider (Apache-2.0)
@@ -130,11 +137,12 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
       closeBundle() {
         writeFileSync(
           buildInputsPath,
-          // The SHA is baked in by `define`, and a commit moves it without
-          // touching any file, so mtimes alone can't spot that change.
+          // The SHA and the flags are baked in by `define`, and none changes
+          // a file, so mtimes alone can't spot that change.
           `${JSON.stringify(
             {
               buildSha: BUILD_SHA,
+              genUi,
               startedAt: buildStartedAt,
               inputs: [...new Set(buildInputs)].toSorted(),
             },
@@ -149,7 +157,7 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
   root: "webui",
   server: { port: 5173 },
   build: {
-    outDir: "../max-for-live-device",
+    outDir,
     emptyOutDir: false,
     cssCodeSplit: false,
     assetsInlineLimit: 100000000,

@@ -169,14 +169,27 @@ describe("updateTrack routing by name", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("falls back to the identifier when the available list is empty", () => {
+  it("refuses a number that is not an available identifier", () => {
+    expect(() => updateTrack({ id: "123", outputRoutingType: "99" })).toThrow(
+      'the track has no outputRoutingType named "99"',
+    );
+
+    expect(track.set).not.toHaveBeenCalledWith(
+      "output_routing_type",
+      expect.anything(),
+    );
+  });
+
+  it("refuses an identifier when the available list is empty", () => {
     const bare = registerMockObject("456", { path: livePath.track(1) });
 
-    updateTrack({ id: "456", outputRoutingType: "25" });
+    expect(() => updateTrack({ id: "456", outputRoutingType: "25" })).toThrow(
+      "available: none",
+    );
 
-    expect(bare.set).toHaveBeenCalledWith(
+    expect(bare.set).not.toHaveBeenCalledWith(
       "output_routing_type",
-      '{"output_routing_type":{"identifier":25}}',
+      expect.anything(),
     );
   });
 
@@ -214,6 +227,31 @@ describe("updateTrack routing by name", () => {
         "output_routing_channel",
         '{"output_routing_channel":{"identifier":26}}',
       );
+    });
+
+    // The alias is named as sent in what a refusal says; its fix, the
+    // published name, is for the docs.
+    it.each([
+      "inputRoutingTypeId",
+      "inputRoutingChannelId",
+      "outputRoutingTypeId",
+      "outputRoutingChannelId",
+    ])("names %s as sent when it is refused", (alias) => {
+      expect(() => updateTrack({ id: "123", [alias]: "Nowhere" })).toThrow(
+        `the track has no ${alias} named "Nowhere"`,
+      );
+    });
+
+    it("names the alias in a note about options sharing a name", () => {
+      const result = updateTrack({ id: "123", outputRoutingTypeId: "Bass" });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        detail:
+          '2 outputRoutingTypeId options are named "Bass"; used the first — ' +
+          "send the identifier (30, 31) to pick another",
+      });
     });
 
     it("loses to the new param when both are sent", () => {

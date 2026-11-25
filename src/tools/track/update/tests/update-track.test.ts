@@ -15,14 +15,35 @@ import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
+const ROUTING = {
+  available_input_routing_types: [
+    '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
+  ],
+  available_input_routing_channels: [
+    '{"available_input_routing_channels": [{"display_name": "1", "identifier": 1}]}',
+  ],
+  available_output_routing_types: [
+    '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
+  ],
+  available_output_routing_channels: [
+    '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
+  ],
+};
+
 describe("updateTrack", () => {
   let track123: RegisteredMockObject;
   let track456: RegisteredMockObject;
   let track789: RegisteredMockObject;
 
   beforeEach(() => {
-    track123 = registerMockObject("123", { path: livePath.track(0) });
-    track456 = registerMockObject("456", { path: livePath.track(1) });
+    track123 = registerMockObject("123", {
+      path: livePath.track(0),
+      properties: ROUTING,
+    });
+    track456 = registerMockObject("456", {
+      path: livePath.track(1),
+      properties: ROUTING,
+    });
     track789 = registerMockObject("789", { path: livePath.track(2) });
   });
 
@@ -30,28 +51,34 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "123",
       name: "Updated Track",
-      color: "#FF0000",
+      color: "#FF3636",
       mute: true,
       solo: false,
       arm: true,
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
-    expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(track123.set).toHaveBeenCalledWith("color", 16725558);
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", true);
     expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
+  it("writes the nearest palette entry for a color off the palette", () => {
+    updateTrack({ id: "123", color: "#800080" });
+
+    expect(track123.set).toHaveBeenCalledWith("color", 0x624bad);
+  });
+
   it("should update multiple tracks by comma-separated IDs", () => {
     const result = updateTrack({
       id: "123, 456",
-      color: "#00FF00",
+      color: "#1AFF2F",
       mute: true,
     });
 
-    expect(track123.set).toHaveBeenCalledWith("color", 65280);
+    expect(track123.set).toHaveBeenCalledWith("color", 1769263);
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledTimes(2);
     expect(track456.set).toHaveBeenCalledTimes(2);
@@ -149,7 +176,7 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "nonexistent,123,456",
       name: "A,B,C",
-      color: "#FF0000,#00FF00,#0000FF",
+      color: "#FF3636,#1AFF2F,#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -162,9 +189,9 @@ describe("updateTrack", () => {
       { id: "456", path: "t1" },
     ]);
     expect(track123.set).toHaveBeenCalledWith("name", "B");
-    expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(track123.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F
     expect(track456.set).toHaveBeenCalledWith("name", "C");
-    expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
+    expect(track456.set).toHaveBeenCalledWith("color", 1716118); // #1A2F96
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it
@@ -231,7 +258,7 @@ describe("updateTrack", () => {
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateTrack({
       id: " 123 , 456 , 789 ",
-      color: "#0000FF",
+      color: "#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -327,14 +354,14 @@ describe("updateTrack", () => {
       const result = updateTrack({
         id: "123",
         name: "Test Track",
-        color: "#FF0000",
+        color: "#FF3636",
         mute: true,
         inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });
 
       expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
-      expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+      expect(track123.set).toHaveBeenCalledWith("color", 16725558);
       expect(track123.set).toHaveBeenCalledWith("mute", true);
       expect(track123.set).toHaveBeenCalledWith(
         "input_routing_type",
@@ -386,7 +413,7 @@ describe("updateTrack", () => {
       it("skips input routing on a return track but still applies output routing", () => {
         const returnTrack = registerMockObject("ret1", {
           path: livePath.returnTrack(0),
-          properties: { can_be_armed: 0 },
+          properties: { can_be_armed: 0, ...ROUTING },
         });
 
         const result = updateTrack({
@@ -449,6 +476,25 @@ describe("updateTrack", () => {
           expect.anything(),
         );
         expect(capturedWarnings()).toStrictEqual([]);
+      });
+
+      // Live 13 lets a return track be armed, but ignores a monitoring write.
+      it("refuses monitoring state on a return track Live can arm", () => {
+        const returnTrack = registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 1 },
+        });
+
+        expect(() =>
+          updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN }),
+        ).toThrow(
+          "monitoringState had no effect: return, main and group tracks have no monitoring",
+        );
+
+        expect(returnTrack.set).not.toHaveBeenCalledWith(
+          "current_monitoring_state",
+          expect.anything(),
+        );
       });
 
       // Two targets: the return track keeps its slot as a skip, in the order
@@ -577,18 +623,18 @@ describe("updateTrack", () => {
       trackReadsColor(track123, 1768495); // #1AFC2F
       trackReadsColor(track456, 1768495);
 
-      expect(updateTrack({ id: "123,456", color: "#00FF00" })).toStrictEqual([
+      expect(updateTrack({ id: "123,456", color: "#1AFF2F" })).toStrictEqual([
         {
           id: "123",
           path: "t0",
           color: "#1AFC2F",
-          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #1AFF2F is not in Live's palette; landed as #1AFC2F",
         },
         {
           id: "456",
           path: "t1",
           color: "#1AFC2F",
-          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #1AFF2F is not in Live's palette; landed as #1AFC2F",
         },
       ]);
     });

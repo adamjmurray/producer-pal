@@ -168,6 +168,10 @@ function requirementLabels(scenario: EvalScenario): string[] {
     labels.push("brackets");
   }
 
+  if (req.memory) {
+    labels.push("memory");
+  }
+
   if (req.largeModel) {
     labels.push("largeModel");
   }

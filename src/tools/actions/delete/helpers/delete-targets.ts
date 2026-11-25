@@ -20,6 +20,7 @@ import { typeMismatch } from "#src/tools/shared/validation/id-validation.ts";
 import {
   type NamedTarget,
   namedTargets,
+  sentParam,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -56,14 +57,28 @@ export const NOTHING_TO_DELETE = "nothing to delete";
  * @throws Error when a list has a hole, or a path can't be parsed
  */
 export function deleteTargets(call: DeleteCall): Array<Target<DeletePayload>> {
-  const named = namedTargets({ id: call.ids, path: call.path });
+  const named = namedTargets({
+    id: call.ids,
+    path: call.path,
+    ...call.names,
+  });
 
   // A path that can't be parsed was written wrong, so it refuses the call
   // before anything is looked up. One that parses but names the wrong kind of
   // thing skips only its own target.
-  refuseUnparsableEntries(call.path, "path");
+  refuseUnparsableEntries(call.path, call.names.pathParam);
 
   return named.map((target) => resolveTarget(target, call.type));
+}
+
+/**
+ * The id the path names now, as the first lookup read it.
+ * @param path - One path, as the caller wrote it
+ * @param type - Type of objects to delete
+ * @returns The object's id, or null when the path names no such object
+ */
+export function deletePathId(path: string, type: string): string | null {
+  return pathLookup(path, type).id;
 }
 
 // --- Helpers below main exports ---
@@ -77,12 +92,13 @@ const TAKE_LANE_REFUSAL =
  * reaches a take lane, so the type's own lookup would call an existing lane the
  * wrong kind; with its id, the refusal says what it is.
  * @param requestPath - One path, as the caller wrote it
+ * @param label - The param the path was sent under
  * @returns The lane's id, or null for any other path or a lane that isn't
  *   there, which the type's lookup reports
  */
-function existingTakeLane(requestPath: string): IdLookup | null {
+function existingTakeLane(requestPath: string, label: string): IdLookup | null {
   // Parsed once already by deleteTargets, which refused anything unparsable.
-  const parsed = parseObjectPath(requestPath, "path", true);
+  const parsed = parseObjectPath(requestPath, label, true);
 
   if (parsed.kind !== "take-lane") {
     return null;
@@ -93,6 +109,24 @@ function existingTakeLane(requestPath: string): IdLookup | null {
   );
 
   return lane.exists() ? { id: lane.id } : null;
+}
+
+/**
+ * One path's lookup: a take lane by its own rule, anything else by the type.
+ * @param requestPath - One path, as the caller wrote it
+ * @param type - Type of objects to delete
+ * @param label - The param the path was sent under
+ * @returns What the path named
+ */
+function pathLookup(
+  requestPath: string,
+  type: string,
+  label = "path",
+): IdLookup {
+  return (
+    existingTakeLane(requestPath, label) ??
+    resolvePathForType(type, requestPath, label)
+  );
 }
 
 /**
@@ -109,8 +143,7 @@ function resolveTarget(
   const lookup: IdLookup =
     requestPath == null
       ? { id: named.value }
-      : (existingTakeLane(requestPath) ??
-        resolvePathForType(type, requestPath));
+      : pathLookup(requestPath, type, sentParam(named));
 
   if (lookup.id == null) {
     return lookup.empty
@@ -127,14 +160,18 @@ function resolveTarget(
 
   const refusal = undeletable(object, type);
 
+  // What a path named at the start, for a skip to say if it has moved on.
+  const atStart = requestPath == null ? undefined : id;
+
   if (refusal != null) {
-    return { named, skip: refusal };
+    return { named, atStart, skip: refusal };
   }
 
   // Keyed by the object, so an id and a path naming one object are caught.
   return {
     named,
     key: object.id,
+    atStart,
     data: { kind: "delete", id, object, requestPath },
   };
 }
@@ -162,7 +199,7 @@ function nothingThere(
  */
 function nestedKitHint(named: NamedTarget, type: string): string | undefined {
   return named.param === "path" && DEVICE_CHAIN_TYPES.has(type)
-    ? nestedRackHintForPath(named.value)
+    ? nestedRackHintForPath(named.value, sentParam(named))
     : undefined;
 }
 

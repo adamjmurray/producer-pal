@@ -24,7 +24,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 
 // Detect Vitest so unit tests never read or clobber the developer's real
 // ~/.producer-pal. A test opts back into real filesystem access by pointing
@@ -102,7 +102,7 @@ export function skipIfUnreadable<T>(filename: string, read: () => T): T | null {
   try {
     return read();
   } catch (error) {
-    console.warn(
+    nodeWarn(
       `Skipping unreadable ${resolveConfigPath(filename)}: ${errorMessage(error)}`,
     );
 
@@ -224,7 +224,7 @@ export function deleteConfigMarkdown(filename: string): void {
     // rename that couldn't remove the old slug otherwise reports success while
     // regenerateIndex double-lists old + new as a phantom duplicate.
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to delete ${target}: ${errorMessage(error)}`);
+      nodeWarn(`Failed to delete ${target}: ${errorMessage(error)}`);
     }
   }
 }

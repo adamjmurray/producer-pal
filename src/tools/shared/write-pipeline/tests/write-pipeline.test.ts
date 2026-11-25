@@ -13,7 +13,7 @@ import {
   runToy,
   toySpec,
   wroteAll,
-} from "./toy-write-spec.ts";
+} from "./helpers/toy-write-spec.ts";
 
 describe("runWrite", () => {
   it("answers one entry per target, in the order named", () => {

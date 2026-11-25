@@ -30,8 +30,6 @@ export interface DeviceFile {
 
 export interface DeviceFileList {
   files: DeviceFile[];
-  /** Project entries that were not on disk and are left out. */
-  warnings: string[];
 }
 
 interface ProjectEntry {
@@ -51,7 +49,7 @@ type ProjectSection = "patchers" | "media" | "other";
  *
  * @param deviceDir - The folder holding the unfrozen device
  * @param patcher - The device JSON's `patcher` object
- * @returns The files in freeze order, and warnings for missing project entries
+ * @returns The files in freeze order. Throws when a project entry is not on disk.
  */
 export function listDeviceFiles(
   deviceDir: string,
@@ -72,7 +70,7 @@ export function listDeviceFiles(
     }
   }
 
-  return { files: [...collector.files.values()], warnings: collector.warnings };
+  return { files: [...collector.files.values()] };
 }
 
 // A project section's entries, last one first.
@@ -84,7 +82,6 @@ function projectEntries(
 
 class FileCollector {
   readonly files = new Map<string, DeviceFile>();
-  readonly warnings: string[] = [];
 
   private readonly deviceDir: string;
 
@@ -98,11 +95,10 @@ class FileCollector {
     const path = join(this.deviceDir, folder, name);
 
     if (!existsSync(path)) {
-      this.warnings.push(
-        `${name} is in the device's project but not at ${path}. Left out.`,
+      throw new Error(
+        `${name} is in the device's project but not at ${path}. ` +
+          "Run `npm run build:debug` (or `npm run build`) first, or remove it from the project.",
       );
-
-      return;
     }
 
     this.add({ name: basename(name), path, nodeScript: false });

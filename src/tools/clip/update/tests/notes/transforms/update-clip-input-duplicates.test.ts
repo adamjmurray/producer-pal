@@ -160,9 +160,17 @@ describe("updateClip - duplicates inside the new notes", () => {
     async ({ existing, args, options }) => {
       mockMergeNoteTracking(mocks.clip123, existing);
 
-      const result = await updateClip({ id: "123", ...args }, options);
+      const result = (await updateClip({ id: "123", ...args }, options)) as {
+        detail?: string;
+      };
 
-      expect(result).not.toHaveProperty("detail");
+      // Absent, or only the note that a transform changed nothing
+      expect(
+        result.detail === undefined ||
+          /^the transforms changed none of the \d+ matched notes$/.test(
+            result.detail,
+          ),
+      ).toBe(true);
     },
   );
 

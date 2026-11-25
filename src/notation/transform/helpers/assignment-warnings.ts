@@ -7,7 +7,7 @@
 
 import { musicalBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type ExpressionNode } from "../parser/transform-parser.ts";
-import * as console from "../transform-warning-label.ts";
+import { clipDetail } from "../transform-warning-label.ts";
 import { findFunctionName } from "./find-function.ts";
 import { type TimeRange } from "./transform-context.ts";
 
@@ -81,7 +81,7 @@ export function warnShortRamp(
     timeSigDenominator,
   );
 
-  console.clipDetail(
+  clipDetail(
     `${name}() only reached ${Math.round(reached * 100)}% of its end value: ` +
       `the last matched note is before the range end. End the range on that ` +
       `note (${lastBarBeat}) to reach it.`,

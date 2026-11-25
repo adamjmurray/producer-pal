@@ -9,6 +9,7 @@ import {
   type EnforceLimitResult,
   MAX_CONVERSATIONS,
 } from "#webui/lib/conversation-db";
+import { errorMessage } from "#src/shared/error-message";
 
 const AUTO_DISMISS_MS = 4000;
 
@@ -139,7 +140,7 @@ export function formatSaveErrorMessage(error: unknown): string {
     return "Couldn't save conversation: browser storage is full. Delete or export old conversations to free space.";
   }
 
-  const detail = error instanceof Error ? error.message : String(error);
+  const detail = errorMessage(error);
 
   return `Couldn't save conversation: ${detail}`;
 }

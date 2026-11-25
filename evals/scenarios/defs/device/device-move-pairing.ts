@@ -39,8 +39,9 @@ import {
   assertTrackChain,
   pathEntries,
 } from "./helpers/device-chain-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
+const TOOL_UPDATE_DEVICE = TOOLS.updateDevice;
 
 export const deviceMovePairing: EvalScenario = {
   id: "device-move-pairing",

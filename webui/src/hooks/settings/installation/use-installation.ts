@@ -20,7 +20,7 @@ export interface UseInstallationReturn {
   remote: UseRemoteScriptReturn;
   device: UseDeviceInstallReturn;
   swap: UseDeviceSwapReturn;
-  /** Whether the device or its remote script is missing or out of date. */
+  /** Whether the device, its remote script or a plug-in wrapper device is missing or out of date. */
   incomplete: boolean;
 }
 
@@ -53,6 +53,9 @@ export function useInstallation(tabOpen: boolean): UseInstallationReturn {
     problem: device.status?.problem ?? null,
     state: device.status?.state ?? null,
     remoteScriptCurrent: remoteScriptCurrent(remote.status),
+    wrappersCurrent:
+      device.status?.pluginHost?.every(({ state }) => state === "current") ??
+      null,
   });
 
   return { remote, device, swap, incomplete };

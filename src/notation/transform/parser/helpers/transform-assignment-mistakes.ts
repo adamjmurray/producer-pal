@@ -22,6 +22,11 @@ const PARAM_AND_OP_AT_END = new RegExp(
 const ASSIGNMENT_AT_START = new RegExp(
   String.raw`^([A-Za-z_][\w.]*)\s*(${ASSIGN_OP}|:)\s*(.*)$`,
 );
+// An assignment whose value so far ends in a number (`timing = 1`), up to a
+// `|` that follows. Nothing that makes a condition or a second statement.
+const VALUE_BEFORE_PIPE = new RegExp(
+  String.raw`(?:^|[\s:)])(${PARAM})\s*(?:${ASSIGN_OP})[^=<>!|]*\d\s*$`,
+);
 // A lone name, then anything: `start 2|1`.
 const NAME_THEN_REST = /^([A-Za-z]+)(?:\s+(.*))?$/;
 // A note value or bar count.
@@ -50,6 +55,24 @@ const EXAMPLE_VALUES: Record<string, string> = {
   gain: "-6",
   pitchShift: "12",
 };
+
+/**
+ * @param line - The failing line
+ * @returns Hint for a bar|beat position used as a value, as in
+ *   `timing = 1|1`: values are plain numbers, note values or beats
+ */
+export function barBeatValueMistake(line: FailedLine): string | null {
+  const { before, rest } = line;
+  const param = VALUE_BEFORE_PIPE.exec(before)?.[1];
+
+  if (param == null || !/^\|\s*[\d*]/.test(rest)) {
+    return null;
+  }
+
+  return param === "timing"
+    ? "timing takes beats, not bar|beat: timing = 0 is 1|1. A position b|n is beat (b-1)*beatsPerBar + (n-1)."
+    : `${param} takes a plain value, not a bar|beat position — e.g. ${param} = ${EXAMPLE_VALUES[param]}.`;
+}
 
 /**
  * @param line - The failing line

@@ -44,7 +44,7 @@ test.describe("Settings — Presets tab (stubbed backend)", () => {
         name: "Bulk edit worker",
         description: "cheap, tools trimmed",
         provider: "gemini",
-        model: "gemini-3.8-flash",
+        model: "gemini-4-carbon",
         enabledTools: expect.anything(),
       }),
     );

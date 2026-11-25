@@ -126,7 +126,7 @@ describe("ChatSdkClient Stop mid-worker", () => {
 
     const entry = findSpawnEntry(client, "tc-stop");
 
-    expect(entry?.result).toContain("Canceled");
+    expect(entry?.result).toContain("Stopped by the user");
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe(
       "Renamed the Bass track.",
     );

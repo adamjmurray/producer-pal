@@ -199,7 +199,10 @@ describe("ppal-duplicate type=chain", () => {
     // and a chain with none proves nothing about carrying them.
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { id: clap!.id, sendGainDb: -12, sendReturn: "B Reverb" },
+      arguments: {
+        id: clap!.id,
+        sends: [{ return: "B Reverb", gainDb: -12 }],
+      },
     });
 
     const { data, warnings } = await callWithWarnings(

@@ -147,28 +147,47 @@ function emitVelocityChange(
     note.velocity_deviation ?? DEFAULT_VELOCITY_DEVIATION,
   );
 
-  if (noteDeviation > 0) {
-    const velocityMin = Math.max(1, Math.min(127, noteVelocity));
-    const velocityMax = Math.min(127, velocityMin + noteDeviation);
-    const currentMin = Math.max(1, Math.min(127, state.velocity));
-    const currentMax = Math.min(127, currentMin + state.velocityDeviation);
+  if (noteDeviation !== 0) {
+    // `vA-B` keeps its order: a negative deviation is a descending range.
+    // Bounds floor at 1 because the parser rejects a 0 bound.
+    const velocityStart = clampVelocityBound(noteVelocity);
+    const velocityEnd = clampVelocityBound(velocityStart + noteDeviation);
+    const currentStart = clampVelocityBound(state.velocity);
+    const currentEnd = clampVelocityBound(
+      currentStart + state.velocityDeviation,
+    );
 
-    if (velocityMin !== currentMin || velocityMax !== currentMax) {
-      if (velocityMax === velocityMin) {
-        elements.push(`v${velocityMin}`);
-        state.velocity = velocityMin;
+    // state.velocity < 1 is the initial sentinel: a downward range clamped to
+    // 1 (v1) would otherwise look like the state it has not emitted yet.
+    if (
+      state.velocity < 1 ||
+      velocityStart !== currentStart ||
+      velocityEnd !== currentEnd
+    ) {
+      if (velocityEnd === velocityStart) {
+        elements.push(`v${velocityStart}`);
+        state.velocity = velocityStart;
         state.velocityDeviation = 0;
       } else {
-        elements.push(`v${velocityMin}-${velocityMax}`);
-        state.velocity = velocityMin;
-        state.velocityDeviation = velocityMax - velocityMin;
+        elements.push(`v${velocityStart}-${velocityEnd}`);
+        state.velocity = velocityStart;
+        state.velocityDeviation = velocityEnd - velocityStart;
       }
     }
-  } else if (noteVelocity !== state.velocity || state.velocityDeviation > 0) {
+  } else if (noteVelocity !== state.velocity || state.velocityDeviation !== 0) {
     elements.push(`v${noteVelocity}`);
     state.velocity = noteVelocity;
     state.velocityDeviation = 0;
   }
+}
+
+/**
+ * Clamp a velocity range bound to 1-127
+ * @param value - Velocity value
+ * @returns Clamped bound
+ */
+function clampVelocityBound(value: number): number {
+  return Math.max(1, Math.min(127, value));
 }
 
 /**

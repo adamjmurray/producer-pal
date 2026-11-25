@@ -738,6 +738,9 @@ describe("useChat", () => {
 
       expect(errorEntry).toBeDefined();
       expect(errorEntry?.content).toContain("Retry cancelled");
+      // The client already recorded the message; the stash must not add it
+      // again, or the saved conversation shows it twice.
+      expect(chatHistory.filter((m) => m.role === "user")).toHaveLength(1);
     });
 
     it("doesn't render a superseded turn's failure over the turn now streaming", async () => {

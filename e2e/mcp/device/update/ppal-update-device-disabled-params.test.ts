@@ -124,8 +124,7 @@ describe("update-device on macro-mapped parameters", () => {
     it("refuses a lone mapped send, naming it", async () => {
       const message = await refusal({
         path: `${KIT}/pC1`,
-        sendGainDb: -10,
-        sendReturn: "A",
+        sends: [{ return: "A", gainDb: -10 }],
       });
 
       expect(message).toMatch(/no send landed — "A Saturator": gainDb/);

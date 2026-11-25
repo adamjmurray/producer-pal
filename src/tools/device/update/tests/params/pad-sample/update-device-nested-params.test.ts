@@ -25,6 +25,7 @@ import {
   registerDrumSamplerOn,
   registerPadRack,
   registerUnbuiltPadChain,
+  skipSampleWrite,
 } from "./pad-sample-fixtures.ts";
 
 // A pad's sample has three addresses: the rack plus a "pC1/sample" param name,
@@ -256,6 +257,8 @@ describe("updateDevice - pad instrument guard", () => {
   it("swaps the instrument for a Simpler and loads the sample under force", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
+    skipSampleWrite("t0/d0", "pC1/sample");
+
     updateDevice({
       path: "t0/d0",
       params: [{ name: "pC1/sample", value: "/snare.wav" }],
@@ -274,6 +277,7 @@ describe("updateDevice - pad instrument guard", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
     registerCreatedSimpler().call.mockImplementation(() => undefined);
+    skipSampleWrite("t0/d0", "pC1/sample");
 
     const result = updateDevice({
       path: "t0/d0",
@@ -398,6 +402,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
 
     registerDrumSamplerOn(chain as RegisteredMockObject);
     registerCreatedSimpler();
+    skipSampleWrite("t0/d0/pC1", "sample");
 
     const result = updateDevice({
       path: "t0/d0/pC1",
@@ -497,7 +502,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
   });
 
   // Neither is written, so neither overrides the other.
-  it("refuses a param sent twice on a chain once per entry, by id where sent by id", () => {
+  it("refuses every entry of a param sent twice on a chain", () => {
     registerPadRack();
 
     const notApplicable =
@@ -514,10 +519,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
           ],
         }),
       ),
-    ).toBe(
-      `no param landed — "Volume": ${notApplicable}; ` +
-        `"volume": ${notApplicable}; "7": ${notApplicable}`,
-    );
+    ).toBe(`no param landed — all 3: ${notApplicable}`);
   });
 
   it("still refuses every other param on a chain, in the error", () => {

@@ -302,7 +302,7 @@ describe("App", () => {
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        settingsConfigured: true,
+        chatSetUp: true,
       });
       (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
         viewState: {

@@ -9,7 +9,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  checkHasApiKey,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
   loadProviderSettings,
@@ -147,37 +146,6 @@ describe("provider-settings", () => {
     });
   });
 
-  describe("checkHasApiKey presence detection", () => {
-    it("detects presence for an encrypted apiKey (without decrypting)", async () => {
-      await saveProviderSettings("anthropic", {
-        apiKey: "sk-ant-secret",
-        model: "claude-sonnet-4-6",
-        thinking: "Default",
-      });
-
-      expect(checkHasApiKey("anthropic")).toBe(true);
-    });
-
-    it("detects presence for a legacy cleartext apiKey", () => {
-      localStorage.setItem(
-        "producer_pal_provider_openai",
-        JSON.stringify({ apiKey: "sk-legacy-cleartext" }),
-      );
-
-      expect(checkHasApiKey("openai")).toBe(true);
-    });
-
-    it("returns false when no apiKey is stored", () => {
-      expect(checkHasApiKey("anthropic")).toBe(false);
-    });
-
-    it("detects the legacy standalone gemini_api_key", () => {
-      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
-
-      expect(checkHasApiKey("gemini")).toBe(true);
-    });
-  });
-
   describe("loadProviderSettings", () => {
     it("migrates port to baseUrl when baseUrl is missing", () => {
       localStorage.setItem(
@@ -211,14 +179,6 @@ describe("provider-settings", () => {
 
       expect(settings.apiKey).toBe("");
       expect(settings.model).toBe("claude-sonnet-5-5");
-    });
-  });
-
-  describe("checkHasApiKey", () => {
-    it("returns false for invalid JSON in saved data", () => {
-      localStorage.setItem("producer_pal_provider_anthropic", "bad-json{");
-
-      expect(checkHasApiKey("anthropic")).toBe(false);
     });
   });
 

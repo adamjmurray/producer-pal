@@ -123,6 +123,10 @@ and `B`), e.g. `1 Filter On A`, `1 Frequency A`, ... `8 Q B`. Plus device-wide:
 always independently addressable by name regardless of `edit_mode` or
 `global_mode`** — chain is determined by parameter suffix.
 
+Stereo mode uses only the A chain, but Live still reports a switched-on B band
+as active. An `inactiveWhen` rule marks every B param inactive while
+`globalMode` is stereo, so a model doesn't edit the side that has no effect.
+
 **Producer Pal interface** (as built; design probed 2026-05-21):
 
 Two writable fields on `update-device`, also returned by `read-device`:
@@ -156,7 +160,8 @@ reflect it.
 1. **B-chain parameters are silently inaudible in Stereo mode.** Setting
    B-suffix params (e.g. `1 Frequency B`) in Stereo mode persists the values but
    they don't process audio. Switching `globalMode` to `"L/R"` or `"M/S"`
-   activates them. We don't enforce or warn — caller's intent.
+   activates them. The write still goes in, and its entry says the param is
+   inactive.
 2. **Silent rejection on out-of-range writes** to raw `global_mode`. The enum
    mapping should prevent this from reaching the API, but defensive: validate
    before set.

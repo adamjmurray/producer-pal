@@ -53,9 +53,12 @@ describe("toCompactJSLiteral - Arrays", () => {
     expect(toCompactJSLiteral([1, null, 2])).toBe("[1,null,2]");
   });
 
-  it("skips undefined in arrays", () => {
-    expect(toCompactJSLiteral([1, undefined, 2])).toBe("[1,2]");
-    expect(toCompactJSLiteral([undefined, undefined])).toBe("[]");
+  // As JSON does: dropping the item would move every later one up a place,
+  // and a list of per-operation results is read by position.
+  it("writes undefined in an array as null, keeping each item's place", () => {
+    expect(toCompactJSLiteral([1, undefined, 2])).toBe("[1,null,2]");
+    expect(toCompactJSLiteral([undefined, undefined])).toBe("[null,null]");
+    expect(toCompactJSLiteral([() => 1, 2])).toBe("[null,2]");
   });
 
   it("handles nested arrays", () => {
@@ -74,8 +77,10 @@ describe("toCompactJSLiteral - Arrays", () => {
         [1, undefined],
         [undefined, 2],
       ]),
-    ).toBe("[[1],[2]]");
-    expect(toCompactJSLiteral([1, [undefined, undefined], 2])).toBe("[1,[],2]");
+    ).toBe("[[1,null],[null,2]]");
+    expect(toCompactJSLiteral([1, [undefined, undefined], 2])).toBe(
+      "[1,[null,null],2]",
+    );
   });
 
   it("handles mixed type arrays", () => {
@@ -275,10 +280,6 @@ describe("toCompactJSLiteral - Edge cases", () => {
 
   it("handles objects that become empty after filtering undefined", () => {
     expect(toCompactJSLiteral({ a: undefined, b: undefined })).toBe("{}");
-  });
-
-  it("handles arrays that become empty after filtering undefined", () => {
-    expect(toCompactJSLiteral([undefined, undefined])).toBe("[]");
   });
 });
 

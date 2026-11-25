@@ -33,6 +33,7 @@ import {
   clearClipSlots,
   readClipNotesFromTurn,
 } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
@@ -52,7 +53,7 @@ const EPS = 1e-6;
 async function setupRangeClip(mcpClient: Client): Promise<void> {
   await clearClipSlots(mcpClient, [SLOT]);
   await mcpClient.callTool({
-    name: "ppal-create-clip",
+    name: TOOLS.createClip,
     arguments: {
       path: SLOT_PATH,
       length: "4bar",

@@ -38,7 +38,7 @@ import {
   mockTransport,
   startAndGetCallHandler,
   type TestBridge,
-} from "./stdio-http-bridge-test-helpers.ts";
+} from "./helpers/stdio-http-bridge-test-helpers.ts";
 
 // The mock objects live in the helper module; these factories only dereference
 // them when the mocked constructor is called, so there is no init-order hazard.
@@ -106,13 +106,6 @@ vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
       };
     },
   ),
-}));
-
-// @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("zod"), () => ({
-  z: {
-    toJSONSchema: vi.fn((schema: unknown) => schema), // Pass through for testing
-  },
 }));
 
 vi.mock(import("../file-logger.ts"), () => ({
@@ -808,7 +801,7 @@ describe("StdioHttpBridge", () => {
         invalidBridge._createMisconfiguredUrlResponse(),
       );
       expect(logger.debug).toHaveBeenCalledWith(
-        "[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.",
+        "[Bridge] Not an http(s) URL, so not asking it",
       );
     });
   });

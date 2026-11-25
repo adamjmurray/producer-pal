@@ -5,8 +5,12 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  sceneClips,
+  type SceneSlotClip,
+} from "#src/tools/shared/clip/slot-contents/scene-slot-clips.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   landedColor,
@@ -17,30 +21,24 @@ import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   copyLengthBeats,
-  createClipsForLength,
+  createClipForLength,
   parseArrangementLength,
 } from "../clip/arrangement-length.ts";
 import { refusedCopy } from "../clip/copy-entries.ts";
 import {
   changedBefore,
   clearedBefore,
-  copiedIds,
   copyClearingAsync,
   copyLedger,
   copyReach,
   mainLaneOf,
-  noteCleared,
 } from "../clip/overwrites/copy-overwrites.ts";
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
+  noteCopyEffects,
 } from "../minimal-clip-info.ts";
-import {
-  forEachClipInScene,
-  readSceneClips,
-  type ScenePass,
-  sceneIndexOf,
-} from "./scene-clips.ts";
+import { readSceneClips, type ScenePass, sceneIndexOf } from "./scene-clips.ts";
 
 /** What a scene copy reports. */
 export interface SceneCopyEntry {
@@ -107,7 +105,6 @@ export function duplicateScene(
   color?: string,
   withoutClips?: boolean,
 ): SceneCopyEntry {
-  const liveSet = LiveAPI.from(livePath.liveSet);
   const { index: newSceneIndex, threw } = landSceneCopy(sceneIndex);
   const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -127,19 +124,22 @@ export function duplicateScene(
       landed = landedColor(newScene, color);
     }
 
-    // Get all duplicated clips in this scene
-    const trackIds = liveSet.getChildIds("tracks");
+    // The copy holds a clip for every one the source had, return tracks too.
+    const slots = sceneClips(newSceneIndex);
 
     if (withoutClips === true) {
-      // Delete all clips in the duplicated scene
-      forEachClipInScene(newSceneIndex, trackIds, (_clip, clipSlot) => {
-        clipSlot.call("delete_clip");
-      });
+      const failures = clearClips(slots, duplicatedClips);
+
+      if (failures.length > 0) {
+        detail = joinDetails([
+          detail,
+          `the scene was made, but ${failures.join("; ")}`,
+        ]);
+      }
     } else {
-      // Default behavior: collect info about duplicated clips
-      forEachClipInScene(newSceneIndex, trackIds, (clip) => {
+      for (const { clip } of slots) {
         duplicatedClips.push(getMinimalClipInfo(clip));
-      });
+      }
     }
   } catch (error) {
     detail = joinDetails([
@@ -156,6 +156,33 @@ export function duplicateScene(
     clips: duplicatedClips,
     ...joinedDetail(detail, landed.detail),
   };
+}
+
+/**
+ * Delete every clip of a new scene. A clip Live wouldn't delete is still
+ * there, so it is listed as one of the scene's clips and the others go on.
+ * @param slots - The scene's clips
+ * @param left - Gets the entry of each clip that is still there
+ * @returns What failed, one phrase per clip
+ */
+function clearClips(slots: SceneSlotClip[], left: MinimalClipInfo[]): string[] {
+  const failures: string[] = [];
+
+  for (const { clip, clipSlot, path } of slots) {
+    try {
+      clipSlot.call("delete_clip");
+    } catch (error) {
+      // A throw can still mean Live deleted it.
+      if (LiveAPI.from(clip.id).exists()) {
+        left.push(getMinimalClipInfo(clip));
+        failures.push(
+          `couldn't clear the clip at ${path}: ${errorMessage(error)}`,
+        );
+      }
+    }
+  }
+
+  return failures;
 }
 
 /**
@@ -197,7 +224,7 @@ export async function duplicateSceneToArrangement(
   arrangementLength?: string,
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
-  context: Partial<ToolContext & TilingContext> = {},
+  context: Partial<ToolContext & ScratchClipContext> = {},
   ledger: LaneLedger = copyLedger(),
   read?: ScenePass,
 ): Promise<{ clips: MinimalClipInfo[]; detail?: string } | TargetSkip> {
@@ -208,8 +235,13 @@ export async function duplicateSceneToArrangement(
     return { clips: [] };
   }
 
-  const { clips: sceneClips, length: ownLength } =
-    read ?? readSceneClips(sceneIndex);
+  const {
+    clips: regularClips,
+    returnClips,
+    length: ownLength,
+  } = read ?? readSceneClips(sceneIndex);
+  // They have no arrangement lane, so only the regular tracks' clips are copied.
+  const leftOut = returnClipsLeftOut(returnClips);
   // The length asked for, or the longest clip in the scene.
   const arrangementLengthBeats =
     arrangementLength == null
@@ -221,8 +253,8 @@ export async function duplicateSceneToArrangement(
         );
 
   // Nothing to copy is not a failure: the position is done.
-  if (sceneClips.length === 0) {
-    return { clips: [], detail: "the scene has no clips" };
+  if (regularClips.length === 0) {
+    return { clips: [], detail: noClipsToCopy(returnClips) };
   }
 
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -230,9 +262,9 @@ export async function duplicateSceneToArrangement(
   const declined: string[] = [];
   let changedAny = false;
 
-  for (const { clip, trackIndex } of sceneClips) {
+  for (const { clip, trackIndex } of regularClips) {
     const track = LiveAPI.from(livePath.track(trackIndex));
-    const { clips, cleared, changed, failure } = await copyTrackClip(
+    const { copy, cleared, changed, failure } = await copyTrackClip(
       clip,
       trackIndex,
       track,
@@ -240,7 +272,7 @@ export async function duplicateSceneToArrangement(
       arrangementLengthBeats,
       ledger,
       () =>
-        createClipsForLength(
+        createClipForLength(
           clip,
           track,
           arrangementStartBeats,
@@ -253,11 +285,11 @@ export async function duplicateSceneToArrangement(
         ),
     );
 
-    duplicatedClips.push(...clips);
+    if (copy != null) {
+      duplicatedClips.push(copy);
 
-    if (clips[0] != null) {
       if (cleared != null) {
-        noteCleared(clips[0], cleared);
+        noteCopyEffects(copy, cleared);
       }
 
       continue;
@@ -285,10 +317,38 @@ export async function duplicateSceneToArrangement(
     );
   }
 
-  return { clips: duplicatedClips, ...(detail != null && { detail }) };
+  const said = joinDetails([detail, leftOut]);
+
+  return { clips: duplicatedClips, ...(said != null && { detail: said }) };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Why a scene copied to the arrangement had nothing to copy.
+ * @param returnClips - Where the scene's return-track clips sit
+ * @returns The detail
+ */
+function noClipsToCopy(returnClips: string[]): string {
+  return returnClips.length === 0
+    ? "the scene has no clips"
+    : `the scene has no clips on regular tracks, and ${returnClipsLeftOut(returnClips)}`;
+}
+
+/**
+ * What a copy to the arrangement says about the return-track clips it left out.
+ * @param returnClips - Where the scene's return-track clips sit
+ * @returns The detail, or undefined when the scene has none
+ */
+function returnClipsLeftOut(returnClips: string[]): string | undefined {
+  if (returnClips.length === 0) {
+    return undefined;
+  }
+
+  return returnClips.length === 1
+    ? `the return-track clip at ${returnClips[0]} was not copied: the arrangement has no return-track clips`
+    : `the ${returnClips.length} return-track clips (${returnClips.join(", ")}) were not copied: the arrangement has no return-track clips`;
+}
 
 /**
  * Copies one track's clip of the scene, and reads what the copy cleared. A
@@ -300,7 +360,7 @@ export async function duplicateSceneToArrangement(
  * @param lengthBeats - How long the copy is
  * @param ledger - The call's arrangement lanes
  * @param write - Makes the copy
- * @returns The clips that landed, what they cleared, whether the Set changed,
+ * @returns The copy if one landed, what it cleared, whether the Set changed,
  *   and why it failed if it did
  */
 async function copyTrackClip(
@@ -310,9 +370,9 @@ async function copyTrackClip(
   startBeats: number,
   lengthBeats: number,
   ledger: LaneLedger,
-  write: () => Promise<MinimalClipInfo[]>,
+  write: () => Promise<MinimalClipInfo | undefined>,
 ): Promise<{
-  clips: MinimalClipInfo[];
+  copy?: MinimalClipInfo;
   cleared?: string;
   /** Whether the copy changed the Set (cleared clips, wrote the lane) */
   changed: boolean;
@@ -326,11 +386,11 @@ async function copyTrackClip(
       mainLaneOf(trackIndex, track),
       copyReach(startBeats, copyLengthBeats(clip), lengthBeats),
       write,
-      (clips) => clips.flatMap(copiedIds),
+      (copy) => (copy == null ? [] : [copy.id]),
     );
 
     return {
-      clips: made,
+      ...(made != null && { copy: made }),
       changed: cleared != null,
       ...(cleared != null && { cleared }),
     };
@@ -339,7 +399,6 @@ async function copyTrackClip(
     const cleared = clearedBefore(error);
 
     return {
-      clips: [],
       failure: errorMessage(error),
       changed: changedBefore(error),
       ...(cleared != null && { cleared }),

@@ -23,11 +23,10 @@
  *   (see recreate-clip.ts).
  * - Both no-ops return `id 0`, which a successful `delete_clip` returns too, so
  *   the return value can't be tested — check whether the clip is still there.
- * - An arrangement clip's extent (`end_time`) can't be set from the LOM.
- *   `end_marker` and `loop_end` accept the write and read back changed, but
- *   `end_time` doesn't follow, so a short sample can't be stretched to cover a
- *   longer clip. That's why an audio take is muted rather than overwritten with
- *   silence (see take-lane-placeholder.ts).
+ * - A clip resizes on a take lane as on the main lane (see
+ *   arrangement-clip-resize.ts), but growth stops at the next clip and nothing
+ *   can clear it. So a silent clip can't be grown over a take, which is why an
+ *   audio take is muted instead (see take-lane-placeholder.ts).
  */
 
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
@@ -40,6 +39,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
  * keeps the match anchored to the segment so future paths that happen to
@@ -228,10 +228,12 @@ export function isTakeLaneRequested(
  * Everything {@link isTakeLaneRequested} calls unset means the main lane.
  * The param is 1-based and the target is 0-based, so `N` becomes lane `N - 1`.
  * @param takeLane - Raw takeLane value from a tool argument
+ * @param pathParam - The tool's destination path param, for the fix
  * @returns A TakeLaneTarget, or null to target the main lane
  */
 export function normalizeTakeLaneTarget(
   takeLane: number | string | null | undefined,
+  pathParam = "path",
 ): TakeLaneTarget | null {
   if (!isTakeLaneRequested(takeLane)) {
     return null;
@@ -242,7 +244,7 @@ export function normalizeTakeLaneTarget(
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(
       `takeLane must be 0 or a positive integer (got "${takeLane}"); ` +
-        `name the lane by index, e.g. path "t0/l0"`,
+        `name the lane by index, e.g. ${pathParam} "t0/l0"`,
     );
   }
 
@@ -254,11 +256,13 @@ export function normalizeTakeLaneTarget(
  * for the whole call, so it only applies when no destination names its own.
  * @param targets - Destinations, null where one can't be used
  * @param takeLane - Raw takeLane value from a tool argument
+ * @param pathParam - The tool's destination path param, for an error
  * @returns The destinations, with the lane applied when it applies
  */
 export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
   targets: (T | null)[],
   takeLane: number | string | null | undefined,
+  pathParam: string,
 ): (T | null)[] {
   if (
     !isTakeLaneRequested(takeLane) ||
@@ -267,7 +271,7 @@ export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
     return targets;
   }
 
-  const lane = normalizeTakeLaneTarget(takeLane);
+  const lane = normalizeTakeLaneTarget(takeLane, pathParam);
 
   return targets.map((target) =>
     target == null ? null : { ...target, takeLane: lane },
@@ -361,7 +365,7 @@ export class TakeLanesMadeError extends Error {
    * @param created - The lanes made before it did ("l0", "l1-l2")
    */
   constructor(cause: unknown, created: string) {
-    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    super(errorMessage(cause), { cause });
     this.created = created;
   }
 }

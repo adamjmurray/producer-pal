@@ -15,7 +15,7 @@ import {
   readGlobalSettings,
   updateGlobalSettings,
 } from "../../helpers/config-store/global-settings-store.ts";
-import { rejectForeignOriginWrite } from "../../helpers/http/request-origin.ts";
+import { rejectForeignOriginWrite } from "../../helpers/http/browser/request-origin.ts";
 import { syncDeviceUpdateNotice } from "../../helpers/http/update-dismissal.ts";
 import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 

@@ -4,13 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import {
+  droppedDuplicatesNote,
+  notesShortenedNote,
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
+import { countShortenedNotes } from "#src/tools/clip/helpers/notes/same-pitch-overlap.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ClipResultObject } from "./created-clip-result.ts";
 
 /**
  * Run the call's code on a clip just created, putting what came of it on the
- * clip's own entry: the new note count, a failure, or dropped duplicate notes.
+ * clip's own entry: the new note count, a failure, dropped duplicate notes, or notes Live cut short.
  * @param clipResult - The created clip's entry
  * @param code - The code to run
  * @param index - The clip's place in the whole create call
@@ -45,5 +49,16 @@ export async function applyCodeToCreatedClip(
 
   if (dropped != null) {
     appendDetail(clipResult, dropped);
+  }
+
+  const shortened = notesShortenedNote(
+    countShortenedNotes(
+      LiveAPI.from(["id", clipResult.id]),
+      applied.applied.written,
+    ),
+  );
+
+  if (shortened != null) {
+    appendDetail(clipResult, shortened);
   }
 }

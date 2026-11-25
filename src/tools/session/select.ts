@@ -5,7 +5,8 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { type AnySlotPosition } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   applyPluginEditorWindow,
@@ -75,6 +76,8 @@ export interface SelectArgs extends SelectIdArgs {
 
 export interface SelectResult {
   view?: string;
+  /** What the call couldn't reach, when it still did the rest */
+  detail?: string;
   selectedTrack?: {
     id: string;
     /** Where the track is: "t0", "rt1" for a return, "mt" for the main track */
@@ -96,7 +99,7 @@ export interface SelectResult {
     detail?: string;
   };
   selectedDrumPad?: { id: string; path: string };
-  selectedChain?: { id: string; path: string };
+  selectedChain?: { id: string; path?: string };
 }
 
 /** What the call asked for, read once. */
@@ -248,12 +251,6 @@ function writeSelection(
 
   if (arrangementStartBeats != null) {
     applyArrangementStart(arrangementStartBeats);
-
-    // Said after the writes: a lane that isn't there stops nothing, so the
-    // warning reports what the call did rather than what it refused.
-    if (resolved.missingTakeLane != null) {
-      console.warn(resolved.missingTakeLane);
-    }
   }
 
   // Scene/slot are session-only concepts, so they force session view.
@@ -309,6 +306,17 @@ function writeSelection(
   // Build response with only relevant fields
   const result: SelectResult = {};
 
+  // A lane that isn't there stops nothing, so the result says what the call
+  // did instead of reaching it.
+  if (arrangementStartBeats != null && resolved.missingTakeLane != null) {
+    result.detail = resolved.missingTakeLane;
+  }
+
+  // Said once the selection was made: it claims what the call did.
+  for (const { param, why } of blankTargetIgnores(args, "selection", 1)) {
+    step.call.ignored(param, why);
+  }
+
   if (effectiveView != null) {
     result.view = effectiveView;
   }
@@ -341,7 +349,7 @@ interface ValidateParametersOptions {
   deviceId?: string;
   devicePath?: string;
   devicePathParam: "path" | "devicePath";
-  slot?: { trackIndex: number; sceneIndex: number };
+  slot?: AnySlotPosition;
 }
 
 /**

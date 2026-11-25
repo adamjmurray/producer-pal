@@ -140,6 +140,12 @@ describe("locators", () => {
       }).toThrow('no locator found with name ""');
     });
 
+    it("matches a name Live holds with spaces around it", () => {
+      const liveSet = setupMockLocators({ id: "26", name: " Verse ", time: 8 });
+
+      expect(resolveLocatorRefToBeats(liveSet, "Verse")).toBe(8);
+    });
+
     it("throws when locator not found", () => {
       const liveSet = setupMockLocators();
 
@@ -194,6 +200,13 @@ describe("locators", () => {
         [
           { id: "27", name: "31", time: 4 },
           { id: "31", name: "27", time: 12 },
+        ],
+      ],
+      [
+        "one name repeated with a trailing space",
+        [
+          { id: "50", name: "Verse ", time: 0 },
+          { id: "51", name: "Verse", time: 8 },
         ],
       ],
       [

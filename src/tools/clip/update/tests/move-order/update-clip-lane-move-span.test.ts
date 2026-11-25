@@ -99,7 +99,7 @@ describe("moving a looping arrangement clip through a re-create", () => {
     ).toHaveBeenCalledWith("create_midi_clip", 16, 16);
   });
 
-  it("says on a looping audio clip's entry that its length changed, and why", async () => {
+  it("says on a looping audio clip's entry when Live stopped it short", async () => {
     registerWorld(livePath.track(0).arrangementClip(0), {
       is_midi_clip: 0,
       is_audio_clip: 1,
@@ -113,7 +113,7 @@ describe("moving a looping arrangement clip through a re-create", () => {
 
     expect(result.detail).toBe(
       `re-created on t${DEST_TRACK}/l0 ` +
-        "(length is 1bar, not 4bar: Live rebuilds an audio clip from its sample)",
+        "(length is 1bar, not 4bar: Live shortened the new clip)",
     );
   });
 });

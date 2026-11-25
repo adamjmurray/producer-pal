@@ -63,7 +63,7 @@ def write_tree(directory, files):
     for name, text in files.items():
         path = os.path.join(directory, name)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as file:
+        with open(path, "w", encoding="utf-8", newline="") as file:
             file.write(text)
 
 
@@ -210,7 +210,7 @@ class ReloadTest(unittest.TestCase):
         with open(path, encoding="utf-8") as file:
             text = file.read()
         self.assertIn(old, text)
-        with open(path, "w", encoding="utf-8") as file:
+        with open(path, "w", encoding="utf-8", newline="") as file:
             file.write(text.replace(old, new))
 
     def post(self, path, params=None):

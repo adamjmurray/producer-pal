@@ -9,11 +9,12 @@ import {
   type ClipPath,
   pathEntries,
   pathNamesSomething,
+  type ReturnSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import {
-  requireClipDestinationPath,
-  type ClipDestinationPath,
+  requireEnvelopeAwareDestination,
+  type EnvelopeAwareDestination,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { destinationPositionResolver } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -41,15 +42,19 @@ export function moveDestinationParam(
 }
 
 /** One destination entry, or why the call could make nothing of it. */
-interface DestinationEntry extends ClipDestinationPath {
+interface DestinationEntry extends EnvelopeAwareDestination {
   /** Why this entry names nowhere to go, when it names nowhere. */
   refused?: string;
 }
 
 /** Where the clips in one call move: the lane, the position, or both. */
 export interface MoveDestinations {
-  /** The lane per named clip, null where there is nothing to move to. */
-  destinations: Array<ClipPath | null>;
+  /**
+   * The lane or slot per named clip, null where there is nothing to move to. A
+   * return track's slot is for an envelope clip, which the call decides per
+   * clip.
+   */
+  destinations: Array<ClipPath | ReturnSlotPath | null>;
   /**
    * The song position a `[...]` in toPath named, per clip, null where the entry
    * carried none — that clip keeps the start it has.
@@ -181,7 +186,7 @@ function pathDestinations(toPath: string): Array<DestinationEntry | null> {
     const path = parseObjectPath(entry, "toPath");
 
     try {
-      return requireClipDestinationPath(path, "toPath");
+      return requireEnvelopeAwareDestination(path, "toPath");
     } catch (error) {
       return refusedDestination(error);
     }

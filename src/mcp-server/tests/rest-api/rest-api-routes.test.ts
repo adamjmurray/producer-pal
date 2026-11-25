@@ -5,7 +5,7 @@
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_TIMEOUT_MS, SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { ensureSilenceWav } from "../../rpc/silent-wav-generator.ts";
 import {
   lastMcpContext,
   mcpRequests,
@@ -176,6 +176,19 @@ describe("REST API Routes", () => {
       expect(params).not.toContain("toSlot");
     });
 
+    it("describes what a caller sends, the same as the MCP catalog", async () => {
+      // A param with a default is optional to send. Described as parsed
+      // output, it would be listed as required.
+      const response = await fetch(`${appState.baseUrl}/api/tools`);
+      const body = await response.json();
+      const duplicate = body.tools.find(
+        (t: { name: string }) => t.name === "ppal-duplicate",
+      );
+
+      expect(duplicate.inputSchema.properties).toHaveProperty("count");
+      expect(duplicate.inputSchema.required).toStrictEqual(["type"]);
+    });
+
     it("allows cross-origin requests (LAN/tunnel chat uses a non-localhost origin)", async () => {
       // /api/tools is intentionally NOT localhost-gated like /config: the chat
       // UI reaches it same-origin from the page URL, which over LAN/tunnel is a
@@ -230,26 +243,6 @@ describe("REST API Routes", () => {
       const body = await response.json();
 
       expect(body.error).toContain("Unknown or disabled tool");
-    });
-
-    it("allows cross-origin tool calls (LAN/tunnel chat uses a non-localhost origin)", async () => {
-      // Tool execution is intentionally NOT localhost-gated like /config (a gate
-      // would break the documented LAN/tunnel chat). A cross-origin POST reaches
-      // normal tool lookup — 404 for an unknown tool — rather than a 403 origin
-      // block. Locked so the gate isn't added by mistake.
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/nonexistent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Origin: "https://remote.example.com",
-          },
-          body: "{}",
-        },
-      );
-
-      expect(response.status).toBe(404);
     });
 
     it("should return 404 for disabled tool", async () => {
@@ -464,6 +457,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).not.toBeNull();
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: false,
@@ -495,6 +489,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: false,
@@ -645,6 +640,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: true,
@@ -677,6 +673,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).toStrictEqual({
         compactOutput: false,
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 5000,
       });
@@ -695,6 +692,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         compactOutput: false,
         timeoutMs: 2500,
@@ -727,6 +725,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).toStrictEqual({
         compactOutput: false,
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: MAX_TIMEOUT_MS,
       });

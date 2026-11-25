@@ -103,6 +103,24 @@ function setupNestedDrumRack(): void {
 // pad's device used to be dropped, so a read of a nested pad answered with the
 // rack holding it — under the path that was asked for, so it looked right.
 describe("readOneDevice - paths through a nested drum rack", () => {
+  it("spells a drum-chain device read by id the way its pad does", () => {
+    setupNestedDrumRack();
+
+    expect(readOneDevice({ id: "sub-device" }).path).toBe(
+      "t1/d0/pC1/c0/d0/pC3/c0/d0",
+    );
+    expect(readOneDevice({ id: "sub-rack" }).path).toBe("t1/d0/pC1/c0/d0");
+  });
+
+  it("spells the pads of a nested rack read by id the way its pad does", () => {
+    setupNestedDrumRack();
+
+    const rack = readOneDevice({ id: "sub-rack", include: ["drum-pads"] });
+
+    expect(JSON.stringify(rack)).toContain('"t1/d0/pC1/c0/d0/pC3"');
+    expect(JSON.stringify(rack)).not.toContain("t1/d0/c0");
+  });
+
   it("reads the device inside the nested rack's pad", () => {
     setupNestedDrumRack();
 

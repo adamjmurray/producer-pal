@@ -19,9 +19,9 @@ import { CONNECT_MESSAGE } from "../../../../helpers/seed-connect/seed-connect.t
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import { clipStateAssertion } from "../../helpers/clip-note-assertions.ts";
 import { clearClipSlots } from "../../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const TOOL_CONNECT = "ppal-connect";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 const LIVE_SET = "basic-midi-4-track";
 const MSG_CONNECT = CONNECT_MESSAGE;
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
@@ -107,7 +107,7 @@ function assertClipNotes(
  */
 function createClipAssertionHead(): EvalAssertion[] {
   return [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
   ];
 }

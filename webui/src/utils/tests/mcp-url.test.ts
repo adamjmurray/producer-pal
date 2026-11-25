@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   detectCorsBlock,
+  getLocalModelProxyUrl,
   getMcpUrl,
   getSkillsPreviewUrl,
   getSubagentBriefingUrl,
@@ -193,5 +194,29 @@ describe("detectCorsBlock", () => {
     expect(mockFetch).toHaveBeenCalledWith("http://localhost:3350/mcp", {
       mode: "no-cors",
     });
+  });
+});
+
+describe("getLocalModelProxyUrl", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("follows the page origin in production", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3351", protocol: "http:" },
+    });
+    expect(getLocalModelProxyUrl()).toBe(
+      "http://localhost:3351/local-model-proxy",
+    );
+  });
+
+  it("points at the server from the Vite dev server", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "5173", protocol: "http:" },
+    });
+    expect(getLocalModelProxyUrl()).toBe(
+      "http://localhost:3350/local-model-proxy",
+    );
   });
 });

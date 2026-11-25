@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { interpretNotation } from "#src/notation/notation.ts";
-import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
+import {
+  dedupeAndSortNotes,
+  sortNotes,
+} from "#src/notation/helpers/note-sort.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { calculateClipLength } from "./create-clip-validation.ts";

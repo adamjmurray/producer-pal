@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
+import { expandHome } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { firstUserLibrary } from "../offline/offline-install-status.ts";
@@ -37,5 +38,6 @@ export async function userLibraryFor(
     );
   }
 
-  return library;
+  // Callers join paths onto this, so a pasted `~` is expanded here.
+  return expandHome(library);
 }

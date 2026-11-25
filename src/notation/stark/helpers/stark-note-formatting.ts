@@ -10,7 +10,7 @@
  * top.
  */
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/helpers/note-sort.ts";
 import {
   BASS_REGISTER_DEFAULT,
   MELODY_REGISTER_DEFAULT,

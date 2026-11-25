@@ -14,7 +14,7 @@
 
 import { readFileSync } from "node:fs";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import {
   isConfigDirInert,
   resolveConfigPath,
@@ -91,14 +91,40 @@ export function updateGlobalSettings(
     return readGlobalSettings();
   }
 
-  const merged = { ...readRaw(), ...patch };
-
-  writeConfigFileAtomic(
-    resolveConfigPath(FILENAME),
-    `${JSON.stringify(merged, null, 2)}\n`,
-  );
+  writeRaw({ ...readRaw(), ...patch });
 
   return readGlobalSettings();
+}
+
+/**
+ * Whether other computers on the network may connect. Kept out of GlobalSettings
+ * so /settings can neither show nor change it: only the device does. Anything
+ * but exactly `true` reads as off.
+ *
+ * @returns True when the server should listen on all interfaces
+ */
+export function readAllowNetwork(): boolean {
+  return readRaw().allowNetwork === true;
+}
+
+/**
+ * Save the network access setting, keeping every other key.
+ *
+ * @param allowNetwork - Whether other computers may connect
+ */
+export function writeAllowNetwork(allowNetwork: boolean): void {
+  if (isConfigDirInert()) {
+    return;
+  }
+
+  writeRaw({ ...readRaw(), allowNetwork });
+}
+
+function writeRaw(settings: Record<string, unknown>): void {
+  writeConfigFileAtomic(
+    resolveConfigPath(FILENAME),
+    `${JSON.stringify(settings, null, 2)}\n`,
+  );
 }
 
 /**
@@ -121,7 +147,7 @@ function readRaw(): Record<string, unknown> {
     text = readFileSync(target, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to read ${target}: ${errorMessage(error)}`);
+      nodeWarn(`Failed to read ${target}: ${errorMessage(error)}`);
     }
 
     return {};
@@ -136,7 +162,7 @@ function readRaw(): Record<string, unknown> {
 
     return parsed as Record<string, unknown>;
   } catch (error) {
-    console.warn(`Ignoring malformed ${target}: ${errorMessage(error)}`);
+    nodeWarn(`Ignoring malformed ${target}: ${errorMessage(error)}`);
 
     return {};
   }

@@ -11,54 +11,45 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
-  requireMockObject,
-  requireMockTrack,
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   deleteMockObject,
-  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
-  setupArrangementClipPath,
   setupMidiClipMock,
-  setupMockProperties,
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { setUpArrangementPair } from "../move-order/arrangement-pair-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  registerNeighbourClip,
+  setupResizableClip,
+} from "#src/tools/clip/update/helpers/arrangement/resizable-clip-test-helpers.ts";
 import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { type ProcessSingleClipUpdateParams } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
 import { writeClipProperties } from "#src/tools/clip/update/helpers/batch/write-clip-properties.ts";
 import { registerMoveToEmptySlot } from "../session/slot-move-fixtures.ts";
 
-vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
-  executeNoteCode: vi.fn(),
-  executeNoteCodeWithData: vi.fn(),
-  requestCodeExecution: vi.fn(),
-  handleCodeExecResult: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/code-exec-v8-protocol.ts"),
+  () => ({
+    executeNoteCode: vi.fn(),
+    executeNoteCodeWithData: vi.fn(),
+    requestCodeExecution: vi.fn(),
+    handleCodeExecResult: vi.fn(),
+  }),
+);
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
+import {
+  failOnSet,
+  LIVE_FAILURE,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { codeExecSuccess } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
-
-const REFUSED = "Live refused";
-
-/**
- * Make a mock refuse one property write.
- * @param mock - The registered object
- * @param property - The property whose write throws
- */
-function refuseSet(mock: RegisteredMockObject, property: string): void {
-  mock.set.mockImplementation((written: string) => {
-    if (written === property) {
-      throw new Error(REFUSED);
-    }
-  });
-}
 
 describe("updateClip - Live throws after something of a clip landed", () => {
   let mocks: UpdateClipMocks;
@@ -72,7 +63,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
     it("keeps the name that was set when the color is refused, and still runs the next clip", async () => {
       setupMidiClipMock(mocks.clip123);
       setupMidiClipMock(mocks.clip456);
-      refuseSet(mocks.clip123, "color");
+      failOnSet(mocks.clip123, "color");
 
       const result = await updateClip({
         id: "123,456",
@@ -84,7 +75,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
         {
           id: "123",
           path: "t0/s0",
-          detail: `${REFUSED}; already changed: name`,
+          detail: `${LIVE_FAILURE}; already changed: name`,
         },
         expect.objectContaining({ id: "456", path: "t1/s1" }),
       ]);
@@ -94,7 +85,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
 
     it("names every property that landed, once each, in the order they did", async () => {
       setupMidiClipMock(mocks.clip123, { length: 4 });
-      refuseSet(mocks.clip123, "end_marker");
+      failOnSet(mocks.clip123, "end_marker");
 
       const result = await updateClip({
         id: "123",
@@ -107,14 +98,14 @@ describe("updateClip - Live throws after something of a clip landed", () => {
         id: "123",
         path: "t0/s0",
         detail: expect.stringMatching(
-          /^Live refused; already changed: name, .*region/,
+          new RegExp(`^${LIVE_FAILURE}; already changed: name, .*region`),
         ),
       });
     });
 
     it("names a landed meter as the time signature, once", async () => {
       setupMidiClipMock(mocks.clip123, { length: 4 });
-      refuseSet(mocks.clip123, "end_marker");
+      failOnSet(mocks.clip123, "end_marker");
 
       const result = await updateClip({
         id: "123",
@@ -126,7 +117,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/s0",
-        detail: `${REFUSED}; already changed: time signature, region`,
+        detail: `${LIVE_FAILURE}; already changed: time signature, region`,
       });
     });
 
@@ -134,7 +125,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       setupMidiClipMock(mocks.clip123, { length: 4 });
       mocks.clip123.call.mockImplementation((method: string) => {
         if (method === "quantize") {
-          throw new Error(REFUSED);
+          throw new Error(LIVE_FAILURE);
         }
 
         return JSON.stringify({ notes: [] });
@@ -149,7 +140,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/s0",
-        detail: `${REFUSED}; already changed: notes`,
+        detail: `${LIVE_FAILURE}; already changed: notes`,
       });
     });
   });
@@ -184,7 +175,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
     it("reports the clip the copy made when the step after the move throws", async () => {
       setupMidiClipMock(mocks.clip123);
       registerMoveSlots();
-      vi.mocked(executeNoteCode).mockRejectedValue(new Error(REFUSED));
+      vi.mocked(executeNoteCode).mockRejectedValue(new Error(LIVE_FAILURE));
 
       const result = await updateClip({
         id: "123",
@@ -196,7 +187,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       expect(result).toStrictEqual({
         id: "t1/s2/clip",
         path: "t1/s2",
-        detail: `${REFUSED}; already changed: copy at t1/s2`,
+        detail: `${LIVE_FAILURE}; already changed: copy at t1/s2`,
       });
     });
 
@@ -205,7 +196,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       setupMidiClipMock(mocks.clip456);
       registerMoveSlots();
       vi.mocked(executeNoteCode)
-        .mockRejectedValueOnce(new Error(REFUSED))
+        .mockRejectedValueOnce(new Error(LIVE_FAILURE))
         .mockResolvedValue(codeExecSuccess([]));
 
       const result = await updateClip({
@@ -217,7 +208,7 @@ describe("updateClip - Live throws after something of a clip landed", () => {
       expect(result).toStrictEqual([
         expect.objectContaining({
           path: "t1/s2",
-          detail: `${REFUSED}; already changed: copy at t1/s2`,
+          detail: `${LIVE_FAILURE}; already changed: copy at t1/s2`,
         }),
         expect.objectContaining({ id: "456" }),
       ]);
@@ -278,7 +269,7 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
 
     overrideCall(track, function (method, id) {
       if (method === "delete_clip" && id === "id 100") {
-        throw new Error(REFUSED);
+        throw new Error(LIVE_FAILURE);
       }
 
       return USE_CALL_FALLBACK;
@@ -295,7 +286,7 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
         id: "copy-1",
         path: expect.any(String),
         detail: expect.stringMatching(
-          new RegExp(`^${REFUSED}; already changed: copy at `),
+          new RegExp(`^${LIVE_FAILURE}; already changed: copy at `),
         ),
       },
       expect.objectContaining({ id: "copy-2" }),
@@ -308,7 +299,7 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
 
     overrideCall(track, function (method) {
       if (method === "duplicate_clip_to_arrangement") {
-        throw new Error(REFUSED);
+        throw new Error(LIVE_FAILURE);
       }
 
       return USE_CALL_FALLBACK;
@@ -325,50 +316,57 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
       {
         id: "100",
         path: expect.any(String),
-        detail: `${REFUSED}; already changed: shortened`,
+        detail: `${LIVE_FAILURE}; already changed: shortened`,
       },
       {
         id: "101",
         path: expect.any(String),
-        detail: `${REFUSED}; already changed: shortened`,
+        detail: `${LIVE_FAILURE}; already changed: shortened`,
       },
     ]);
   });
 
-  it("reports a tile that landed before its start marker was refused", async () => {
-    const clips = setupArrangementClipPath(0, ["789", "1000", "1001"]);
-    const track = requireMockTrack(0);
+  // The clear ahead of the clip landed, and the clip was unlooped for the
+  // resize, when Live refused its new span: it is looped again.
+  it("keeps the clip's entry when Live refuses a lengthening partway", async () => {
+    const { sourceClip, track } = setupResizableClip();
+    const resize = sourceClip.set.getMockImplementation() as (
+      property: string,
+      value: unknown,
+    ) => void;
 
-    setupMockProperties(clips.get("789") as RegisteredMockObject, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 4.0,
-      loop_start: 0.0,
-      loop_end: 4.0,
-      start_marker: 0.0,
-      end_marker: 4.0,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex: 0,
+    registerNeighbourClip(track);
+    overrideCall(track, function (method) {
+      if (method === "create_midi_clip") {
+        track.properties.arrangement_clips = children("789");
+      }
+
+      return USE_CALL_FALLBACK;
     });
-    setupMockProperties(requireMockObject("live_set"), { tracks: ["id", 0] });
-    track.properties.arrangement_clips = children("789");
-    refuseSet(clips.get("1000") as RegisteredMockObject, "start_marker");
+    // Unlooped for the resize, then Live refuses the new span.
+    sourceClip.set.mockImplementation((property: string, value: unknown) => {
+      if (property === "loop_end" && sourceClip.properties.looping === 0) {
+        throw new Error(LIVE_FAILURE);
+      }
 
-    const result = await updateClip({ id: "789", arrangementLength: "3bar" });
+      resize(property, value);
+    });
 
-    // The first tile exists in the Set although its marker write threw, and the
-    // entries name it.
-    expect(result).toStrictEqual([
-      {
-        id: "789",
-        path: "t0[1|1]",
-        detail: `arrangementLength didn't finish: ${REFUSED}`,
-      },
-      { id: "1000", path: "t0[2|1]" },
-    ]);
+    const result = await updateClip({
+      id: "789",
+      arrangementLength: "3bar",
+      name: "X",
+    });
+
+    expect(result).toStrictEqual({
+      id: "789",
+      path: "t0[1|1]",
+      detail: `${LIVE_FAILURE}; already changed: name, overwrote the clip at t0[2|1]`,
+    });
+    // Looped again, its loop brace kept.
+    expect(sourceClip.properties).toStrictEqual(
+      expect.objectContaining({ looping: 1, loop_start: 0, loop_end: 4 }),
+    );
   });
 });
 

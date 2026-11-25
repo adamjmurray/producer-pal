@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -42,7 +42,9 @@ describe("updateTrack when an id entry is empty", () => {
   });
 
   it("stays quiet for a clean list or a trailing comma", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     updateTrack({ id: "123,456", name: "A,B" });
     updateTrack({ id: "123,456,", name: "A,B" });

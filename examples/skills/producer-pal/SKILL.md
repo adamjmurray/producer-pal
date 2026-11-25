@@ -165,6 +165,8 @@ Object Model when the standard tools aren't enough. (The user can also toggle
   track. The device shows "Producer Pal Running" when ready. See
   [If Producer Pal isn't running](#if-producer-pal-isnt-running) to add it.
 - Default endpoint: `http://localhost:3350`. Override with `--url` if needed.
+  Reaching Live on another computer also needs **Remote Control** turned on in
+  the device's **Setup** tab; it's off by default.
 
 ## References
 

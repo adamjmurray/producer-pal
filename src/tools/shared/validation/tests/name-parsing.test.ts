@@ -3,12 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getNameForIndex, parseNames } from "../name-parsing.ts";
-
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-}));
 
 describe("name-parsing", () => {
   describe("getNameForIndex", () => {
@@ -40,43 +36,24 @@ describe("name-parsing", () => {
   });
 
   describe("parseNames", () => {
-    it("parses names and warns on extras in one call", async () => {
-      vi.clearAllMocks();
-      const result = parseNames("A,B,C", 2, "clip");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(result).toStrictEqual(["A", "B", "C"]);
-      expect(console.warn).toHaveBeenCalledWith(
-        "name: 3 names for 2 clips; the extra names went unused",
+    it("refuses more names than items", () => {
+      expect(() => parseNames("A,B,C", 2, "clip")).toThrow(
+        "name names 3 names but the call acts on 2 clips",
       );
     });
 
-    it("returns null when no splitting needed", async () => {
-      vi.clearAllMocks();
-      const result = parseNames("Lead", 1, "clip");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(result).toBeNull();
-      expect(console.warn).not.toHaveBeenCalled();
+    it("returns null when no splitting needed", () => {
+      expect(parseNames("Lead", 1, "clip")).toBeNull();
     });
 
-    it("warns when fewer names than items", async () => {
-      vi.clearAllMocks();
-      parseNames("A,B", 5, "track");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(console.warn).toHaveBeenCalledWith(
-        "name: 2 names for 5 tracks; the tracks past the last name were not renamed",
+    it("refuses fewer names than items", () => {
+      expect(() => parseNames("A,B", 5, "track")).toThrow(
+        "name names 2 names but the call acts on 5 tracks",
       );
     });
 
-    it("returns parsed names without warning when count matches", async () => {
-      vi.clearAllMocks();
-      const result = parseNames("A,B", 2, "scene");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(result).toStrictEqual(["A", "B"]);
-      expect(console.warn).not.toHaveBeenCalled();
+    it("returns parsed names when the count matches", () => {
+      expect(parseNames("A,B", 2, "scene")).toStrictEqual(["A", "B"]);
     });
   });
 });

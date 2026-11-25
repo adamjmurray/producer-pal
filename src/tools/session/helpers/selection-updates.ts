@@ -9,6 +9,10 @@ import {
 } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import {
+  type AnySlotPosition,
+  slotLivePath,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import {
   liveVersionAtLeast,
   toLiveApiId,
   toLiveApiView,
@@ -48,7 +52,7 @@ interface UpdateDeviceSelectionOptions {
 
 interface UpdateHighlightedClipSlotOptions {
   songView: LiveAPI;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
+  clipSlot?: AnySlotPosition;
 }
 
 /**
@@ -241,10 +245,7 @@ export function updateHighlightedClipSlot({
   clipSlot,
 }: UpdateHighlightedClipSlotOptions): void {
   if (clipSlot != null) {
-    const { trackIndex, sceneIndex } = clipSlot;
-    const clipSlotAPI = LiveAPI.from(
-      livePath.track(trackIndex).clipSlot(sceneIndex),
-    );
+    const clipSlotAPI = LiveAPI.from(slotLivePath(clipSlot));
 
     if (clipSlotAPI.exists()) {
       songView.setProperty(
@@ -257,7 +258,7 @@ export function updateHighlightedClipSlot({
 
 interface UpdateClipSlotSelectionOptions {
   songView: LiveAPI;
-  clipSlot: { trackIndex: number; sceneIndex: number };
+  clipSlot: AnySlotPosition;
 }
 
 /**
@@ -273,9 +274,7 @@ export function updateClipSlotSelection({
 }: UpdateClipSlotSelectionOptions): boolean {
   updateHighlightedClipSlot({ songView, clipSlot });
 
-  const clipSlotAPI = LiveAPI.from(
-    livePath.track(clipSlot.trackIndex).clipSlot(clipSlot.sceneIndex),
-  );
+  const clipSlotAPI = LiveAPI.from(slotLivePath(clipSlot));
 
   const hasClip = clipSlotAPI.getProperty("has_clip") as number;
 
@@ -342,8 +341,20 @@ export function updateClipSelection({
   switchView,
 }: UpdateClipSelectionOptions): "session" | "arrangement" {
   const clipAPI = validateIdType(clipId, "clip");
-  const isSessionClip =
-    clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null;
+  // A return track's clip sits in a slot too, so it is a session clip.
+  const returnSlot =
+    clipAPI.returnTrackIndex != null && clipAPI.returnClipSlotIndex != null
+      ? {
+          returnIndex: clipAPI.returnTrackIndex,
+          sceneIndex: clipAPI.returnClipSlotIndex,
+        }
+      : null;
+  const regularSlot =
+    clipAPI.trackIndex != null && clipAPI.clipSlotIndex != null
+      ? { trackIndex: clipAPI.trackIndex, sceneIndex: clipAPI.clipSlotIndex }
+      : null;
+  const slot = returnSlot ?? regularSlot;
+  const isSessionClip = slot != null;
   const requiredView = isSessionClip ? "session" : "arrangement";
 
   // Live API ignores a detail_clip set if in the wrong view.
@@ -354,14 +365,8 @@ export function updateClipSelection({
   songView.setProperty("detail_clip", toLiveApiId(clipAPI.id));
 
   // For session clips, also highlight the clip slot
-  if (isSessionClip) {
-    updateHighlightedClipSlot({
-      songView,
-      clipSlot: {
-        trackIndex: clipAPI.trackIndex,
-        sceneIndex: clipAPI.clipSlotIndex,
-      },
-    });
+  if (slot != null) {
+    updateHighlightedClipSlot({ songView, clipSlot: slot });
   }
 
   return requiredView;

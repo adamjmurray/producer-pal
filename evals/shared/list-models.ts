@@ -14,6 +14,7 @@
 import { requireAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import {
+  LOCAL_DEFAULT_BASE_URL,
   PROVIDERS,
   PROVIDER_CONFIGS,
   validateApiKey,
@@ -21,8 +22,6 @@ import {
 
 /** OpenRouter and the Vercel gateway list hundreds of models; cap the listing. */
 const LARGE_LIST_MODEL_CAP = 50;
-
-const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 interface ListModelsOptions {
   /** Base URL for the local OpenAI-compatible server (chat CLI --base-url). */

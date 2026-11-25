@@ -24,7 +24,9 @@ import {
   registerDrumKit,
 } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 const CHAINS = 8;
 

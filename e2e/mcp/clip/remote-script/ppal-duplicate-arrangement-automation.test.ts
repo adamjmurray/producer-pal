@@ -24,7 +24,7 @@
  * enough to read anywhere in the test range.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-duplicate-arrangement-automation
+ * Run with: npm run e2e:mcp -- clip/remote-script/ppal-duplicate-arrangement-automation
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -245,7 +245,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     );
 
     it.each(["midi", "audio"] as const)(
-      "carries a looping %s clip's automation across a longer copy, partial last tile included",
+      "carries a looping %s clip's automation across a copy longer than its loop",
       async (kind) => {
         const loop = LOOP_BEATS[kind];
         const length = loop + loop / 2 + 1;

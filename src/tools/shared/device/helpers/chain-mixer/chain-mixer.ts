@@ -36,7 +36,8 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
-import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { trimSendReturns } from "#src/tools/shared/sends/sends-schema.ts";
+import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 import {
   type MixerApplied,
   PARAM_DISABLED_REASON,
@@ -93,10 +94,15 @@ export type AutomatableField = [name: string | (() => string), param: LiveAPI];
  * Read a chain's mixer as {@link readChainMixer} does, and hand back its
  * parameters, so a caller wanting their automation doesn't build them again.
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns The non-default settings, and every mixer parameter by the name the
- *   chain entry gives it (a send's name is only worked out when asked for)
+ * @param showFader - True to report gainDb and pan even at their defaults
+ * @returns The non-default settings (plus gainDb and pan when `showFader`), and
+ *   every mixer parameter by the name the chain entry gives it (a send's name
+ *   is only worked out when asked for)
  */
-export function readChainMixerAndParams(chain: LiveAPI): {
+export function readChainMixerAndParams(
+  chain: LiveAPI,
+  showFader = false,
+): {
   values: Record<string, unknown>;
   automatable: AutomatableField[];
 } {
@@ -114,17 +120,17 @@ export function readChainMixerAndParams(chain: LiveAPI): {
   // Round before the check, same as pan below.
   const roundedGainDb = roundDisplayValue(gainDb, roundGainDb);
 
-  if (typeof roundedGainDb === "number" && roundedGainDb !== 0) {
+  if (typeof roundedGainDb === "number" && (showFader || roundedGainDb !== 0)) {
     info.gainDb = roundedGainDb;
   }
 
   const pan = panning.getProperty("value");
 
   // Round before the check: sub-1% noise is centered as far as Live is
-  // concerned, and reporting it as `pan: 0` would contradict "non-default only".
+  // concerned, so it counts as the default.
   const roundedPan = roundDisplayValue(pan, roundPan);
 
-  if (typeof roundedPan === "number" && roundedPan !== 0) {
+  if (typeof roundedPan === "number" && (showFader || roundedPan !== 0)) {
     info.pan = roundedPan;
   }
 
@@ -282,18 +288,29 @@ function applyChainSend(
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
   // A rack's return chains have no `rt<n>` path, so no path index is passed.
-  const { index, clash } = findReturnIndex(
+  const found = findReturnIndex(
     names,
     send.return,
     returns.map((rc) => rc.id),
   );
+  const { clash } = found;
+  // A read names a nameless return chain "Return <n>", so a write takes that
+  // label too. A chain really named that wins: it matched above.
+  const labels = names.map(sendReturnName);
+  const wanted = send.return.toLowerCase();
+  const index =
+    found.index === -1
+      ? labels.findIndex(
+          (label, at) => names[at] === "" && label.toLowerCase() === wanted,
+        )
+      : found.index;
 
   if (index === -1) {
     // The "none" case is where a model would otherwise try to add one, so say
     // it can't be done here — racks expose no way to create a return chain.
     const available =
       names.length > 0
-        ? ` (returns: ${names.join(", ")})`
+        ? ` (returns: ${labels.join(", ")})`
         : " (rack has no return chains; they can only be added in Live)";
 
     // A fact about the chain the call named, so it rides back on that chain's
@@ -326,7 +343,10 @@ function applyChainSend(
     return null;
   }
 
-  const info = returns[index] as { name: string; id: string };
+  const info = {
+    name: labels[index] as string,
+    id: (returns[index] as { id: string }).id,
+  };
 
   if (!isParamEnabled(param)) {
     refused.push(
@@ -387,11 +407,11 @@ function applyChainSends(
         )
       : null;
 
-  // After the scalar pair, so a call using both honors both. They only collide
-  // when they name the same return, and then the list is the later word.
+  // A call never carries both (refused up front); the list is the later word
+  // should the two ever name the same return.
   const list: WrittenChainSend[] = [];
 
-  for (const send of params.sends ?? []) {
+  for (const send of trimSendReturns(params.sends)) {
     const written = applyChainSend(chain, mixer, send, refused, notes);
 
     if (written != null) {

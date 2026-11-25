@@ -26,6 +26,7 @@ import {
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
+  FULL_VOLUME_NOTE,
 } from "./helpers/clip-envelope-readback.ts";
 import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
@@ -104,8 +105,9 @@ export const automationWriteCurve: EvalScenario = {
       prompt: `The user asked for the Lead clip's volume to fade in from silence to full,
 starting slow and speeding up toward the end rather than rising in a straight
 line, using clip automation. Evaluate the final reply: it says a volume fade-in
-with that slow-then-fast shape was written on the Lead clip, and does not claim
-to have changed anything else.`,
+with that slow-then-fast shape was written on the Lead clip.
+
+${FULL_VOLUME_NOTE}`,
     },
   ],
 };

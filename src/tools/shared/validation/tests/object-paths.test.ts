@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
@@ -18,6 +18,7 @@ import {
   trackSegmentPath,
 } from "../helpers/object-paths.ts";
 import { deviceTailNoun } from "../helpers/object-path-device-tail.ts";
+import { registerLiveVersion } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -63,7 +64,7 @@ describe("parseObjectPathList", () => {
   // What a JSON null arrives as. The caller named no destination, so read it as
   // omitted — but say so, since the schema turned a non-answer into a value.
   it("reads a coerced null as omitted, and says so", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(parseObjectPathList("null", "toPath")).toStrictEqual([]);
     expect(warn).toHaveBeenCalledWith('toPath "null" names nothing');
@@ -72,7 +73,7 @@ describe("parseObjectPathList", () => {
   // The list is cycled against a position list, so a dropped entry moves every
   // later copy onto the wrong track instead of just making one fewer.
   it("refuses a hole rather than shifting every later entry", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(() => parseObjectPathList("t1,,t2", "toPath")).toThrow(
       'invalid toPath "t1,,t2" - it has an empty entry.',
@@ -109,8 +110,8 @@ describe("requireClipPath", () => {
   it("rejects everything a clip can't occupy, in clip terms", () => {
     const cases: [string, RegExp][] = [
       ["t1/d0", /device paths hold no clips/],
-      ["rt0", /return and main tracks have no clips/],
-      ["mt", /return and main tracks have no clips/],
+      ["rt0", /return and main tracks have no arrangement clips/],
+      ["mt", /return and main tracks have no arrangement clips/],
       ["s3", /a scene alone names no track/],
     ];
 
@@ -120,6 +121,20 @@ describe("requireClipPath", () => {
         /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a clip slot \("t0\/s1"\)/,
       );
     }
+  });
+
+  // Well-formed, but only the tools that move or copy envelope clips take it,
+  // and they read it with requireEnvelopeAwareDestination.
+  it("refuses a return-track slot as a place to put a clip", () => {
+    expect(() => requireClipPath(parseObjectPath("rt0/s1"), "toPath")).toThrow(
+      'invalid toPath "rt0/s1" - return-track clips need Live 13',
+    );
+
+    registerLiveVersion("13.0");
+
+    expect(() => requireClipPath(parseObjectPath("rt0/s1"), "toPath")).toThrow(
+      'invalid toPath "rt0/s1" - a return-track slot is no place for this tool\'s clips',
+    );
   });
 
   // A "+" root parses fine but names a place, not a thing, so a clip caller
@@ -199,6 +214,7 @@ describe("requireDeviceContainer", () => {
     const cases: [string, RegExp][] = [
       ["s3", /a scene holds no devices/],
       ["t0/s1", /a clip slot holds no devices/],
+      ["rt0/s1", /a clip slot holds no devices/],
       ["t0/l1", /a take lane holds no devices/],
     ];
 
@@ -274,7 +290,7 @@ describe("namedHiddenPath", () => {
   });
 
   it("says nothing about a param the caller left unset", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     namedHiddenPath("null", "toSlot");
     namedHiddenPath("", "toSlot");
@@ -294,7 +310,7 @@ describe("namedHiddenPath", () => {
   });
 
   it("says so, since a comma is something the caller typed", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     namedHiddenPath(",", "toSlot");
 
@@ -317,7 +333,7 @@ describe("pathNamesSomething", () => {
   });
 
   it("says nothing, so a second read does not repeat the warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     pathNamesSomething(",");
 

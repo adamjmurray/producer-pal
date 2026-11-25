@@ -13,7 +13,7 @@ import {
   deviceHasInstrument,
 } from "./chain-info.ts";
 import { buildDrumPadPath } from "./path/device-path-builders.ts";
-import { extractDevicePath } from "./path/insertion-path.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 // A drum pad is reached three ways — as a read target with its DrumPad object,
 // as a target the rack has no DrumPad for, and in a rack's `drumPads` list.
@@ -363,7 +363,7 @@ export function processDrumPads(
   // Prefer the path the caller walked in on: a Live path spells a nested rack's
   // position with raw chain indexes, which loses the pad notation the rest of
   // the tree uses (pF1/c0/d0, not c3/d0).
-  const parentPath = devicePath ?? extractDevicePath(device.path);
+  const parentPath = devicePath ?? objectPathForApi(device) ?? null;
   // Read the rack's pads once: pads are grouped from chains below, so there is
   // no pad object in hand to take an id from. Only when the pads are being
   // returned — a drum-map walk would build a LiveAPI per pad for an id it

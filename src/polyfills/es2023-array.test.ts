@@ -52,6 +52,21 @@ describe("ES2023 array polyfill prototype installation", () => {
     expect([3, 1, 2].toSorted((a, b) => a - b)).toStrictEqual([1, 2, 3]);
   });
 
+  it("should install polyfills as non-enumerable, like native methods", () => {
+    for (const name of ["toSorted", "toReversed", "toSpliced", "with"]) {
+      expect(
+        Object.getOwnPropertyDescriptor(Array.prototype, name),
+      ).toStrictEqual({
+        value: expect.any(Function),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+
+    expect(Object.keys(Array.prototype)).toStrictEqual([]);
+  });
+
   it("should install toReversed polyfill on Array.prototype", () => {
     expect(Array.prototype.toReversed).toBeDefined();
     expect([1, 2, 3].toReversed()).toStrictEqual([3, 2, 1]);
@@ -138,6 +153,32 @@ describe("ES2023 array polyfills", () => {
       const spliced = polyfillToSpliced(arr, 2);
 
       expect(spliced).toStrictEqual([1, 2]);
+    });
+
+    it.each([
+      [[]],
+      [[0]],
+      [[1]],
+      [[undefined]],
+      [[1, undefined]],
+      [[1, undefined, 9]],
+      [[1, 2]],
+      [[-2]],
+      [[-2, 1, 9, 8]],
+      [[10, 5, 9]],
+      [[1, -3]],
+      [[1, Number.NaN, 9]],
+      [[1.9, 1.9]],
+    ])("should match native toSpliced for arguments %j", (args) => {
+      const native = [1, 2, 3, 4, 5].toSpliced(...(args as [number, number]));
+
+      expect(polyfillToSpliced([1, 2, 3, 4, 5], ...args)).toStrictEqual(native);
+    });
+
+    it("should treat an explicit undefined deleteCount as 0, like native", () => {
+      expect(polyfillToSpliced([1, 2, 3], 1, undefined, 9)).toStrictEqual([
+        1, 9, 2, 3,
+      ]);
     });
 
     it("should return a new array instance", () => {

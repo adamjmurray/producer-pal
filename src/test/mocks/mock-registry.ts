@@ -234,7 +234,7 @@ const deletedIds = new Set<string>();
  * the way it does in Live.
  *
  * Off by default, and only ppal-delete's tests turn it on. Everything else that
- * deletes (update-clip's arrangement moves, the tiling holding area) goes on
+ * deletes (update-clip's arrangement moves, the holding area) goes on
  * reading the clip it just deleted, and a mock that took those deletes
  * literally would change what those tests exercise.
  */

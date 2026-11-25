@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render } from "@testing-library/preact";
+import { EditorView } from "@codemirror/view";
+import { act, fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import "./App-mocks-test-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -228,6 +229,50 @@ describe("App conversation management", () => {
     expect(mockSave.mock.invocationCallOrder[0]).toBeLessThan(
       clearConversation.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it("clears the composer draft when the conversation is left", () => {
+    mockMatchMedia(false);
+    mockConversations({});
+    const { container } = render(<App />);
+    const doc = () =>
+      EditorView.findFromDOM(
+        container.querySelector(".cm-editor")!,
+      )!.state.doc.toString();
+
+    void act(() => {
+      EditorView.findFromDOM(container.querySelector(".cm-editor")!)!.dispatch({
+        changes: { from: 0, insert: "draft" },
+      });
+    });
+    expect(doc()).toBe("draft");
+
+    // useConversations calls this when it leaves the composer's conversation.
+    const reset = (useConversations as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0].resetComposer as () => void;
+
+    void act(() => reset());
+
+    expect(doc()).toBe("");
+  });
+
+  it("keeps the composer draft when the conversation is torn down but not left", () => {
+    mockMatchMedia(false);
+    mockConversations({});
+    const { container } = render(<App />);
+    const view = () =>
+      EditorView.findFromDOM(container.querySelector(".cm-editor")!)!;
+
+    void act(() => {
+      view().dispatch({ changes: { from: 0, insert: "draft" } });
+    });
+
+    const teardown = (useConversations as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0].clearConversation as () => void;
+
+    void act(() => teardown());
+
+    expect(view().state.doc.toString()).toBe("draft");
   });
 
   it("does not auto-save when streaming starts", () => {

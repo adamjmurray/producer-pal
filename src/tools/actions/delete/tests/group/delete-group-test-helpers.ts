@@ -21,6 +21,8 @@ export interface GroupTrack {
   group?: string;
   /** Whether it is a group track */
   foldable?: boolean;
+  /** Ids of the mocks for its clip slots */
+  clipSlots?: string[];
 }
 
 /** t0 holds a and b. */
@@ -90,13 +92,14 @@ export function setUpGroupSet(
     },
   });
 
-  for (const [index, { id, group, foldable }] of layout.entries()) {
+  for (const [index, { id, group, foldable, clipSlots }] of layout.entries()) {
     registerMockObject(id, {
       path: livePath.track(index),
       type: "Track",
       properties: {
         group_track: ["id", group ?? 0],
         is_foldable: foldable === true ? 1 : 0,
+        ...(clipSlots != null && { clip_slots: children(...clipSlots) }),
       },
     });
   }
@@ -161,4 +164,21 @@ function isOnlyMember(tracks: GroupTrack[], at: number): boolean {
     group != null &&
     tracks.filter((track) => track.group === group).length === 1
   );
+}
+
+/**
+ * Put a clip named "Loop" in a track's first slot. The track lists the slot
+ * through its `clipSlots` option.
+ * @param slotId - The slot mock's id, which is also the track's `clipSlots` entry
+ * @param trackIndex - The track
+ */
+export function putClipInSlot(slotId: string, trackIndex: number): void {
+  const slot = livePath.track(trackIndex).clipSlot(0);
+
+  registerMockObject(slotId, { path: slot, properties: { has_clip: 1 } });
+  registerMockObject(`${slotId}-clip`, {
+    path: slot.clip(),
+    type: "Clip",
+    properties: { name: "Loop" },
+  });
 }

@@ -93,20 +93,11 @@ if (devPortal != null) {
 const head = checkout.head;
 
 if (git("tag", "--list", tag) !== "") {
-  fail(
-    `${tag} already exists locally.`,
-    "If the build changed, do not move the tag — bump to the next candidate",
-    "(npm run version:bump:rc) so the new artifacts carry a version that says",
-    "so. Moving a tag leaves testers holding files nothing can distinguish.",
-  );
+  fail(`${tag} already exists locally.`, ...existingTagHelp(tag, version));
 }
 
 if (existsOnRemote(tag)) {
-  fail(
-    `${tag} already exists on origin.`,
-    "That release was already cut. Bump to the next candidate instead:",
-    "npm run version:bump:rc",
-  );
+  fail(`${tag} already exists on origin.`, ...existingTagHelp(tag, version));
 }
 
 // -s signs it, which makes it annotated, which is why -m is required.
@@ -157,6 +148,30 @@ function existsOnRemote(name: string): boolean {
 
     return false;
   }
+}
+
+/**
+ * Explains what to do when the tag already exists.
+ * @param name - The tag name
+ * @param ver - The version being tagged
+ * @returns Detail lines for fail()
+ */
+function existingTagHelp(name: string, ver: string): string[] {
+  // A candidate is handed out once pushed, so a moved tag would leave testers
+  // with files nothing can tell apart.
+  if (ver.includes("-")) {
+    return [
+      "Don't move a candidate's tag. Cut the next one: npm run version:bump:rc",
+    ];
+  }
+
+  return [
+    "If the release PR isn't merged yet, delete the old tag and re-run:",
+    `   git push origin --delete ${name}`,
+    `   git tag -d ${name}`,
+    "Otherwise the version is spent: it's a patch release. See",
+    '"Urgent fix after a release" in dev/process/releasing.md.',
+  ];
 }
 
 /**

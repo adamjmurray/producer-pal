@@ -21,7 +21,7 @@ import {
   isBareThousands,
   parseLabel,
   resolveEnumIndex,
-} from "../param-label-parsing.ts";
+} from "../params/param-label-parsing.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [
@@ -83,6 +83,14 @@ describe("parseLabel optional sign and multi-digit tokens", () => {
   it("parses an unsigned 'inf dB' as the -inf floor", () => {
     // The sign is optional (`-?inf`), so a bare "inf dB" still maps to -70.
     expect(parseLabel("inf dB")).toStrictEqual({ value: -70, unit: "dB" });
+  });
+
+  it.each([
+    ["+3 dB", 3, "dB"],
+    ["+25 %", 25, "%"],
+    ["+90°", 90, "degrees"],
+  ])("parses a leading plus on '%s'", (label, value, unit) => {
+    expect(parseLabel(label)).toStrictEqual({ value, unit });
   });
 
   it("parses a note name with a multi-digit octave", () => {

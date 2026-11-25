@@ -1,143 +1,17 @@
-# Gemini CLI
+---
+title: Gemini CLI
+search: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/installation/antigravity-cli
+  - - link
+    - rel: canonical
+      href: https://producer-pal.org/installation/antigravity-cli
+---
 
-Use Producer Pal with Google's command line coding assistant.
+# Gemini CLI is now Antigravity CLI
 
-::: warning Best with a subscription
+Google replaced Gemini CLI with Antigravity CLI, so this page moved.
 
-Gemini CLI works best with a
-[Google AI Pro subscription](https://one.google.com/about/google-ai-plans/).
-Without one, you'll hit Google's usage limits quickly. Consider
-[Claude Code](./claude-code) for an alternative CLI experience.
-
-:::
-
-If you feel comfortable with the command line, this is an option for using
-Producer Pal. Also consider [Google Antigravity](./antigravity), Google's
-desktop agent app, or using Gemini with Producer Pal's
-[built-in chat UI](./api-keys#gemini) (but probably via OpenRouter as noted on
-that page).
-
-<!--@include: ../_partials/agent-skill-callout.md-->
-
-## Requirements
-
-<!--@include: ../_partials/live-requirement.md-->
-
-- [Node.js 20+](https://nodejs.org/en/download)
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
-  (requires Google account)
-
-## Installation Steps
-
-<!--@include: ../_partials/setup-by-ai.md-->
-
-### 1. Configure Gemini CLI
-
-Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
-
-::: warning Not the same file as Google Antigravity
-
-[Google Antigravity](./antigravity) reads `~/.gemini/config/mcp_config.json`
-instead. Same folder, separate configs — adding Producer Pal to one does not add
-it to the other.
-
-:::
-
-<!--@include: ../_partials/mcp-option-npx.md-->
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "npx",
-      "args": ["-y", "producer-pal@latest"]
-    }
-  }
-}
-```
-
-::: tip Scripting or building against Producer Pal?
-
-<!--@include: ../_partials/scripting-tip-intro.md-->
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "producer-pal@latest",
-        "--format",
-        "json",
-        "--notation",
-        "midi-json"
-      ]
-    }
-  }
-}
-```
-
-<!--@include: ../_partials/scripting-tip.md-->
-
-:::
-
-::: tip Only need some of the tools?
-
-Narrow the toolset and every conversation gets smaller:
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "npx",
-      "args": ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
-    }
-  }
-}
-```
-
-<!--@include: ../_partials/toolset-tip.md-->
-
-:::
-
-<!--@include: ../_partials/mcp-option-http.md-->
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "httpUrl": "http://localhost:3350/mcp"
-    }
-  }
-}
-```
-
-### 2. Start Gemini CLI
-
-Run `gemini` in an empty folder (so it can focus on Producer Pal instead of
-coding)
-
-### 3. Verify Tools
-
-Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
-available:
-
-![Producer Pal tools listed in Gemini CLI](/img/gemini-tool-list.png)
-
-### 4. Start Using Producer Pal
-
-With Live open, start a conversation with "connect to ableton". Allow Producer
-Pal tools when Gemini tries to use them:
-
-![Gemini CLI tool permission prompt](/img/gemini-tool-permissions.png)
-
-<!--@include: ../_partials/setup-by-ai-finish.md-->
-
-![Gemini CLI successfully connected to Producer Pal](/img/gemini-success.png)
-
-<!--@include: ../_partials/check-it-works.md-->
-
-## Troubleshooting
-
-If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
+**[Continue to the Antigravity CLI setup guide &rarr;](./antigravity-cli)**

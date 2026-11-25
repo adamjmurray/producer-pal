@@ -4,14 +4,14 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { applyAudioTransform } from "../transform-audio-evaluator.ts";
 
-// Mock console.warn to capture warnings
+// Mock emitWarning to capture warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  log: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 describe("Audio Transform Evaluator", () => {
@@ -299,7 +299,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("timeRange selector handling", () => {
     beforeEach(() => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
     });
 
     it("warns when a timeRange selector is used on an audio transform", () => {
@@ -307,7 +307,7 @@ describe("Audio Transform Evaluator", () => {
 
       // Still applies to the whole clip
       expect(result.gain).toBe(3);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "timeRange selector ignored: audio transforms apply to the whole clip",
       );
     });
@@ -315,7 +315,7 @@ describe("Audio Transform Evaluator", () => {
     it("does not warn when no timeRange selector is present", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
-      expect(console.warn).not.toHaveBeenCalledWith(
+      expect(emitWarning).not.toHaveBeenCalledWith(
         "timeRange selector ignored: audio transforms apply to the whole clip",
       );
     });
@@ -323,7 +323,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("pitch selector handling", () => {
     beforeEach(() => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
     });
 
     it("warns when a pitch selector is used on an audio transform", () => {
@@ -331,7 +331,7 @@ describe("Audio Transform Evaluator", () => {
 
       // Still applies to the whole clip
       expect(result.gain).toBe(3);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "pitch selector ignored: audio clips have no pitch",
       );
     });
@@ -339,7 +339,7 @@ describe("Audio Transform Evaluator", () => {
     it("does not warn when no pitch selector is present", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
-      expect(console.warn).not.toHaveBeenCalledWith(
+      expect(emitWarning).not.toHaveBeenCalledWith(
         "pitch selector ignored: audio clips have no pitch",
       );
     });
@@ -354,7 +354,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("where() predicate handling", () => {
     beforeEach(() => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
     });
 
     it("warns and passes through when a where() predicate is used on audio", () => {
@@ -366,7 +366,7 @@ describe("Audio Transform Evaluator", () => {
 
       // Predicate has no note axis on an audio clip; the gain still applies.
       expect(result.gain).toBe(3);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "where() predicate ignored: audio transforms apply to the whole clip",
       );
     });
@@ -374,7 +374,7 @@ describe("Audio Transform Evaluator", () => {
     it("does not warn when no where() predicate is present", () => {
       applyAudioTransform(0, 0, "gain += 3");
 
-      expect(console.warn).not.toHaveBeenCalledWith(
+      expect(emitWarning).not.toHaveBeenCalledWith(
         "where() predicate ignored: audio transforms apply to the whole clip",
       );
     });
@@ -382,7 +382,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("note-count operation handling", () => {
     beforeEach(() => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
     });
 
     it("warns and skips note-count operations on audio clips", () => {
@@ -390,7 +390,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result.gain).toBeNull();
       expect(result.pitchShift).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "ratchet ignored: the clip is audio",
       );
     });
@@ -437,12 +437,12 @@ describe("Audio Transform Evaluator", () => {
     });
 
     it("warns and skips legato() in audio context (no legato context)", () => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
       const result = applyAudioTransform(0, 0, "gain = legato()");
 
       // legato() has no MIDI legato context in a whole-clip audio transform.
       expect(result.gain).toBeNull();
-      expect(vi.mocked(console.warn)).toHaveBeenCalledWith(
+      expect(vi.mocked(emitWarning)).toHaveBeenCalledWith(
         expect.stringContaining("not available in this context"),
       );
     });
@@ -495,7 +495,7 @@ describe("Audio Transform Evaluator", () => {
     });
 
     it("resolves clip.position to 0 with a warning on a session clip", () => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
       const result = applyAudioTransform(-6, 0, "gain = clip.position", {
         clipDuration: 16,
         clipIndex: 0,
@@ -506,7 +506,7 @@ describe("Audio Transform Evaluator", () => {
       // Session clips have no arrangement origin: clip.position resolves to 0
       // (neutral) + warn instead of failing the transform.
       expect(result.gain).toBe(0);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "clip.position isn't available on a session clip; used 0",
       );
     });
@@ -644,7 +644,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("synced waveform on session clips", () => {
     it("degrades synced waveform to clip-relative with a warning", () => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
       const ctx = {
         clipDuration: 4,
         clipIndex: 0,
@@ -666,7 +666,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(synced.gain).toBeCloseTo(1, 9);
       expect(synced.gain).toBeCloseTo(unsynced.gain as number, 9);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "sync ignored: session clip, so the LFO is clip-relative",
       );
     });
@@ -717,7 +717,7 @@ describe("Audio Transform Evaluator", () => {
 
   describe("seq function (audio) — clip-axis fallback", () => {
     beforeEach(() => {
-      vi.mocked(console.warn).mockClear();
+      vi.mocked(emitWarning).mockClear();
     });
 
     it("cycles by clip.index (gain has no note axis), like clipseq()", () => {
@@ -732,7 +732,7 @@ describe("Audio Transform Evaluator", () => {
       // axis is the only meaning. seq() falls back to clip:index here (== the
       // clipseq() result) instead of warning.
       expect(result.gain).toBe(-9);
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(emitWarning).not.toHaveBeenCalled();
     });
   });
 
@@ -757,7 +757,7 @@ describe("Audio Transform Evaluator", () => {
       const result = applyAudioTransform(0, 0, "gain = C3 + 0");
 
       expect(result.gain).toBe(24);
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(emitWarning).not.toHaveBeenCalled();
     });
   });
 });

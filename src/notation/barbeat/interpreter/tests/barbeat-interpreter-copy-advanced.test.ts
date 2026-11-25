@@ -217,10 +217,15 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       it("warns when skipping self-copy during tiling", () => {
         interpretNotation("C3 5|1 D3 6|1 @3-10=5-6");
         expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("Skipping copy of bar 5 to itself"),
+          expect.stringContaining("Skipping copy of bars 5-6 to themselves"),
         );
+      });
+
+      it("names the one bar when only a single tiled copy lands on itself", () => {
+        interpretNotation("C3 5|1 D3 6|1 @3-5=5-6");
+
         expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("Skipping copy of bar 6 to itself"),
+          expect.stringContaining("Skipping copy of bar 5 to itself"),
         );
       });
 
@@ -229,10 +234,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         const result = interpretNotation("C3 3|1 D3 4|1 @3-4=3-4");
 
         expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("Skipping copy of bar 3 to itself"),
-        );
-        expect(capturedWarnings()).toContainEqual(
-          expect.stringContaining("Skipping copy of bar 4 to itself"),
+          expect.stringContaining("Skipping copy of bars 3-4 to themselves"),
         );
         // Should only have the original 2 notes, no copies
         expect(result).toHaveLength(2);
@@ -317,6 +319,22 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
     });
 
     describe("edge cases", () => {
+      it("warns once for a long run of self-copies", () => {
+        interpretNotation("C3 1|1 @1-5000=1-5000");
+
+        expect(
+          capturedWarnings().filter((w) => w.includes("Skipping copy")),
+        ).toStrictEqual(["Skipping copy of bars 1-5000 to themselves"]);
+      });
+
+      it("names the self-copied run when the source tiles past it", () => {
+        interpretNotation("C3 1|1 D3 2|1 @1-5=1-2");
+
+        expect(capturedWarnings()).toContainEqual(
+          expect.stringContaining("Skipping copy of bars 1-2 to themselves"),
+        );
+      });
+
       it("rejects copying a bar to itself (prevents infinite loop)", () => {
         const result = interpretNotation("C3 1|1 @1=1");
 

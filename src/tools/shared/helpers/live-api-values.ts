@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
+import {
+  isLiveVersionAtLeast,
+  isNewerVersion,
+} from "#src/shared/version-check.ts";
 
 /**
  * Parses a time signature string into numerator and denominator
@@ -171,10 +175,29 @@ export function keptTimeSignature(
  * or setting a property that a version doesn't have does nothing and raises no
  * error, so features added in a later Live check the version instead.
  * @param min - The oldest version that has the feature, like "12.4"
+ * @param options - `release: true` when a beta of `min` may lack the feature, so
+ *   only the release (or a later version's beta) counts
+ * @param options.release - Count a beta of `min` itself as older
  * @returns True when the running Live is `min` or later
  */
-export function liveVersionAtLeast(min: string): boolean {
-  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+export function liveVersionAtLeast(
+  min: string,
+  options?: { release?: boolean },
+): boolean {
+  const version = liveVersionString();
 
-  return !isNewerVersion(version, min);
+  return options?.release === true
+    ? isLiveVersionAtLeast(version, min)
+    : !isNewerVersion(version, min);
+}
+
+/**
+ * The running Live's version, as Live spells it ("12.4.16", "13.0b1").
+ * @returns The version string
+ */
+export function liveVersionString(): string {
+  // Live can't change version mid-request, and a request may ask per clip.
+  return requestMemo("live-version", () =>
+    String(LiveAPI.from("live_app").call("get_version_string")),
+  );
 }

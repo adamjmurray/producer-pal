@@ -475,11 +475,11 @@ describe("duplicate - track duplication", () => {
     const result = await duplicate({
       type: "track",
       id: "track1",
-      color: "#ff0000",
+      color: "#FF3636",
     });
 
     expect(result).toStrictEqual(createTrackResult(1));
-    expect(newTrack.set).toHaveBeenCalledWith("color", 0xff0000);
+    expect(newTrack.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("stops at the request deadline and says how far it got", async () => {

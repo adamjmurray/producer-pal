@@ -25,6 +25,12 @@ Part of [Skip entries, tool by tool](README.md).
   twice fires once, by its last mention; the earlier one is
   `{id | path, detail}`. Slots the deadline never reached are skips. A lone skip
   throws.
+- **play-session-clips fires one slot per track**, the last one named on it: a
+  track plays one clip at a time. An earlier slot on the same track isn't fired,
+  and its entry is `{id | path, detail}` with
+  `overwritten later in this call by t0/s1`. A later slot that is skipped (an
+  empty one, say) replaces nothing. A group track's slot and the slots of the
+  tracks inside it are not weighed against each other.
 - **play-session-clips skips an empty slot** as
   `{path, ok: false, detail: "no clip to play"}`, with no `id`, and never fires
   it: Live answers a fired empty slot by stopping whatever its track is playing.
@@ -40,8 +46,21 @@ Part of [Skip entries, tool by tool](README.md).
   track's slot it stops every track inside, and the `detail` names those that
   were playing or queued:
   `stopped the tracks in this group track: t10 (id 7), t11 (id 8)`.
+- **playback fires and stops an envelope clip** (Live 13) by path or by id like
+  any session clip: its entry is `{id, path: "rt0/s0"}`. A return track's slot
+  stops through its track's `stop_all_clips`, like a regular track's, since the
+  slot's own `stop` can't cancel a queued launch there either. A return track
+  has no group slots; an empty one is `no clip to play` like any empty slot.
+  `play-scene` takes `rt0/s3`, or an envelope clip's id, as the scene it sits
+  in. Live 12 refuses a return slot with `return-track clips need Live 13`.
 - **select has one target**: nothing to list, so a refusal or a failed selection
-  throws.
+  throws. It takes an envelope clip's `rt0/s0` or id like a session clip: it
+  switches to the session view, highlights the return track's slot and reports
+  `selectedClip` with `path: "rt0/s0"`. A path to a spot on a take lane the
+  track doesn't have still selects the track and moves the start marker; the
+  result's own `detail` says the lane isn't there. A blank `id` or `path` beside
+  one that names the selection warns once (`blank id ignored`), like every tool
+  that takes both.
 - **The read tools answer per target named, through one `readFanOut`.** A target
   that can't be read holds its slot as `{id | path, ok: false, detail}`, and a
   lone one throws. A multi-target read checks the deadline before each target;

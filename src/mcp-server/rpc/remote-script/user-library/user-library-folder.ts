@@ -38,7 +38,7 @@ export function resolveUserLibraryFolder(userLibrary: string): string {
  * @param path - A path, possibly starting with `~`
  * @returns The path with a leading `~` replaced
  */
-function expandHome(path: string): string {
+export function expandHome(path: string): string {
   if (path === "~") {
     return homedir();
   }

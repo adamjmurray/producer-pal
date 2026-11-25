@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { DEFAULT_MCP_URL } from "#src/shared/config";
+import { DEFAULT_MCP_URL, LOCAL_MODEL_PROXY_PATH } from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
 
@@ -110,6 +110,15 @@ export function getSettingsUrl(): string {
 }
 
 /**
+ * Gets the network-access endpoint URL ("Remote Control": GET
+ * reads it, PUT changes it).
+ * @returns {string} The network-access endpoint URL
+ */
+export function getNetworkAccessUrl(): string {
+  return serverUrl("/network-access");
+}
+
+/**
  * Gets the remote-script endpoint URL (whether the Producer Pal control surface
  * is installed in Live's User Library, and whether Live is running it).
  * @returns {string} The remote-script endpoint URL
@@ -143,6 +152,15 @@ export function getDeviceInstallUrl(): string {
  */
 export function getDeviceInstallActionUrl(): string {
   return serverUrl("/device-install/install");
+}
+
+/**
+ * Gets the plug-in wrapper devices endpoint URL (POST copies only the wrappers
+ * into the given User Library, which a development build can do).
+ * @returns {string} The plug-in wrapper devices endpoint URL
+ */
+export function getDevicePluginHostUrl(): string {
+  return serverUrl("/device-install/plugin-host");
 }
 
 /**
@@ -240,6 +258,40 @@ export function getSkillsPreviewUrl(
  */
 export function getSubagentBriefingUrl(mcpUrl?: string): string {
   return serverUrl("/subagent-briefing", mcpUrl);
+}
+
+/**
+ * Gets the local model proxy URL (forwards a chat UI request to a model server
+ * on this computer that sends no CORS headers).
+ * @returns {string} The local model proxy endpoint URL
+ */
+export function getLocalModelProxyUrl(): string {
+  return serverUrl(LOCAL_MODEL_PROXY_PATH);
+}
+
+/**
+ * Gets the REST endpoint for one tool (POST its arguments as JSON).
+ * @param toolName - The tool's name, e.g. "ppal-read-clip"
+ * @returns {string} The tool endpoint URL
+ */
+export function getToolUrl(toolName: string): string {
+  return serverUrl(`/api/tools/${encodeURIComponent(toolName)}`);
+}
+
+/**
+ * Gets the generative-UI widgets endpoint (the experimental side panel).
+ * @returns {string} The widgets endpoint URL
+ */
+export function getUiWidgetsUrl(): string {
+  return serverUrl("/api/ui/widgets");
+}
+
+/**
+ * Gets the generative-UI server-sent events endpoint.
+ * @returns {string} The events endpoint URL
+ */
+export function getUiEventsUrl(): string {
+  return serverUrl("/api/ui/events");
 }
 
 /**

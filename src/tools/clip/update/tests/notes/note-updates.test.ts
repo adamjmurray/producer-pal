@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { newCallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
@@ -120,8 +121,9 @@ describe("note-updates", () => {
   });
 
   describe("handleNoteUpdates keeps what the call didn't touch", () => {
-    // A muted note with a release velocity and a downward velocity range:
-    // three things bar|beat can't spell.
+    // A muted note with a release velocity: two things bar|beat can't spell.
+    // The downward velocity range is spellable (v100-80) but still must survive
+    // untouched.
     const MUTED = {
       ...rawNote(60, 0, 1),
       mute: 1,
@@ -234,6 +236,7 @@ describe("note-updates", () => {
       return handleDuplicateLoopWithEdits({
         clip,
         reasons,
+        callScale: newCallScale(),
         notationString: overrides.notationString,
         transformString: overrides.transformString,
         preTransformString: overrides.preTransformString,

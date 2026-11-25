@@ -12,19 +12,29 @@ import {
   fakeInnerCall,
   useTempConfigDir,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { type PluginHostWrapperState } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
+import { type DeviceInstallStatus } from "#src/shared/max/device-install-status.ts";
+import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import {
   enrichConnect,
   type ConnectEnrichmentConfig,
 } from "../enrich-connect.ts";
 
-const { remoteScriptPing, remoteScriptStatus } = vi.hoisted(() => ({
+const {
+  remoteScriptPing,
+  remoteScriptStatus,
+  pluginHostStates,
+  deviceInstallStatus,
+} = vi.hoisted(() => ({
   remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
   remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+  pluginHostStates: vi.fn<() => PluginHostWrapperState[]>(),
+  deviceInstallStatus: vi.fn<() => Promise<DeviceInstallStatus>>(),
 }));
 
 // The real ones read the developer's running Live and User Library.
@@ -38,11 +48,25 @@ vi.mock(
   () => ({ remoteScriptStatus }),
 );
 
+vi.mock(
+  import("#src/portal/setup/plugin-host/plugin-host-part.ts"),
+  async (original) => ({ ...(await original()), pluginHostStates }),
+);
+
+vi.mock(
+  import("#src/mcp-server/rpc/device-install/device-install-status.ts"),
+  () => ({ deviceInstallStatus }),
+);
+
 const getDir = useTempConfigDir();
 
 beforeEach(() => {
   remoteScriptPing.mockReset();
   remoteScriptStatus.mockReset();
+  pluginHostStates.mockReset().mockReturnValue([]);
+  deviceInstallStatus
+    .mockReset()
+    .mockResolvedValue({ problem: null, state: "same" } as DeviceInstallStatus);
   remoteScriptPing.mockResolvedValue({
     running: true,
     liveVersion: "12.4.0",
@@ -58,10 +82,12 @@ beforeEach(() => {
 /**
  * Run the full enrichment chain over a ppal-connect call.
  * @param overrides - Device settings to override the defaults
+ * @param args - The ppal-connect args
  * @returns The text of every content block, in order
  */
 async function enrichedBlocks(
   overrides: Partial<ConnectEnrichmentConfig> = {},
+  args: object = {},
 ): Promise<string[]> {
   const config: ConnectEnrichmentConfig = {
     notation: DEFAULT_NOTATION,
@@ -73,7 +99,7 @@ async function enrichedBlocks(
   const result = await enrichConnect(
     fakeInnerCall(connectResponse()),
     () => config,
-  )("ppal-connect", {});
+  )("ppal-connect", args);
 
   return result.content.map((block) => block.text);
 }
@@ -96,7 +122,7 @@ describe("enrichConnect", () => {
     expect(blocks[4]).toContain("Global context (all projects):");
     expect(blocks[5]).toContain("Memory index");
     expect(blocks[5]).toContain("Read an entry before work it covers");
-    expect(blocks[5]).toContain("rewrite that entry right away");
+    expect(blocks[5]).toContain("rewrite that entry now, even unasked");
     expect(blocks[6]).toContain("Report the connection status");
   });
 
@@ -181,6 +207,45 @@ describe("enrichConnect", () => {
     });
   });
 
+  describe("version drift in small-model mode", () => {
+    it.each([
+      {
+        name: "the installed copy is behind",
+        status: { installedVersion: "0.0.1", updateAvailable: true },
+      },
+      { name: "Live runs another copy", status: { runningVersion: "0.0.1" } },
+    ])("is not mentioned when $name", async ({ status }) => {
+      remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus(status));
+
+      const small = await enrichedBlocks({ smallModelMode: true });
+      const standard = await enrichedBlocks({ smallModelMode: false });
+
+      expect(small[1]).toBe(
+        `remoteScript: v${status.runningVersion ?? VERSION} running`,
+      );
+      expect(standard[1]).toContain("versionCheck: true");
+    });
+
+    it("leaves the version check without a new-chat line", async () => {
+      remoteScriptStatus.mockResolvedValue(
+        currentRemoteScriptStatus({
+          installedVersion: "0.0.1",
+          updateAvailable: true,
+        }),
+      );
+
+      const blocks = await enrichedBlocks(
+        { smallModelMode: true },
+        {
+          versionCheck: true,
+        },
+      );
+
+      expect(blocks).toHaveLength(2);
+      expect(blocks).not.toContain(UP_TO_DATE_NEW_CHAT);
+    });
+  });
+
   it("adds no portal line for a request that did not come through a portal", async () => {
     const blocks = await enrichedBlocks();
 
@@ -232,5 +297,141 @@ describe("enrichConnect", () => {
 
     expect(blocks.at(-1)).not.toContain("nothing is saved about them yet");
     expect(blocks.at(-1)).toContain("Report the connection status");
+  });
+
+  // The result's marker and the Skill's paragraph come from one check, so each
+  // appears exactly when the other does.
+  it("sends the New user paragraph only with the new-user marker", async () => {
+    const PARAGRAPH = "**New user** (connect says";
+    const MARKER = "nothing is saved about them yet";
+
+    const newUser = await enrichedBlocks();
+
+    expect(newUser[2]).toContain(PARAGRAPH);
+    expect(newUser.at(-1)).toContain(MARKER);
+
+    rememberMemory({
+      name: "prefers-dark-techno",
+      description: "Default genre for new material",
+      body: "Dark, hypnotic techno around 138 BPM.",
+    });
+
+    const known = await enrichedBlocks();
+
+    expect(known[2]).toContain("## Context & Memory");
+    expect(known[2]).not.toContain(PARAGRAPH);
+    expect(known.at(-1)).not.toContain(MARKER);
+  });
+
+  describe("versionCheck", () => {
+    const CHECK = { versionCheck: true };
+
+    it("keeps only the connect result, the portal line, the script line and the new-chat line", async () => {
+      writeFileSync(join(getDir(), "context.md"), "I make ambient techno.");
+
+      const blocks = await enrichedBlocks(
+        { portalVersion: VERSION, projectContext: "House track." },
+        CHECK,
+      );
+
+      expect(blocks).toHaveLength(4);
+      expect(blocks[1]).toBe(`portalVersion: ${VERSION}`);
+      expect(blocks[2]).toBe(`remoteScript: v${VERSION} running`);
+      expect(blocks[3]).toBe(UP_TO_DATE_NEW_CHAT);
+    });
+
+    it("pings the remote script and reads its status once", async () => {
+      await enrichedBlocks({}, CHECK);
+
+      expect(remoteScriptPing).toHaveBeenCalledOnce();
+      expect(remoteScriptStatus).toHaveBeenCalledOnce();
+    });
+
+    it("treats versionCheck false as a full connect", async () => {
+      const blocks = await enrichedBlocks({}, { versionCheck: false });
+
+      expect(blocks.at(-1)).toContain("Report the connection status");
+      expect(blocks).not.toContain(UP_TO_DATE_NEW_CHAT);
+    });
+
+    it("suggests a new chat when there is no portal", async () => {
+      const blocks = await enrichedBlocks({}, CHECK);
+
+      expect(blocks).toHaveLength(3);
+      expect(blocks.at(-1)).toBe(UP_TO_DATE_NEW_CHAT);
+    });
+
+    it("names a plug-in wrapper device to install after the script line, with no new-chat line", async () => {
+      pluginHostStates.mockReturnValue([
+        { name: "PPal Plug-in Effect", path: "/lib/e.amxd", state: "differs" },
+      ]);
+
+      const blocks = await enrichedBlocks({}, CHECK);
+
+      expect(blocks).toHaveLength(3);
+      expect(blocks[1]).toMatch(/^remoteScript: /);
+      expect(blocks[2]).toMatch(/^pluginWrappers: PPal Plug-in Effect differs/);
+    });
+
+    it.each([
+      {
+        name: "the script is not installed",
+        status: { installed: false, installedVersion: null, running: false },
+      },
+      {
+        name: "the script is installed but not running",
+        status: { running: false, runningVersion: null },
+      },
+      {
+        name: "the installed script is behind",
+        status: { installedVersion: "0.0.1", updateAvailable: true },
+      },
+      {
+        name: "Live runs another copy than the installed one",
+        status: { runningVersion: "0.0.1" },
+      },
+      {
+        name: "another program answers on the port",
+        status: { running: false, otherOnPort: 3350 },
+      },
+    ])(
+      "still says what is wrong, with no new-chat line, when $name",
+      async ({ status }) => {
+        remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus(status));
+
+        const blocks = await enrichedBlocks({}, CHECK);
+
+        expect(blocks).toHaveLength(2);
+        expect(blocks[1]).toMatch(/^remoteScript: /);
+        expect(blocks).not.toContain(UP_TO_DATE_NEW_CHAT);
+      },
+    );
+
+    it("gives no new-chat line when the remote script status can't be read", async () => {
+      remoteScriptStatus.mockRejectedValue(new Error("no library"));
+
+      const blocks = await enrichedBlocks({}, CHECK);
+
+      expect(blocks).toHaveLength(1);
+    });
+
+    it.each([
+      { name: "older than the device", portalVersion: "1.0.0" },
+      { name: "newer than the device", portalVersion: "99.0.0" },
+    ])(
+      "gives no new-chat line when the portal is $name",
+      async ({ portalVersion }) => {
+        const blocks = await enrichedBlocks({ portalVersion }, CHECK);
+
+        expect(blocks[1]).toContain(`portalVersion: ${portalVersion}`);
+        expect(blocks).not.toContain(UP_TO_DATE_NEW_CHAT);
+      },
+    );
+
+    it("puts the update-the-portal advice in the portal line when the portal is older", async () => {
+      const blocks = await enrichedBlocks({ portalVersion: "1.0.0" }, CHECK);
+
+      expect(blocks[1]).toContain("The portal is older than the device");
+    });
   });
 });

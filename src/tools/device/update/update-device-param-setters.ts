@@ -26,7 +26,7 @@ import {
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { type TargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   ambiguousNameReason,
   resolveParamById,
@@ -281,7 +281,7 @@ function applyNestedParam(
     // wouldn't resolve either.
     const advice = splitForAdvice(key);
 
-    console.warn(
+    emitWarning(
       `params name "${key}" is deprecated and will be removed; use path "${pathPrefix(device)}/${advice.path}" with name "${advice.name}"`,
     );
   }

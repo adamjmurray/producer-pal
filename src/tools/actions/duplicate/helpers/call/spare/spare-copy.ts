@@ -6,7 +6,7 @@
 import {
   holdingAreaStartOnTrack,
   verifyDupResult,
-} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+} from "#src/tools/shared/arrangement/arrangement-duplicate-workaround.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 

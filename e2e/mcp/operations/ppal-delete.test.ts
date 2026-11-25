@@ -104,13 +104,17 @@ describe("ppal-delete", () => {
   /**
    * Create an empty session clip and let Live settle.
    * @param path - Clip slot path
+   * @param name - The clip's name, if it should have one
    * @returns The new clip
    */
-  async function createClip(path: string): Promise<CreateClipResult> {
+  async function createClip(
+    path: string,
+    name?: string,
+  ): Promise<CreateClipResult> {
     const clip = parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
-        arguments: { path },
+        arguments: { path, ...(name != null && { name }) },
       }),
     );
 
@@ -347,6 +351,31 @@ describe("ppal-delete", () => {
 
     expect(deletedScenes).toHaveLength(2);
     expect(deletedScenes.every((d) => d.ok === undefined)).toBe(true);
+  });
+
+  // A scene's clips go with it, and the entry names them: their ids and paths
+  // don't exist afterwards.
+  it("names the clips a deleted scene held", async () => {
+    // The scene comes first: creating one at s0 shifts every slot below it.
+    const scene = await createScene({ path: "s0", name: "Scene with Clips" });
+    const clip = await createClip(`t${EMPTY_MIDI_TRACK}/s0`, "Goes With It");
+    const empty = await createScene({ path: "s1", name: "Empty Scene" });
+
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
+
+    const deleted = parseToolResult<DeleteResult[]>(
+      await del({ id: `${scene.id},${empty.id}`, type: "scene" }),
+    );
+
+    expect(deleted).toStrictEqual([
+      {
+        id: scene.id,
+        deletedPath: "s0",
+        detail: `also deleted the clip in this scene: t${EMPTY_MIDI_TRACK}/s0 "Goes With It"`,
+      },
+      { id: empty.id, deletedPath: "s1" },
+    ]);
+    await expectGone("ppal-read-clip", { id: clip.id });
   });
 
   it("deletes a clip by id", async () => {

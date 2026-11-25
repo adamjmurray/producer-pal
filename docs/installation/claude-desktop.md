@@ -34,20 +34,14 @@ Download the
 
 ### 2. Install the Extension in Claude Desktop
 
-Go to Claude Desktop → Settings → Extensions and:
+Go to Claude Desktop → Settings → Desktop app, scroll down to **Extensions**,
+and click "Manage":
 
-**If you already have extensions installed**, drag and drop `Producer_Pal.mcpb`
-into the Extensions screen:
+![Extensions in Claude Desktop settings](/img/claude-desktop-extensions-setting.png)
+
+Then drag and drop `Producer_Pal.mcpb` into the Extensions screen:
 
 ![Install in Claude Desktop](/img/install-in-claude.png)
-
-**Or, if you have never installed a Claude Desktop extension before**, you need
-to click "Advanced settings" on the Extensions screen, then click "Install
-extension...", and choose the
-[Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-file.
-
-![Install first extension in Claude Desktop](/img/install-in-claude-first-extension.png)
 
 ### 3. Complete the Installation
 
@@ -58,15 +52,24 @@ Don't forget to click "Install" and complete the Claude Desktop installation:
 **About the security warning:** Anthropic displays this warning for all
 extensions as a general security measure. Producer Pal is open source and you
 can review the entire codebase on
-[GitHub](https://github.com/adamjmurray/producer-pal) before installing. The
-extension only accesses Ableton Live through the Max for Live device.
+[GitHub](https://github.com/adamjmurray/producer-pal) before installing.
+
+Other ways of connecting skip this warning but aren't any safer, since Producer
+Pal runs the same software in Live either way. This extension also adds
+conveniences: it can respond when Live isn't running, install the
+[remote script](/guide/remote-script) and Max for Live device for you, and add
+the device to a Live Set that doesn't have one.
 
 ### 4. Verify Installation
 
-You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
-enabled when starting a conversation):
+Producer Pal now appears on the Extensions screen:
 
-![Producer Pal tools in Claude](/img/tools-in-claude.png)
+![Producer Pal installed in Claude Desktop](/img/claude-desktop-extension-installed.png)
+
+In a chat, you should see Producer Pal in the "+" menu under "Plugins" (make
+sure it's enabled when starting a conversation):
+
+![Producer Pal in Claude's Plugins menu](/img/tools-in-claude.png)
 
 ### 5. Start Using Producer Pal
 
@@ -74,6 +77,20 @@ With Live open, start a conversation with "connect to ableton". Allow Producer
 Pal tools when Claude tries to use them:
 
 ![Producer Pal allow tools](/img/producer-pal-permission.png)
+
+::: tip Skip the permission prompts
+
+Instead of approving tools one at a time, either:
+
+- Go to Settings → Desktop app → Extensions, click "Configure" next to Producer
+  Pal, and set **Tool permissions** to "Always allow":
+
+  ![Producer Pal tool permissions](/img/claude-desktop-tool-permissions.png)
+
+- Or switch the chat to **Auto** mode. Claude stops asking for most tools (such
+  as the read-only ones), but may still ask for some.
+
+:::
 
 <!--@include: ../_partials/setup-by-ai-finish.md-->
 
@@ -83,9 +100,12 @@ Pal tools when Claude tries to use them:
 
 ## Advanced settings
 
-The extension exposes a few optional settings under **Claude Desktop → Settings
-→ Extensions → Producer Pal**. Most people never need to touch these — the
-defaults are recommended.
+The extension exposes a few optional settings at the top of its "Configure"
+screen (**Claude Desktop → Settings → Desktop app → Extensions → Producer Pal →
+Configure**). Most people never need to touch these — the defaults are
+recommended.
+
+![Producer Pal extension settings](/img/claude-desktop-extension-settings.png)
 
 - **Ableton device URL** — where to reach the Max for Live device (default
   `http://localhost:3350`). Change only if you moved the device's port or are

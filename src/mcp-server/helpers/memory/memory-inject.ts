@@ -79,9 +79,10 @@ function memoryBlock({
   }
 
   return (
-    "Memory index. Read an entry before work it covers; when the user changes " +
-    "a fact an entry covers, rewrite that entry right away. Load a body with " +
-    'ppal-context (action:"read", scope:"memory", name:"<name>"):\n\n' +
+    "Memory index. Read an entry before work it covers. When the user says " +
+    "something that changes an entry, rewrite that entry now, even unasked. " +
+    'Load a body with ppal-context (action:"read", scope:"memory", ' +
+    'name:"<name>"):\n\n' +
     renderMemoryIndex(entries)
   );
 }

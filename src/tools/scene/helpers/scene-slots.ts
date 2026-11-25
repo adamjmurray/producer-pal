@@ -23,6 +23,7 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 /**
  * Refuses new scenes that would reach past the scene cap.
@@ -40,7 +41,7 @@ export function validateSceneIndexCap(
 
 function sceneCapError(count: number, index: number | undefined): Error {
   return new Error(
-    `creating ${count} scene${count === 1 ? "" : "s"} at index ${index} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+    `creating ${plural(count, "scene")} at index ${index} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
   );
 }
 

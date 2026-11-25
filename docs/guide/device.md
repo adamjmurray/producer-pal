@@ -12,10 +12,10 @@ to AI by giving it an interface to the Live API.
   Stopped" (black), or "Producer Pal Error" (red) if something went wrong when
   trying to start.
 - **Docs** - Link to this documentation site
-- **Open Chat UI** - Opens the built-in Chat UI in your default browser. The UI
-  is also reachable from other devices on your local network (handy for
-  [phone access](/installation/remote-access#chat-from-a-phone-or-another-computer),
-  but be mindful on shared networks).
+- **Open Chat UI** - Opens the built-in Chat UI in your default browser. Turn on
+  **Remote Control** (Setup tab) to also reach it from other computers on your
+  network, for
+  [phone access](/installation/remote-access#chat-from-a-phone-or-another-computer).
 - **Finish installation…** - Shown while the User Library copy of the device or
   the remote script is missing or out of date. Opens the Chat UI's
   [Installation](/guide/chat-ui#installation) tab. Hidden while **Update
@@ -84,6 +84,22 @@ editor, the same one the **Open Editor** button opens. See
   give up. Past that, you lose the partial results Producer Pal returns when it
   times out
 
+### Global
+
+These settings are saved for this computer, not in the Live Set.
+
+- **Installation Settings** - Opens the Chat UI on Settings → Installation,
+  where you can install or update the device and the remote script. See
+  [Installation](/guide/chat-ui#installation).
+- **Remote Control** - Off by default: only this computer can connect, and
+  [web tunnels](/installation/remote-access#web-tunnels) running on it still
+  work. Turn it on to connect from a phone or another computer on your network.
+  Anyone on that network can then control Live, and there's no password, so only
+  use it on a network you trust. Takes effect right away, and opening a Set
+  never turns it on. The Chat UI has the same setting (Settings → Installation →
+  Remote Control); it turns it on only when the Chat UI is open at `localhost`
+  on this computer.
+
 ### Behavior
 
 These settings belong to the device, not to one conversation: they apply to the
@@ -101,16 +117,6 @@ built-in [Chat UI](/guide/chat-ui), external MCP clients, and the
 AI is taught the notation at the start of a conversation, so switching notation
 takes full effect in a **new conversation**. In an ongoing chat, AI can still
 read your existing notes in the new notation but will keep writing the old one.
-
-### Sample Folder
-
-Configure a folder of audio samples to expose to the
-[Library](/features/tools#ppal-library) tool. Items from this folder appear
-before Live's library results in searches. Shows `(none)` when no folder is
-configured.
-
-- **Choose** - Select your sample folder
-- **Clear** - Remove the configured folder
 
 ### Debug
 

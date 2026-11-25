@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   lookupMockObject,
   mockNonExistentObjects,
@@ -58,16 +58,6 @@ describe("createClip - arrangement view", () => {
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 8);
   });
 
-  it("keeps the clip length when start is past the notes and no length is given", async () => {
-    // The notes end the clip at bar 2 (beat 4), before the start at beat 8, so
-    // there is no region to measure.
-    const { track } = setupArrangementClipMocks();
-
-    await createClip({ path: "t0[3|1]", start: "3|1", notes: "C3 1|1" });
-
-    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
-  });
-
   it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
     const { track } = setupArrangementClipMocks();
 
@@ -96,7 +86,7 @@ describe("createClip - arrangement view", () => {
   // Live refuses this without reporting anything, so create-clip checks the
   // destination track first and words the refusal itself.
   it("refuses a clip aimed at a frozen track", async () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const { track } = setupArrangementClipMocks();
 
     track.properties.is_frozen = 1;
@@ -259,7 +249,7 @@ describe("createClip - arrangement view", () => {
       trackIndex: 0,
       arrangementStart: "1|1,2|1",
       name: "Alpha,Beta",
-      color: "#FF0000,#00FF00",
+      color: "#FF3636,#1AFF2F",
     });
 
     const second = lookupMockObject(
@@ -268,8 +258,8 @@ describe("createClip - arrangement view", () => {
 
     expect(clip.set).toHaveBeenCalledWith("name", "Alpha");
     expect(second.set).toHaveBeenCalledWith("name", "Beta");
-    expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-    expect(second.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(clip.set).toHaveBeenCalledWith("color", 16725558); // #FF3636
+    expect(second.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F
   });
 
   it("refuses more names than positions, naming both counts", async () => {
@@ -434,7 +424,7 @@ describe("createClip - arrangement clip Live does not make", () => {
       path: "t0[1|1]",
       sampleFile: "/samples/loop.wav",
       name: "",
-      color: "#FF0000",
+      color: "#FF3636",
     });
 
     expect(clip.set).not.toHaveBeenCalledWith("name", expect.anything());

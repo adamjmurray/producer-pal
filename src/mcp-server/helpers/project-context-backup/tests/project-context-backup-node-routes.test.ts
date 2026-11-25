@@ -12,16 +12,16 @@ import { dispatchNodeRoute } from "#src/mcp-server/tests/config-dir-test-helpers
 import { registerProjectContextBackupNodeRoutes } from "../project-context-backup-node-routes.ts";
 import {
   deleteProjectContextSidecar,
-  projectContextSidecarPath,
   readProjectContextSidecar,
   writeProjectContextSidecar,
 } from "../project-context-backup-store.ts";
+import { projectContextSidecarPath } from "../project-context-sidecar-path.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 // Real filesystem behavior by default; a couple of tests override one call to
@@ -155,10 +155,10 @@ describe("projectContext.sync — restore (empty param, first sync)", () => {
 });
 
 describe("projectContext.sync — clear (empty param, later sync)", () => {
-  it("deletes the sidecar when the user clears (not first sync)", async () => {
+  it("deletes the sidecar when the user clears the context", async () => {
     seedSidecar("Genre: jungle");
 
-    const res = await sync({ content: "", allowRestore: false });
+    const res = await sync({ content: "", allowRestore: false, isEdit: true });
 
     expect(res.result).toStrictEqual({ action: "clear" });
     expect(existsSync(projectContextSidecarPath(liveSetPath))).toBe(false);
@@ -167,9 +167,22 @@ describe("projectContext.sync — clear (empty param, later sync)", () => {
   });
 
   it("is a no-op when there is no sidecar to clear", async () => {
-    const res = await sync({ content: "", allowRestore: false });
+    const res = await sync({ content: "", allowRestore: false, isEdit: true });
 
     expect(res.result).toStrictEqual({ action: "none" });
+  });
+
+  // A Set with no context saved into another project's folder (Save As): the
+  // sync only saw an empty param at a new path. Nobody cleared anything.
+  it("keeps the folder's sidecar when an empty param was only observed", async () => {
+    seedSidecar("Genre: jungle");
+
+    const res = await syncUnedited("");
+
+    expect(res.result).toStrictEqual({ action: "none" });
+    expect(sidecarText()).toBe("Genre: jungle");
+    expect(deleteProjectContextSidecar).not.toHaveBeenCalled();
+    expect(setProjectContext).not.toHaveBeenCalled();
   });
 });
 
@@ -289,7 +302,7 @@ describe("projectContext.sync — the filesystem refuses", () => {
     seedSidecar("Genre: jungle");
     vi.mocked(deleteProjectContextSidecar).mockReturnValueOnce("failed");
 
-    const res = await sync({ content: "", allowRestore: false });
+    const res = await sync({ content: "", allowRestore: false, isEdit: true });
 
     expect(res.success).toBe(true);
     expect(res.result).toStrictEqual({ action: "failed" });
@@ -298,7 +311,7 @@ describe("projectContext.sync — the filesystem refuses", () => {
   // The other half of the rule: nothing to delete is not a failure. The clear
   // already holds, so there is nothing to tell the user about.
   it("still reports none when there was no sidecar to clear", async () => {
-    const res = await sync({ content: "", allowRestore: false });
+    const res = await sync({ content: "", allowRestore: false, isEdit: true });
 
     expect(res.success).toBe(true);
     expect(res.result).toStrictEqual({ action: "none" });

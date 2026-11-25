@@ -11,11 +11,6 @@ import {
 } from "../drum-pads-from-chains.ts";
 import { deviceHasInstrument } from "../chain-info.ts";
 
-// Mock insertion-path
-vi.mock(import("../path/insertion-path.ts"), () => ({
-  extractDevicePath: vi.fn((path) => path),
-}));
-
 // Mock chain-info. Both builders surface a chain's `_state` (a
 // test-only marker on the mock chain), mirroring how the real helpers derive
 // mute/solo state — so buildDrumPadFromChains can aggregate it. "active" is
@@ -434,8 +429,8 @@ describe("drum-pads-from-chains", () => {
     };
 
     it("gives a nested device no path when the rack has none", () => {
-      // extractDevicePath answers null for a rack Live spells outside the
-      // track tree, and a device under it can only be addressed by id.
+      // A rack Live spells outside the track tree has no path, and a device
+      // under it can only be addressed by id.
       expect(processOneChain(true, null)).toHaveBeenCalledWith(
         { id: "nested" },
         expect.objectContaining({ parentPath: null }),
@@ -503,9 +498,8 @@ describe("drum-pads-from-chains", () => {
       expect(deviceInfo.drumPads![0]!.pitch).toBeNull();
     });
 
-    // The mocked extractDevicePath is the identity, so parentPath is the mock
-    // device's raw Live API path and chain paths are built onto it.
-    const PARENT = "live_set tracks 0 devices 0";
+    // The mock rack sits at "live_set tracks 0 devices 0".
+    const PARENT = "t0/d0";
 
     /**
      * Read the `path` of a pad's chain at the given index.
@@ -600,7 +594,9 @@ describe("drum-pads-from-chains", () => {
     });
 
     it("passes the nested device path and incremented depth to readDevice", () => {
-      expect(processOneChain(true, PARENT)).toHaveBeenCalledWith(
+      expect(
+        processOneChain(true, "live_set tracks 0 devices 0"),
+      ).toHaveBeenCalledWith(
         { id: "nested" },
         expect.objectContaining({
           parentPath: `${PARENT}/pC1/c0/d0`,

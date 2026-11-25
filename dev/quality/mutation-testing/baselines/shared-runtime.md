@@ -7,6 +7,9 @@ pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
 | ------------- | -------- | ---------- | -------------- |
 | sharedRuntime | 89.48%   | **94.94%** | 94             |
 
+`silent-wav-generator` has since moved to `src/mcp-server/rpc/`, so the
+`mcpServer` scope now mutates it; the numbers below predate the move.
+
 All test-only. Per-file movement (survivors from → to): `silent-wav-generator`
 37.0% → 92.6% (17 → 2), `compact-parser` 90.9% → 98.9% (16 → 2), `config` 83.3%
 → 100%, `v8-max-console` 97.2% → 100%, `v8-wait-until` 92.3% → 100%, `pitch`

@@ -15,7 +15,7 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { type ScratchClipContext } from "#src/tools/shared/arrangement/helpers/scratch-clips.ts";
 import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
@@ -23,17 +23,21 @@ import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   type ArrangementTrack,
   isTakeLaneClip,
+  takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  journalEnvelopeLoss,
   markClipLanded,
   moveClipReasons,
   noteClipReason,
   noteLanded,
   refuseClipWork,
+  sayEnvelopeLoss,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { recreateBlocker } from "#src/tools/shared/clip/recreate-clip.ts";
 import { removeMovedSource } from "./moved-source.ts";
 import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
@@ -52,7 +56,7 @@ interface HandleArrangementStartArgs {
   destination: ArrangementTrack | null;
   landings: LandingLog;
   isMidiClip: boolean;
-  context: TilingContext;
+  context: ScratchClipContext;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
 }
@@ -145,6 +149,7 @@ export function handleArrangementStartOperation({
         id: newClip.id,
         path: copyPath,
       });
+      journalEnvelopeLoss(reasons, clip.id);
     }
 
     // The source describes itself: it is about to be cleared, and a move onto
@@ -194,6 +199,8 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
+  sayEnvelopeLoss(reasons, clip.id);
+
   recordLandedClip(landings, landing, targetBeats, {
     id: newClip.id,
     length: landedLength(newClip),
@@ -234,7 +241,7 @@ interface HandleArrangementOperationsArgs {
  * A move copies the clip at its current length and clears that whole span at
  * the destination, so a main-lane clip being shortened is shortened first:
  * moving first would wipe neighbors the shortened clip no longer reaches.
- * Everything else moves first, so lengthening tiles from the new position
+ * Everything else moves first, so lengthening grows from the new position
  * instead of over the clip's old neighbors.
  * @param args - Operation arguments
  * @param args.clip - The clip to operate on
@@ -321,20 +328,17 @@ export function handleArrangementOperations(
     moveClipReasons(reasons, currentClip.id, clip.id);
     finalNoteResult = recountNotesAfterLengthChange(finalClipId, noteResult);
 
-    if (results.length > 0) {
+    // A resize returns the one clip it changed, the one the notes went to.
+    const [resized] = results;
+
+    if (resized != null) {
       // The resize landed, so a move refused beside it keeps a real entry.
       markClipLanded(reasons, clip.id);
-      // The length helpers return ids only, and their first entry is always the
-      // clip the notes were written to (any tiles follow it), so the note stats
-      // go there. Each tile starts somewhere else, so each is asked its own
-      // path rather than sharing the first one's.
       updatedClips.push(
-        ...results.map((result, index) =>
-          buildClipResultObject(
-            result.id,
-            index === 0 ? finalNoteResult : null,
-            objectPathForApi(LiveAPI.from(result.id)),
-          ),
+        buildClipResultObject(
+          resized.id,
+          finalNoteResult,
+          objectPathForApi(LiveAPI.from(resized.id)),
         ),
       );
       hasArrangementLengthResults = true;
@@ -364,26 +368,34 @@ function moveArrangementClip(args: HandleArrangementOperationsArgs): string {
     destination: args.destination ?? null,
     landings: args.landings,
     isMidiClip: !args.isAudioClip,
-    context: args.context as TilingContext,
+    context: args.context as ScratchClipContext,
     reasons: args.reasons,
   });
 }
 
 /**
- * Whether to shorten the clip where it sits before moving it. Main lane to main
- * lane only: take-lane clips refuse arrangementLength, and a move to or from a
- * take lane re-creates the clip rather than copying it.
+ * Whether to shorten the clip where it sits before moving it. Not for a move
+ * that will be refused, so a refused move changes nothing: one to or from a
+ * take lane that can't re-create the clip, or onto a lane past the cap.
  * @param args - Operation arguments
  * @param lengthBeats - Target length in beats
- * @returns True when the resize shortens a main-lane clip bound for a main lane
+ * @returns True when the resize shortens a clip whose move can land
  */
 function shortensBeforeMove(
   args: HandleArrangementOperationsArgs,
   lengthBeats: number,
 ): boolean {
   const { clip, destination } = args;
+  const recreates = destination?.takeLane != null || isTakeLaneClip(clip);
 
-  if (destination?.takeLane != null || isTakeLaneClip(clip)) {
+  if (recreates && recreateBlocker(clip) != null) {
+    return false;
+  }
+
+  if (
+    destination?.takeLane != null &&
+    takeLaneTargetsThatFit([destination]).dropped.size > 0
+  ) {
     return false;
   }
 

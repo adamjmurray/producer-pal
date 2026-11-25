@@ -29,7 +29,9 @@ import {
   setupSplittingClipGetMock,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 /** Clips on the track, each 16 beats long, laid end to end from beat 0. */
 const CLIPS = 6;

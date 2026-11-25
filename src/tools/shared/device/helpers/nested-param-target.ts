@@ -32,6 +32,7 @@ import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { createdCount } from "#src/tools/shared/helpers/created-range.ts";
+import { forceGuardMessage } from "#src/tools/shared/write-pipeline/force-guard.ts";
 
 interface DrumPadSlot {
   /** Segments from the addressed device down to the rack the pad sits on.
@@ -406,7 +407,8 @@ function resolveDrumPadSampleTarget(
 /**
  * Decide what a pad's existing instrument means for a sample write: a
  * single-sample Simpler takes it, and anything else is replaced only under
- * `force`, because the Live API has no other way to honor the write.
+ * `force` once a skip has warned about the pad, because the Live API has no
+ * other way to honor the write.
  * @param chain - The pad's chain
  * @param instrument - The instrument the chain holds, and its index in it
  * @param padLabel - How to name the pad
@@ -434,11 +436,21 @@ function applyPadInstrumentPolicy(
   // Nothing else has a settable sample, so the only way to honor the write is
   // to swap in a fresh Simpler, which loses every setting on the instrument it
   // replaces. Too destructive to do silently — skip, and let `force` through
-  // once the user has agreed.
+  // once a skip has shown the user what would be lost.
   const held = unsettableSampleHolder(className);
 
-  if (!force) {
-    return skip(padSampleSwapReason(padLabel, held));
+  const blocked = forceGuardMessage(
+    "pad-swap",
+    chain.id,
+    // A replaced instrument gets a new id, so an old warning can't unlock a swap
+    // of whatever the user put on the pad since.
+    instrument.device.id,
+    force,
+    padSampleSwapReason(padLabel, held),
+  );
+
+  if (blocked != null) {
+    return skip(blocked);
   }
 
   chain.call("delete_device", instrument.index);

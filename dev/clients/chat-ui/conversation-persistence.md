@@ -11,16 +11,68 @@ sibling-navigation UI — see
 truth for the full field list (the snippet below is illustrative, not
 exhaustive).
 
-**Storage**: IndexedDB via `idb` library. Database:
-`producer-pal-conversations`, single `conversations` object store with
-`updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
-non-bookmarked conversations are auto-deleted on save when the limit is reached.
+**Storage**: IndexedDB via `idb` library. Two databases:
+
+- `producer-pal-conversations` (version 1): a `conversations` object store with
+  an `updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
+  non-bookmarked conversations are auto-deleted on save when the limit is
+  reached.
+- `producer-pal-conversation-images` (version 1): image bytes, see below.
+
+**Images** (`lib/conversations/conversation-images.ts`): image bytes live in the
+`images` store of their own database, keyed by a hash of their content, so an
+edit/retry fork shares them instead of storing another copy. A stored message
+lists `imageRefs: [{ mediaType, ref }]` and has no `images` key;
+`loadConversation` puts the bytes back as inline `images`, so callers only ever
+see inline images, never `imageRefs` (`{ images: false }` skips that for
+metadata-only reads, such as the autosave's look at the saved record). A save
+writes only the bytes missing from the store. Export writes images inline, so an
+export file stays self-contained.
+
+The two databases can't share a transaction, so:
+
+- A save writes the images first and the record second, then sweeps. A crash
+  between the writes leaves an unused image, never a record whose image is
+  missing.
+- There are no reference counts. Every save and delete sweeps the images no
+  remaining record uses. A `touched` store records when a save last wrote or
+  re-used each image, and a sweep spares those from the last minute: the save
+  that wrote one may not have written its record yet (it may be another tab).
+- "Delete all" clears both image stores outright, grace period or not.
+- A failed sweep or clear is only logged. The records are already written.
+
+**Why images are a separate database**: every chat UI is served from the same
+origin, and a Live Set can hold an older device. A released UI opens the
+conversations database at version 1 and, on any other version, offers to delete
+all history. So that database stays at version 1.
+
+Pre-release builds kept images in a `images` store in the conversations database
+and bumped it to version 2. That can't be undone, so such a database is opened
+as is (`LEGACY_DB_VERSION`), and its images are moved to the image database on
+open (`conversations/legacy-image-migration.ts`; safe to re-run). The emptied
+store stays. A real future bump must skip version 2. No path raises the
+conversations database: an empty one (no stores) is deleted and recreated at
+version 1.
+
+The refs sit in `imageRefs`, not `images`, because the released UI reads
+`images` as inline bytes and throws on a ref. It ignores `imageRefs`, shows no
+thumbnails for those messages, and writes the field back untouched when it
+re-saves a conversation (a loaded message object goes straight back into the
+saved record; only an edit or retry rebuilds the one message it changes, in a
+new fork record). Loading also accepts refs inside `images` (pre-release builds)
+and inline bytes there (older UI); both become `imageRefs` on the next save.
+Sweeps count refs from both fields.
+
+**Cross-tab**: every connection opens through
+`conversations/open-tracked-db.ts`. When a newer build needs an upgrade, this
+tab closes both databases, alerts, and refuses further use (reload to recover)
+rather than reopening, which would offer the data wipe.
 
 **Versioning**: IndexedDB is schemaless for record data, so adding a field to a
 stored record needs no version bump — just default it when it's missing on read.
 Only bump `DB_VERSION` for structural changes (creating or deleting an object
-store or index). Prefer a backwards-compatible read over an upgrade-time data
-transform.
+store or index), and weigh the older-UI problem above first. Prefer a
+backwards-compatible read over an upgrade-time data transform.
 
 **Schema** (`lib/conversation-db.ts`):
 
@@ -44,7 +96,11 @@ interface ConversationRecord {
 | File                                                           | Purpose                                                                       |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `lib/conversation-db.ts`                                       | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
-| `lib/conversation-db-open.ts`                                  | DB open/upgrade, version mismatch handling, JSON export                       |
+| `lib/conversation-db-open.ts`                                  | DB open, version mismatch handling (backup includes images), JSON export      |
+| `lib/conversations/conversation-images.ts`                     | Shared image store: move bytes out on save, back in on load, sweep orphans    |
+| `lib/conversations/image-db.ts`                                | The image database: open, stores                                              |
+| `lib/conversations/legacy-image-migration.ts`                  | Moves images left in the version 2 conversations database                     |
+| `lib/conversations/open-tracked-db.ts`                         | Shared open with `blocked`/`blocking` handling and tab retirement             |
 | `lib/conversations/`                                           | Live-conversation store + the delete/rename/sweep steps chat and voice share  |
 | `hooks/chat/use-conversations.ts`                              | Orchestration hook (save/load/switch/new/delete/rename)                       |
 | `hooks/chat/helpers/conversations/conversation-save-record.ts` | Title derivation, save/fork record builders, locked settings                  |

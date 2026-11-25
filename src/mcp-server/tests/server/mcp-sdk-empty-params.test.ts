@@ -10,11 +10,13 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  OPT_IN_TOOL_DEFS,
+  STANDARD_TOOL_DEFS,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { buildFallbackTools } from "#src/portal/fallback-tools.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
-import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { isOfferedInMode } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
@@ -29,7 +31,7 @@ const PROFILES: { smallModelMode?: boolean; notation?: Notation }[] = [
   { notation: "stark" },
 ];
 
-const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
+const TOOL_DEFS = [...STANDARD_TOOL_DEFS, ...OPT_IN_TOOL_DEFS];
 
 type Profile = (typeof PROFILES)[number];
 
@@ -50,6 +52,27 @@ function authoredSchema(name: string, profile: Profile): z.ZodObject {
   const { published } = resolveToolSchema(def.toolOptions.inputSchema, profile);
 
   return z.object(published).loose();
+}
+
+/**
+ * What tools/list should publish for a tool: the SDK's own converter, with the
+ * options it uses for tools/list, minus the $schema and top-level
+ * additionalProperties we drop (see trimListedInputSchema).
+ * @param name - Tool name
+ * @param profile - Server options
+ * @returns The expected JSON Schema
+ */
+function publishedSchema(name: string, profile: Profile): object {
+  const {
+    $schema: _dialect,
+    additionalProperties: _loose,
+    ...schema
+  } = toJsonSchemaCompat(authoredSchema(name, profile), {
+    strictUnions: true,
+    pipeStrategy: "input",
+  });
+
+  return schema;
 }
 
 /**
@@ -166,28 +189,14 @@ describe("published JSON Schema", () => {
           isOfferedInMode(def, profile.smallModelMode === true),
         ).length,
       );
-      // The SDK's own converter, with the options it uses for tools/list,
-      // minus the $schema and top-level additionalProperties we drop
-      // (see trimListedSchemas in create-mcp-server.ts).
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) => {
-          const {
-            $schema: _dialect,
-            additionalProperties: _loose,
-            ...schema
-          } = toJsonSchemaCompat(authoredSchema(name, profile), {
-            strictUnions: true,
-            pipeStrategy: "input",
-          });
-
-          return schema;
-        }),
+        schemaTexts(tools, (name) => publishedSchema(name, profile)),
       );
     },
   );
 
   it.each(PROFILES)(
-    "the portal's offline list is unchanged too (%o)",
+    "the portal's offline list publishes them the same way (%o)",
     (profile) => {
       const { tools } = buildFallbackTools({
         ...profile,
@@ -195,9 +204,7 @@ describe("published JSON Schema", () => {
       });
 
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) =>
-          z.toJSONSchema(authoredSchema(name, profile)),
-        ),
+        schemaTexts(tools, (name) => publishedSchema(name, profile)),
       );
     },
   );

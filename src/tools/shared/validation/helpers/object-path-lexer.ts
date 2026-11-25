@@ -7,7 +7,7 @@
 // pre-2.2.0 spellings we still honor, and splitting the `[...]` coordinate off
 // the tail.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 import { type ObjectPath } from "../object-path.ts";
 
@@ -55,7 +55,7 @@ export function parseLegacyPath(
     const sceneIndex = Number(slot[2]);
 
     if (!quiet) {
-      console.warn(
+      emitWarning(
         `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
       );
     }
@@ -69,7 +69,7 @@ export function parseLegacyPath(
     const trackIndex = Number(track[1]);
 
     if (!quiet) {
-      console.warn(
+      emitWarning(
         `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
       );
     }

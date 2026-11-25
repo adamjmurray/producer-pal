@@ -30,11 +30,10 @@ Skills list above it is long, so collapse **Skills** or scroll past it. Click
 That opens `~/.gemini/config/mcp_config.json` in an editor. Antigravity has no
 in-app editor for custom MCP servers, so this file is the only way to add one.
 
-::: warning Not the same file as Gemini CLI
+::: tip Shared with Antigravity CLI
 
-[Gemini CLI](./gemini-cli) reads `~/.gemini/settings.json`. Antigravity reads
-`~/.gemini/config/mcp_config.json`. Same folder, separate configs — adding
-Producer Pal to one does not add it to the other.
+[Antigravity CLI](./antigravity-cli) reads the same file, so adding Producer Pal
+here sets up both.
 
 :::
 

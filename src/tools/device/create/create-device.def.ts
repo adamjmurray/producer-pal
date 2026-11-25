@@ -12,7 +12,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
   description:
-    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Inserting shifts later devices in that chain down a slot, so a result path is where the device sits after the call. Params with no list form apply to every device.",
+    "Create a device (instrument, MIDI effect, or audio effect) on a track or inside a chain: a native Live device, a VST/AU plug-in, or a Max for Live device. Inserting shifts later devices in that chain down a slot, so a result path is where the device sits after the call. Params with no list form apply to every device.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -22,7 +22,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     // drops any tool argument named `device` before the call reaches us.
     deviceName: param(z.string().optional(), {
       default:
-        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit this and preset to list available devices',
+        'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; a plug-in installed in several formats loads VST3, else AU, else VST2, and "Plug-Ins/AU/<vendor>/<name>" picks one; omit this and preset to list available devices',
       smallModel:
         'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
     }),
@@ -47,9 +47,14 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       default: "name, or comma-separated one per path",
       smallModel: "display name",
     }),
+    hosted: param(z.boolean().optional(), {
+      default:
+        "true: `deviceName` is a VST3, AU or VST2 plug-in name as Live's browser shows it, loaded inside a Producer Pal wrapper so every parameter can be read and set (a plug-in loaded natively exposes only the params the user configured, up to 128). Use when the user wants the plug-in's params set or automated. Applies to every device in the call; needs the Producer Pal remote script",
+      smallModel: null,
+    }),
     params: param(paramsInputSchema, {
       default:
-        "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. For a Drum Rack, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
+        "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. Drum Rack pad sample: {name:'pC1/sample', value:'<abs path>'}",
       // See update-device: small mode has no devices fragment, so the value
       // format and the sample write both have to survive the trim.
       smallModel:

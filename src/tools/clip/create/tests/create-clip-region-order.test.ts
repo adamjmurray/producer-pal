@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, type Mock, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { createClip } from "../create-clip.ts";
 import {
   setupArrangementClipMocks,
@@ -35,21 +35,21 @@ function markerWrites(set: Mock): unknown[][] {
   return set.mock.calls.filter(([prop]) => MARKERS.has(prop as string));
 }
 
-// Live rejects a loop_start past loop_end and drops a start_marker past
-// end_marker, and a new clip's markers run from 0 to the length it was created
-// with. These pin the order that keeps every write.
+// A looping clip checks each write against all four values, and a new clip's
+// markers run from 0 to the length it was created with. These pin the order
+// that keeps every write: growing ends, then starts, then shrinking ends.
 describe("createClip - region write order", () => {
-  it("writes the starts first when they fall inside the new clip", async () => {
+  it("moves the ends first when they grow, even with the starts inside the clip", async () => {
     const { track, clip } = setupArrangementClipMocks();
 
     await createClip({ path: "t0[3|1]", start: "1|2", length: "1bar" });
 
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
     expect(markerWrites(clip.set)).toStrictEqual([
-      ["start_marker", 1],
-      ["loop_start", 1],
       ["loop_end", 5],
       ["end_marker", 5],
+      ["start_marker", 1],
+      ["loop_start", 1],
     ]);
   });
 
@@ -76,7 +76,7 @@ describe("createClip - region write order", () => {
   it("writes the starts first for a region before 1|1", async () => {
     // The new end (-1) is before the clip's current start (0), so moving it
     // first would be rejected.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
     const { track, clip } = setupArrangementClipMocks();
 
     await createClip({ path: "t0[3|1]", start: "1|1-n/2", length: "n/4" });
@@ -88,7 +88,7 @@ describe("createClip - region write order", () => {
   it("creates a session clip only as long as its region", async () => {
     // Created to the region's end, a region before 1|1 would ask Live for a
     // clip of negative length, and Live makes none.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
     const { clipSlot, clip } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });

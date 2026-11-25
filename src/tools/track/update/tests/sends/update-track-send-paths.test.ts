@@ -31,7 +31,7 @@ describe("updateTrack - return tracks named by path", () => {
   });
 
   it("takes rt<n> as sendReturn", () => {
-    updateTrack({ id: "123", sendGainDb: -6, sendReturn: "rt1" });
+    updateTrack({ id: "123", sends: [{ return: "rt1", gainDb: -6 }] });
 
     expect(send2.set).toHaveBeenCalledWith("display_value", -6);
     expect(send1.set).not.toHaveBeenCalled();
@@ -55,11 +55,11 @@ describe("updateTrack - return tracks named by path", () => {
       'no send landed — "rt9": no return track matching "rt9" (Available: A-Reverb, B-Delay)';
 
     expect(() =>
-      updateTrack({ id: "123", sendGainDb: -6, sendReturn: "rt9" }),
+      updateTrack({ id: "123", sends: [{ return: "rt9", gainDb: -6 }] }),
     ).toThrow(message);
   });
 
-  it("lets a return named like a path keep that name", () => {
+  it("lets a return named like a path keep that name, for the deprecated pair too", () => {
     registerMockObject("return_B", {
       path: livePath.returnTrack(1),
       properties: { name: "rt0" },

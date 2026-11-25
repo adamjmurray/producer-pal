@@ -118,8 +118,7 @@ export const SKILL_RECALL_PROBES: SkillRecallProbe[] = [
     surface: "skill",
     source: "library",
     tier: "standard",
-    question:
-      "Which tool searches Live's browser library and the user's sample folder?",
+    question: "Which tool searches Live's browser library?",
     expect: [/ppal-library/],
   },
 

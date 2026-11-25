@@ -14,6 +14,14 @@ import {
   registerPendingMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  DORIAN,
+  expectDorianWritten,
+  LIVE_WITH_CLIP_SCALE,
+  registerLiveVersion,
+  type ScaleProps,
+} from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
+import { failOnSet } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 
 const SOURCE_ID = "arr_clip";
 const NEW_ID = "new_clip";
@@ -22,6 +30,8 @@ interface SourceOptions {
   isMidi?: number;
   filePath?: string;
   hasEnvelopes?: number;
+  /** The scale the source holds, for the copy to take. */
+  scale?: Partial<ScaleProps>;
 }
 
 interface SlotOptions {
@@ -36,6 +46,8 @@ interface SlotOptions {
   newClipColor?: number;
   /** The new clip can't be read once it exists. */
   newClipUnreadable?: boolean;
+  /** Writing the new clip's scale_mode throws. */
+  scaleWriteFails?: boolean;
 }
 
 /**
@@ -43,7 +55,7 @@ interface SlotOptions {
  * @param opts - What this test varies
  */
 function registerSource(opts: SourceOptions = {}): void {
-  const { isMidi = 1, filePath = "", hasEnvelopes = 0 } = opts;
+  const { isMidi = 1, filePath = "", hasEnvelopes = 0, scale = {} } = opts;
 
   mockNonExistentObjects();
   registerMockObject(SOURCE_ID, {
@@ -65,6 +77,7 @@ function registerSource(opts: SourceOptions = {}): void {
       signature_denominator: 4,
       name: "Verse",
       color: 16711680,
+      ...scale,
     },
     methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
   });
@@ -88,6 +101,7 @@ function registerSlot(
     newClipId = NEW_ID,
     newClipColor,
     newClipUnreadable = false,
+    scaleWriteFails = false,
   } = opts;
   const slotPath = livePath.track(trackIndex).clipSlot(sceneIndex);
 
@@ -97,6 +111,10 @@ function registerSlot(
         path: slotPath.clip(),
         type: "Clip",
       });
+
+      if (scaleWriteFails) {
+        failOnSet(clip, "scale_mode");
+      }
 
       // Reads that ignore what was written, as Live's palette snap does.
       if (newClipColor != null || newClipUnreadable) {
@@ -153,6 +171,37 @@ function registerSceneCreatingSlot(
 }
 
 describe("duplicate - arrangement clip to a clip slot", () => {
+  it("gives the re-created clip the source's own scale", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerSource({ scale: DORIAN });
+    registerSlot();
+
+    await duplicate({ type: "clip", id: SOURCE_ID, toPath: "t1/s0" });
+
+    const copy = lookupMockObject(NEW_ID);
+
+    expectDorianWritten(copy);
+  });
+
+  // The clip and its notes are already there, so the copy landed.
+  it("still reports the copy, naming the scale, when the scale write throws", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerSource({ scale: DORIAN });
+    registerSlot({ scaleWriteFails: true });
+
+    const result = await duplicate({
+      type: "clip",
+      id: SOURCE_ID,
+      toPath: "t1/s0",
+    });
+
+    expect(result).toStrictEqual({
+      id: NEW_ID,
+      path: "t1/s0",
+      detail: "re-created from the arrangement clip (scale isn't copied)",
+    });
+  });
+
   it("re-creates the clip in the slot and says what it lost", async () => {
     registerSource({ hasEnvelopes: 1 });
     const slot = registerSlot();

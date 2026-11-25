@@ -9,7 +9,10 @@ import { type CheckedManageArgs } from "#src/tools/core/helpers/manage-args.ts";
 import { MANAGE_TOOL } from "../offline/offline-call.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { checkedManageArgs } from "../offline/offline-manage-args.ts";
-import { offlineError } from "../offline/offline-responses.ts";
+import {
+  offlineError,
+  remoteSetupRefusal,
+} from "../offline/offline-responses.ts";
 import { type RunningDevice } from "./running-device.ts";
 import { updateProducerPal } from "./update-producer-pal.ts";
 
@@ -37,13 +40,20 @@ export function isUpdateCall(
  * @param args - The call's arguments as sent
  * @param device - The bridge's connection to the running device
  * @param deps - What the update reaches out to
+ * @param remoteHost - The device's `host[:port]` when it is on another computer
  * @returns The response
  */
 export async function answerUpdateCall(
   args: Record<string, unknown>,
   device: RunningDevice,
   deps: OfflineDeps,
+  remoteHost?: string | null,
 ): Promise<McpResponse> {
+  // The update copies files on this machine.
+  if (remoteHost != null) {
+    return remoteSetupRefusal(remoteHost, args.action);
+  }
+
   let checked: CheckedManageArgs;
 
   try {

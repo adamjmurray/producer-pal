@@ -48,12 +48,14 @@ export function presetDevice(resolved: ResolvedTarget): LiveAPI | null {
  * @param devices - Each target's device, or null
  * @param presets - Each target's preset, or undefined
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Each target's browser item, or undefined where it gets none
  */
 export async function lookUpPresets(
   devices: Array<LiveAPI | null>,
   presets: Array<string | undefined>,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<Array<BrowserItem | undefined>> {
   const cache = new Map<string, BrowserItem>();
   const found: Array<BrowserItem | undefined> = [];
@@ -71,7 +73,7 @@ export async function lookUpPresets(
     let item = cache.get(key);
 
     if (item == null) {
-      item = await resolveBrowserPreset(preset, scope, deadline);
+      item = await resolveBrowserPreset(preset, scope, deadline, manage);
       cache.set(key, item);
     }
 
@@ -86,12 +88,14 @@ export async function lookUpPresets(
  * @param device - The target device
  * @param item - The preset
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns What its entry should say, and the new device when Live replaced it
  */
 export async function loadPreset(
   device: LiveAPI,
   item: BrowserItem,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<PresetLoad> {
   // Loading onto it, or a rack holding it, removes the device this tool runs on.
   if (isProducerPalDevice(device)) {
@@ -100,7 +104,7 @@ export async function loadPreset(
     };
   }
 
-  const swapped = await hotswapPreset(device, item, deadline);
+  const swapped = await hotswapPreset(device, item, deadline, manage);
 
   if ("error" in swapped) {
     return { outcome: swapped };

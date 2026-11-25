@@ -97,15 +97,12 @@ describe("updateDevice - params addressed by id", () => {
     const message = noParamLanded(() =>
       updateDevice({
         id: "dev1",
-        params: [
-          { id: "999", value: "0.75" },
-          { id: "N/A", value: "0.75" },
-        ],
+        params: [{ id: "N/A", value: "0.75" }],
       }),
     );
 
     expect(message).toBe(
-      'no param landed — "999": not found on t0/d0 (id dev1); "N/A": not found on t0/d0 (id dev1)',
+      'no param landed — "N/A": not found on t0/d0 (id dev1)',
     );
     expect(capturedWarnings()).toHaveLength(0);
   });

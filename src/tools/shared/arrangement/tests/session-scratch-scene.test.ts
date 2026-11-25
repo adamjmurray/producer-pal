@@ -10,9 +10,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
-import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/helpers/proved-unchanged-request.ts";
 import { handleUnloopedLengthening } from "#src/tools/clip/arrangement/helpers/unlooped-lengthening.ts";
-import { handleArrangementShortening } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
+import { clearAheadOfClip } from "#src/tools/clip/arrangement/helpers/clear-ahead-of-clip.ts";
+import { type LaneView } from "../helpers/arrangement-lane-view.ts";
 import {
   type ClipReasons,
   newClipReasons,
@@ -30,13 +31,13 @@ import {
   createAudioClipInSession,
   openScratchSlot,
   removeSessionClip,
-} from "../helpers/arrangement-tiling-clips.ts";
+} from "../helpers/scratch-clips.ts";
 import { registerSceneWorld } from "./helpers/session-scene-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const context = { silenceWavPath: "/tmp/silence.wav" };
@@ -72,6 +73,7 @@ function lengthenWarpedAudio(reasons: ClipReasons): void {
   handleUnloopedLengthening({
     clip: registerAudioClip({
       warping: 1,
+      start_marker: 0,
       end_marker: 4,
       loop_start: 0,
       loop_end: 4,
@@ -81,8 +83,8 @@ function lengthenWarpedAudio(reasons: ClipReasons): void {
     arrangementLengthBeats: 12,
     currentArrangementLength: 4,
     currentEndTime: 4,
-    clipStartMarker: 0,
     track: track(),
+    clearAhead: () => undefined,
     reasons,
   });
 }
@@ -97,7 +99,7 @@ type Report = (message: string) => void;
  */
 const CALLERS: Array<[string, (report: Report) => void]> = [
   [
-    "an arrangement tile",
+    "a temp arrangement clip",
     (report) => {
       createAndDeleteTempClip(track(), 8, 4, false, {
         ...context,
@@ -106,15 +108,20 @@ const CALLERS: Array<[string, (report: Report) => void]> = [
     },
   ],
   [
-    "a shortened audio clip",
+    "an audio clip clearing its way to lengthen",
     (report) => {
-      handleArrangementShortening({
-        clip: registerAudioClip({}),
+      clearAheadOfClip({
+        track: track(),
         isAudioClip: true,
-        arrangementLengthBeats: 4,
-        currentStartTime: 0,
-        currentEndTime: 8,
-        context,
+        from: 8,
+        to: 12,
+        context: {
+          ...context,
+          lanes: {
+            overlapping: () => [{ id: "in-the-way" }],
+            wroteOnTrack: () => undefined,
+          } as unknown as LaneView,
+        },
         reportScratch: report,
       });
     },
@@ -145,7 +152,7 @@ const CALLERS: Array<[string, (report: Report) => void]> = [
       expect(extension).not.toBeNull();
       cleanupTempClip(extension);
 
-      for (const [message] of vi.mocked(consoleMock.warn).mock.calls) {
+      for (const [message] of vi.mocked(consoleMock.emitWarning).mock.calls) {
         report(String(message));
       }
     },
@@ -225,7 +232,7 @@ describe("the scene an audio helper makes for its scratch clip", () => {
 
     run(() => {});
 
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("names the scene it made, and no scene when it made none", () => {
@@ -249,7 +256,7 @@ describe("the scene an audio helper makes for its scratch clip", () => {
 
     removeSessionClip({ slot: session.slot, sceneId: "id scene_world_gone" });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("left an empty scene behind"),
     );
   });
@@ -426,7 +433,7 @@ describe("a failure while the scratch clip is made", () => {
       "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
     ]);
     expect(world.sceneCount()).toBe(2);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("hands a scene a lengthened clip couldn't remove to that clip's reasons", () => {
@@ -439,7 +446,7 @@ describe("a failure while the scratch clip is made", () => {
     expect(reasons.said.get("scene_world_source")).toStrictEqual([
       "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
     ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("still cleans up, and throws Live's error, when the slot can't be read back", () => {

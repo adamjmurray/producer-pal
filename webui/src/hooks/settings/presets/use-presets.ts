@@ -6,7 +6,8 @@
 import { useCallback, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-message";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
-import { createPresetId, loadPresets, savePresets } from "./preset-storage";
+import { randomUuid } from "#webui/lib/utils/random-uuid";
+import { loadPresets, savePresets } from "./preset-storage";
 
 /** Result of a create attempt: the new preset, or a reason it was rejected. */
 export type CreatePresetResult =
@@ -94,7 +95,7 @@ export function usePresets(): UsePresetsReturn {
       }
 
       const preset: ChatPreset = withDescription(
-        { id: createPresetId(), name: trimmed, ...fields },
+        { id: randomUuid(), name: trimmed, ...fields },
         description,
       );
 

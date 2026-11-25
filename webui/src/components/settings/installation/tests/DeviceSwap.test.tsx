@@ -175,6 +175,9 @@ describe("InstallationTab device swap", () => {
     expect(screen.getByTestId("device-swap-done").textContent).toContain(
       "Save your Live Set",
     );
+    expect(screen.getByTestId("device-swap-new-chat-hint").textContent).toBe(
+      "Start a new chat so it picks up the new version.",
+    );
     expect(screen.queryByTestId("device-swap")).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/device-install/swap"),

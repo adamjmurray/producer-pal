@@ -28,6 +28,13 @@ import {
   type ClipReasons,
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
+import {
+  DORIAN,
+  expectDorianWritten,
+  LIVE_WITH_CLIP_SCALE,
+  registerLiveVersion,
+  type ScaleProps,
+} from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
 
 // Wraps the real recreateClip so most tests get its actual behavior; one test
@@ -75,6 +82,15 @@ function landedCount(
     (span) =>
       JSON.stringify(span.lane) === JSON.stringify(lane) && span.start === 32,
   ).length;
+}
+
+/**
+ * Where the clip re-created on the destination's take lane lands.
+ * @param laneIndex - 0-based lane index
+ * @returns The clip's path
+ */
+function takeLaneClipPath(laneIndex: number): PathLike {
+  return livePath.track(DEST_TRACK).takeLane(laneIndex).arrangementClip(0);
 }
 
 const TAKE_LANE_SOURCE = livePath
@@ -137,6 +153,10 @@ interface MoveOptions {
   hasEnvelopes?: number;
   /** 1 gives the source a groove for the copy to keep, or fail to. */
   hasGroove?: number;
+  /** The scale the source holds, for the copy to take. */
+  scale?: Partial<ScaleProps>;
+  /** Live creates the copy, then writing its scale_mode throws. */
+  scaleWriteFails?: boolean;
   /** Take lanes the destination track already has */
   initialLanes?: number;
   /** 0 makes the destination an audio track */
@@ -166,6 +186,7 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
     filePath = "",
     hasEnvelopes = 0,
     hasGroove = 0,
+    scale = {},
     initialLanes = 0,
     destHasMidiInput = 1,
     hasNotes = false,
@@ -195,6 +216,7 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
       signature_denominator: 4,
       name: "Verse",
       color: 16711680,
+      ...scale,
     },
     methods: {
       get_notes_extended: () =>
@@ -214,6 +236,7 @@ function registerMoveWorld(opts: MoveOptions = {}): void {
     hasMidiInput: destHasMidiInput,
     clipCreationFails: opts.clipCreationFails,
     postCreateFails: opts.postCreateFails,
+    scaleWriteFails: opts.scaleWriteFails,
   });
 
   // registerTakeLaneTrack answers the lane creates; the main lane's move goes
@@ -276,12 +299,12 @@ function runMove(opts: MoveOptions = {}): string {
 // Through updateClip itself, because the bug was in the seam: the resize runs on
 // the clip the move re-created, so its reason was filed under an id the loop
 // never looks up, and the entry lost it.
-describe("a lane move whose resize can't run", () => {
+describe("a lane move with an arrangementLength", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("keeps both reasons on the moved clip's entry", async () => {
+  it("resizes the clip it re-created, saying nothing for the length it had", async () => {
     registerMockObject("live-set", {
       path: livePath.liveSet,
       type: "Song",
@@ -295,13 +318,10 @@ describe("a lane move whose resize can't run", () => {
       arrangementLength: "2bar",
     })) as { id: string; detail?: string };
 
-    // The clip moved, so its entry is real — and it carries what the move and
-    // the refused resize each had to say.
+    // A take-lane clip takes arrangementLength like any other, so the entry has
+    // only what the move said.
     expect(result.id).not.toBe(SOURCE_ID);
-    expect(result.detail).toBe(
-      `re-created on t${DEST_TRACK}/l0; ` +
-        "arrangementLength ignored: this is a take-lane clip; adjust it in Live's UI",
-    );
+    expect(result.detail).toBe(`re-created on t${DEST_TRACK}/l0`);
   });
 });
 
@@ -449,6 +469,35 @@ describe("moving an arrangement clip to another lane", () => {
     expect(movedReason()).toBe(
       `re-created on t${DEST_TRACK}/l0 (groove isn't copied)`,
     );
+  });
+
+  it("gives the re-created clip the source's own scale", () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      scale: DORIAN,
+    });
+
+    const copy = lookupMockObject(undefined, takeLaneClipPath(0));
+
+    expectDorianWritten(copy);
+    expect(movedReason()).toBe(`re-created on t${DEST_TRACK}/l0`);
+  });
+
+  // The clip and its notes are already there, so the move landed.
+  it("still reports the move, naming the scale, when the scale write throws", () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+
+    const result = runMove({
+      destination: { trackIndex: DEST_TRACK, takeLane: 0 },
+      scale: DORIAN,
+      scaleWriteFails: true,
+    });
+
+    expect(movedReason()).toBe(
+      `re-created on t${DEST_TRACK}/l0 (scale isn't copied)`,
+    );
+    expect(result).not.toBe(SOURCE_ID);
   });
 
   // A lane that already exists is reused, not appended to.

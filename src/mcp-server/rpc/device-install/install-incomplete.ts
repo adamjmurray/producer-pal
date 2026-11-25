@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { pluginHostStates } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { isInstallIncomplete } from "#src/shared/version-check.ts";
 import { remoteScriptCurrent } from "../remote-script/remote-script-status.ts";
 import { type DeviceInstallStatus } from "./device-install-status.ts";
@@ -22,5 +23,9 @@ export function installIncomplete(device: DeviceInstallStatus): boolean {
       device.userLibrary == null
         ? null
         : remoteScriptCurrent(device.userLibrary),
+    wrappersCurrent:
+      pluginHostStates(device.userLibrary)?.every(
+        ({ state }) => state === "current",
+      ) ?? null,
   });
 }

@@ -22,6 +22,7 @@ export type LiveObjectType =
   | "TakeLane"
 
   // Device objects
+  | "CcControlDevice"
   | "Chain"
   | "ChainMixerDevice"
   | "CompressorDevice"

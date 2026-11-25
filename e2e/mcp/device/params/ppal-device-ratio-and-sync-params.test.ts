@@ -106,7 +106,7 @@ describe("a param whose label is a sync division", () => {
 
   it("reads a ladder that only turns into fractions at its far end", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Auto Filter", "t2");
-    const param = await readParam(ctx.client!, deviceId, "LFO Rate");
+    const param = await readParam(ctx.client!, deviceId, "LFO Synced");
 
     // Bar counts at the bottom, fractions at the top. The current value and
     // the minimum are both bare numbers, so only the max end names a fraction.
@@ -117,7 +117,7 @@ describe("a param whose label is a sync division", () => {
   it("reaches a rung in the middle of the ladder", async () => {
     const deviceId = await createTestDevice(ctx.client!, "Auto Filter", "t2");
 
-    expect(await writeParam(deviceId, "LFO Rate", "1/4")).toBe("1/4");
-    expect(await writeParam(deviceId, "LFO Rate", "4")).toBe("4");
+    expect(await writeParam(deviceId, "LFO Synced", "1/4")).toBe("1/4");
+    expect(await writeParam(deviceId, "LFO Synced", "4")).toBe("4");
   });
 });

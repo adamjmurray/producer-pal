@@ -1,0 +1,210 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { describe, expect, it } from "vitest";
+import {
+  type DeciderJudgeResult,
+  type DeciderVerdict,
+} from "../../decider-judge.ts";
+import { resolveReference, type Vote } from "../decider-reference.ts";
+import { referenceLines } from "../decider-reference-report.ts";
+import {
+  formatReport,
+  type CompareEntry,
+} from "../../report/decider-report.ts";
+import { type SkipCounts } from "../../decider-results.ts";
+
+const decider = (verdict: DeciderVerdict, score = 2): DeciderJudgeResult => ({
+  provider: "typesafe",
+  verdict,
+  minProbability: 0.5,
+  questions: [],
+  outcome: { maxScore: 5, score, confidence: 0.8, label: "partial success" },
+  model: "decider-1",
+  inputTokens: 100,
+  outputTokens: 5,
+  truncated: false,
+});
+
+const entry = (
+  file: string,
+  votes: Array<[string, boolean]>,
+  verdict: DeciderVerdict,
+): CompareEntry => {
+  const list: Vote[] = votes.map(([slug, pass]) => ({
+    slug,
+    pass,
+    issues: pass ? [] : [`${slug} says no`],
+  }));
+  const reference = resolveReference(list);
+
+  return {
+    file,
+    scenarioId: "s",
+    judge: {
+      pass: reference.majority ?? false,
+      issues: [],
+      provider: `majority of ${list.length}`,
+    },
+    reference,
+    checksPass: true,
+    decider: decider(verdict),
+  };
+};
+
+const skipped: SkipCounts = {
+  notScored: 0,
+  noScenario: 0,
+  noLlmJudge: 0,
+  unreadable: 0,
+  staleCriteria: 0,
+  deciderDecided: 0,
+};
+
+const trio = (a: boolean, b: boolean, c: boolean): Array<[string, boolean]> => [
+  ["h", a],
+  ["l", b],
+  ["s", c],
+];
+
+describe("referenceLines", () => {
+  const entries = [
+    entry("u1.json", trio(true, true, true), "pass"),
+    entry("u2.json", trio(false, false, false), "pass"), // decider wrong pass
+    entry("u3.json", trio(true, true, true), "fail"), // decider wrong fail
+    entry("u4.json", trio(true, true, true), "escalate"),
+    entry("x1.json", trio(true, false, false), "pass"), // 2-1 fail, split
+    entry(
+      "t1.json",
+      [
+        ["h", true],
+        ["l", false],
+      ],
+      "fail",
+    ), // tie
+  ];
+  const text = referenceLines(entries, ["h", "l", "s"]).join("\n");
+
+  it("names the reference judges and reports pairwise agreement", () => {
+    expect(text).toContain("LLM judges: h, l, s");
+    expect(text).toContain("h vs l: 66.7% (4/6)");
+    expect(text).toContain("h vs typesafe/decider-1: 40.0% (2/5)");
+  });
+
+  it("reports each judge's wrong calls where the others agree", () => {
+    expect(text).toContain(
+      "typesafe/decider-1: n=3, wrong pass 1, wrong fail 1",
+    );
+    expect(text).toContain("h: n=5, wrong pass 1, wrong fail 0");
+  });
+
+  it("keeps deciders apart by name, and falls back to one label when mixed", () => {
+    const local = {
+      ...entry("m1.json", trio(true, true, true), "pass"),
+      decider: {
+        ...decider("pass"),
+        provider: "ollama" as const,
+        model: "autotrust-jev",
+      },
+    };
+    const one = referenceLines([local], ["h", "l", "s"]).join("\n");
+    const mixed = referenceLines(
+      [local, entry("m2.json", trio(true, true, true), "pass")],
+      ["h", "l", "s"],
+    ).join("\n");
+
+    expect(one).toContain("h vs ollama/autotrust-jev:");
+    expect(mixed).toContain("h vs decider:");
+  });
+
+  it("reports the decider's escalations", () => {
+    expect(text).toContain("Decider escalated on 1 of 6 result(s).");
+  });
+
+  it("reports how the LLM judges do on the escalated results alone", () => {
+    const out = referenceLines(
+      [
+        entry("e1.json", trio(true, true, true), "escalate"),
+        entry("e2.json", trio(true, false, true), "escalate"),
+        entry("e3.json", trio(false, false, false), "escalate"),
+        entry("p1.json", trio(true, false, false), "pass"),
+      ],
+      ["h", "l", "s"],
+    ).join("\n");
+
+    expect(out).toContain("On the 3 escalated result(s), pairwise agreement:");
+    expect(out).toContain("  h vs l: 66.7% (2/3)");
+    expect(out).toContain("    l: n=3, wrong pass 0, wrong fail 1");
+  });
+
+  it("lists split results with votes, the decider and the failing judges' issues", () => {
+    expect(text).toContain(
+      "Split results (LLM judges disagree; hand-label these): 2",
+    );
+    expect(text).toContain("- x1.json (s): h=pass l=fail s=fail decider=pass");
+    expect(text).toContain("    l: l says no");
+    expect(text).toContain("- t1.json (s): h=pass l=fail decider=fail");
+    expect(text).not.toContain("- u1.json (s)");
+  });
+
+  it("reports stats for the unanimous results only", () => {
+    expect(text).toContain("Checks passed, LLM judges unanimous: n=4");
+  });
+
+  it("cuts a long split list", () => {
+    const many = Array.from({ length: 45 }, (_, i) =>
+      entry(`m${i}.json`, trio(true, false, false), "pass"),
+    );
+    const out = referenceLines(many, ["h", "l", "s"]).join("\n");
+
+    expect(out).toContain(
+      "Split results (LLM judges disagree; hand-label these): 45",
+    );
+    expect(out).toContain("  ... 5 more in the JSON report");
+  });
+
+  it("leaves out results without a decider answer", () => {
+    const out = referenceLines(
+      [
+        {
+          ...entry("e.json", trio(true, true, true), "pass"),
+          decider: undefined,
+          error: "x",
+        },
+      ],
+      ["h", "l", "s"],
+    ).join("\n");
+
+    expect(out).toContain("Decider escalated on 0 of 0 result(s).");
+  });
+});
+
+describe("formatReport with LLM judge references", () => {
+  const entries = [
+    entry("u1.json", trio(true, true, true), "pass"),
+    entry("x1.json", trio(true, false, false), "fail"), // majority fail, decider right
+    entry(
+      "t1.json",
+      [
+        ["h", true],
+        ["l", false],
+      ],
+      "pass",
+    ),
+  ];
+  const text = formatReport(entries, skipped).join("\n");
+
+  it("compares the decider with the majority and leaves ties out", () => {
+    expect(text).toContain("Decider vs LLM judges");
+    expect(text).toContain("Reference: majority of 3 (2)");
+    expect(text).toContain(
+      "Compared 2 result(s); 0 decider error(s); 1 tied (no majority, not counted).",
+    );
+    expect(text).toContain(
+      "Checks passed (the judge decides): n=2, judge fails 1",
+    );
+    expect(text).toContain("Wrong pass 0, wrong fail 0");
+  });
+});

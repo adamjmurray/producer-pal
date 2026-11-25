@@ -126,15 +126,16 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
-  { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
+  { value: "claude-fable-5-2", label: "Claude Fable 5.2" },
   { value: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   OTHER_MODEL_OPTION,
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
-  { value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  { value: "gemini-4-neon", label: "Gemini 4 Neon" },
   { value: "gemini-4-argon", label: "Gemini 4 Argon" },
-  { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
+  { value: "gemini-4-carbon", label: "Gemini 4 Carbon" },
+  { value: "gemini-4-hydrogen", label: "Gemini 4 Hydrogen" },
   {
     value: GEMINI_REALTIME_MODEL,
     label: "Gemini 3.8 Live (Voice)",
@@ -145,8 +146,8 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-6.1-terra", label: "GPT-6.1 Terra" },
-  { value: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
-  { value: "gpt-6-astra", label: "GPT-6 Astra" },
+  { value: "gpt-6.2-sol", label: "GPT-6.2 Sol" },
+  { value: "gpt-6.2-astra", label: "GPT-6.2 Astra" },
   { value: "gpt-6-luna", label: "GPT-6 Luna" },
   {
     value: OPENAI_REALTIME_MODEL,
@@ -174,26 +175,34 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
   {
-    value: "anthropic/claude-fable-5.1",
-    label: "[Paid] Anthropic Claude Fable 5.1",
+    value: "anthropic/claude-fable-5.2",
+    label: "[Paid] Anthropic Claude Fable 5.2",
   },
   {
     value: "anthropic/claude-haiku-5.5",
     label: "[Paid] Anthropic Claude Haiku 5.5",
   },
   { value: "openai/gpt-6.1-terra", label: "[Paid] OpenAI GPT-6.1 Terra" },
-  { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
-  { value: "openai/gpt-6-astra", label: "[Paid] OpenAI GPT-6 Astra" },
+  { value: "openai/gpt-6.2-sol", label: "[Paid] OpenAI GPT-6.2 Sol" },
+  { value: "openai/gpt-6.2-astra", label: "[Paid] OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
-    value: "google/gemini-3.8-flash",
-    label: "[Paid] Google Gemini 3.8 Flash",
+    value: "google/gemini-4-neon",
+    label: "[Paid] Google Gemini 4 Neon",
   },
   {
     value: "google/gemini-4-argon",
     label: "[Paid] Google Gemini 4 Argon",
   },
-  { value: "qwen/qwen3.8-max-prime", label: "[Paid] Qwen 3.8 Max Prime" },
+  {
+    value: "google/gemini-4-carbon",
+    label: "[Paid] Google Gemini 4 Carbon",
+  },
+  {
+    value: "google/gemini-4-hydrogen",
+    label: "[Paid] Google Gemini 4 Hydrogen",
+  },
+  { value: "qwen/qwen4-max", label: "[Paid] Qwen 4 Max" },
   {
     value: "deepseek/deepseek-v4.1-flash-1017",
     label: "[Paid] DeepSeek V4.1 Flash (1017)",
@@ -228,15 +237,17 @@ export const VERCEL_MODELS = [
     label: "Anthropic Claude Sonnet 5.5",
   },
   { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
-  { value: "anthropic/claude-fable-5.1", label: "Anthropic Claude Fable 5.1" },
+  { value: "anthropic/claude-fable-5.2", label: "Anthropic Claude Fable 5.2" },
   { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
   { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
-  { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
-  { value: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra" },
+  { value: "openai/gpt-6.2-sol", label: "OpenAI GPT-6.2 Sol" },
+  { value: "openai/gpt-6.2-astra", label: "OpenAI GPT-6.2 Astra" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
-  { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
+  { value: "google/gemini-4-neon", label: "Google Gemini 4 Neon" },
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
-  { value: "alibaba/qwen3.8-max-prime", label: "Qwen 3.8 Max Prime" },
+  { value: "google/gemini-4-carbon", label: "Google Gemini 4 Carbon" },
+  { value: "google/gemini-4-hydrogen", label: "Google Gemini 4 Hydrogen" },
+  { value: "alibaba/qwen4-max", label: "Qwen 4 Max" },
   {
     value: "deepseek/deepseek-v4.1-flash-1017",
     label: "DeepSeek V4.1 Flash (1017)",
@@ -249,6 +260,7 @@ export const VERCEL_MODELS = [
 
 export const OLLAMA_MODELS = [
   { value: "qwen3.8", label: "qwen3.8" },
+  { value: "inkling-2-mini", label: "inkling-2-mini" },
   { value: "gemma4", label: "gemma4" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
   { value: "muse-glimmer", label: "muse-glimmer" },

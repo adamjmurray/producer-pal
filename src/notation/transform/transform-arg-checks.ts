@@ -9,6 +9,8 @@ import {
 } from "./helpers/functions/function-arity.ts";
 import { checkPositionFunctionAssignment } from "./helpers/functions/position-function-assignment.ts";
 import { checkSwingAmounts } from "./helpers/functions/swing-amount-check.ts";
+import { checkTimingGrids } from "./helpers/functions/timing-grid-check.ts";
+import { checkWaveformPeriods } from "./helpers/functions/waveform-period-check.ts";
 import { checkNoteOpArgs } from "./helpers/note-ops/note-op-arg-checks.ts";
 import {
   argError,
@@ -31,7 +33,8 @@ import {
  * Throw for a mistake in the transform text: a duplicate selector, a pitch name
  * used as a number, a note op with the wrong arguments, a `curve()` exponent
  * that is not above 0, a compound assignment of a function that returns a
- * position (`timing += swing(...)`), a `swing()` amount at or past its grid.
+ * position (`timing += swing(...)`), a `swing()` or `quant()` grid of 0 or
+ * less, a `swing()` amount at or past its grid, a waveform period that uses a note property (`sin(note.start)`).
  *
  * A mistake that holds in every meter throws {@link TransformArgError}, which
  * callers use to refuse the whole call. A constant that mixes note values or bar
@@ -93,6 +96,7 @@ function checkStatements(
       if (isNoteOp(stmt)) {
         if (!isAudio) {
           throwIfArityError(stmt.args);
+          checkNoteOpWaveformPeriods(stmt.args);
           checkNoteOpArgs(stmt, numerator, denominator);
         }
       } else if (AUDIO_PARAMETERS.has(stmt.parameter) === isAudio) {
@@ -105,6 +109,12 @@ function checkStatements(
 
       onMeterDependent(error);
     }
+  }
+}
+
+function checkNoteOpWaveformPeriods(nodes: ArityNode[]): void {
+  for (const node of nodes) {
+    checkWaveformPeriods(node);
   }
 }
 
@@ -128,6 +138,8 @@ function checkAssignment(
 
   throwIfArityError([expression, assignment.predicate ?? undefined]);
   checkPositionFunctionAssignment(assignment);
+  checkWaveformPeriods(expression);
+  checkWaveformPeriods(assignment.predicate ?? undefined);
 
   // A bare pitch name is a number only for `pitch`, and would otherwise
   // silently become its MIDI number (`velocity = b2` -> 59).
@@ -144,6 +156,7 @@ function checkAssignment(
   }
 
   checkCurveExponents(expression, numerator, denominator, isAudio);
+  checkTimingGrids(expression, numerator, denominator, isAudio);
   checkSwingAmounts(expression, numerator, denominator, isAudio);
 }
 

@@ -14,10 +14,10 @@ import { registerLibraryRoutes } from "../library-routes.ts";
 vi.mock(import("../query/library-search.ts"), () => ({
   librarySearch: vi.fn(),
 }));
-vi.mock(import("../query/find-similar.ts"), () => ({
+vi.mock(import("../query/similarity/find-similar.ts"), () => ({
   findSimilar: vi.fn(),
 }));
-vi.mock(import("../query/find-duplicates.ts"), () => ({
+vi.mock(import("../query/similarity/find-duplicates.ts"), () => ({
   findDuplicates: vi.fn(),
 }));
 vi.mock(import("../list-tags.ts"), () => ({
@@ -29,11 +29,14 @@ vi.mock(import("../list-categories.ts"), () => ({
 vi.mock(import("../list-plugins.ts"), () => ({
   listPlugins: vi.fn(),
 }));
+vi.mock(import("../query/plugins/resolve-plugin.ts"), () => ({
+  resolvePlugin: vi.fn(),
+}));
 vi.mock(import("../../node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 // Keep the real exports (message, error type) but stub the runtime guard so it
 // resolves by default; one test overrides it to reject (unsupported runtime).
@@ -47,11 +50,12 @@ vi.mock(import("../live-db-path.ts"), async (importOriginal) => ({
 }));
 
 const searchMod = await import("../query/library-search.ts");
-const similarMod = await import("../query/find-similar.ts");
-const duplicatesMod = await import("../query/find-duplicates.ts");
+const similarMod = await import("../query/similarity/find-similar.ts");
+const duplicatesMod = await import("../query/similarity/find-duplicates.ts");
 const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
+const resolveMod = await import("../query/plugins/resolve-plugin.ts");
 const liveDbMod = await import("../live-db.ts");
 const dbPathMod = await import("../live-db-path.ts");
 
@@ -199,6 +203,30 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(pluginsMod.listPlugins).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.resolvePlugin and dispatches with parsed args", async () => {
+    await handleNodeRequest(
+      "req-resolve",
+      JSON.stringify({
+        route: "library.resolvePlugin",
+        args: { name: "Serum 2", liveVersion: "12.4" },
+      }),
+    );
+
+    expect(resolveMod.resolvePlugin).toHaveBeenCalledWith({
+      name: "Serum 2",
+      liveVersion: "12.4",
+    });
+  });
+
+  it("library.resolvePlugin defaults to empty args when null", async () => {
+    await handleNodeRequest(
+      "req-resolve-null",
+      JSON.stringify({ route: "library.resolvePlugin", args: null }),
+    );
+
+    expect(resolveMod.resolvePlugin).toHaveBeenCalledWith({});
   });
 
   it("registers library.findSimilar and dispatches with parsed args", async () => {

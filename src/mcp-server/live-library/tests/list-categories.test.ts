@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listCategories } from "../list-categories.ts";
 import {
+  addManyTags,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -119,6 +121,39 @@ describe("listCategories", () => {
 
       expect(result.tags?.length).toBeGreaterThan(0);
     });
+
+    it("says how many tags the limit left out, with no way to page", async () => {
+      // Drums resolves two tags: Kick and Snare Hit.
+      const result = await listCategories({ category: "Drums", limit: 1 });
+
+      expect(result.tags).toHaveLength(1);
+      expect(result.more).toBe(1);
+      expect(result).not.toHaveProperty("nextOffset");
+    });
+
+    it("leaves `more` off when every tag fits", async () => {
+      const exact = await listCategories({ category: "Drums", limit: 2 });
+      const roomy = await listCategories({ category: "Drums" });
+
+      expect(exact.tags).toHaveLength(2);
+      expect(exact).not.toHaveProperty("more");
+      expect(roomy).not.toHaveProperty("more");
+    });
+  });
+
+  it("has no `more` in the overview", async () => {
+    expect(await listCategories()).not.toHaveProperty("more");
+  });
+});
+
+describe("listCategories - limit cap", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, (db) => addManyTags(db, "Big"));
+
+  it("returns at most 1000 tags and counts the rest", async () => {
+    const result = await listCategories({ category: "Big", limit: 5_000 });
+
+    expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+    expect(result.more).toBe(100);
   });
 });
 

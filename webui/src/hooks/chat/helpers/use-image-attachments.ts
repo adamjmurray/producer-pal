@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { useCallback, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type ChatImage } from "#webui/chat/sdk/types";
 import {
   attachImages,
@@ -11,6 +11,7 @@ import {
   MAX_IMAGES_PER_MESSAGE,
   TOO_MANY_IMAGES_MESSAGE,
 } from "#webui/utils/image-attachments";
+import { isStrayPasteText } from "#webui/components/chat/controls/composer/stray-paste-text";
 import { dragHasFiles } from "#webui/utils/text-file-io";
 
 /** Handlers spread onto the element wrapping the composer's editor. */
@@ -44,7 +45,8 @@ export interface ImageAttachments {
  * underneath never sees the file and can't insert it; a drag or paste carrying
  * no file passes straight through as ordinary text editing. A paste with both
  * images and text lets the editor paste the text, and attaches the images unless
- * the HTML shows they're a picture of that text (an Office copy).
+ * the HTML shows they're a picture of that text (an Office copy). Text that only
+ * labels the images (a Finder file name, a Copy Image URL) is dropped.
  * @returns The attachments and their handlers
  */
 export function useImageAttachments(): ImageAttachments {
@@ -57,6 +59,17 @@ export function useImageAttachments(): ImageAttachments {
   // dragenter/leave fire per child element; a depth counter keeps the overlay
   // from flickering as the pointer crosses the editor's nested nodes.
   const depthRef = useRef(0);
+  // False once unmounted: the composer remounts for each conversation, so an
+  // image still being read must not land in whatever replaced it.
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const publish = useCallback((next: ChatImage[]) => {
     imagesRef.current = next;
@@ -77,6 +90,10 @@ export function useImageAttachments(): ImageAttachments {
       setReading((count) => count + 1);
       void attachImages(before, files)
         .then((result) => {
+          if (!mountedRef.current) {
+            return;
+          }
+
           const added = result.images.slice(before.length);
           const room = MAX_IMAGES_PER_MESSAGE - imagesRef.current.length;
 
@@ -113,9 +130,13 @@ export function useImageAttachments(): ImageAttachments {
       }
 
       const text = event.clipboardData?.getData("text/plain") ?? "";
+      const hasText = htmlHasText(
+        event.clipboardData?.getData("text/html") ?? "",
+      );
 
-      // Images alone: attach them, and keep the editor from inserting the file.
-      if (text.trim() === "") {
+      // Images alone, or with text that only labels them (a Finder file name, a
+      // Copy Image URL): attach them, and keep the editor from inserting either.
+      if (text.trim() === "" || isStrayPasteText(text, files, hasText)) {
         event.preventDefault();
         event.stopPropagation();
         addFiles(files);
@@ -125,9 +146,8 @@ export function useImageAttachments(): ImageAttachments {
 
       // The editor pastes the text (all CodeMirror inserts). Excel, Word and
       // OneNote add a picture of that text, with HTML holding the text itself:
-      // skip the picture. HTML that is only an image (a browser's Copy Image)
-      // still attaches it.
-      if (!htmlHasText(event.clipboardData?.getData("text/html") ?? "")) {
+      // skip the picture. HTML that is only an image still attaches it.
+      if (!hasText) {
         addFiles(files);
       }
     },

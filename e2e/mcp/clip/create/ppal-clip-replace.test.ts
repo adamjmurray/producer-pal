@@ -250,6 +250,6 @@ describe("an audio clip past the last arrangement position", () => {
           sampleFile: SAMPLE_FILE,
         }),
       ),
-    ).toContain("arrangementStart is past the last position Live allows (");
+    ).toContain("path is past the last position Live allows (");
   });
 });

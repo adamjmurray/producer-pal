@@ -8,6 +8,7 @@ import {
   checkForUpdate,
   isBehindBuild,
   isInstallIncomplete,
+  isLiveVersionAtLeast,
   isNewerVersion,
   remoteScriptAttention,
   type RemoteScriptAttentionInput,
@@ -402,6 +403,32 @@ describe("remoteScriptAttention", () => {
   });
 });
 
+describe("isLiveVersionAtLeast", () => {
+  it.each([
+    ["12.4.14", false],
+    ["12.4", false],
+    ["12.4.15b1", false],
+    ["12.4.15b7", false],
+    ["12.4.15b", false],
+    ["12.4.15rc1", false],
+    ["12.4.15d1", false],
+    ["12.4.16rc1", true],
+    ["12.4.15", true],
+    ["12.4.16b1", true],
+    ["12.5b2", true],
+    ["13.0b", true],
+    ["13.0", true],
+  ])("is at least 12.4.15 for %s: %s", (version, expected) => {
+    expect(isLiveVersionAtLeast(version, "12.4.15")).toBe(expected);
+  });
+
+  it("counts a beta of the minimum itself as older", () => {
+    expect(isLiveVersionAtLeast("12.4b3", "12.4")).toBe(false);
+    expect(isLiveVersionAtLeast("12.4", "12.4")).toBe(true);
+    expect(isLiveVersionAtLeast("12.5b1", "12.4")).toBe(true);
+  });
+});
+
 describe("isBehindBuild", () => {
   it("is behind when the installed release is older", () => {
     expect(isBehindBuild("2.4.0", "2.5.0")).toBe(true);
@@ -446,6 +473,7 @@ describe("isInstallIncomplete", () => {
           problem: null,
           state,
           remoteScriptCurrent: true,
+          wrappersCurrent: true,
         }),
       ).toBe(true);
     },
@@ -459,6 +487,7 @@ describe("isInstallIncomplete", () => {
           problem: null,
           state,
           remoteScriptCurrent: true,
+          wrappersCurrent: true,
         }),
       ).toBe(false);
     },
@@ -470,6 +499,7 @@ describe("isInstallIncomplete", () => {
         problem: "not-frozen",
         state: "not-installed",
         remoteScriptCurrent: true,
+        wrappersCurrent: true,
       }),
     ).toBe(false);
   });
@@ -480,6 +510,7 @@ describe("isInstallIncomplete", () => {
         problem: null,
         state: "same",
         remoteScriptCurrent: false,
+        wrappersCurrent: true,
       }),
     ).toBe(true);
   });
@@ -490,6 +521,39 @@ describe("isInstallIncomplete", () => {
         problem: null,
         state: "same",
         remoteScriptCurrent: null,
+        wrappersCurrent: null,
+      }),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["a current copy", null, "same"],
+    ["a development device", "not-frozen", null],
+  ])(
+    "is incomplete when a wrapper is missing or differs, with %s",
+    (_why, problem, state) => {
+      expect(
+        isInstallIncomplete({
+          problem,
+          state,
+          remoteScriptCurrent: true,
+          wrappersCurrent: false,
+        }),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ["a newer copy", null, "installed-newer"],
+    ["a different copy", null, "different"],
+    ["a device that hasn't said where it is", "unknown-source", null],
+  ])("leaves the wrappers alone with %s", (_why, problem, state) => {
+    expect(
+      isInstallIncomplete({
+        problem,
+        state,
+        remoteScriptCurrent: true,
+        wrappersCurrent: false,
       }),
     ).toBe(false);
   });

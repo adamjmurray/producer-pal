@@ -71,7 +71,7 @@ describe("moving a row of arrangement clips", () => {
     ).toBeUndefined();
   });
 
-  // arrangementLength runs after the move and clears the span it tiles across,
+  // arrangementLength runs after the move and clears the span it grows over,
   // so it has to be part of the ordering too. It also broadcasts, so reading it
   // as "nothing is moving" switched the ordering off for the whole batch.
   it("keeps every clip when the row shift also sets a length", async () => {

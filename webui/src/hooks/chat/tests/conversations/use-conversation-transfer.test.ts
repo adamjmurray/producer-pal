@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act } from "@testing-library/preact";
+import { renderHook, act, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import {
@@ -20,18 +20,6 @@ import * as textFileIo from "#webui/utils/text-file-io";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 const refreshList = vi.fn().mockResolvedValue(undefined);
-
-/**
- * Wait for multiple rounds of microtasks/macrotasks to settle.
- * @returns Promise that resolves after async operations complete
- */
-async function waitForAsyncOps(): Promise<void> {
-  for (let i = 0; i < 10; i++) {
-    await new Promise((r) => {
-      setTimeout(r, 0);
-    });
-  }
-}
 
 /**
  * Create a test conversation record.
@@ -75,14 +63,8 @@ function mockDownloadApis() {
  * Mock file input creation so click() triggers onchange with the given files.
  * An empty list is the picker being dismissed without choosing anything.
  * @param files - The files to provide via the input
- * @returns A promise that resolves when onFileSelected completes
  */
-function mockFileInput(files: File[]): { settled: Promise<void> } {
-  let resolveSettled: () => void;
-  const settled = new Promise<void>((r) => {
-    resolveSettled = r;
-  });
-
+function mockFileInput(files: File[]): void {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- need original to create real elements
   const origCreate = document.createElement.bind(document);
 
@@ -105,15 +87,11 @@ function mockFileInput(files: File[]): { settled: Promise<void> } {
 
       vi.spyOn(el, "click").mockImplementation(() => {
         handler?.(new Event("change"));
-        // Wait for async file read + DB operations to settle
-        void waitForAsyncOps().then(() => resolveSettled());
       });
     }
 
     return el;
   });
-
-  return { settled };
 }
 
 describe("useConversationTransfer", () => {
@@ -205,12 +183,16 @@ describe("useConversationTransfer", () => {
    * @returns The renderHook return value (after import completes)
    */
   async function renderAndImport(file: File) {
-    const { settled } = mockFileInput([file]);
+    mockFileInput([file]);
     const hook = renderTransferHook();
 
     await act(async () => {
       await hook.result.current.handleImport();
-      await settled;
+    });
+    // The file read and the import run after handleImport returns, and take as
+    // long as they take. Every import ends in a notification, so wait for it.
+    await waitFor(() => {
+      expect(hook.result.current.notification).not.toBeNull();
     });
 
     return hook;

@@ -22,6 +22,17 @@ import {
 const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
 const DEVICE_PATH = `${USER_LIBRARY}/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`;
 
+/** An install POST that copies the device into the User Library. */
+const INSTALLS: InstallStub<DeviceStatus> = {
+  status: 200,
+  body: {
+    outcome: "installed",
+    path: DEVICE_PATH,
+    detail: "Installed the device.",
+  },
+  after: { state: "same", installedVersion: "1.2.0" },
+};
+
 /** The `GET /device-install` body. */
 interface DeviceStatus {
   source: string | null;
@@ -34,6 +45,7 @@ interface DeviceStatus {
   otherCopies: string[];
   inUserLibrary: boolean;
   swap: { allowed: boolean; reason: string | null };
+  pluginHost?: { name: string; path: string; state: string }[];
 }
 
 /**
@@ -81,15 +93,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     page,
   }) => {
     await installStubs(page);
-    const posted = await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    const posted = await stubDevice(page, status(), INSTALLS);
 
     await loadSettings(page);
     await openInstallationTab(page);
@@ -107,6 +111,8 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-installed-path")).toHaveText(
       `Installed the device. (${DEVICE_PATH})`,
     );
+    // The new version isn't running until the device is swapped.
+    await expect(page.getByText(/new chat/i)).toBeHidden();
     await expect(page.getByTestId("device-status")).toHaveText(
       "In your User Library (v1.2.0)",
     );
@@ -127,6 +133,31 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
       "Update available: v1.1.0 → v1.2.0",
     );
     await expect(page.getByTestId("device-install")).toHaveText("Update copy");
+  });
+
+  test("offers to install a missing plug-in host device, with the device current", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubDevice(
+      page,
+      status({
+        state: "same",
+        installedVersion: "1.2.0",
+        pluginHost: [
+          { name: "PPal Plug-in Effect", path: "/p", state: "missing" },
+        ],
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-install")).toHaveText(
+      "Install the plug-in wrapper devices",
+    );
+    await expect(page.getByTestId("device-plugin-host")).toContainText(
+      "PPal Plug-in Effect is not installed",
+    );
   });
 
   test("asks before replacing a newer copy, and says so to the server", async ({
@@ -178,6 +209,105 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-swap")).toBeHidden();
   });
 
+  test("installs only the plug-in wrapper devices on a development device", async ({
+    page,
+  }) => {
+    await installStubs(page);
+
+    const wrapper = (state: string) => [
+      { name: "PPal Plug-in Effect", path: "/p/e", state },
+      { name: "PPal Plug-in Instrument", path: "/p/i", state },
+    ];
+    const dev = status({
+      problem: "not-frozen",
+      state: null,
+      path: null,
+      pluginHost: wrapper("missing"),
+    });
+    const posted = await stubDevice(page, dev);
+    const posts: unknown[] = [];
+    let installed = false;
+
+    // Overrides the status stub: the wrappers are in once the POST lands.
+    await page.route("**/device-install", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          installed ? { ...dev, pluginHost: wrapper("current") } : dev,
+        ),
+      }),
+    );
+    await page.route("**/device-install/plugin-host", (route) => {
+      posts.push(route.request().postDataJSON());
+      installed = true;
+
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: "Plug-in wrapper devices: both installed.",
+          pluginHost: [{ name: "PPal Plug-in Effect", status: "installed" }],
+        }),
+      });
+    });
+    await loadSettings(page);
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-status")).toHaveText(
+      "Development build: freeze it to copy.",
+    );
+    await expect(page.getByTestId("device-install")).toHaveText(
+      "Install the plug-in wrapper devices",
+    );
+
+    await page.getByTestId("device-install").click();
+
+    await expect(page.getByTestId("device-installed-path")).toHaveText(
+      "Plug-in wrapper devices: both installed.",
+    );
+    await expect(page.getByTestId("device-plugin-host")).toHaveText(
+      "Plug-in wrapper devices: installed",
+    );
+    await expect(page.getByTestId("device-install")).toHaveText("Copy");
+    await expect(page.getByTestId("device-install")).toBeDisabled();
+    expect(posts).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
+    // The device copy route is never used.
+    expect(posted).toStrictEqual([]);
+  });
+
+  test("shows the server's reason when the wrapper install fails", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubDevice(
+      page,
+      status({
+        problem: "not-frozen",
+        state: null,
+        path: null,
+        pluginHost: [
+          { name: "PPal Plug-in Effect", path: "/p/e", state: "missing" },
+        ],
+      }),
+    );
+    await page.route("**/device-install/plugin-host", (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Not a folder: /nope" }),
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+    await page.getByTestId("device-install").click();
+
+    await expect(page.getByTestId("device-error")).toHaveText(
+      "Not a folder: /nope",
+    );
+    await expect(page.getByTestId("device-install")).toBeEnabled();
+  });
+
   test("shows the server's reason when the install fails", async ({ page }) => {
     await installStubs(page);
     await stubDevice(page, status(), {
@@ -206,40 +336,32 @@ const SWAPPABLE = status({
 /**
  * Stub the swap POST. A swap kills the server that gets it, so by default the
  * connection drops without an answer, and the status the page polls then shows
- * the new device after `polls` reads.
+ * the new device. The first poll finds it: each extra poll costs 3s, and the
+ * unit tests cover the old device still answering.
  * @param page - Playwright page
  * @param initial - The status before the swap
  * @param swap - How the POST answers: dropped (the default), or a status and body
  * @param swap.status - HTTP status of the answer
  * @param swap.body - JSON body of the answer
- * @param polls - How many reads still show the old device after the POST
  * @returns The bodies the swap POST received
  */
 async function stubSwap(
   page: Page,
   initial: DeviceStatus,
   swap: { status: number; body: unknown } | null = null,
-  polls = 1,
 ): Promise<unknown[]> {
   const posted: unknown[] = [];
   let swapped = false;
-  let readsSinceSwap = 0;
 
-  await page.route("**/device-install", (route) => {
-    if (swapped && ++readsSinceSwap > polls) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ...initial, inUserLibrary: true }),
-      });
-    }
-
-    return route.fulfill({
+  await page.route("**/device-install", (route) =>
+    route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(initial),
-    });
-  });
+      body: JSON.stringify(
+        swapped ? { ...initial, inUserLibrary: true } : initial,
+      ),
+    }),
+  );
   await page.route("**/device-install/swap", (route) => {
     posted.push(route.request().postDataJSON());
 
@@ -279,6 +401,9 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
     await expect(page.getByTestId("device-swap-done")).toContainText(
       "Save your Live Set",
       { timeout: 15_000 },
+    );
+    await expect(page.getByTestId("device-swap-new-chat-hint")).toContainText(
+      "Start a new chat",
     );
     expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
   });
@@ -339,15 +464,7 @@ test.describe("Settings — installation: attention dot (stubbed backend)", () =
     page,
   }) => {
     await installStubs(page);
-    await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    await stubDevice(page, status(), INSTALLS);
     await loadSettings(page);
 
     // Still on the first tab: the dot is on the tab button, not the tab.

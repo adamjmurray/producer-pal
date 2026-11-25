@@ -12,22 +12,25 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 function registerTrack1WithDevice456(): void {
   registerMockObject("track-1", {
@@ -352,7 +355,7 @@ describe("createDevice", () => {
           "insert_device",
           expect.anything(),
         );
-        expect(mockConsole.warn).not.toHaveBeenCalled();
+        expect(mockConsole.emitWarning).not.toHaveBeenCalled();
       });
 
       it("counts the devices in the past-the-end refusal in the plural", async () => {
@@ -674,7 +677,7 @@ describe("createDevice", () => {
           detail: 'container at path "t99" does not exist',
         },
       ]);
-      expect(mockConsole.warn).not.toHaveBeenCalled();
+      expect(mockConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("answers every path with a skip when they all fail", async () => {

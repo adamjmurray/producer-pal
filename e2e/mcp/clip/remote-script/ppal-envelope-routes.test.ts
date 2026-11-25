@@ -4,15 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E tests for the remote script's envelope routes called directly: clearing
- * every envelope on a clip, refusing return and master tracks, and skipping a
- * change whose expiry has run out.
+ * E2E tests for the remote script's envelope routes called directly: reading a
+ * range given in the query string, clearing every envelope on a clip, refusing
+ * the main track and a return track with no clip there, and skipping a change
+ * whose expiry has run out.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-envelope-routes
+ * Run with: npm run e2e:mcp -- clip/remote-script/ppal-envelope-routes
  */
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
@@ -58,6 +60,28 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remote script envelope routes", () => {
 
     expect(written.status).toBe(200);
   }
+
+  it("reads a range given as query-string params", async () => {
+    await clipWithVolumeEnvelope();
+
+    const port = String(await resolveRemoteScriptPort());
+    const query = new URLSearchParams({
+      track: TRACK,
+      slot: "0",
+      parameter: "volume",
+      from: "1.5",
+      to: "4",
+    });
+    const response = await fetch(
+      `http://127.0.0.1:${port}/envelope/read?${String(query)}`,
+      { method: "POST" },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual(
+      expect.objectContaining({ exists: true, from: 1.5, to: 4 }),
+    );
+  });
 
   it("clears every envelope with no parameter, and says nothing remains", async () => {
     await clipWithVolumeEnvelope();
@@ -116,14 +140,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remote script envelope routes", () => {
     );
   });
 
-  it("refuses return and master tracks, which have no clips", async () => {
-    for (const [route, track] of [
-      ["list", "rt0"],
-      ["write", "mt"],
-      ["clear", "rt0"],
-    ] as const) {
+  it("refuses the main track, which has no clips", async () => {
+    for (const route of ["list", "write", "clear"] as const) {
       const refused = await postEnvelopeRoute(route, {
-        track,
+        track: "mt",
         slot: 0,
         parameter: "volume",
         points: [{ time: 0, value: 0.5 }],
@@ -131,7 +151,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remote script envelope routes", () => {
 
       expect(refused.status).toBe(400);
       expect(refused.body.error).toBe(
-        "track must be t0, t1... (return and master tracks have no clips)",
+        "track must be t0, t1... or rt0, rt1... (the main track has no clips)",
+      );
+    }
+  });
+
+  it("refuses a return track that holds no clip there", async () => {
+    // Live 12 has no return-track slots at all (400); Live 13's are empty (404).
+    for (const route of ["list", "write", "clear"] as const) {
+      const refused = await postEnvelopeRoute(route, {
+        track: "rt0",
+        slot: 0,
+        parameter: "volume",
+        points: [{ time: 0, value: 0.5 }],
+      });
+
+      expect([400, 404]).toContain(refused.status);
+      expect(refused.body.error).toMatch(
+        /no clip slots|slot 0 is empty|no slot 0/,
       );
     }
   });

@@ -35,8 +35,12 @@ export function countedDrafts(
       const body: CopyBody = { kind, sourceId: source.id };
 
       return source.skip == null
-        ? { named: source.named, make: () => ({ body }) }
-        : { named: source.named, skip: source.skip };
+        ? {
+            named: source.named,
+            atStart: source.atStart,
+            make: () => ({ body }),
+          }
+        : { named: source.named, atStart: source.atStart, skip: source.skip };
     }),
   );
 }

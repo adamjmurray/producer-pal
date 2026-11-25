@@ -18,7 +18,7 @@ can install it without a download. That copy exists only in a release package
 (`npm run release:mcpb`, run after `npm run release:amxd`). `dxt:build` alone,
 and every plain `npm run build`, produces an mcpb with no device, and the portal
 treats that as "none bundled". The Max device bundle never contains the `.amxd`.
-See [releasing](../process/releasing/README.md) and
+See [releasing](../process/releasing.md) and
 [what the portal carries](../architecture/runtime-boundary.md#what-the-portal-carries).
 
 ## Bridge Behavior
@@ -35,8 +35,9 @@ producer-pal-portal.js)
 **Tool names**: Must match `^[a-zA-Z0-9_-]{1,64}$` (use `ppal-create-clip`, not
 "Create Clip")
 
-**Schemas**: Fallback schemas must be JSON Schema (built with `z.toJSONSchema()`
-in `src/portal/fallback-tools.ts`)
+**Fallback tools**: Each entry must match the device's `tools/list` entry
+exactly, every field, so `src/portal/fallback-tools.ts` builds them the way the
+MCP SDK does (`listRegisteredTools()`)
 
 **Dependencies**: Zero runtime dependencies (all bundled, OAuth stubbed)
 

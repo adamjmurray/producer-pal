@@ -7,7 +7,7 @@
 // envelopes but never plays them, so points aren't written to one.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
@@ -16,6 +16,7 @@ import {
 import {
   answerEnvelopeRoutes,
   envelopeRoutesCalled,
+  expectVolumeRefused,
 } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
@@ -25,10 +26,13 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const NOTATION = "1|1 0 / 3|1 0.8";
 
@@ -66,18 +70,7 @@ describe("updateClip - envelopes on an audio clip", () => {
   it("refuses points on an unwarped audio clip, saying why and what to do", async () => {
     setupAudioClipMock(mocks.clip123, { warping: 0 });
 
-    const result = await updateClip({
-      id: "123",
-      envelopes: `volume: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail: `envelope "volume": ${REFUSAL}`,
-      }),
-    );
+    await expectVolumeRefused(NOTATION, REFUSAL);
   });
 
   it("refuses the points but still runs the clear on the same clip", async () => {

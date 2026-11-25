@@ -176,7 +176,10 @@ class _Server(ThreadingHTTPServer):
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     # Seconds a socket read or write may stall. A connection that stops sending
-    # counts as busy, and each tick sleeps while anything is busy.
+    # counts as busy, and each tick sleeps while anything is busy. So a local
+    # client that connects and sends nothing slows every tick (about 20 ms) for
+    # up to this long. Accepted: it takes a local program to do it, and the fix
+    # needs two socket timeouts.
     timeout = 10
 
     def do_GET(self):
@@ -206,6 +209,10 @@ class _Handler(BaseHTTPRequestHandler):
                 body = json.loads(raw.decode("utf-8"))
             except ValueError as err:
                 self._send(400, {"error": "invalid JSON body: %s" % err})
+                return
+            except RecursionError:
+                # Not a ValueError: a body of many "[" nests past Python's limit.
+                self._send(400, {"error": "invalid JSON body: nested too deeply"})
                 return
             if not isinstance(body, dict):
                 self._send(400, {"error": "JSON body must be an object"})
@@ -259,6 +266,12 @@ class _Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         self.end_headers()
         self.wfile.write(data)
+
+    def log_request(self, code="-", size="-"):
+        # Not logged: a Log.txt line per request, pings included, and the log
+        # call is Live's, made from this worker thread. That covers every reply
+        # sent here, refusals too; http.server's own errors still log.
+        pass
 
     def log_message(self, fmt, *args):
         self.server.log("http: " + (fmt % args))

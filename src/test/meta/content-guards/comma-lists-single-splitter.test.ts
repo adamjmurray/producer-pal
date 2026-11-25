@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -91,7 +92,7 @@ function findCommaSplits(): Map<string, { number: number; text: string }[]> {
       );
 
     if (lines.length > 0) {
-      found.set(path.relative(projectRoot, file), lines);
+      found.set(repoPath(file), lines);
     }
   }
 

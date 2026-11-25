@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
-import { deviceFilePath } from "#src/portal/setup/device-file-status.ts";
+import { deviceFilePath } from "#src/portal/setup/device-file/device-file-status.ts";
 import { MIN_REMOTE_SCRIPT_VERSION } from "../../remote-script/port/remote-script-version.ts";
 import { type RemoteScriptPing } from "../../remote-script/remote-script-client.ts";
 import { recordDeviceSource, resetDeviceSource } from "../device-source.ts";

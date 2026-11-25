@@ -172,17 +172,18 @@ as an object to create, delete or rename, not as a coordinate.
 A path parses the same everywhere; what a tool accepts differs by what can
 occupy the location.
 
-| Shape                     | Clips            | Devices   | Tracks | Scenes |
-| ------------------------- | ---------------- | --------- | ------ | ------ |
-| `t0`                      | ✅ arrangement   | ✅ append | ✅     | —      |
-| `rt0`, `mt`               | ❌ no clip slots | ✅        | ✅     | —      |
-| `s3`                      | ❌               | ❌        | —      | ✅     |
-| `t0/s3`                   | ✅ clip slot     | ❌        | —      | —      |
-| `t0/l1`                   | ✅ arrangement   | ❌        | ✅     | —      |
-| `t0/l+`                   | ❌ update-track  | ❌        | ✅     | —      |
-| `t0/d1` and below         | ❌               | ✅        | —      | —      |
-| `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement   | ❌        | —      | —      |
-| `[5\|1]`                  | ✅ arrangement   | ❌        | —      | —      |
+| Shape                     | Clips                  | Devices   | Tracks | Scenes |
+| ------------------------- | ---------------------- | --------- | ------ | ------ |
+| `t0`                      | ✅ arrangement         | ✅ append | ✅     | —      |
+| `rt0`, `mt`               | ❌ no arrangement      | ✅        | ✅     | —      |
+| `s3`                      | ❌                     | ❌        | —      | ✅     |
+| `t0/s3`                   | ✅ clip slot           | ❌        | —      | —      |
+| `rt0/s3` (Live 13)        | ✅ envelope clips only | ❌        | —      | —      |
+| `t0/l1`                   | ✅ arrangement         | ❌        | ✅     | —      |
+| `t0/l+`                   | ❌ update-track        | ❌        | ✅     | —      |
+| `t0/d1` and below         | ❌                     | ✅        | —      | —      |
+| `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement         | ❌        | —      | —      |
+| `[5\|1]`                  | ✅ arrangement         | ❌        | —      | —      |
 
 A bare `t0` means the track itself for a device or track operation, and that
 track's **arrangement main lane** for a clip operation — a session clip needs a

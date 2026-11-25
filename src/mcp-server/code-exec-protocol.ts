@@ -12,10 +12,11 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   CODE_EXEC_TOO_LARGE_ADVICE,
+  MAX_NODE_TO_V8_BYTES,
   oversizedSingleMessageError,
 } from "#src/shared/mcp-responses.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 
 /**
  * Handle a code execution request from V8.
@@ -29,7 +30,7 @@ export async function handleCodeExecRequest(
   requestJson: string,
 ): Promise<void> {
   if (process.env.ENABLE_CODE_EXEC !== "true") {
-    console.error(
+    nodeError(
       `code_exec_request rejected: ENABLE_CODE_EXEC is not set [requestId=${requestId}]`,
     );
 
@@ -55,7 +56,7 @@ export async function handleCodeExecRequest(
   } catch (error) {
     const message = errorMessage(error);
 
-    console.error(
+    nodeError(
       `Failed to parse code_exec_request: ${message} [requestId=${requestId}]`,
     );
 
@@ -67,7 +68,7 @@ export async function handleCodeExecRequest(
     return;
   }
 
-  console.info(`code_exec_request(requestId=${requestId})`);
+  nodeInfo(`code_exec_request(requestId=${requestId})`);
 
   const result = executeSandboxedCode(code, globals);
 
@@ -96,6 +97,7 @@ async function sendCodeExecResult(
       json,
       "code-exec result",
       CODE_EXEC_TOO_LARGE_ADVICE,
+      MAX_NODE_TO_V8_BYTES,
     );
     const payload = tooLarge
       ? JSON.stringify({ success: false, error: tooLarge })
@@ -103,7 +105,7 @@ async function sendCodeExecResult(
 
     await Max.outlet("code_exec_result", requestId, payload);
   } catch (error) {
-    console.error(
+    nodeError(
       `Failed to send code_exec_result: ${String(error)} [requestId=${requestId}]`,
     );
   }

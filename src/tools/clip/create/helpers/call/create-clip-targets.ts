@@ -38,7 +38,11 @@ import {
 } from "../clip-transform.ts";
 import { type DestinationRef } from "../create-clip-destinations.ts";
 import { createClipBlocker } from "../create-clip-validation.ts";
-import { createdClipLength } from "../created-clip-result.ts";
+import {
+  createdClipLength,
+  startPastEndProblem,
+} from "../created-clip-result.ts";
+import { newClipScaleMask } from "../new-clip-scale-mask.ts";
 import {
   type ClipPosition,
   clipPositionLabel,
@@ -139,10 +143,11 @@ function placeOf(
     named: { param: "path", value: clipPositionLabel(position) },
     skip: !track.exists()
       ? `no track at path "${formatObjectPath({ kind: "track", trackIndex })}"; ${CREATE_TRACK_ADVICE}`
-      : // Its meter can't read the transform, or Live would decline the create
-        // without saying why: this clip fails, the others go on. Truthiness, not
-        // a null check: an empty sampleFile makes a MIDI clip.
-        (plan.transformFailure ??
+      : // Its meter can't hold the length or read the transform, or Live would
+        // decline the create without saying why: this clip fails, the others go
+        // on. Truthiness, not a null check: an empty sampleFile makes a MIDI
+        // clip.
+        (plan.failure ??
         createClipBlocker(!plan.sampleFile, position, track) ??
         undefined),
   };
@@ -184,7 +189,10 @@ function targetFor(
           startBeats: plan.timing.startBeats,
           timeSigNumerator: plan.timing.timeSigNumerator,
           timeSigDenominator: plan.timing.timeSigDenominator,
-          scaleMask: call.scaleMask,
+          scaleMask:
+            args.transforms == null || plan.sampleFile
+              ? undefined
+              : newClipScaleMask(call.callScale, call.scales[index]),
         },
         index,
         total,
@@ -197,6 +205,18 @@ function targetFor(
       }
     },
   );
+
+  // Measured once the transform has run: it can move the clip's end.
+  const skip = startPastEndProblem(
+    plan.timing.startBeats,
+    transform.clipLength,
+    plan.timing.timeSigNumerator,
+    plan.timing.timeSigDenominator,
+  );
+
+  if (skip != null) {
+    return { named, skip };
+  }
 
   return {
     named,

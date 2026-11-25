@@ -14,6 +14,7 @@ import {
   createInSessionSlot,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { guardInsideCreate } from "#src/tools/shared/arrangement/inside-create-guard.ts";
 import {
   resolveTakeLane,
   type ResolvedTakeLane,
@@ -38,10 +39,9 @@ export interface MadeClip {
   clip: LiveAPI;
   /** What reaching its slot took, for a session clip */
   slotWork: SlotWork | null;
-  /** The lane it was written to, for an arrangement clip */
-  lane: ArrangementLane | null;
-  /** The take lane object, or the track, that the clip was made on */
-  laneApi: LiveAPI | null;
+  /** The lane it was written to, for an arrangement clip, and the take lane
+   * object, or the track, that it was made on */
+  arrangement: { lane: ArrangementLane; api: LiveAPI } | null;
   /** The take lanes made on the way to the clip's lane ("l1-l3"), when this
    * is the first clip written to them */
   lanesCreated?: string;
@@ -109,7 +109,7 @@ function makeSessionClip(
     step.landed(made.overwrote);
   }
 
-  return { clip: made.clip, slotWork: made, lane: null, laneApi: null };
+  return { clip: made.clip, slotWork: made, arrangement: null };
 }
 
 /**
@@ -141,12 +141,30 @@ function makeArrangementClip(
   }
 
   const start = position.arrangementStartBeats as number;
+  const length = createdClipLength(
+    transform.clipLength,
+    plan.timing.startBeats,
+  );
 
   run.ledger.scan(lane, laneApi);
 
   let clip: LiveAPI;
 
   try {
+    // After the scan, so a cut it makes reads as part of this write.
+    guardInsideCreate({
+      laneApi,
+      lane,
+      start,
+      end: plan.sampleFile ? null : start + length,
+      isMidi: !plan.sampleFile,
+      context: {
+        silenceWavPath: run.context.silenceWavPath,
+        lanes: run.ledger.lanes,
+      },
+      onCut: (path) => step.landed(`cut the clip at ${path}`),
+    });
+
     clip = plan.sampleFile
       ? createAudioArrangementClip(
           position.trackIndex,
@@ -155,12 +173,7 @@ function makeArrangementClip(
           takeLane,
           track,
         ).clip
-      : createdMidiClip(
-          laneApi,
-          position,
-          start,
-          createdClipLength(transform.clipLength, plan.timing.startBeats),
-        );
+      : createdMidiClip(laneApi, position, start, length);
   } catch (error) {
     // Live may have cleared the span before it declined, so what the lane held
     // is no longer known.
@@ -173,7 +186,12 @@ function makeArrangementClip(
   step.coverLanded();
   step.landed("clip created", { id: clip.id, path: objectPathForApi(clip) });
 
-  return { clip, slotWork: null, lane, laneApi, lanesCreated };
+  return {
+    clip,
+    slotWork: null,
+    arrangement: { lane, api: laneApi },
+    lanesCreated,
+  };
 }
 
 /**

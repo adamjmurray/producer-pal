@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findRepoTextFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import {
@@ -76,8 +77,19 @@ const NARROW_OXLINT_TEST_GLOBS = new Set([
   // The typed decode helpers, one file each, one rule
   // (typescript/no-unnecessary-type-parameters).
   "e2e/mcp/mcp-test-helpers.ts",
-  "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
+  "src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts",
   "src/test/meta/test-file-classification.test.ts",
+  // src suites only: they may namespace-import the console module to spy on it
+  // (see no-restricted-imports in .oxlintrc.json).
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "src/**/*-test-cases.ts",
+  "src/**/*-test-helpers.ts",
+  "src/**/*-test-helpers.tsx",
+  "src/**/test/**",
+  "src/**/tests/**",
+  "src/**/test-cases/**",
+  "src/**/test-utils/**",
   "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts",
 ]);
 
@@ -259,7 +271,7 @@ describe("test file classification", () => {
     // else. Rename into a live category instead of teaching every config a new
     // one.
     const violations = findRepoTextFiles()
-      .map((file) => path.relative(projectRoot, file))
+      .map((file) => repoPath(file))
       .filter((rel) =>
         RETIRED_TEST_FILE_SUFFIXES.some((suffix) => rel.endsWith(suffix)),
       )

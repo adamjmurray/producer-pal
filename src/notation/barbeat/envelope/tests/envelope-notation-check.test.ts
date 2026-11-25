@@ -7,12 +7,12 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { checkEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  warn: vi.fn(),
-  log: vi.fn(),
+  maxError: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
 }));
 
 describe("checkEnvelopeNotation", () => {
@@ -28,7 +28,7 @@ describe("checkEnvelopeNotation", () => {
       expect(() => checkEnvelopeNotation(text)).not.toThrow();
     }
 
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("refuses the syntax errors a parse does", () => {

@@ -12,7 +12,9 @@ import { type TargetParams } from "#src/tools/shared/validation/lists/target-lis
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
   type RoutingParams,
+  routingNamesSent,
   routingValuesAt,
+  type RoutingNames,
 } from "../track-routing-updates.ts";
 import { type TrackSends, trackSendsAt } from "../track-send-updates.ts";
 import { paramsTakeLanesIgnore } from "../track-take-lanes.ts";
@@ -24,6 +26,8 @@ export interface TrackChecked extends PairedLabels {
   args: UpdateTrackArgs;
   /** The routing the target at an index takes from the call */
   routingAt: (index: number) => RoutingParams;
+  /** The names the routing params were sent under */
+  routingNames: RoutingNames;
   /** The sends the target at an index takes from the call */
   sendsAt: (index: number) => TrackSends;
   /** The params a take lane has no use for, in the caller's spelling */
@@ -68,6 +72,7 @@ export function checkTrackCall(
       color: args.color,
     }),
     routingAt: routingValuesAt(args, targets.length),
+    routingNames: routingNamesSent(args),
     // The return tracks belong to the Live Set, so only the sendReturn a track
     // was given decides what its sends resolve to.
     sendsAt: trackSendsAt(

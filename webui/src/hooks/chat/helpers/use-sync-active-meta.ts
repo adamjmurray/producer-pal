@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type MutableRef, useEffect } from "preact/hooks";
+import { type RefObject } from "preact";
+import { useEffect } from "preact/hooks";
 import {
   type ActiveMeta,
   type ConversationLockedSettings,
@@ -30,7 +31,7 @@ export type SyncActiveMetaParams = {
  * @param props - Latest meta values from useChat
  */
 export function useSyncActiveMeta(
-  activeMetaRef: MutableRef<ActiveMeta | null>,
+  activeMetaRef: RefObject<ActiveMeta | null>,
   props: SyncActiveMetaParams,
 ): void {
   const {

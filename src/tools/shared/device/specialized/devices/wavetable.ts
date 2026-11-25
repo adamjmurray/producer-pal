@@ -154,9 +154,19 @@ const [osc2CategoryParam, osc2WavetableParam] = buildOscParams(
 export const wavetableSpec: SpecializedDeviceSpec = {
   displayNames: ["Wavetable"],
 
-  // Each LFO keeps a free-running Hz "Rate" and a tempo-synced note-value
-  // "S. Rate"; only one applies per "Sync" mode, but Live reports both active.
+  // Each LFO keeps a free-running Hz rate and a tempo-synced note value; only
+  // one applies per "Sync" mode, but Live reports both active. Live 12.4.16
+  // names them "Freq" and "Synced"; the earlier names stay for older Lives (a
+  // rule whose controller is missing is skipped).
   inactiveWhen: [
+    exclusiveModes("LFO 1 Sync", {
+      Free: "LFO 1 Freq",
+      Tempo: "LFO 1 Synced",
+    }),
+    exclusiveModes("LFO 2 Sync", {
+      Free: "LFO 2 Freq",
+      Tempo: "LFO 2 Synced",
+    }),
     exclusiveModes("LFO 1 Sync", {
       Free: "LFO 1 Rate",
       Tempo: "LFO 1 S. Rate",

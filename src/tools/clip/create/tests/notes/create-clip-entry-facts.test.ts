@@ -88,7 +88,7 @@ describe("createClip - facts about a clip go on its entry", () => {
       const result = await createClip({
         slot: "0/0",
         notes: "C3 D3 E3 1|1",
-        transforms: "velocity = 100 + clip.position",
+        transforms: "velocity = 90 + clip.position",
       });
 
       expect(detailOf(result)).toBe(
@@ -103,7 +103,7 @@ describe("createClip - facts about a clip go on its entry", () => {
       const result = await createClip({
         slot: "0/0",
         notes: "C3 1|1",
-        transforms: "velocity = 100",
+        transforms: "velocity = 90",
       });
 
       expect(detailOf(result)).toBeUndefined();

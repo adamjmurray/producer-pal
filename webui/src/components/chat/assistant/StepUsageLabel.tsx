@@ -30,17 +30,18 @@ export function StepUsageLabel({
   timing,
   className = "-mt-1",
 }: StepUsageLabelProps) {
+  const cached = usage.cacheReadTokens ?? 0;
+  const reasoning = usage.reasoningTokens ?? 0;
+
   return (
     <div
       className={`${className} text-right text-xs text-zinc-400 dark:text-zinc-500`}
     >
       tokens: {compactNumber(usage.inputTokens ?? 0)}
       {newContentTokens != null && ` (${compactNumber(newContentTokens)} new)`}
-      {(usage.cacheReadTokens ?? 0) > 0 &&
-        ` (${compactNumber(usage.cacheReadTokens ?? 0)} cached)`}{" "}
-      → {compactNumber(usage.outputTokens ?? 0)}
-      {(usage.reasoningTokens ?? 0) > 0 &&
-        ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
+      {cached > 0 && ` (${compactNumber(cached)} cached)`} →{" "}
+      {compactNumber(usage.outputTokens ?? 0)}
+      {reasoning > 0 && ` (${compactNumber(reasoning)} reasoning)`}
       {formatStepTiming(timing)}
     </div>
   );

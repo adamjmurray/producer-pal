@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
@@ -98,20 +99,37 @@ export function findReturnIndex(
   };
 }
 
+/** The send params of a track or chain update, as the caller sent them. */
+export interface SendParams {
+  sendGainDb?: number;
+  sendReturn?: string;
+  sends?: unknown[];
+}
+
 /**
- * Refuse a call that names only half of the sendGainDb/sendReturn pair.
+ * Refuse a call whose send params can't go together, before any target is
+ * touched.
  *
- * Half a pair names no send at all, so there is nothing to write — and it is
- * the same value for every target, so a per-target skip would repeat one
- * warning down the whole list. Refusing up front costs nothing: no target has
- * been touched yet.
- * @param sendGainDb - Send level in dB, if given
- * @param sendReturn - The return the level applies to, if given
+ * `sends` can't be sent beside the deprecated sendGainDb/sendReturn pair,
+ * whatever the values: no caller has a reason to send both. Half the pair names
+ * no send at all, so there is nothing to write — and it is the same value for
+ * every target, so a per-target skip would repeat one warning down the whole
+ * list.
+ * @param params - The call's send params
+ * @throws Error when `sends` comes with either of the pair, or the pair is
+ *   missing one half
  */
-export function validateSendPair(
-  sendGainDb: number | undefined,
-  sendReturn: string | undefined,
-): void {
+export function validateSendParams(params: SendParams): void {
+  const { sendGainDb, sendReturn, sends } = params;
+
+  refuseNamedTwice({
+    param: "sends",
+    value: sends,
+    noun: "send",
+    also: { sendGainDb, sendReturn },
+    hint: "sendGainDb and sendReturn are deprecated",
+  });
+
   if ((sendGainDb != null) !== (sendReturn != null)) {
     throw new Error("sendGainDb and sendReturn must both be specified");
   }

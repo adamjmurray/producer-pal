@@ -10,7 +10,8 @@ import {
 import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-values.ts";
 
 /**
- * Parse a comma-separated name param and warn when it names the wrong number.
+ * Parse a comma-separated name param and refuse a list that names the wrong
+ * number.
  *
  * One name covers every item; a list pairs 1:1 in order. See `list-pairing.ts`
  * for why nothing cycles.
@@ -18,6 +19,7 @@ import { parsePairedValues } from "#src/tools/shared/validation/lists/paired-val
  * @param count - How many items the call names
  * @param item - What the call acts on, singular ("clip", "track")
  * @returns One name per item, or null when the value covers every item
+ * @throws Error when the list's length doesn't match the items
  */
 export function parseNames(
   value: string | undefined,

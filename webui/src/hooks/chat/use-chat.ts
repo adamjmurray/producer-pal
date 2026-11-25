@@ -103,22 +103,26 @@ export function useChat<
   // is idempotent, so this no-ops when the client was already disposed/cleared.
   useEffect(() => () => clientRef.current?.dispose?.(), []);
 
-  const { initializeChat, applyPendingLock, clearPendingLock } =
-    useInitializeChat({
-      provider,
-      model,
-      thinking,
-      enabledTools,
-      mcpStatus,
-      mcpError,
-      checkMcpConnection,
-      resolveConnection,
-      adapter,
-      extraParams,
-      active,
-      clientRef,
-      pendingInitRef,
-    });
+  const {
+    initializeChat,
+    reconnectIfNeeded,
+    applyPendingLock,
+    clearPendingLock,
+  } = useInitializeChat({
+    provider,
+    model,
+    thinking,
+    enabledTools,
+    mcpStatus,
+    mcpError,
+    checkMcpConnection,
+    resolveConnection,
+    adapter,
+    extraParams,
+    active,
+    clientRef,
+    pendingInitRef,
+  });
 
   const { executeWithRetry, abortRetry } = useExecuteWithRetry({
     adapter,
@@ -312,6 +316,10 @@ export function useChat<
             // and re-sent. Adopt the client, but wait for its connect: streaming
             // now would send before the MCP tool catalog has landed.
             await pendingInitRef.current;
+          } else {
+            // An earlier send's connect failed and left this client with no
+            // tools. Connect it now rather than stream without them.
+            await reconnectIfNeeded();
           }
 
           // Stopped or superseded while setting up. Superseded: the user stopped
@@ -357,13 +365,21 @@ export function useChat<
           const shouldInterrupt = () => queueRef.current.length > queueBaseline;
 
           return await executeWithRetry({
-            executeStream: () =>
-              client.sendMessage(
+            executeStream: () => {
+              // The client records the message as its first act, so from here
+              // the history has it. Left stashed, a later failure of this turn
+              // (Stop during a rate-limit wait) would add it a second time.
+              if (stillCurrent()) {
+                pendingUserMessageRef.current = null;
+              }
+
+              return client.sendMessage(
                 toSentMessage({ text: userMessage, images }),
                 controller.signal,
                 filtered,
                 shouldInterrupt,
-              ),
+              );
+            },
             resumeStream: () =>
               client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
@@ -398,6 +414,7 @@ export function useChat<
       apiKey,
       adapter,
       initializeChat,
+      reconnectIfNeeded,
       runWithChat,
       executeWithRetry,
       invalidateCompactionUndo,

@@ -34,8 +34,9 @@ import {
   assertPathEntries,
   assertTrackChain,
 } from "./helpers/device-chain-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_DEVICE = "ppal-create-device";
+const TOOL_CREATE_DEVICE = TOOLS.createDevice;
 
 /** Lead is track 3 in basic-midi-4-track; its instrument rack is device 1. */
 const LEAD_PATH = "t3";
@@ -70,7 +71,7 @@ function holds(chain: NonNullable<RackRead["chains"]>[number]): boolean {
 function assertLayerInNewLastChain(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-device",
+    tool: TOOLS.readDevice,
     args: { path: RACK_PATH, include: ["chains"], maxDepth: 1 },
     expect: (result) => {
       const chains = (result as RackRead).chains ?? [];

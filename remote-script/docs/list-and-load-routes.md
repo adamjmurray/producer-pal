@@ -47,13 +47,14 @@ matched against each item's `uri`, and `Foo.adv` never loads a Max device named
 
 ## `GET /list`
 
-| Param       | Default  | Meaning                                                                                                             |
-| ----------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
-| `type`      | required | See [Types](#types)                                                                                                 |
-| `path`      | top      | Folder to start from, `/`-separated, case-insensitive                                                               |
-| `recursive` | `true`   | `true`: loadable items at any depth. `false`: one level, folders included, with `loadable` and `has_children` flags |
-| `q`         | —        | Case-insensitive substring filter on the name                                                                       |
-| `presets`   | `false`  | With `recursive`: presets at any depth, including those under each device, instead of devices                       |
+| Param          | Default  | Meaning                                                                                                                          |
+| -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `type`         | required | See [Types](#types)                                                                                                              |
+| `path`         | top      | Folder to start from, `/`-separated, case-insensitive                                                                            |
+| `recursive`    | `true`   | `true`: loadable items at any depth. `false`: one level, folders included, with `loadable` and `has_children` flags              |
+| `q`            | —        | Case-insensitive substring filter on the name                                                                                    |
+| `presets`      | `false`  | With `recursive`: presets at any depth, including those under each device, instead of devices                                    |
+| `plugins_only` | `false`  | With `type=plugin`: list plugins without their presets. The reply echoes `plugins_only: true`; an older script ignores the param |
 
 A `path` that doesn't exist is a 404 listing what is there.
 

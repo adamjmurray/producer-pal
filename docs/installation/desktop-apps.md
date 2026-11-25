@@ -1,5 +1,8 @@
 # Desktop Apps
 
+Already pay for Claude, ChatGPT, Gemini or Mistral? Add Producer Pal to its
+desktop app at no extra cost.
+
 ## Claude Desktop
 
 Anthropic's desktop app. Producer Pal installs as an extension.
@@ -34,16 +37,18 @@ config file — one extra step, but everything else is the same.
 
 [Get started with Google Antigravity →](./antigravity)
 
-## Bionic / LM Studio
+## Mistral Vibe
 
-LM Studio's agent app for open models, running entirely on your machine.
+Mistral's desktop app (formerly Le Chat). Adding Producer Pal means editing a
+config file, and it works in the app's Code tab only.
 
-<!--@include: ../_partials/local-ai-warning.md-->
+- **Difficulty:** Easy — one config file to edit
+- **Cost:** A Mistral account (free or paid)
+- **Best for:** Mistral users on macOS or Windows
 
-Online AI is faster and smarter.
+[Get started with Mistral Vibe →](./mistral-vibe)
 
-- **Difficulty:** Easy — download a model, then add Producer Pal in settings
-- **Cost:** Free (uses your hardware)
-- **Best for:** Free, private, offline use on a powerful computer
+## Want to Run the AI Offline?
 
-[Bionic setup guide →](./bionic)
+[Bionic / LM Studio](./bionic) is a desktop app that runs the AI on your own
+computer. See [Running Locally](./choose-local).

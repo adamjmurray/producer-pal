@@ -6,12 +6,12 @@
 
 /**
  * Print comment statistics for the non-test TypeScript sources: comment lines,
- * code lines, and comment density per tree against the cap the ratchet holds it
- * under, plus the longest comment blocks.
+ * code lines, and comment density per tree against its cap, plus the longest
+ * comment blocks.
  *
  * The license header and lint directives are not counted — see
  * src/test/helpers/comment-scan-helpers.ts, which src/test/comment-limits.test.ts
- * ratchets these same numbers with.
+ * caps these same numbers with.
  *
  * Usage:
  *   node scripts/stats/comment-stats.ts              # summary + worst offenders

@@ -20,6 +20,7 @@ export interface ClipUpdateArgs extends ClipAudioWarpQuantizeParams {
   name?: string;
   color?: string;
   timeSignature?: string;
+  scale?: string;
   start?: string;
   length?: string;
   firstStart?: string;

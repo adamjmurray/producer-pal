@@ -31,6 +31,9 @@ support tools.
 
 - Ensure Producer Pal device is loaded and running in Ableton Live
 - Check that port 3350 is not blocked by firewall
+- Connecting from another computer or phone, a VM, WSL2, or Docker? Turn on
+  **Remote Control** in the device's [Setup tab](/guide/device#setup-tab). It's
+  off by default.
 - For remote connections, verify your
   [tunnel](/installation/remote-access#web-tunnels) is active
 

@@ -15,7 +15,7 @@
    and notes — EXCEPT a pattern bracket may abut the previous element when the
    next element opens a bracket (`[C3 E3][v80 v100]`); the leading `[` is a
    self-delimiting boundary
-8. Velocity ranges are auto-ordered: `v120-80` becomes `v80-120`
+8. Velocity ranges keep their order: `v100-80` is velocity 100, deviation -20
 9. First pitch after a time position clears the pitch buffer
 10. Subsequent time positions re-emit the last buffered pitches (pitch
     persistence)
@@ -33,11 +33,11 @@ type Element =
   | { pitch: number }                                                // Note (0-127)
   | { bar: number, beat: number | RepeatPattern }                    // Time position
   | { velocity: number }                                             // Single velocity (0-127)
-  | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
+  | { velocityStart: number, velocityEnd: number }                   // Velocity range (0-127), order kept
   | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for <count>bar / <count>bar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
   | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket (pitch): each value is a chord (length-1 for a bare pitch)
-  | { stream: { param: "velocity", values: ({ velocity: number } | { velocityMin: number, velocityMax: number })[] } } // Pattern bracket (velocity)
+  | { stream: { param: "velocity", values: ({ velocity: number } | { velocityStart: number, velocityEnd: number })[] } } // Pattern bracket (velocity)
   | { stream: { param: "duration", values: { duration: number, bars?: number }[] } } // Pattern bracket (duration)
   | { stream: { param: "probability", values: { probability: number }[] } } // Pattern bracket (probability)
   | { destination: BarOrRange, source: BarOrRange | "previous" }       // @N= / @N=M / @N-M=P-Q (bar copy; "previous" when the source is omitted)
@@ -76,7 +76,7 @@ grammar AST to return an array of note events:
     duration: number, // Duration in Ableton beats (float)
     velocity: number, // Base velocity (0-127)
     probability: number, // Note probability (0.0-1.0)
-    velocity_deviation: number, // Velocity randomization range (0-127)
+    velocity_deviation: number, // Velocity randomization range (-127 to 127)
   },
   // ... more note events
 ];
@@ -104,7 +104,8 @@ grammar AST to return an array of note events:
     stripped — interpreter output never contains a `velocity: 0` note (see Note
     Deletion section)
 - **velocity_deviation**: When velocity range is used (e.g., `v80-100`),
-  velocity is min value and velocity_deviation is the range (20)
+  velocity is the first value and velocity_deviation is end minus start (20);
+  `v100-80` gives velocity 100 and deviation -20
 - **Precision**: Both start_time and duration support floating point for
   sub-beat accuracy
 - **No bar/beat info**: The output only contains absolute Ableton beat

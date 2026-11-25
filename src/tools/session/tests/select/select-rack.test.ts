@@ -141,7 +141,7 @@ describe("select inside a rack", () => {
     expect(rackView.set).toHaveBeenCalledWith("selected_chain", "id chain-0");
     expect(rackView.set).toHaveBeenCalledWith("selected_drum_pad", "id pad-0");
     expect(result).toStrictEqual({
-      selectedChain: { id: chain.id, path: "t0/d0/c0" },
+      selectedChain: { id: chain.id, path: "t0/d0/pC1/c0" },
     });
     expect(pad.set).not.toHaveBeenCalled();
   });
@@ -257,7 +257,7 @@ describe("select inside a rack", () => {
       expect.anything(),
     );
     expect(result).toStrictEqual({
-      selectedChain: { id: chain.id, path: "t0/d0/c0" },
+      selectedChain: { id: chain.id, path: "t0/d0/pC1/c0" },
     });
   });
 

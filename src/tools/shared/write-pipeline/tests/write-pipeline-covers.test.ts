@@ -6,7 +6,12 @@
 import { describe, expect, it } from "vitest";
 import { runWrite } from "../write-pipeline.ts";
 import { type Cover } from "../write-pipeline-types.ts";
-import { newToyLog, ranOutOfTime, runToy, toySpec } from "./toy-write-spec.ts";
+import {
+  newToyLog,
+  ranOutOfTime,
+  runToy,
+  toySpec,
+} from "./helpers/toy-write-spec.ts";
 
 const slot = (path: string): Cover => ({ slot: path });
 const lane = (from: number, to: number, as: string): Cover => ({

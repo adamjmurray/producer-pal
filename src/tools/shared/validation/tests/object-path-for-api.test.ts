@@ -65,6 +65,12 @@ describe("objectPathForApi", () => {
     ["a scene", livePath.scene(2), "s2"],
     ["a clip slot", livePath.track(1).clipSlot(4), "t1/s4"],
     ["a session clip", livePath.track(1).clipSlot(4).clip(), "t1/s4"],
+    [
+      "a return track's clip slot",
+      livePath.returnTrack(1).clipSlot(4),
+      "rt1/s4",
+    ],
+    ["an envelope clip", livePath.returnTrack(1).clipSlot(4).clip(), "rt1/s4"],
     ["a take lane", livePath.track(2).takeLane(1), "t2/l1"],
     ["an arrangement clip", livePath.track(2).arrangementClip(7), "t2[5|1]"],
     [

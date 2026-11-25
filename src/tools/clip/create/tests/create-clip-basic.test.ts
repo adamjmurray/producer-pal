@@ -94,6 +94,14 @@ describe("createClip - basic validation and time signatures", () => {
     expectNotesAdded(clip, [note(60, 0, 1), note(62, 3, 1)]);
   });
 
+  it("writes a descending velocity range as a negative deviation", async () => {
+    const { clip } = setupSessionMocks();
+
+    await createClip({ slot: "0/0", notes: "v100-80 C3 1|1" });
+
+    expectNotesAdded(clip, [note(60, 0, 1, 100, 1.0, -20)]);
+  });
+
   it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", async () => {
     const { clip } = setupSessionMocks();
 

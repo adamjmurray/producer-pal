@@ -124,24 +124,120 @@ export function durationEntry(duration: StarkDuration): DurationGridEntry {
   };
 }
 
+// Every grid value is a whole number of these: a 16th is 6, a 16th triplet 4.
+const UNITS_PER_BEAT = 24;
+const GRID_UNITS: ReadonlyArray<number> = DURATION_GRID.map((entry) =>
+  Math.round(entry.beats * UNITS_PER_BEAT),
+);
+const COARSEST_UNITS = GRID_UNITS[0] as number;
+
 /**
- * Decompose a gap into a greedy list of grid note values that fill it (largest
- * first, dotted values included: dotted-whole → whole → dotted-half → …). A
- * sub-16th remainder is dropped (the off-16th snap the serializer documents).
+ * Decompose a gap into grid note values that fill it, largest first. The fill
+ * is exact wherever the grid can spell the gap: taking the largest value that
+ * fits each time is not enough, because a 16th plus a 16th triplet fills 5/12
+ * of a beat while a dotted 16th leaves a remainder — and a dropped remainder
+ * shifts every later onset. Only what no value can spell is dropped (the
+ * off-16th snap the serializer documents).
  * @param gapBeats - Gap length in Ableton beats
  * @returns Grid entries (each an /N[.]) summing to about the gap
  */
 export function restNoteValues(gapBeats: number): DurationGridEntry[] {
   const rests: DurationGridEntry[] = [];
+  let units = Math.floor((gapBeats + SAME_TIME_EPSILON) * UNITS_PER_BEAT);
 
-  let remaining = gapBeats;
+  // A long gap is mostly the coarsest value; search only its tail.
+  while (units >= COARSEST_UNITS * 2) {
+    rests.push(DURATION_GRID[0] as DurationGridEntry);
+    units -= COARSEST_UNITS;
+  }
 
-  for (const entry of DURATION_GRID) {
-    while (remaining >= entry.beats - SAME_TIME_EPSILON) {
-      rests.push(entry);
-      remaining -= entry.beats;
-    }
+  const firstValue = fewestValues(Math.max(units, 0));
+
+  // Walk down to the largest length the grid can spell.
+  while (units > 0 && firstValue[units] == null) {
+    units--;
+  }
+
+  while (units > 0) {
+    const index = firstValue[units] as number;
+
+    rests.push(DURATION_GRID[index] as DurationGridEntry);
+    units -= GRID_UNITS[index] as number;
   }
 
   return rests;
+}
+
+/**
+ * The note value closest to a note's real length that leaves an exactly
+ * spellable rest (or none) before the next onset. A 16th hit a third of a beat
+ * before the next one would leave 1/12 of a beat that no rest can spell, so the
+ * next onset would land early; a 16th triplet plus a 16th-triplet rest lands it.
+ * @param naturalBeats - The note's real length in Ableton beats
+ * @param capBeats - Beats from this onset to the next one
+ * @returns The note value, or null when the onsets are off the grid and no
+ *   value makes the gap exact
+ */
+export function exactDurationBefore(
+  naturalBeats: number,
+  capBeats: number,
+): DurationGridEntry | null {
+  const capUnits = Math.round(capBeats * UNITS_PER_BEAT);
+
+  if (Math.abs(capUnits / UNITS_PER_BEAT - capBeats) > SAME_TIME_EPSILON) {
+    return null;
+  }
+
+  // Past two coarsest values every remainder is spellable, so cap the search.
+  const spellable = fewestValues(Math.min(capUnits, COARSEST_UNITS * 2));
+  let best: DurationGridEntry | null = null;
+  let bestDiff = Infinity;
+
+  for (const [index, entry] of DURATION_GRID.entries()) {
+    const restUnits = capUnits - (GRID_UNITS[index] as number);
+    const exact =
+      restUnits === 0 ||
+      restUnits >= spellable.length ||
+      (restUnits > 0 && spellable[restUnits] != null);
+    const diff = Math.abs(entry.beats - naturalBeats);
+
+    // `<=` so a tie prefers the shorter value, as snapDuration does.
+    if (exact && diff <= bestDiff) {
+      best = entry;
+      bestDiff = diff;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * For each length up to a limit, the first grid value of its shortest exact
+ * spelling. Among equally short spellings the largest value wins, so following
+ * the answers back to 0 lists the values largest first.
+ * @param maxUnits - Longest length to solve, in grid units
+ * @returns Grid index by length; null where no spelling is exact
+ */
+function fewestValues(maxUnits: number): (number | null)[] {
+  const firstValue: (number | null)[] = [null];
+  const count: number[] = [0];
+
+  for (let units = 1; units <= maxUnits; units++) {
+    let best: number | null = null;
+    let bestCount = Infinity;
+
+    for (const [index, valueUnits] of GRID_UNITS.entries()) {
+      const restCount = count[units - valueUnits];
+
+      if (restCount != null && restCount + 1 < bestCount) {
+        best = index;
+        bestCount = restCount + 1;
+      }
+    }
+
+    firstValue.push(best);
+    count.push(bestCount);
+  }
+
+  return firstValue;
 }

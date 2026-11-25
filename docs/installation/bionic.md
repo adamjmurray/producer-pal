@@ -33,8 +33,8 @@ Studio account.
 ### 1. Install a Compatible Model
 
 Download a model in Bionic under Settings &rarr; Explore, such as a recent
-version of Qwen, Gemma, Mistral, or Nemotron. If your computer can handle it,
-use the larger variants of a model.
+version of Qwen, Inkling, Gemma, Mistral, or Nemotron. If your computer can
+handle it, use the larger variants of a model.
 
 It has to support tools. Your downloaded models are listed under Settings &rarr;
 Library, where a hammer icon marks the ones that do:
@@ -131,7 +131,8 @@ These flags apply to Bionic only. To set them for the whole device instead
   up room on every conversation.
 - Follow-up messages are often faster than the first: the model reuses work from
   earlier turns.
-- Run Ableton Live on a different computer on your local network.
+- Run Ableton Live on a different computer on your local network (turn on
+  **Remote Control** in the device's Setup tab).
 - With a GGUF model, try the experimental Flash Attention setting and set the
   K/V caches' quantization to Q8 or Q4.
 - To go further, [customize Producer Pal's Skills](/guide/customizing-skills)

@@ -10,26 +10,18 @@ import {
   type ToolCall,
 } from "../../../../types.ts";
 import { melodyTransforms } from "../melody-transforms.ts";
+import {
+  turnsWithCalls as turnsOf,
+  updateClipCall as update,
+} from "./transform-grader-test-helpers.ts";
 
 const grader = (description: string): CustomAssertion =>
   melodyTransforms.assertions.find(
     (a) => a.type === "custom" && a.description === description,
   ) as CustomAssertion;
 
-const update = (args: Record<string, unknown>, noteCount = 24): ToolCall => ({
-  name: "ppal-update-clip",
-  args,
-  result: `{id:"1",noteCount:${noteCount}}`,
-});
-
 const turnsWithCalls = (turn: number, calls: ToolCall[]): EvalTurnResult[] =>
-  Array.from({ length: 7 }, (_, i) => ({
-    turnIndex: i,
-    userMessage: "u",
-    assistantResponse: "a",
-    toolCalls: i === turn ? calls : [],
-    durationMs: 1,
-  }));
+  turnsOf(7, turn, calls);
 
 describe("melodyTransforms graders", () => {
   const extended = "melody extended with notes copied into 8 bars";
@@ -65,5 +57,29 @@ describe("melodyTransforms graders", () => {
         turnsWithCalls(3, calls),
       ),
     ).toBe(true);
+  });
+
+  const halved = "durations halved using /= 2 or equivalent";
+
+  it.each([
+    "duration /= 2",
+    "duration *= .5",
+    "duration = duration / 2",
+    "duration = note.duration / 2",
+    "duration = note.duration * 0.5",
+  ])("turn 4 accepts %s", (transforms) => {
+    const calls = [update({ path: "t0/s0", transforms })];
+
+    expect(grader(halved).assert(turnsWithCalls(4, calls))).toBe(true);
+  });
+
+  it("turn 4 fails on a different amount", () => {
+    const calls = [
+      update({ path: "t0/s0", transforms: "duration = note.duration / 3" }),
+    ];
+
+    expect(() => grader(halved).assert(turnsWithCalls(4, calls))).toThrow(
+      "expected duration /= 2 or equivalent",
+    );
   });
 });

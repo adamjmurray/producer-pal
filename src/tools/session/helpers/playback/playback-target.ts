@@ -3,17 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
+  type NamedSlotPath,
   sessionClipTargets,
   type SlotPayload,
 } from "./session-clip-targets.ts";
 import {
-  namedIdParam,
   namedParam,
-  namedPathParam,
   refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
+import { foldTargetParams } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   idDoesNotExist,
@@ -30,9 +30,10 @@ import {
   requireClipSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
-  type ClipSlotPosition,
-  parseSlotList,
-} from "#src/tools/shared/validation/position-parsing.ts";
+  returnClipsExist,
+  RETURN_CLIPS_NEED_LIVE_13,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
@@ -110,17 +111,17 @@ export function resolvePlaybackTarget(
     return { sceneIndex: null, clips: [] };
   }
 
-  const namedIds = namedIdParam(id, ids, "ids");
-  const namedPaths = namedPathParam(path, paths);
+  const folded = foldTargetParams({ id, ids, path, paths });
+  const { id: namedIds, path: namedPaths, idParam, pathParam } = folded;
 
   for (const [param, value] of [
-    ["path", namedPaths],
+    [pathParam, namedPaths],
     ["slots", slots],
   ] as const) {
     refuseNamedTwice({ param, value, noun: "scene", also: { sceneIndex } });
   }
 
-  const { entries, source } = readPathParam(namedPaths, slots);
+  const { entries, source } = readPathParam(namedPaths, slots, pathParam);
 
   if (action === PLAY_SCENE) {
     return {
@@ -128,6 +129,7 @@ export function resolvePlaybackTarget(
         pathSceneRefs(entries, source),
         sceneIndex,
         namedIds,
+        idParam,
       ),
       clips: [],
     };
@@ -136,6 +138,7 @@ export function resolvePlaybackTarget(
   const clips = sessionClipTargets(
     namedIds,
     slotPathsFrom(action, entries, source),
+    { idParam, pathParam },
   );
 
   return { sceneIndex: null, clips };
@@ -147,18 +150,20 @@ export function resolvePlaybackTarget(
  * Read `path` or the deprecated `slots` as parsed entries.
  * @param path - A scene, or comma-separated clip slots
  * @param slots - Deprecated comma-separated trackIndex/sceneIndex positions
+ * @param pathParam - The name the path was sent under
  * @returns The entries named and which param named them, or nothing when
  *   neither did
  */
 function readPathParam(
   path: string | undefined,
   slots: string | undefined,
+  pathParam: string,
 ): PathInput {
-  const named = namedParam(path, "path");
+  const named = namedParam(path, pathParam);
   const legacy = namedHiddenPath(slots, "slots");
 
   refuseNamedTwice({
-    param: "path",
+    param: pathParam,
     value: named,
     noun: "clips",
     also: { slots: legacy },
@@ -167,8 +172,8 @@ function readPathParam(
 
   if (named != null) {
     return {
-      entries: parseObjectPathList(named, "path"),
-      source: { label: "path", input: named },
+      entries: parseObjectPathList(named, pathParam),
+      source: { label: pathParam, input: named },
     };
   }
 
@@ -206,7 +211,17 @@ function pathSceneRefs(
   }
 
   return entries.map((entry) => {
-    if (entry.kind === "scene" || entry.kind === "slot") {
+    const onReturn = entry.kind === "return-slot";
+
+    if (onReturn && !returnClipsExist()) {
+      throw pathError(
+        source.label,
+        formatObjectPath(entry),
+        RETURN_CLIPS_NEED_LIVE_13,
+      );
+    }
+
+    if (onReturn || entry.kind === "scene" || entry.kind === "slot") {
       return { scene: entry.sceneIndex, source: quoteEntry(entry, source) };
     }
 
@@ -257,13 +272,29 @@ function slotPathsFrom(
   action: string,
   entries: ObjectPath[],
   source: PathSource | null,
-): Array<{ value: string; position: ClipSlotPosition }> {
+): NamedSlotPath[] {
   if (source == null) {
     return [];
   }
 
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
+
+    // Live 12 has no such slot: that entry is skipped and the rest go on.
+    if (entry.kind === "return-slot") {
+      return returnClipsExist()
+        ? {
+            value: spellEntry(entry, source),
+            position: {
+              returnIndex: entry.returnIndex,
+              sceneIndex: entry.sceneIndex,
+            },
+          }
+        : {
+            value: spellEntry(entry, source),
+            skip: RETURN_CLIPS_NEED_LIVE_13,
+          };
+    }
 
     return {
       value: spellEntry(entry, source),
@@ -280,12 +311,14 @@ function slotPathsFrom(
  * @param pathRefs - The scenes the path param named, one per entry
  * @param sceneIndex - The `sceneIndex` param
  * @param ids - The normalized `id` param
+ * @param idParam - The name the ids were sent under
  * @returns The scene to play, or null when nothing named one
  */
 function resolveSceneTarget(
   pathRefs: SceneRef[],
   sceneIndex: number | undefined,
   ids: string | undefined,
+  idParam: string,
 ): number | null {
   const refs: SceneRef[] = [...pathRefs];
 
@@ -293,7 +326,7 @@ function resolveSceneTarget(
     refs.push({ scene: sceneIndex, source: `sceneIndex ${sceneIndex}` });
   }
 
-  const { found, problems } = idSceneRefs(ids);
+  const { found, problems } = idSceneRefs(ids, idParam);
 
   refs.push(...found);
 
@@ -304,7 +337,7 @@ function resolveSceneTarget(
 
   // Otherwise another param still names the scene, so a bad id is warned.
   for (const problem of problems) {
-    console.warn(problem);
+    emitWarning(problem);
   }
 
   // Keep the first param to name each scene, so the error names one source per
@@ -333,9 +366,13 @@ function resolveSceneTarget(
  * slot id names the scene it sits in. An id naming no scene is set aside with
  * the reason, for the caller to warn or refuse on.
  * @param ids - The normalized `id` param
+ * @param idParam - The name the ids were sent under
  * @returns One ref per id that names a scene, and why each other one doesn't
  */
-function idSceneRefs(ids: string | undefined): {
+function idSceneRefs(
+  ids: string | undefined,
+  idParam: string,
+): {
   found: SceneRef[];
   problems: string[];
 } {
@@ -346,18 +383,21 @@ function idSceneRefs(ids: string | undefined): {
     return { found, problems };
   }
 
-  for (const id of targetEntries(ids, "id")) {
+  for (const id of targetEntries(ids, idParam)) {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      problems.push(idDoesNotExist(id));
+      problems.push(idDoesNotExist(id, undefined, idParam));
       continue;
     }
+
+    // A return-track clip names the scene its slot sits in, like any other.
+    const sceneIndex = object.sceneIndex ?? object.returnClipSlotIndex;
 
     // Arrangement clips and everything off the session grid land here. Say
     // what would work, since "found clip" alone reads as a contradiction to a
     // caller who was asked for a clip id.
-    if (object.sceneIndex == null) {
+    if (sceneIndex == null) {
       const type = publishedType(object.type);
       const kind = type == null ? "" : ` (found ${type})`;
 
@@ -368,7 +408,7 @@ function idSceneRefs(ids: string | undefined): {
       continue;
     }
 
-    found.push({ scene: object.sceneIndex, source: `id "${id}"` });
+    found.push({ scene: sceneIndex, source: `${idParam} "${id}"` });
   }
 
   return { found, problems };

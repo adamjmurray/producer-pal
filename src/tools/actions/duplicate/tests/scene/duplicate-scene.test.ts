@@ -226,7 +226,7 @@ describe("duplicate - scene duplication", () => {
     })) as DuplicateSceneResult;
 
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
-    expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);
+    expect(newScene.set).toHaveBeenCalledWith("color", 0x1aff2f);
     expect(result.id).toBe("live_set/scenes/1");
     expect(result.path).toBe("s1");
   });

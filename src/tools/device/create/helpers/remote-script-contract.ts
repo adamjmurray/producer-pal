@@ -7,6 +7,7 @@
 // loading a device or preset from Live's browser, and copying a device. Route
 // names, answers, timeouts.
 
+import { type PluginFormat } from "#src/mcp-server/live-library/library-types.ts";
 import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 
 /** The Node routes V8 calls to reach the remote script. */
@@ -67,6 +68,10 @@ export interface BrowserItem {
   /** Where it sits under that type's browser section; for a file, its absolute path */
   path: string;
   name: string;
+  /** For a plug-in: the format its browser folder holds */
+  format?: PluginFormat;
+  /** For a plug-in: its maker's folder, when it has one (a VST2 has none) */
+  vendor?: string;
 }
 
 /** Where a device's presets sit in Live's browser. */
@@ -87,12 +92,20 @@ export interface PresetScope {
 /**
  * What remoteScript.resolve answers. `error` is worded for the model;
  * `outOfTime` marks a search that ran out of its time, not one that found a
- * problem.
+ * problem. `notFound` marks a name nothing in the browser has; `candidates`, a device
+ * name several devices have.
  */
 export type BrowserItemResolution =
   | RemoteScriptUnavailable
   | { available: true; item: BrowserItem }
-  | { available: true; error: string; outOfTime?: true };
+  | {
+      available: true;
+      error: string;
+      outOfTime?: true;
+      notFound?: true;
+      /** The devices an ambiguous name matched */
+      candidates?: BrowserItem[];
+    };
 
 /**
  * What remoteScript.load answers. `error` is worded for the model; `unfinished`

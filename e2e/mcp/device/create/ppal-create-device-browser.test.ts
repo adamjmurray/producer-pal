@@ -5,26 +5,28 @@
 
 /**
  * E2E tests for ppal-create-device loading a device from Live's browser through
- * the Producer Pal remote script. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
- * and failed, not skipped, when that's set but the remote script isn't
- * answering. Loads the LFO (a Max for Live device) by a browser path picked by
+ * the Producer Pal remote script. Loads the LFO (a Max for Live device) by a browser path picked by
  * Live version: 12.4 lists it under Audio Effects, older Live under Max for Live
  * > Max Audio Effect. Not by bare name: a Live 12.4 with an older Max for Live
  * pack lists it in both, so the name is ambiguous. Never a machine-specific
- * plug-in.
+ * plug-in, except where a test skips without one. The second suite picks a
+ * plug-in's format by browser path, hosted and native, and needs the wrappers
+ * installed (`npm run install:plugin-host`).
  *
  * Uses: e2e-test-set (rt0 is a return track)
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device-browser
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { sameVendor } from "#src/mcp-server/live-library/query/plugins/same-vendor.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
+  createMidiTrack,
   getToolErrorMessage,
   isToolError,
   parseToolResult,
@@ -37,8 +39,13 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import { readChainCount } from "../helpers/chain-count-test-helpers";
 import { readTrackCount } from "../helpers/track-count-test-helpers";
-import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  liveVersionAtLeast,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
@@ -101,6 +108,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       return trackIndexFromPath(track.path);
     }
 
+    const chainCount = (rackPath: string): Promise<number> =>
+      readChainCount(ctx.client!, rackPath);
+
     // How many regular tracks the Set has, to prove the temp track is gone.
     const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
@@ -145,6 +155,29 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       expect(lfo.path.startsWith(`${rack.path}/c0/d`)).toBe(true);
       expect(await idAt(lfo.path)).toBe(lfo.id);
+    });
+
+    // An item whose kind the browser gives is refused before the load, so the
+    // rack keeps its chains and no temp track is made.
+    it("refuses a browser instrument into an Audio Effect Rack's c+, making nothing", async () => {
+      const trackIndex = await createTrack("audio");
+      const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
+      const chainsBefore = await chainCount(rack.path);
+      const tracksBefore = await trackCount();
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Instruments/Operator",
+          path: `${rack.path}/c+`,
+        },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toMatch(
+        /takes only audio effects; ".*Operator" is an instrument$/,
+      );
+      expect(await chainCount(rack.path)).toBe(chainsBefore);
+      expect(await trackCount()).toBe(tracksBefore);
     });
 
     it("loads LFO onto a return track", async () => {
@@ -338,7 +371,188 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
   },
 );
 
+// Uses whatever plug-in ppal-library lists in both VST3 and AU with one entry
+// each, and skips on a machine with none.
+describe.skipIf(!REMOTE_SCRIPT_E2E)(
+  "ppal-create-device — a plug-in's format",
+  () => {
+    requireRemoteScript();
+
+    const ctx = setupMcpTestContext();
+
+    // Finding a plug-in in both formats reads list-plugins.
+    skipBeforeLive(ctx, "12.4", LIBRARY_NEEDS);
+
+    let plugin: PluginInFormats | undefined;
+
+    /**
+     * Call a tool without parsing its result.
+     * @param name - Tool name
+     * @param args - Tool args
+     * @returns The raw result
+     */
+    async function callRaw(name: string, args: Record<string, unknown>) {
+      return await ctx.client!.callTool({ name, arguments: args });
+    }
+
+    /**
+     * A plug-in installed in VST3 and AU, once for each, by one vendor.
+     * @returns It, or undefined when no plug-in is
+     */
+    async function findPlugin(): Promise<PluginInFormats | undefined> {
+      const { plugins } = parseToolResult<{ plugins: ListedPlugin[] }>(
+        await callRaw("ppal-library", { action: "list-plugins", limit: 1000 }),
+      );
+      const byName = new Map<string, ListedPlugin[]>();
+
+      for (const item of plugins) {
+        // No category check: list-plugins has none for an AU.
+        if (item.vendor != null) {
+          const key = item.name.toLowerCase();
+
+          byName.set(key, [...(byName.get(key) ?? []), item]);
+        }
+      }
+
+      for (const items of byName.values()) {
+        const formats = items.map((item) => item.format);
+
+        if (
+          items.length === 2 &&
+          formats.includes("VST3") &&
+          formats.includes("AU")
+        ) {
+          return {
+            name: items[0]!.name,
+            vendors: new Map(items.map((item) => [item.format!, item.vendor!])),
+          };
+        }
+      }
+
+      return undefined;
+    }
+
+    /**
+     * The browser path that names the plug-in in one format.
+     * @param found - The plug-in
+     * @param format - VST3 or AU
+     * @returns `Plug-Ins/<format>/<vendor>/<name>`
+     */
+    function pathFor(found: PluginInFormats, format: string): string {
+      return `Plug-Ins/${format}/${found.vendors.get(format)}/${found.name}`;
+    }
+
+    /**
+     * Create a plug-in on a new MIDI track.
+     * @param deviceName - A name or a browser path
+     * @param hosted - Whether to host it
+     * @returns The raw result
+     */
+    async function create(deviceName: string, hosted: boolean) {
+      const track = await createMidiTrack(ctx.client!);
+
+      return await callRaw("ppal-create-device", {
+        deviceName,
+        path: `t${track}/d+`,
+        ...(hosted && { hosted: true }),
+      });
+    }
+
+    beforeEach(async ({ skip }) => {
+      plugin ??= await findPlugin();
+      skip(
+        plugin == null,
+        "no plug-in is installed in both VST3 and AU with one vendor",
+      );
+    });
+
+    describe.each([
+      ["hosted", true],
+      ["native", false],
+    ])("%s", (_mode, hosted) => {
+      it("loads the VST3 for a bare name, and says so", async () => {
+        const created = parseToolResult<Created>(
+          await create(plugin!.name, hosted),
+        );
+
+        expect(created.format).toBe("VST3");
+        expect(sameVendor(created.vendor, plugin!.vendors.get("VST3"))).toBe(
+          true,
+        );
+        expect(created.hosted).toBe(hosted ? true : undefined);
+      });
+
+      it.each(["VST3", "AU"])("loads the %s a path names", async (format) => {
+        const created = parseToolResult<Created>(
+          await create(pathFor(plugin!, format), hosted),
+        );
+
+        expect(created.format).toBe(format);
+        expect(sameVendor(created.vendor, plugin!.vendors.get(format))).toBe(
+          true,
+        );
+        expect(created.hosted).toBe(hosted ? true : undefined);
+      });
+
+      it("refuses a vendor folder the plug-in isn't in", async () => {
+        const result = await create(
+          `Plug-Ins/VST3/No Such Vendor/${plugin!.name}`,
+          hosted,
+        );
+
+        expect(isToolError(result)).toBe(true);
+        expect(getToolErrorMessage(result)).toContain(
+          `Live lists it at "${pathFor(plugin!, "VST3")}"`,
+        );
+      });
+
+      it("refuses a format the plug-in isn't installed in", async () => {
+        const result = await create(`Plug-Ins/VST/${plugin!.name}`, hosted);
+
+        expect(isToolError(result)).toBe(true);
+        expect(getToolErrorMessage(result)).toMatch(
+          hosted
+            ? /No VST2 plug-in named /
+            : /no plug-in is at that path; Live lists it at /,
+        );
+      });
+    });
+
+    it("refuses a format it doesn't know when hosting", async () => {
+      const result = await create(
+        `Plug-Ins/CLAP/${plugin!.vendors.get("VST3")}/${plugin!.name}`,
+        true,
+      );
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        'Unknown plug-in format "CLAP"',
+      );
+    });
+  },
+);
+
 interface CreateDeviceResult {
   id: string;
   path: string;
+}
+
+interface ListedPlugin {
+  name: string;
+  vendor: string | null;
+  format: string | null;
+}
+
+interface PluginInFormats {
+  name: string;
+  /** Each format it's installed in, with the vendor folder its path needs */
+  vendors: Map<string, string>;
+}
+
+interface Created {
+  id: string;
+  path: string;
+  hosted?: boolean;
+  format?: string;
+  vendor?: string;
 }

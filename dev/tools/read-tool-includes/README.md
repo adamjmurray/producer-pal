@@ -99,8 +99,10 @@ Nested clip results have context-redundant fields removed to save tokens:
 
 - **In `ppal-read-track`**: `type` is stripped from clips in
   `sessionClips`/`arrangementClips`/`takeLanes` (redundant with the parent
-  track's properties and the array name). A take lane clip keeps its `path` — it
-  says where on the lane the clip starts, which the lane's own path doesn't.
+  track's properties and the array name), except `"step-sequencer"` and
+  `"envelope"`, which the track's type doesn't say. A take lane clip keeps its
+  `path` — it says where on the lane the clip starts, which the lane's own path
+  doesn't.
 
 Every clip read leaves out `view`: the `path` already says it (`t0/s3` is a
 session slot, `t0[5|1]` an arrangement position).

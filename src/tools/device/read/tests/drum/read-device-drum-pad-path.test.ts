@@ -25,6 +25,8 @@ const LAYER1_CHAIN = {
   name: "Layer 1",
   color: "#00FF00",
   mappedPitch: "C3",
+  gainDb: 0,
+  pan: 0,
 };
 
 /**
@@ -241,6 +243,8 @@ describe("readOneDevice with drum pad path", () => {
       color: "#FF0000",
       mappedPitch: "C2",
       chokeGroup: 2,
+      gainDb: 0,
+      pan: 0,
       devices: [],
     });
   });
