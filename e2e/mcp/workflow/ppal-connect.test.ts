@@ -381,6 +381,8 @@ describe("ppal-connect", () => {
     // without re-sending the Skills, contexts, memory index or next step.
     const SCRIPT_PREFIX = "remoteScript:";
     const CURRENT_SCRIPT = /^remoteScript: (v\S+ )?running$/;
+    // Only in standard mode, which resetConfig sets.
+    const WRAPPERS_PREFIX = "pluginWrappers:";
 
     /**
      * Call ppal-connect with versionCheck on a fresh connection, optionally
@@ -439,10 +441,13 @@ describe("ppal-connect", () => {
       );
     });
 
-    it("ends with the new-chat line exactly when the remote script is current", async () => {
+    it("ends with the new-chat line exactly when the remote script and wrappers are current", async () => {
       const blocks = texts(await versionCheck(VERSION));
       const script = blocks.find((b) => b.startsWith(SCRIPT_PREFIX));
-      const current = script != null && CURRENT_SCRIPT.test(script);
+      const current =
+        script != null &&
+        CURRENT_SCRIPT.test(script) &&
+        !blocks.some((b) => b.startsWith(WRAPPERS_PREFIX));
 
       expect(blocks.at(-1) === UP_TO_DATE_NEW_CHAT).toBe(current);
     });
