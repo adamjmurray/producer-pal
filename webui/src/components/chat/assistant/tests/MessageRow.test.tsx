@@ -40,9 +40,14 @@ import { MessageRow } from "#webui/components/chat/assistant/MessageRow";
  * Render a single assistant MessageRow whose usage drives the TokenUsageLabel.
  * @param usage - Token usage for the assistant message
  * @param timing - Generation speed for the message's last step
+ * @param earlier - Messages before it in the conversation
  * @returns The rendered container
  */
-function renderAssistant(usage: TokenUsage, timing?: StepTiming) {
+function renderAssistant(
+  usage: TokenUsage,
+  timing?: StepTiming,
+  earlier: UIMessage[] = [],
+) {
   const message: UIMessage = {
     role: "model",
     parts: [{ type: "text", content: "hi" }],
@@ -55,8 +60,8 @@ function renderAssistant(usage: TokenUsage, timing?: StepTiming) {
   return render(
     <MessageRow
       message={message}
-      originalIdx={0}
-      messages={[message]}
+      originalIdx={earlier.length}
+      messages={[...earlier, message]}
       isAssistantResponding={false}
       showTimestamps={false}
       showTokenUsage={true}
@@ -234,6 +239,27 @@ describe("MessageRow token usage label", () => {
     );
 
     expect(container.textContent).toContain("· 42 tok/s · 1.2s to first token");
+  });
+
+  it("counts new tokens from the previous message's final request", () => {
+    const previous: UIMessage = {
+      role: "model",
+      parts: [
+        { type: "step-usage", usage: { inputTokens: 19300, outputTokens: 29 } },
+        { type: "text", content: "connected" },
+      ],
+      rawHistoryIndex: 0,
+      timestamp: 0,
+      usage: { inputTokens: 46200, outputTokens: 200 },
+    };
+
+    const { container } = renderAssistant(
+      { inputTokens: 46500, outputTokens: 157 },
+      undefined,
+      [previous],
+    );
+
+    expect(container.textContent).toContain("tokens: 46.5K (100 new)");
   });
 });
 
