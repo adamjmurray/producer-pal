@@ -44,11 +44,13 @@ export const mockStandardTools = {
     title: "Read Live Set",
     description: "Read comprehensive information about the Live Set",
     inputSchema: z.object({}),
+    enabled: true,
   },
   "ppal-create-clip": {
     title: "Create Clip",
     description: "Creates MIDI clips in Session or Arrangement",
     inputSchema: z.object({}),
+    enabled: true,
   },
 };
 
@@ -57,6 +59,7 @@ export const mockLiveApiTool = {
     title: "Live API",
     description: "Direct access to the Ableton Live Object Model.",
     inputSchema: z.object({}),
+    enabled: true,
   },
 };
 

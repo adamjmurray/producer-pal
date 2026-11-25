@@ -3,14 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  ListToolsRequestSchema,
+  type ListToolsResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
-import { connectClient } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 import {
   buildFallbackTools,
   type FallbackToolsOptions,
+  listRegisteredTools,
 } from "#src/portal/fallback-tools.ts";
+import { trimListedInputSchema } from "#src/tools/shared/schema/listed-input-schema.ts";
 
 // A client that lists tools while Live is unreachable caches the offline list,
 // so it must match what the device lists once it's up.
@@ -30,21 +38,29 @@ interface JsonSchemaObject {
 }
 
 /**
- * List tools through a real MCP client on a server built with these options.
- * @param options - Server options
- * @returns The tools as they came off the wire
+ * List tools through a real MCP client, which validates the result.
+ * @param server - The server to list
+ * @returns The tools as they came off the wire, JSON-encoded and decoded as
+ *   the device's HTTP transport does
  */
-async function deviceTools(
-  options: FallbackToolsOptions,
+async function wireTools(
+  server: Pick<McpServer, "connect">,
 ): Promise<ListToolsResult["tools"]> {
-  const server = createMcpServer(vi.fn(), options);
-  const { client, clientTransport } = await connectClient(server);
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "test", version: "0" });
+
+  await Promise.all([
+    server.connect(serverTransport),
+    client.connect(clientTransport),
+  ]);
+
   const received: unknown[] = [];
   const onmessage = clientTransport.onmessage;
 
   // Keep the raw message: the client's own parse may reshape it.
   clientTransport.onmessage = (message, extra) => {
-    received.push(structuredClone(message));
+    received.push(JSON.parse(JSON.stringify(message)));
     onmessage?.(message, extra);
   };
 
@@ -55,23 +71,13 @@ async function deviceTools(
 }
 
 /**
- * @param tools - Listed tools
- * @returns The fields the fallback list carries, per tool
+ * @param options - Server options
+ * @returns The tools the device lists with these options
  */
-function listed(
-  tools: {
-    name: string;
-    title?: string;
-    description?: string;
-    inputSchema: object;
-  }[],
-): object[] {
-  return tools.map(({ name, title, description, inputSchema }) => ({
-    name,
-    title,
-    description,
-    inputSchema,
-  }));
+async function deviceTools(
+  options: FallbackToolsOptions,
+): Promise<ListToolsResult["tools"]> {
+  return await wireTools(createMcpServer(vi.fn(), options));
 }
 
 describe("buildFallbackTools", () => {
@@ -82,7 +88,27 @@ describe("buildFallbackTools", () => {
       const { tools } = buildFallbackTools(options);
 
       expect(tools.length).toBeGreaterThan(0);
-      expect(listed(tools)).toStrictEqual(listed(device));
+      // Whole entries, so a field the device adds later fails here.
+      expect(tools).toStrictEqual(device);
+      // Key order too: byte-identical to the device's JSON.
+      expect(JSON.stringify(tools)).toBe(JSON.stringify(device));
+    },
+  );
+
+  it.each(VARIANTS)(
+    "passes a real client's validation, served as the bridge serves it (%o)",
+    async (options) => {
+      const server = new McpServer(
+        { name: "portal", version: "0" },
+        { capabilities: { tools: {} } },
+      );
+
+      // As the bridge's tools/list handler does while the device is down.
+      server.server.setRequestHandler(ListToolsRequestSchema, () =>
+        buildFallbackTools(options),
+      );
+
+      expect(await wireTools(server)).toStrictEqual(await deviceTools(options));
     },
   );
 
@@ -119,5 +145,44 @@ describe("buildFallbackTools", () => {
     expect(schema.properties).toHaveProperty("kind");
     expect(schema.required ?? []).not.toContain("action");
     expect(schema.required ?? []).not.toContain("kind");
+  });
+});
+
+describe("listRegisteredTools", () => {
+  it("lists fields no Producer Pal tool uses yet as tools/list does", async () => {
+    const server = new McpServer({ name: "test", version: "0" });
+
+    server.registerTool(
+      "full",
+      {
+        title: "Full",
+        description: "Every optional field",
+        inputSchema: { a: z.string().default("x") },
+        outputSchema: { b: z.number() },
+        annotations: { readOnlyHint: true },
+        _meta: { k: "v" },
+      },
+      () => ({ content: [] }),
+    );
+    server.registerTool("bare", { description: "No params, no title" }, () => ({
+      content: [],
+    }));
+    server
+      .registerTool("off", { description: "Disabled" }, () => ({ content: [] }))
+      .disable();
+
+    const device = await wireTools(server);
+
+    // createMcpServer adds this trim to the device's listing.
+    for (const tool of device) {
+      trimListedInputSchema(tool.inputSchema);
+    }
+
+    expect(device.map((tool) => tool.name)).toStrictEqual(["full", "bare"]);
+    expect(device[0]).toHaveProperty("outputSchema");
+    expect(listRegisteredTools(server)).toStrictEqual(device);
+    expect(JSON.stringify(listRegisteredTools(server))).toBe(
+      JSON.stringify(device),
+    );
   });
 });
