@@ -37,8 +37,10 @@ import {
 } from "../helpers/http/request-profile.ts";
 import {
   isOfferedInMode,
+  registeredInputSchema,
   type ToolDefFunction,
 } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { listedInputSchema } from "#src/tools/shared/schema/listed-input-schema.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import { nodeError } from "../node-for-max-logger.ts";
 
@@ -314,9 +316,8 @@ function toolCatalog(profile: RequestProfile): object[] {
           context,
         ),
         annotations: td.toolOptions.annotations,
-        // What a caller sends, as MCP publishes it: read as parsed output, a
-        // param with a default is listed as required.
-        inputSchema: z.toJSONSchema(z.object(published), { io: "input" }),
+        // Converted exactly as MCP's tools/list, so the listings can't drift.
+        inputSchema: listedInputSchema(registeredInputSchema(published)),
       };
     });
 }
