@@ -30,12 +30,9 @@ vi.mock(import("#webui/chat/sdk/mcp-tools"), async () => {
 type Route = "lmstudio" | "custom" | "ollama";
 type Wire = Array<Record<string, unknown>>;
 
-// LM Studio and custom servers use @ai-sdk/openai-compatible, which reads the
-// model's thinking. Ollama uses @ai-sdk/openai's chat model, which ignores it.
 const USAGE = { inputTokens: 100, outputTokens: 50, reasoningTokens: 42 };
 
-const THINKING_ROUTES: Route[] = ["lmstudio", "custom"];
-const ALL_ROUTES: Route[] = [...THINKING_ROUTES, "ollama"];
+const ALL_ROUTES: Route[] = ["lmstudio", "custom", "ollama"];
 
 const chat = (
   provider: Route,
@@ -65,7 +62,8 @@ afterEach(() => {
   restoreSdkWarnings();
 });
 
-describe.each(THINKING_ROUTES)("%s stream to history", (route) => {
+// Ollama streams its thinking in `reasoning`; LM Studio in `reasoning_content`.
+describe.each(ALL_ROUTES)("%s stream to history", (route) => {
   it.each(["reasoning_content", "reasoning"])(
     "reads thinking from the `%s` field",
     async (field) => {
@@ -100,17 +98,6 @@ describe.each(THINKING_ROUTES)("%s stream to history", (route) => {
 
     expect(within?.reasoning_content).toBe("Need the tracks.");
     expect(later).not.toHaveProperty("reasoning_content");
-  });
-});
-
-describe("ollama stream to history", () => {
-  it("shows no thinking: the chat model ignores the reasoning field", async () => {
-    stubProviderFetch([F.thinkingThenText("reasoning")]);
-
-    const turn = assistantTurns(await say(await chat("ollama"), "Tempo?"))[0];
-
-    expect(turn?.content).toBe("The set runs at 120 BPM.");
-    expect(turn).not.toHaveProperty("reasoning");
   });
 });
 

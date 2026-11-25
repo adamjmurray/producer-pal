@@ -370,7 +370,7 @@ describe("chatAdapter", () => {
       const config = buildForProvider("ollama", "Max", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "high" },
+        ollama: { reasoningEffort: "high" },
       });
     });
 
@@ -378,7 +378,7 @@ describe("chatAdapter", () => {
       const config = buildForProvider("ollama", "Off", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "none" },
+        ollama: { reasoningEffort: "none" },
       });
     });
 
