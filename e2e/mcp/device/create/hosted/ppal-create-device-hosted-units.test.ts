@@ -111,6 +111,47 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
       expectNear(release.number, 2);
     });
 
+    it("says a number with a unit landed elsewhere when it is out of range", async () => {
+      const { path } = await hostOnNewTrack("Serum 2");
+      const result = await call<{ params?: unknown[] }>("ppal-update-device", {
+        path,
+        params: [{ name: "Env 1 Release", value: "999 s" }],
+      });
+
+      expect(result.params).toStrictEqual([
+        {
+          id: expect.stringMatching(/^h\d+$/),
+          name: "Env 1 Release",
+          value: expect.stringMatching(/ m?s$/),
+          detail: "value read back as shown, not as sent",
+        },
+      ]);
+    });
+
+    it("adds no detail when a number with a unit lands as asked", async () => {
+      const { path } = await hostOnNewTrack("Serum 2");
+      const result = await call<{ params?: unknown[] }>("ppal-update-device", {
+        path,
+        params: [
+          { name: "Env 1 Decay", value: "500 ms" },
+          { name: "Env 1 Release", value: "2 s" },
+        ],
+      });
+
+      expect(result.params).toStrictEqual([
+        {
+          id: expect.stringMatching(/^h\d+$/),
+          name: "Env 1 Decay",
+          value: expect.any(String),
+        },
+        {
+          id: expect.stringMatching(/^h\d+$/),
+          name: "Env 1 Release",
+          value: expect.any(String),
+        },
+      ]);
+    });
+
     // The number alone is in range, so this used to write 50 ms without a word.
     it("refuses a unit the param doesn't show, changing nothing", async () => {
       const { path } = await hostOnNewTrack("Serum 2");
