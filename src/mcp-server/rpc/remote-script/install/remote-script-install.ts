@@ -38,10 +38,14 @@ export const REMOTE_SCRIPT_LEFTOVER = new RegExp(
  * Live only scans Remote Scripts at startup, so it needs a restart.
  *
  * @param userLibrary - Path to Live's User Library folder, a leading `~` allowed
+ * @param commit - Commit to record for /ping; "" records none
  * @returns Where the script was written
  * @throws {UserLibraryFolderError} When userLibrary isn't an absolute path to an existing folder
  */
-export function installRemoteScript(userLibrary: string): { path: string } {
+export function installRemoteScript(
+  userLibrary: string,
+  commit: string = BUILD_SHA,
+): { path: string } {
   const path = remoteScriptPath(resolveUserLibraryFolder(userLibrary));
   // Unique names, so a leftover that can't be removed never blocks an install.
   const temp = `${path}.tmp-${randomUUID()}`;
@@ -50,7 +54,7 @@ export function installRemoteScript(userLibrary: string): { path: string } {
   removeLeftovers(path);
 
   try {
-    writeScriptFiles(temp);
+    writeScriptFiles(temp, commit);
     swapInstall(temp, path, backup);
   } catch (error) {
     try {
@@ -178,15 +182,16 @@ function removeLeftovers(path: string): void {
  * Write every embedded file into one folder, plus the commit it came from.
  *
  * @param dir - The folder to write into
+ * @param commit - The commit to record, or "" for none
  */
-function writeScriptFiles(dir: string): void {
+function writeScriptFiles(dir: string, commit: string): void {
   for (const [relative, contents] of Object.entries(
     EMBEDDED_REMOTE_SCRIPT_FILES,
   )) {
     writeLibraryFile(join(dir, relative), contents);
   }
 
-  if (BUILD_SHA !== "") {
-    writeLibraryFile(join(dir, BUILD_COMMIT_FILE), `${BUILD_SHA}\n`);
+  if (commit !== "") {
+    writeLibraryFile(join(dir, BUILD_COMMIT_FILE), `${commit}\n`);
   }
 }
