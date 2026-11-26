@@ -26,6 +26,7 @@ import {
 import { openLiveDb } from "../../live-db.ts";
 import { pathSegment } from "../../reconstruct-path.ts";
 import { pluginFolderFilter } from "./plugin-folder-filter.ts";
+import { distinctPlugins } from "./distinct-plugins.ts";
 import { parsePluginPath } from "./plugin-path.ts";
 import { resolveAuPlugin } from "./resolve-au-plugin.ts";
 import { samePluginName } from "./same-plugin-name.ts";
@@ -181,14 +182,17 @@ function resolveDbPlugin(
   vendor?: string | null,
 ): ResolvedPlugin | null {
   const label = format === "VST" ? "VST2" : format;
-  const named = withVendor(
-    rows.filter(
-      (row) =>
-        deriveFormat(row.dev_identifier) === format &&
-        row.path != null &&
-        samePluginName(row.name, wanted),
+  // A plug-in installed in two folders is one plug-in, not two of one name.
+  const named = distinctPlugins(
+    withVendor(
+      rows.filter(
+        (row) =>
+          deriveFormat(row.dev_identifier) === format &&
+          row.path != null &&
+          samePluginName(row.name, wanted),
+      ),
+      vendor,
     ),
-    vendor,
   );
   const [match] = named;
 
