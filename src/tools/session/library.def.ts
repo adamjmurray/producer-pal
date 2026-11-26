@@ -80,13 +80,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     tags: param(z.coerce.string().optional(), {
       default:
-        "comma-separated tag names; results must match ALL listed tags (search only)",
+        "comma-separated tag names; results must match ALL listed tags (search filter)",
       smallModel: "comma-separated tag names; results must match ALL",
     }),
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; audio is the only kind loadable into clips/Simpler). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries",
+        "content kind filter (search filter; audio is the only kind loadable into clips/Simpler). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -104,7 +104,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     type: param(z.enum(LIBRARY_TYPE_VALUES).optional(), {
       default:
-        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=reverb IRs, including ones other searches hide. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
+        "playback type filter (search filter): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=reverb IRs, including ones other searches hide. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
       smallModel:
         "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
@@ -125,7 +125,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     deviceKind: param(z.enum(LIBRARY_DEVICE_KIND_VALUES).optional(), {
       default:
-        "device classification filter (search + list-plugins; for list-plugins only instrument/audiofx apply). On a search left at kind audio it searches every kind, since no audio file is a device",
+        "device classification filter (search filter + list-plugins; for list-plugins only instrument/audiofx apply). On a search left at kind audio it searches every kind, since no audio file is a device",
       smallModel: null,
     }),
 
@@ -148,14 +148,14 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     source: param(z.enum(LIBRARY_SOURCE_VALUES).optional(), {
       default:
-        "where the file lives (search only). user=your User Library and folders added to Places | pack=installed Packs (factory + 3rd-party) | builtin=what ships with Live (Core Library and its built-in samples) | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
+        "where the file lives (search filter). user=your User Library and folders added to Places | pack=installed Packs (factory + 3rd-party) | builtin=what ships with Live (Core Library and its built-in samples) | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
       smallModel:
         "where the file lives. user | pack | builtin | cloud | plugin | preset-folder (other files in plug-ins' preset folders, hidden in Live's browser)",
     }),
 
     inFolder: param(z.coerce.string().optional(), {
       default:
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII).",
+        "absolute folder path; returns only immediate children of that folder (search filter). Composes with other filters. Case-insensitive (ASCII).",
       smallModel: "absolute folder path; returns immediate children only",
     }),
 
