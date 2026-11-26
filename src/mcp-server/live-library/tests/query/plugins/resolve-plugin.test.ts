@@ -127,6 +127,8 @@ describe("resolvePlugin", () => {
       file: `${DIR}/VST3/Serum2.vst3`,
       shared: true,
       siblings: ["Serum 2 FX"],
+      // The fixture's class id is a stand-in, so there is nothing to hash.
+      ids: [],
     });
   });
 

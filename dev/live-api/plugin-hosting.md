@@ -195,10 +195,16 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   (`siblings`) with the plug-in as its `subname`, which must change what is
   loaded; then `plug <path>` with the file's full path. A load by path reads
   back as the bare file name (`Aalto_x64.dll`, `Pianoteq 9.vst3`) with no
-  `C74_…:/` prefix, and `subname` does nothing after it, so a shared file that
-  only loads by path is refused. `plug_vst` and `plug_vst3` take no path.
-  Checked on Windows with both kinds of scan; on macOS only the file's name has
-  been seen to load.
+  `C74_…:/` prefix, and `subname` does nothing after it. So a shared file is
+  loaded as `plug <path> <id>`, which reads back as `Serum2.vst3 -472297922`; a
+  wrong id loads nothing, and a name in place of the id is ignored. The id is
+  the `plug_id` in Max's `.vst3info`: JUCE's hash (`hash * 31 + byte`, as a
+  signed 32-bit int) of the plug-in's 16-byte class id, which Live's
+  `dev_identifier` ends with. On Windows the bytes are hashed in COM order (the
+  first three fields byte-swapped). The wrapper is given that id and the
+  unswapped one and tries both; the unswapped one is a guess for macOS, untried.
+  `plug_vst` and `plug_vst3` take no path. Checked on Windows with both kinds of
+  scan; on macOS only the file's name has been seen to load.
 - **Coming back after a reload.** On Windows `vst~` doesn't bring the plug-in
   back from the stored state after a Set reload (it does after a duplicate), and
   nowhere can it bring back one loaded by path. So `vstname` also keeps the

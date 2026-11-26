@@ -30,6 +30,7 @@ import { parsePluginPath } from "./plugin-path.ts";
 import { resolveAuPlugin } from "./resolve-au-plugin.ts";
 import { samePluginName } from "./same-plugin-name.ts";
 import { vendorMatches } from "./same-vendor.ts";
+import { vst3PluginIds } from "./vst3-plugin-ids.ts";
 
 export interface ResolvePluginArgs {
   name?: string;
@@ -236,6 +237,8 @@ function resolveDbPlugin(
     file: match.path,
     shared,
     ...(format === "VST3" && siblings.length > 0 && { siblings }),
+    ...(format === "VST3" &&
+      shared && { ids: vst3PluginIds(match.dev_identifier) }),
   };
 }
 

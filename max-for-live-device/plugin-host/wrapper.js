@@ -261,7 +261,9 @@ const FORMATS = {
 // and some plug-ins are in neither (not scanned, or in Live's custom VST
 // folder). So try the file, then the name, then a plug-in sharing the file
 // ("siblings") with the name as its subname, then the file's full "path".
-function load({ format, file, path, sub, name, siblings, synth }) {
+// A load by path ignores subname, so a shared file gets one of its "ids" with
+// the path instead.
+function load({ format, file, path, sub, name, siblings, ids, synth }) {
   if (!file) throw new Error("load needs file");
 
   const kind = FORMATS[format ?? "VST3"];
@@ -270,7 +272,14 @@ function load({ format, file, path, sub, name, siblings, synth }) {
 
   const label = String(name ?? sub ?? file);
   const picked = !!sub && kind === FORMATS.VST3;
-  const tries = loadTries(kind, { file, path, sub: picked && sub, name, siblings });
+  const tries = loadTries(kind, {
+    file,
+    path,
+    sub: picked && sub,
+    name,
+    siblings,
+    ids,
+  });
 
   state.plugin = null;
   state.names = [];
@@ -300,6 +309,7 @@ function load({ format, file, path, sub, name, siblings, synth }) {
     file: used.token,
     path: kind !== FORMATS.AU && path ? String(path) : null,
     sub: used.sub,
+    id: used.id,
   });
   showName(label);
   // A mapping stored before this load was for another plug-in, so there is
@@ -314,8 +324,10 @@ function load({ format, file, path, sub, name, siblings, synth }) {
 // Each try: the message and what it loads, the subname to send after it, and
 // "token", what currentplug then reads after the prefix. A load by path reads
 // as the bare file name ("Serum2.vst3"), which is "leaf". "changed": the
-// subname must move vst~ off the plug-in the first message loaded.
-function loadTries(kind, { file, path, sub, name, siblings }) {
+// subname must move vst~ off the plug-in the first message loaded. "id" goes
+// with the path in place of the subname: `plug <path> <id>` reads back as
+// "<leaf> <id>", and a wrong id loads nothing.
+function loadTries(kind, { file, path, sub, name, siblings, ids }) {
   const message = kind.message;
   const token = String(file);
   const tries = [{ message, target: token, token, sub: sub ? String(sub) : null }];
@@ -335,13 +347,17 @@ function loadTries(kind, { file, path, sub, name, siblings }) {
     });
   }
   if (path) {
-    tries.push({
+    const byPath = {
       message: "plug",
       target: String(path),
       token,
       sub: sub ? String(sub) : null,
       leaf: String(path).replace(/^.*\//, ""),
-    });
+    };
+    const picks = sub ? (ids ?? []) : [];
+
+    for (const id of picks) tries.push({ ...byPath, id: Number(id) });
+    if (picks.length === 0) tries.push(byPath);
   }
 
   return tries;
@@ -350,11 +366,13 @@ function loadTries(kind, { file, path, sub, name, siblings }) {
 function tryLoad(kind, attempt, label, synth) {
   state.info = {};
   outlet(0, "unplug");
-  outlet(0, attempt.message, attempt.target);
+
+  if (attempt.id == null) outlet(0, attempt.message, attempt.target);
+  else outlet(0, attempt.message, attempt.target, attempt.id);
 
   const before = attempt.changed ? info().loaded : null;
 
-  if (attempt.sub) outlet(0, "subname", attempt.sub);
+  if (attempt.sub && attempt.id == null) outlet(0, "subname", attempt.sub);
 
   const result = info();
   const want = { kind, attempt, label, before };
@@ -375,13 +393,15 @@ function loadProblem({ kind, attempt, label, before }, synth, result) {
 
   if (!loaded) return fail(`nothing loaded from "${token}"`);
 
-  const bare = leaf != null && loaded === leaf;
+  // A load by path reads as the bare file name, then the id it was sent with.
+  const withId = attempt.id != null && loaded === `${leaf} ${attempt.id}`;
+  const bare = leaf != null && (loaded === leaf || withId);
 
   if (!bare && !loaded.startsWith(prefix)) {
     return fail(`loaded ${loaded} instead of ${format} "${token}"`);
   }
 
-  const rest = bare ? "" : loaded.slice(prefix.length);
+  const rest = bare ? loaded.slice(leaf.length) : loaded.slice(prefix.length);
 
   if (rest !== "" && !/^ -?\d+$/.test(rest)) {
     return fail(`loaded ${loaded} instead of ${format} "${token}"`);
@@ -642,7 +662,11 @@ function replugStored() {
 
   send(kind.message, stored.get("file"));
   if (loadedPlugin() == null && stored.get("path")) {
-    send("plug", stored.get("path"));
+    const id = stored.get("id");
+
+    // A shared file loaded by path was picked by id, not subname.
+    if (id == null) send("plug", stored.get("path"));
+    else outlet(0, "plug", String(stored.get("path")), Number(id));
   }
 
   return loadedPlugin() != null;
@@ -1541,7 +1565,7 @@ function pluginName() {
 // After a reload, vst~ knows only the file, so the name loaded with it is
 // saved with the Set. The device name can't hold it: it may be renamed.
 // "format", "path" and "sub" are what replugStored() loads it again with.
-function saveName(name, { format, file, path, sub }) {
+function saveName(name, { format, file, path, sub, id }) {
   try {
     const dict = new Dict();
 
@@ -1550,6 +1574,7 @@ function saveName(name, { format, file, path, sub }) {
     dict.set("format", format);
     if (path) dict.set("path", path);
     if (sub) dict.set("sub", sub);
+    if (id != null) dict.set("id", id);
     this.patcher.getnamed("vstname").message("dictionary", dict.name);
   } catch (error) {
     post(`ppal-plugin-host: could not save the plug-in name: ${error}\n`);
@@ -1599,13 +1624,15 @@ function showName(name) {
 // "<prefix><file> <id>", and the id can be missing right after a load. So
 // "Pro-Q 4" with no id reads like file "Pro-Q" with id 4: when the file this
 // device loaded fits either reading, it wins. A plug-in loaded by path reads
-// as its bare file name ("Serum2.vst3").
+// as its bare file name ("Serum2.vst3"), then the id it was picked by, if any.
 function loadedFile() {
   const plug = loadedPlugin();
   const match = /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(plug ?? "");
 
   if (match == null) {
-    return plug == null ? null : plug.replace(/\.(vst3|vst|dll)$/i, "");
+    return plug == null
+      ? null
+      : plug.replace(/\.(vst3|vst|dll)( -?\d+)?$/i, "");
   }
 
   const known = storedNameDict()?.get("file");
