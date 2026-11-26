@@ -60,6 +60,10 @@ envelopes as well.
   `has_envelopes` reads 0 on an empty envelope clip, 1 after a write and 0 after
   `clear_envelope`. Whether envelope clips can exist on regular tracks is not
   verified.
+- **An envelope clip can't be created, only copied** (13.0b28). `create_clip`
+  and `create_audio_clip` throw on a return track's slot. `duplicate_clip_to`
+  from an existing envelope clip into an empty return slot works, on the same
+  return track or another.
 - **A return track can hold an arrangement clip the API can't list** (13.0b25).
   `Track.duplicate_clip_to_arrangement(session_envelope_clip, time)` on a return
   returns a real arrangement clip, and `Track.delete_clip` removes it. But

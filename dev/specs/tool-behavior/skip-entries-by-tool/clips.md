@@ -56,12 +56,12 @@ Part of [Skip entries, tool by tool](README.md).
   notes gathered for that clip before the throw are not carried onto its failure
   entry.
 - **update-clip: a step sequencer clip takes no note work.** A Live 13 step
-  sequencer clip is a MIDI clip whose steps the API can't read or write (its
-  notes calls reach a hidden list and change nothing visible: `add_new_notes`
-  returns ids and a read returns those notes, so a read-back can't catch it, but
-  they never play). `notes`, `preTransforms`, `transforms`,
-  `quantize`/`quantizeGrid`/`quantizePitch`, `duplicateLoop` and `code` are each
-  ignored on it the way an audio clip's are:
+  sequencer clip is a MIDI clip whose steps the API can't read or write (as of
+  13.0b28 its notes calls answer no notes from Max and throw in Python; before
+  13.0b27 a write returned ids and a read returned those notes, so a read-back
+  couldn't catch it, but the steps never changed). `notes`, `preTransforms`,
+  `transforms`, `quantize`/`quantizeGrid`/`quantizePitch`, `duplicateLoop` and
+  `code` are each ignored on it the way an audio clip's are:
   `notes ignored: the clip is a step sequencer` on its entry, a skip when that
   was all the call asked, and nothing written to it. Every transform counts as a
   note transform, so the whole param is ignored, `gain` and `pitchShift` too.
