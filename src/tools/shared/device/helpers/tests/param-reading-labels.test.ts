@@ -85,6 +85,14 @@ describe("parseLabel optional sign and multi-digit tokens", () => {
     expect(parseLabel("inf dB")).toStrictEqual({ value: -70, unit: "dB" });
   });
 
+  it.each([
+    ["+3 dB", 3, "dB"],
+    ["+25 %", 25, "%"],
+    ["+90°", 90, "degrees"],
+  ])("parses a leading plus on '%s'", (label, value, unit) => {
+    expect(parseLabel(label)).toStrictEqual({ value, unit });
+  });
+
   it("parses a note name with a multi-digit octave", () => {
     // The octave is `\d+`, not a single digit.
     expect(parseLabel("C10")).toStrictEqual({ value: "C10", unit: "note" });

@@ -184,12 +184,20 @@ export function liveVersionAtLeast(
   min: string,
   options?: { release?: boolean },
 ): boolean {
-  // Live can't change version mid-request, and a request may ask per clip.
-  const version = requestMemo("live-version", () =>
-    String(LiveAPI.from("live_app").call("get_version_string")),
-  );
+  const version = liveVersionString();
 
   return options?.release === true
     ? isLiveVersionAtLeast(version, min)
     : !isNewerVersion(version, min);
+}
+
+/**
+ * The running Live's version, as Live spells it ("12.4.16", "13.0b1").
+ * @returns The version string
+ */
+export function liveVersionString(): string {
+  // Live can't change version mid-request, and a request may ask per clip.
+  return requestMemo("live-version", () =>
+    String(LiveAPI.from("live_app").call("get_version_string")),
+  );
 }

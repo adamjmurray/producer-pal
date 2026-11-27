@@ -25,10 +25,13 @@ import {
 } from "../../list-plugins.ts";
 import { openLiveDb } from "../../live-db.ts";
 import { pathSegment } from "../../reconstruct-path.ts";
+import { pluginFolderFilter } from "./plugin-folder-filter.ts";
+import { distinctPlugins } from "./distinct-plugins.ts";
 import { parsePluginPath } from "./plugin-path.ts";
 import { resolveAuPlugin } from "./resolve-au-plugin.ts";
 import { samePluginName } from "./same-plugin-name.ts";
 import { vendorMatches } from "./same-vendor.ts";
+import { vst3PluginIds } from "./vst3-plugin-ids.ts";
 
 export interface ResolvePluginArgs {
   name?: string;
@@ -145,7 +148,7 @@ async function readPluginRows(): Promise<{
         .prepare(
           `SELECT p.name, p.vendor, p.dev_identifier, m.path
            FROM plugins p JOIN plugin_modules m ON m.module_id = p.module_id
-           WHERE p.enabled = 1`,
+           WHERE p.enabled = 1 ${pluginFolderFilter(db, "p")}`,
         )
         .all() as unknown as PluginModuleRow[];
 
@@ -179,14 +182,17 @@ function resolveDbPlugin(
   vendor?: string | null,
 ): ResolvedPlugin | null {
   const label = format === "VST" ? "VST2" : format;
-  const named = withVendor(
-    rows.filter(
-      (row) =>
-        deriveFormat(row.dev_identifier) === format &&
-        row.path != null &&
-        samePluginName(row.name, wanted),
+  // A plug-in installed in two folders is one plug-in, not two of one name.
+  const named = distinctPlugins(
+    withVendor(
+      rows.filter(
+        (row) =>
+          deriveFormat(row.dev_identifier) === format &&
+          row.path != null &&
+          samePluginName(row.name, wanted),
+      ),
+      vendor,
     ),
-    vendor,
   );
   const [match] = named;
 
@@ -235,6 +241,8 @@ function resolveDbPlugin(
     file: match.path,
     shared,
     ...(format === "VST3" && siblings.length > 0 && { siblings }),
+    ...(format === "VST3" &&
+      shared && { ids: vst3PluginIds(match.dev_identifier) }),
   };
 }
 

@@ -121,9 +121,13 @@ function answerNode(
 /**
  * Answer as a wrapper that loads its plug-in, or doesn't.
  * @param load - What it says to the load
+ * @param display - What each param written shows
  * @returns The requests it heard
  */
-function wrapperLoads(load?: WrapperMessage): WrapperMessage[] {
+function wrapperLoads(
+  load?: WrapperMessage,
+  display = "1000",
+): WrapperMessage[] {
   return installWrapper({
     info: () => infoReply("Serum 2 FX"),
     load: () => load ?? { success: true, plugin: "Serum 2 FX" },
@@ -135,7 +139,7 @@ function wrapperLoads(load?: WrapperMessage): WrapperMessage[] {
         index: 206 + i,
         name: `Param ${i}`,
         value: 0.5,
-        display: "1000",
+        display,
       })),
     }),
   });
@@ -384,6 +388,26 @@ describe("createDevice hosted", () => {
       lookupSet("loaded-1"),
       "the user's name goes on after the plug-in loads",
     ).toHaveBeenLastCalledWith("name", "My Fx");
+  });
+
+  it("says a param sent with a unit landed on another number", async () => {
+    wrapperLoads(undefined, "20000 Hz");
+
+    const result = (await createDevice({
+      device: "Serum 2 FX",
+      hosted: true,
+      path: "t0/d+",
+      params: [{ name: "Filter 1 Freq", value: "99999 Hz" }],
+    })) as { params?: unknown[] };
+
+    expect(result.params).toStrictEqual([
+      {
+        id: "h206",
+        name: "Param 0",
+        value: "20000 Hz",
+        detail: "value read back as shown, not as sent",
+      },
+    ]);
   });
 
   it("says its params may have landed when the plug-in never answers them", async () => {

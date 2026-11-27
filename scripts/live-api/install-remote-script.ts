@@ -32,6 +32,7 @@
 
 import { installRemoteScript } from "#src/mcp-server/rpc/remote-script/install/remote-script-install.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { checkoutCommit } from "./checkout-commit.ts";
 import { resolveInstallLibraryOrExit } from "./install/helpers/install-library.ts";
 import { addReloadRoute } from "./hot-reload/add-reload-route.ts";
 import {
@@ -54,7 +55,10 @@ const userLibrary = await resolveInstallLibraryOrExit();
 let installedPath: string;
 
 try {
-  const { path } = installRemoteScript(userLibrary.path);
+  const { path } = installRemoteScript(
+    userLibrary.path,
+    checkoutCommit("remote-script/Producer_Pal"),
+  );
 
   installedPath = path;
   console.log(`Installed to ${path}`);

@@ -403,6 +403,11 @@ export interface ResolvedPlugin {
   shared: boolean;
   /** The other VST3 plug-ins in the same bundle, when there are any. */
   siblings?: string[];
+  /**
+   * For a VST3 in a shared bundle: the ids Max may know it by, to pick it when
+   * the bundle only loads by path.
+   */
+  ids?: number[];
 }
 
 export interface ListPluginsResult {

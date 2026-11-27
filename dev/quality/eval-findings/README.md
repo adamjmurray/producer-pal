@@ -198,3 +198,17 @@ failures, and neither the output cap nor prompt size explained it. By 2 November
 it was gone, cause unknown (an LM Studio or template update, or our tool
 changes). If it comes back, the `reasoningText` and `finishReason` saved in the
 results are where to look.
+
+## Ollama turns a model's broken tool call into an empty turn
+
+When a local model writes a tool call Ollama can't parse (cut off mid-JSON, or
+garbled), Ollama reports no error. It answers HTTP 200 with no text and no tool
+call, as if the model had said nothing. The parse failure shows only in Ollama's
+server log.
+
+So in eval results the turn looks like the model went silent, and the result
+file has no error to find. Before blaming the model for an empty turn, check the
+server log for a dropped tool call.
+
+Probed on Ollama 0.40.16 with gemma4, lfm2.5, mistral-small3.2 and qwen3.8. LM
+Studio was not tested.

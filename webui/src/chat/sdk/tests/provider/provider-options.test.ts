@@ -144,10 +144,10 @@ describe("buildProviderOptions for Ollama", () => {
 
   it("sends high at Max and none at Off", () => {
     expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toStrictEqual({
-      openai: { reasoningEffort: "high" },
+      ollama: { reasoningEffort: "high" },
     });
     expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
-      openai: { reasoningEffort: "none" },
+      ollama: { reasoningEffort: "none" },
     });
   });
 });

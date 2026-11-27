@@ -49,6 +49,27 @@ describe("ppal-update-device param units", () => {
       ]);
     });
 
+    // Models write a boost with a plus, and "+3 dB" used to be refused. Not
+    // Glue's dB output param: it's "Makeup" on Live 12.3 and "Output" later.
+    it("takes a leading plus", async () => {
+      const deviceId = await createGlueCompressor(ctx.client!);
+      const percent = await writeParam(
+        ctx.client!,
+        deviceId,
+        "Dry/Wet",
+        "+50 %",
+      );
+      const db = await writeParam(ctx.client!, deviceId, "Threshold", "+0 dB");
+
+      expect([...percent.warnings, ...db.warnings]).toStrictEqual([]);
+      expect(percent.data.params).toStrictEqual([
+        { id: expect.any(String), name: "Dry/Wet", value: 50 },
+      ]);
+      expect(db.data.params).toStrictEqual([
+        { id: expect.any(String), name: "Threshold", value: 0 },
+      ]);
+    });
+
     it("refuses a value in a unit the param doesn't use", async () => {
       const deviceId = await createGlueCompressor(ctx.client!);
       // Dry/Wet is a percentage. The number alone is in range, so before the

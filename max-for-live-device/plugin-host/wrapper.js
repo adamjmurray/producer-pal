@@ -450,7 +450,9 @@ const FORMATS = {
 // and some plug-ins are in neither (not scanned, or in Live's custom VST
 // folder). So try the file, then the name, then a plug-in sharing the file
 // ("siblings") with the name as its subname, then the file's full "path".
-function load({ format, file, path, sub, name, siblings, synth }) {
+// A load by path ignores subname, so a shared file gets one of its "ids" with
+// the path instead.
+function load({ format, file, path, sub, name, siblings, ids, synth }) {
   if (!file) throw new Error("load needs file");
 
   const kind = FORMATS[format ?? "VST3"];
@@ -459,7 +461,14 @@ function load({ format, file, path, sub, name, siblings, synth }) {
 
   const label = String(name ?? sub ?? file);
   const picked = !!sub && kind === FORMATS.VST3;
-  const tries = loadTries(kind, { file, path, sub: picked && sub, name, siblings });
+  const tries = loadTries(kind, {
+    file,
+    path,
+    sub: picked && sub,
+    name,
+    siblings,
+    ids,
+  });
 
   state.plugin = null;
   state.names = [];
@@ -489,6 +498,7 @@ function load({ format, file, path, sub, name, siblings, synth }) {
     file: used.token,
     path: kind !== FORMATS.AU && path ? String(path) : null,
     sub: used.sub,
+    id: used.id,
   });
   showName(label);
   // A mapping stored before this load was for another plug-in, so there is
@@ -503,8 +513,10 @@ function load({ format, file, path, sub, name, siblings, synth }) {
 // Each try: the message and what it loads, the subname to send after it, and
 // "token", what currentplug then reads after the prefix. A load by path reads
 // as the bare file name ("Serum2.vst3"), which is "leaf". "changed": the
-// subname must move vst~ off the plug-in the first message loaded.
-function loadTries(kind, { file, path, sub, name, siblings }) {
+// subname must move vst~ off the plug-in the first message loaded. "id" goes
+// with the path in place of the subname: `plug <path> <id>` reads back as
+// "<leaf> <id>", and a wrong id loads nothing.
+function loadTries(kind, { file, path, sub, name, siblings, ids }) {
   const message = kind.message;
   const token = String(file);
   const tries = [{ message, target: token, token, sub: sub ? String(sub) : null }];
@@ -524,13 +536,17 @@ function loadTries(kind, { file, path, sub, name, siblings }) {
     });
   }
   if (path) {
-    tries.push({
+    const byPath = {
       message: "plug",
       target: String(path),
       token,
       sub: sub ? String(sub) : null,
       leaf: String(path).replace(/^.*\//, ""),
-    });
+    };
+    const picks = sub ? (ids ?? []) : [];
+
+    for (const id of picks) tries.push({ ...byPath, id: Number(id) });
+    if (picks.length === 0) tries.push(byPath);
   }
 
   return tries;
@@ -539,11 +555,13 @@ function loadTries(kind, { file, path, sub, name, siblings }) {
 function tryLoad(kind, attempt, label, synth) {
   state.info = {};
   outlet(0, "unplug");
-  outlet(0, attempt.message, attempt.target);
+
+  if (attempt.id == null) outlet(0, attempt.message, attempt.target);
+  else outlet(0, attempt.message, attempt.target, attempt.id);
 
   const before = attempt.changed ? info().loaded : null;
 
-  if (attempt.sub) outlet(0, "subname", attempt.sub);
+  if (attempt.sub && attempt.id == null) outlet(0, "subname", attempt.sub);
 
   const result = info();
   const want = { kind, attempt, label, before };
@@ -564,13 +582,15 @@ function loadProblem({ kind, attempt, label, before }, synth, result) {
 
   if (!loaded) return fail(`nothing loaded from "${token}"`);
 
-  const bare = leaf != null && loaded === leaf;
+  // A load by path reads as the bare file name, then the id it was sent with.
+  const withId = attempt.id != null && loaded === `${leaf} ${attempt.id}`;
+  const bare = leaf != null && (loaded === leaf || withId);
 
   if (!bare && !loaded.startsWith(prefix)) {
     return fail(`loaded ${loaded} instead of ${format} "${token}"`);
   }
 
-  const rest = bare ? "" : loaded.slice(prefix.length);
+  const rest = bare ? loaded.slice(leaf.length) : loaded.slice(prefix.length);
 
   if (rest !== "" && !/^ -?\d+$/.test(rest)) {
     return fail(`loaded ${loaded} instead of ${format} "${token}"`);
@@ -782,7 +802,9 @@ function adoptStored() {
   // Don't push the dials into the plug-in here: a dial is synced only when
   // mapped, so its saved value can be older than the restored state.
   showName(pluginName());
+  // Fill the knobs now: until then the panel shows the patch's blank defaults.
   if (BAKED) adoptBaked();
+  else readSlots();
 }
 
 // Spike: a fresh generated device loads its plug-in and sets every dial to its
@@ -860,7 +882,11 @@ function replugStored() {
 
   send(kind.message, stored.get("file"));
   if (loadedPlugin() == null && stored.get("path")) {
-    send("plug", stored.get("path"));
+    const id = stored.get("id");
+
+    // A shared file loaded by path was picked by id, not subname.
+    if (id == null) send("plug", stored.get("path"));
+    else outlet(0, "plug", String(stored.get("path")), Number(id));
   }
 
   return loadedPlugin() != null;
@@ -1339,14 +1365,33 @@ function saveSlots(map) {
 // to Hidden, which Live neither automates nor gives undo steps. A knob shows its
 // param as the plug-in reports it (vst~'s echo), whatever moved it. Turning one
 // moves its slot's dial, which drives the plug-in and is what Live automates.
-// An unmapped slot's knob is inactive and reads 0.
+// An unmapped slot's knob is inactive, ignores the mouse and reads 0.
 const KNOB_COUNT = 16;
 // Echoes trail a drag by up to one speedlim interval; showing them would pull
 // the knob back under the mouse.
 const DRAG_HOLD_MS = 150;
-const NAME_CHARS = 11; // one line in a knob's cell
 // The page menu's pages: {name, first, count}, `count` slots from slot `first`.
 const PAGES = BAKED?.pages ?? slotPages();
+// A name gets one line in a knob's cell. Max doesn't clip a second: it draws
+// it over the knob or the row below. So a longer name is cut, which takes
+// knowing how Max wraps it: from these widths (Ableton Sans Medium, ASCII 32-126, in
+// hundredths of an em) at the label's font size.
+const CHAR_EM = [
+  23, 31, 46, 59, 59, 84, 72, 25, 40, 40, 45, 59, 31, 41, 30, 47, 59, 59, 59,
+  59, 59, 59, 59, 59, 59, 59, 30, 32, 60, 59, 59, 48, 92, 65, 61, 68, 68, 57,
+  55, 71, 70, 28, 54, 64, 50, 85, 72, 73, 60, 73, 64, 57, 59, 69, 65, 97, 63,
+  61, 60, 38, 47, 37, 59, 60, 60, 53, 58, 52, 57, 53, 38, 56, 56, 24, 24, 51,
+  24, 81, 56, 55, 58, 58, 40, 45, 40, 55, 50, 72, 48, 49, 46, 44, 40, 40, 60,
+];
+const NAME_FONT_PT = 9;
+// A knob cell's width (CELL_WIDTH in plugin-host-panel.ts) less the label's
+// 8 pt of padding, and 1 pt more because the widths leave out kerning.
+const NAME_LINE_PT = 55;
+// A knob's Info View text. Unmapped, it is KNOB_HELP in plugin-host-panel.ts.
+// Mapped, it gives the param's whole name, since the one under the knob may be
+// cut.
+const KNOB_HELP = "Shows and sets the plug-in parameter this slot automates.";
+const UNMAPPED_HELP = `${KNOB_HELP} Inactive until Producer Pal assigns a parameter to the slot.`;
 let knobPage = 0;
 let knobsShown = null; // the page and mapping the knobs last showed
 const turnedAt = {}; // knob -> when the user last turned it
@@ -1421,13 +1466,73 @@ function showKnobs(map) {
     knobIndex[i] = entry ? Number(entry.index) : undefined;
     setKnob(i, value);
     knobBox?.message("active", entry ? 1 : 0);
+    // "active 0" only greys a knob out: it still turns, and sends nothing, so
+    // it can't be turned back. With the mouse ignored, the box behind the knob
+    // gets the hover, and shows the same Info View text.
+    knobBox?.message("ignoreclick", entry ? 0 : 1);
+
+    const help = entry
+      ? `${KNOB_HELP}\n\nMapped to: ${entry.name}`
+      : UNMAPPED_HELP;
+
+    knobBox?.message("annotation", help);
+    this.patcher.getnamed(`knobhelp${i}`)?.message("annotation", help);
   }
 }
 
 function short(text) {
   const name = String(text ?? "");
 
-  return name.length > NAME_CHARS ? `${name.slice(0, NAME_CHARS - 1)}…` : name;
+  if (nameLines(name) <= 1) return name;
+
+  for (let end = name.length - 1; end > 0; end--) {
+    const cut = `${name.slice(0, end).trimEnd()}…`;
+
+    if (nameLines(cut) <= 1) return cut;
+  }
+
+  return "…";
+}
+
+// How many lines Max wraps a name into. It breaks at spaces only, and a word
+// wider than a line wherever the line fills.
+function nameLines(name) {
+  let lines = 1;
+  let used = 0;
+
+  for (const word of name.split(" ")) {
+    const space = used > 0 ? textWidth(" ") : 0;
+
+    if (used + space + textWidth(word) <= NAME_LINE_PT) {
+      used += space + textWidth(word);
+      continue;
+    }
+
+    if (used > 0) {
+      lines++;
+      used = 0;
+    }
+
+    for (const char of word) {
+      if (used + textWidth(char) > NAME_LINE_PT) {
+        lines++;
+        used = 0;
+      }
+
+      used += textWidth(char);
+    }
+  }
+
+  return lines;
+}
+
+// Anything outside the table counts as a full em, wider than nearly all of it.
+function textWidth(text) {
+  let em = 0;
+
+  for (const char of text) em += CHAR_EM[char.charCodeAt(0) - 32] ?? 100;
+
+  return (em * NAME_FONT_PT) / 100;
 }
 
 // What a slot's knob shows: the param as the plug-in reports it, or the slot's
@@ -1620,6 +1725,10 @@ function searchValue(index, { text, number, bare }, before) {
   if (hit) return { value: hit.value };
   if (number == null) return { error: noMatch(samples, text) };
 
+  const unitError = bare ? null : wrongUnit(samples, text);
+
+  if (unitError) return { error: unitError };
+
   // The unit the param showed before the search, not at the sample it lands on.
   const scale = bare ? bareScale(String(before ?? "")) : 1;
   const found = bisect(index, samples, Number(number) * scale);
@@ -1667,6 +1776,42 @@ function unitScale(unit) {
 // written "3 kHz" or "0.8 s" the same way (param-label-parsing.ts).
 function bareScale(display) {
   return unitScale(splitDisplay(display)?.unit ?? "");
+}
+
+// Units that are one kind once scaled; any other unit counts as unknown.
+const UNIT_KINDS = [
+  ["Hz", /^k?hz$/i],
+  ["ms", /^m?s$/i],
+  ["dB", /^db$/i],
+  ["%", /^(%|percent)$/i],
+  ["st", /^(st|semis?|semitones?)$/i],
+  ["ct", /^(ct|cents?)$/i],
+  ["deg", /^(°|deg|degrees?)$/i],
+];
+
+function unitKind(unit) {
+  return UNIT_KINDS.find(([, pattern]) => pattern.test(unit))?.[0] ?? null;
+}
+
+// A number written in one unit on a param that shows only another, say
+// "500 ms" on "20 Hz" to "20 kHz": say what it shows. Null when the units
+// agree, or either one is unknown.
+function wrongUnit(samples, text) {
+  const asked = splitDisplay(String(text ?? ""))?.unit ?? "";
+  const kind = unitKind(asked);
+  const shown = [];
+
+  for (const { display } of samples) {
+    const unit = splitDisplay(display)?.unit;
+
+    if (unit == null) continue;
+    if (unitKind(unit) == null || unitKind(unit) === kind) return null;
+    if (!shown.includes(unit)) shown.push(unit);
+  }
+
+  if (kind == null || shown.length === 0) return null;
+
+  return `wrong unit: the param shows ${shown.join("/")}, not ${asked}`;
 }
 
 function bisect(index, samples, target) {
@@ -1776,7 +1921,7 @@ function pluginName() {
 // After a reload, vst~ knows only the file, so the name loaded with it is
 // saved with the Set. The device name can't hold it: it may be renamed.
 // "format", "path" and "sub" are what replugStored() loads it again with.
-function saveName(name, { format, file, path, sub }) {
+function saveName(name, { format, file, path, sub, id }) {
   try {
     const dict = new Dict();
 
@@ -1785,6 +1930,7 @@ function saveName(name, { format, file, path, sub }) {
     dict.set("format", format);
     if (path) dict.set("path", path);
     if (sub) dict.set("sub", sub);
+    if (id != null) dict.set("id", id);
     this.patcher.getnamed("vstname").message("dictionary", dict.name);
   } catch (error) {
     post(`ppal-plugin-host: could not save the plug-in name: ${error}\n`);
@@ -1834,13 +1980,15 @@ function showName(name) {
 // "<prefix><file> <id>", and the id can be missing right after a load. So
 // "Pro-Q 4" with no id reads like file "Pro-Q" with id 4: when the file this
 // device loaded fits either reading, it wins. A plug-in loaded by path reads
-// as its bare file name ("Serum2.vst3").
+// as its bare file name ("Serum2.vst3"), then the id it was picked by, if any.
 function loadedFile() {
   const plug = loadedPlugin();
   const match = /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(plug ?? "");
 
   if (match == null) {
-    return plug == null ? null : plug.replace(/\.(vst3|vst|dll)$/i, "");
+    return plug == null
+      ? null
+      : plug.replace(/\.(vst3|vst|dll)( -?\d+)?$/i, "");
   }
 
   const known = storedNameDict()?.get("file");

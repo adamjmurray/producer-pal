@@ -176,6 +176,26 @@ export function clearArrangementRange(
 }
 
 /**
+ * Cut a main-lane clip in two at a position inside it. The head keeps the
+ * clip's id; the rest becomes a new clip starting there.
+ * @param track - LiveAPI track instance
+ * @param clip - The clip to cut, with the position strictly inside it
+ * @param position - Where to cut (beats)
+ * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
+ */
+export function cutArrangementClipAt(
+  track: LiveAPI,
+  clip: ClipSpan,
+  position: number,
+  isMidiClip: boolean,
+  context: ScratchClipContext,
+): void {
+  // Clearing an empty range keeps both sides: exactly a cut.
+  clearOverlappingClip(track, clip, position, position, isMidiClip, context);
+}
+
+/**
  * Moves a clip from the holding area to a target position.
  * Duplicates the holding clip to the target, then cleans up the holding clip.
  *

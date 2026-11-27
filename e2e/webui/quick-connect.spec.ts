@@ -95,6 +95,9 @@ for (const config of TEST_CONFIGS) {
             settings.provider,
           );
           localStorage.setItem("producer_pal_settings_configured", "true");
+          // The first visit opened Settings and saved that; without this the
+          // reload reopens it over the Quick Connect button.
+          localStorage.removeItem("producer_pal_view_state");
           localStorage.setItem(
             `producer_pal_provider_${settings.provider}`,
             JSON.stringify({

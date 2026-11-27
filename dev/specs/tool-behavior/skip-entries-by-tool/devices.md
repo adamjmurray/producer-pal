@@ -20,10 +20,11 @@ Part of [Skip entries, tool by tool](README.md).
   reaches or passes the target or stops moving. An odd count is rounded up to
   the next even one (`macroCount rounded from 3 to 4 (macros come in pairs)`),
   except 1, which lands on 1 with nothing to report. The entry says where it
-  landed (`macroCount landed at 14, not 16`); a throw after the count moved is
-  the same entry with `Live said: <error>` added. A count above the rack's own
-  macro total (the highest "Macro N" among its params) is refused with that
-  limit.
+  landed (`macroCount landed at 14, not 16`), and when one step jumped past the
+  target it names that step, read off the rack
+  (`: Live goes from 32 straight to 14`); a throw after the count moved is the
+  same entry with `Live said: <error>` added. A count above the rack's own macro
+  total (the highest "Macro N" among its params) is refused with that limit.
 - **update-device's skip can name a chain a pad move re-numbered.** A drum chain
   move changes which chain `pD1/c0` names, so a skipped chain's entry adds
   `that chain is now <path> (id N)`; see
@@ -57,16 +58,22 @@ Part of [Skip entries, tool by tool](README.md).
   write starts (3 is 3 kHz on a param reading `2.50 kHz`, 0.8 is 0.8 s on
   `0.50 s`); a number with a unit (`3000 Hz`, `800 ms`) is as written. Entries
   answer as any param's do: `{ id, name }` for a bare number that displays as
-  asked, otherwise the display text as `value` (with a `detail` when a bare
-  number landed elsewhere, such as a clamp), and always the text when text was
-  sent. `ok: false` says why: a Live param id (not an `h` id) is refused unsent;
-  no such param (`not found on <target>`); a name more than one param has lists
-  the ids and asks for an `id`; no value displays as asked (`not set:` plus what
-  it does show), and the param is left as it was. Two entries reaching one
-  param, by name and by id, write the last. A wrapper that doesn't answer may
-  have written: the entries say `may have changed` and the hosted devices after
-  it say they weren't tried. A list too big for one request (a few hundred
-  entries; Max cuts a message near 30 KB) is refused unsent, each entry
+  asked, otherwise the display text as `value`, and always the text when text or
+  a number with a unit was sent. A number, bare or with a unit, that doesn't
+  show as that number also gets a `detail` (a clamp). A number with a unit is
+  compared in its unit family (`3000 Hz` on `3.00 kHz`, `800 ms` on `0.80 s`)
+  and to within half the display's last digit; one that can't be compared (an
+  unknown unit, another family, a display with no number) gets none. `ok: false`
+  says why: a Live param id (not an `h` id) is refused unsent; no such param
+  (`not found on <target>`); a name more than one param has lists the ids and
+  asks for an `id`; no value displays as asked (`not set:` plus what it does
+  show), or a number has a unit the param doesn't show (`800 ms` on a Hz param:
+  `not set: wrong unit: the param shows Hz/kHz, not ms`), and the param is left
+  as it was. Two entries reaching one param, by name and by id, write the last.
+  A wrapper that doesn't answer may have written: the entries say
+  `may have changed` and the hosted devices after it say they weren't tried. A
+  list too big for one request (a few hundred entries; Max cuts a message near
+  30 KB) is refused unsent, each entry
   `not set: too large for one call; split the params across calls`: nothing
   changed, so it never says `may have changed` and the devices after it are not
   stopped by it. create-device's `params` follow the same rule, however the

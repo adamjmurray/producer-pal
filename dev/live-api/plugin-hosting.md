@@ -72,8 +72,8 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 
 `plugin-host-panel.ts` builds it; neither `vst~` nor the slot dials are in it.
 
-- **Layout**: 376 px wide. The top row is the Open button at the left, the name
-  row, and the tabs at the right; below it, 2 rows of 8 knob cells, each 46 px
+- **Layout**: 456 px wide. The top row is the Open button at the left, the name
+  row, and the tabs at the right; below it, 2 rows of 8 knob cells, each 56 px
   wide.
 - **Open** (`openeditor`, a `live.text` button reading "Open Plug-in", with
   `parameter_enable` 0, so no automation and no undo step; it must stay in
@@ -93,15 +93,36 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 - **Info View**: every control carries a title and text for Live's Info View:
   `annotation_name` and `annotation` on the box, and for the parameter-enabled
   tabs and knobs also `parameter_annotation_name` and `parameter_info` in the
-  saved `valueof` block (Max writes both). The text is static.
+  saved `valueof` block (Max writes both). The text is static, except a knob's:
+  mapped, the wrapper sets its `annotation` to the first sentence plus a "Mapped
+  to: <param>" paragraph, since the name under the knob may be cut; unmapped, it
+  puts the full text back.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
   by the tabs. Each has a `knoblabel` ("Slot 003") and a `knobname` (the mapped
-  param, cut to about two lines, or "—"). A knob for an unmapped slot is
-  inactive (`active 0`) and reads 0.
+  param, or "—"). A knob for an unmapped slot is greyed out (`active 0`), can't
+  be turned (`ignoreclick 1`) and reads 0.
+  - `active 0` alone leaves the knob turnable, and an inactive dial sends
+    nothing, so it can't be turned back either. `ignoreclick 1` also hides the
+    knob from the hover, so each cell has an invisible `ubutton` (`knobhelp<n>`)
+    behind it with the same Info View text. It gets the hover over an unmapped
+    knob and over the labels. A transparent `panel` shows no Info View text.
+  - A name gets two lines. `live.comment` doesn't clip, so a third line would
+    draw over the row below. It wraps at spaces only, and breaks a word wider
+    than a line wherever the line fills. The wrapper works out the wrapping from
+    a table of the font's character widths and cuts a longer name, ending it in
+    "…".
   - Knobs and tabs are Live parameters set to Hidden (`parameter_invisible` 2):
     Live neither stores nor automates them, they add no undo steps, and Live's
     parameter list stays Device On plus the slots. Without parameter mode,
     `live.tab` shows no tabs and `live.dial` ignores its range.
+  - **When the panel is filled**: every time Live builds the device (Set load,
+    track or device duplicate, the `.amxd` replaced under an open Set) the boxes
+    start at the patch's defaults: "—" under greyed knobs, "No plug-in loaded".
+    The wrapper fills the name row and the knobs once the Set's restore has run,
+    1.5 s after it starts, so the panel is blank for that long. After that the
+    knobs are redrawn when the page or the mapping changes: on a tab press, a
+    `map` or `unmap`, and the 2 s poll. A replaced `.amxd` is only reloaded when
+    Live next becomes the front app; the old wrapper keeps running until then.
   - A knob shows `vst~`'s echo for its slot's param, so it follows automation,
     Producer Pal and the plug-in window alike. Echoes are ignored for 150 ms
     after a turn, so they don't pull the knob back mid-drag.
@@ -195,10 +216,17 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   (`siblings`) with the plug-in as its `subname`, which must change what is
   loaded; then `plug <path>` with the file's full path. A load by path reads
   back as the bare file name (`Aalto_x64.dll`, `Pianoteq 9.vst3`) with no
-  `C74_…:/` prefix, and `subname` does nothing after it, so a shared file that
-  only loads by path is refused. `plug_vst` and `plug_vst3` take no path.
-  Checked on Windows with both kinds of scan; on macOS only the file's name has
-  been seen to load.
+  `C74_…:/` prefix, and `subname` does nothing after it. So a shared file is
+  loaded as `plug <path> <id>`, which reads back as `Serum2.vst3 -472297922`; a
+  wrong id loads nothing, and a name in place of the id is ignored. The id is
+  the `plug_id` in Max's `.vst3info`: JUCE's hash (`hash * 31 + byte`, as a
+  signed 32-bit int) of the plug-in's 16-byte class id, which Live's
+  `dev_identifier` ends with. Each byte counts as signed, so 0x80 and up are
+  negative. Windows hashes the bytes in COM order (the first three fields
+  byte-swapped) and macOS as written; the wrapper is given both ids and tries
+  both. `plug_vst` and `plug_vst3` take no path. Checked on Windows with both
+  kinds of scan, though only with a class id of bytes below 0x80 (Serum 2); on
+  macOS with one that has bytes above it (Repro-5).
 - **Coming back after a reload.** On Windows `vst~` doesn't bring the plug-in
   back from the stored state after a Set reload (it does after a duplicate), and
   nowhere can it bring back one loaded by path. So `vstname` also keeps the
@@ -245,11 +273,13 @@ between the two samples that bracket it, comparing the leading number of the
 text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. `number` is
 already in Hz or ms; with `bare` (the text had no unit) it is in the unit the
 param showed before the search, so the wrapper scales it by that (1000 for kHz
-or s) and answers with the `scale` it used. If nothing matches, it puts the
-param back and says what the param does show. One request covers a whole
-`params` list. It resolves names exactly, then ignoring case and padding; a name
-that matches more than one param is refused; two entries reaching one param
-write the last.
+or s) and answers with the `scale` it used. A number whose unit is a different
+kind from every unit the param shows (`ms` on Hz, `%` on dB) is refused, naming
+the units it shows; an unknown unit on either side isn't compared. If nothing
+matches, it puts the param back and says what the param does show. One request
+covers a whole `params` list. It resolves names exactly, then ignoring case and
+padding; a name that matches more than one param is refused; two entries
+reaching one param write the last.
 
 ### Naming the plug-in
 

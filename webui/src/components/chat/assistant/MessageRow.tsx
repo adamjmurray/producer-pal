@@ -395,7 +395,8 @@ function getPrevModelUsage(
       continue;
     }
 
-    return getLastStepUsage(msg) ?? msg.usage;
+    // msg.usage is the final request; step-usage parts are the earlier ones.
+    return msg.usage ?? getLastStepUsage(msg);
   }
 
   return undefined;

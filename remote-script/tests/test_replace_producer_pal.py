@@ -183,14 +183,23 @@ class ReplaceProducerPalTest(unittest.TestCase):
             routes.ROUTES["/replace-producer-pal"](bridge, {"path": DEVICE_FILE})
 
         self.assertEqual(caught.exception.status, 409)
-        self.assertIn("isn't in this Live Set", caught.exception.payload["error"])
+        self.assertIn("no device named Producer_Pal", caught.exception.payload["error"])
         # Nothing changed, so no undo step is closed.
         self.assertEqual(browser.events, [])
+
+    def test_a_renamed_device_is_not_found_and_the_error_says_to_rename_it(self):
+        error = refused([FakeTrack("0-MIDI", [FakeDevice("Producer_Pal 2.5.0")])])
+
+        self.assertEqual(error.status, 409)
+        self.assertIn("name it Producer_Pal again", error.payload["error"])
 
     def test_does_not_look_inside_racks(self):
         rack = FakeDevice("Rack", chains=[FakeChain([FakeDevice("Producer_Pal")])])
 
-        self.assertEqual(refused([FakeTrack("0-MIDI", [rack])]).status, 409)
+        error = refused([FakeTrack("0-MIDI", [rack])])
+
+        self.assertEqual(error.status, 409)
+        self.assertIn("if it's in a rack", error.payload["error"])
 
     def test_refuses_two_and_swaps_neither(self):
         first, second = FakeDevice("Producer_Pal"), FakeDevice("Producer_Pal")

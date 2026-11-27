@@ -461,10 +461,9 @@ describe("ppal-update-device", () => {
     }
   });
 
-  // Live 12 steps the count by 2 up to 16; Live 13 steps unevenly up to 32, so
-  // 16 may land on 14. Nothing here assumes one: the entry must say whatever
-  // count the rack really shows, and a count above the rack's macros is refused
-  // with the limit.
+  // Live 12 steps the count by 2 up to 16; Live 13 goes 14 <-> 32, so 16 lands
+  // on 14 or 32. Nothing here assumes either: the entry must say whatever count
+  // the rack really shows, and name the step that jumped past 16.
   it("says where macroCount landed, whichever way this Live steps", async () => {
     const rackId = await rackWithOneChain();
 
@@ -485,7 +484,22 @@ describe("ppal-update-device", () => {
       expect((await readRackParams(rackId)).macros?.count).toBe(32);
     }
 
-    const lowered = parseToolResult<UpdateDeviceResult>(
+    await expectSixteenLands(rackId);
+
+    // Back to 14, then up to 16: Live 13 jumps straight to 32.
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 14 },
+    });
+    await expectSixteenLands(rackId);
+  });
+
+  /**
+   * Ask for 16 macros and check the entry against what the rack shows.
+   * @param rackId - The rack
+   */
+  async function expectSixteenLands(rackId: string): Promise<void> {
+    const result = parseToolResult<UpdateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: { id: rackId, macroCount: 16 },
@@ -494,10 +508,18 @@ describe("ppal-update-device", () => {
     const count = (await readRackParams(rackId)).macros?.count;
 
     expect(count).toBeDefined();
-    expect(lowered.detail).toBe(
-      count === 16 ? undefined : `macroCount landed at ${count}, not 16`,
-    );
-  });
+
+    if (count === 16) {
+      expect(result.detail).toBeUndefined();
+    } else {
+      expect(result.detail).toMatch(
+        new RegExp(
+          `^macroCount landed at ${count}, not 16: ` +
+            `Live goes from \\d+ straight to ${count}$`,
+        ),
+      );
+    }
+  }
 
   // A reason names the object the way the tools publish it, never by Live's
   // class name.

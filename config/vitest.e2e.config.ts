@@ -20,6 +20,10 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["e2e/mcp/**/*.test.ts"],
+    // Before any test: what Live will load must match this checkout.
+    globalSetup: [
+      join(__dirname, "../scripts/live-api/install-check/install-check.ts"),
+    ],
     // Deliberately NOT the main setup file - don't want the Live API mocks.
     // This one only swaps in a sane fetch dispatcher; see the file for why.
     setupFiles: [

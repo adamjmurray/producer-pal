@@ -54,6 +54,24 @@ describe("updateDevice macroCount on a Live 13 rack", () => {
     expect(rack.call).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [1, 0],
+    [2, 1],
+  ])("doesn't ask Live to go below 1: from %i, %i calls", (from, calls) => {
+    const rack = registerMacroRack("rack", {
+      count: from,
+      steps: LIVE_13_STEPS,
+      macros: 32,
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 0 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macroCount landed at 1, not 0; Live keeps at least 1",
+    });
+    expect(rack.call).toHaveBeenCalledTimes(calls);
+  });
+
   it("still rounds 3 up to 4, and says so", () => {
     registerMacroRack("rack", { count: 8, steps: LIVE_13_STEPS, macros: 32 });
 
@@ -97,7 +115,8 @@ describe("updateDevice macroCount on a Live 13 rack", () => {
     expect(updateDevice({ id: "rack", macroCount: 16 })).toStrictEqual({
       id: "rack",
       path: "t0/d0",
-      detail: "macroCount landed at 14, not 16",
+      detail:
+        "macroCount landed at 14, not 16: Live goes from 32 straight to 14",
     });
     expect(rack.call).toHaveBeenCalledTimes(1);
     expect(rack.call).toHaveBeenCalledWith("remove_macro");
@@ -113,10 +132,38 @@ describe("updateDevice macroCount on a Live 13 rack", () => {
     expect(updateDevice({ id: "rack", macroCount: 16 })).toStrictEqual({
       id: "rack",
       path: "t0/d0",
-      detail: "macroCount landed at 32, not 16",
+      detail:
+        "macroCount landed at 32, not 16: Live goes from 14 straight to 32",
     });
     expect(rack.call).toHaveBeenCalledTimes(4);
     expect(rack.call).toHaveBeenCalledWith("add_macro");
+  });
+
+  it("names the jump after rounding an odd count", () => {
+    registerMacroRack("rack", { count: 6, steps: LIVE_13_STEPS, macros: 32 });
+
+    expect(updateDevice({ id: "rack", macroCount: 19 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail:
+        "macroCount rounded from 19 to 20 (macros come in pairs); " +
+        "macroCount landed at 32, not 20: Live goes from 14 straight to 32",
+    });
+  });
+
+  it("names the jump from the steps Live took, not a fixed table", () => {
+    registerMacroRack("rack", {
+      count: 4,
+      steps: [1, 2, 4, 8, 24, 32],
+      macros: 32,
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 16 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail:
+        "macroCount landed at 24, not 16: Live goes from 8 straight to 24",
+    });
   });
 
   it("rounds an odd count up to the next even one before stepping", () => {

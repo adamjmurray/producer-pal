@@ -19,9 +19,8 @@ const getModelId = (model: unknown): string =>
 // factory (Responses API). @ai-sdk/openai-compatible tags "<name>.chat" (e.g.
 // "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
 // only implement Chat Completions and reject the Responses API's `input` field
-// with "Invalid type for 'input'". LM Studio and custom endpoints route through
-// @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
-// Ollama stays on @ai-sdk/openai (its `reasoning_effort` option needs that namespace).
+// with "Invalid type for 'input'". LM Studio, Ollama and custom endpoints route
+// through @ai-sdk/openai-compatible so their thinking shows.
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 
@@ -266,7 +265,7 @@ describe("createProviderModel", () => {
   it("uses the Chat Completions API for ollama (not Responses)", () => {
     const model = createProviderModel("ollama", "llama3", "");
 
-    expect(getApiProvider(model)).toBe("openai.chat");
+    expect(getApiProvider(model)).toBe("ollama.chat");
   });
 
   it("uses the Chat Completions API for custom (not Responses)", () => {
@@ -283,11 +282,14 @@ describe("createProviderModel", () => {
 
   // Regression: without includeUsage, OpenAI-compatible servers (LM Studio,
   // custom) never report token usage in streaming responses, so the UI shows 0.
-  it("enables usage reporting for lmstudio (includeUsage)", () => {
-    const model = createProviderModel("lmstudio", "local-model", "");
+  it.each(["lmstudio", "ollama"] as const)(
+    "enables usage reporting for %s (includeUsage)",
+    (provider) => {
+      const model = createProviderModel(provider, "local-model", "");
 
-    expect(getIncludeUsage(model)).toBe(true);
-  });
+      expect(getIncludeUsage(model)).toBe(true);
+    },
+  );
 
   it("enables usage reporting for custom (includeUsage)", () => {
     const model = createProviderModel("custom", "m", "k", "https://x/v1");
