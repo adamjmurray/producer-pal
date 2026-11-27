@@ -40,11 +40,13 @@ const OPEN_HELP = "Opens the plug-in's own window.";
 const TABS_TITLE = "Automation Slots";
 const TABS_HELP =
   "Picks which 16 automation slots the knobs show. Each tab is named for its first slot.";
+
 const KNOB_TITLE = "Automation Slot";
+
 const KNOB_HELP =
   "Shows and sets the plug-in parameter this slot automates. Inactive until Producer Pal assigns a parameter to the slot.";
 const PANEL_BOX =
-  /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name)?\d+)$/;
+  /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name|help)?\d+)$/;
 
 /**
  * Whether a box belongs to the device panel this module builds.
@@ -84,6 +86,7 @@ export function panelBoxes(slots: number, nameWidth: number): Json[] {
       ]),
       text(`knoblabel${i}`, label(i), cellRect(i, 0, LABEL_HEIGHT)),
       text(`knobname${i}`, "—", cellRect(i, KNOB_TOP + KNOB_SIZE, NAME_HEIGHT)),
+      knobHelp(i),
     ]),
   ];
 }
@@ -232,6 +235,23 @@ function knob(i: number): Json {
         parameter_invisible: HIDDEN,
       },
     },
+  };
+}
+
+// An invisible box behind a knob's whole cell, with the knob's Info View text.
+// It gets the hover over the labels, and over an unmapped knob, which ignores
+// the mouse. A ubutton, because a transparent panel shows no Info View text.
+function knobHelp(i: number): Json {
+  return {
+    id: `knobhelp${i}`,
+    maxclass: "ubutton",
+    varname: `knobhelp${i}`,
+    numinlets: 1,
+    numoutlets: 4,
+    outlettype: ["bang", "bang", "", "int"],
+    hltcolor: [0, 0, 0, 0],
+    ...placed(cellRect(i, 0, KNOB_TOP + KNOB_SIZE + NAME_HEIGHT)),
+    ...help(KNOB_TITLE, KNOB_HELP),
   };
 }
 

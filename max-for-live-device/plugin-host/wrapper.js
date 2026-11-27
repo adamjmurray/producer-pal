@@ -1112,7 +1112,7 @@ function saveSlots(map) {
 // to Hidden, which Live neither automates nor gives undo steps. A knob shows its
 // param as the plug-in reports it (vst~'s echo), whatever moved it. Turning one
 // moves its slot's dial, which drives the plug-in and is what Live automates.
-// An unmapped slot's knob is inactive and reads 0.
+// An unmapped slot's knob is inactive, ignores the mouse and reads 0.
 const KNOB_COUNT = 16;
 // Echoes trail a drag by up to one speedlim interval; showing them would pull
 // the knob back under the mouse.
@@ -1185,6 +1185,10 @@ function showKnobs(map) {
     knobIndex[i] = entry ? Number(entry.index) : undefined;
     setKnob(i, value);
     knobBox?.message("active", entry ? 1 : 0);
+    // "active 0" only greys a knob out: it still turns, and sends nothing, so
+    // it can't be turned back. With the mouse ignored, the box behind the knob
+    // gets the hover, and shows the same Info View text.
+    knobBox?.message("ignoreclick", entry ? 0 : 1);
   }
 }
 

@@ -49,10 +49,13 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knob3")).toStrictEqual([
       ["set", 0],
       ["active", 1],
+      ["ignoreclick", 0],
     ]);
+    // Greyed out alone, an unmapped knob still turns.
     expect(sentTo(rig, "knob1")).toStrictEqual([
       ["set", 0],
       ["active", 0],
+      ["ignoreclick", 1],
     ]);
     expect(asked).toStrictEqual([[0, "get", 206]]);
 
@@ -171,6 +174,7 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knob3")).toStrictEqual([
       ["set", 0.3],
       ["active", 1],
+      ["ignoreclick", 0],
     ]);
 
     rig.sent.length = 0;

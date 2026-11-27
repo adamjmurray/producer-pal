@@ -132,7 +132,8 @@ describe("buildPluginHostDevice", () => {
   });
 
   it("adds a page of knobs, labels and tabs that Live doesn't store or automate", () => {
-    const { box, cords } = builtStale();
+    const { box, cords, patcher } = builtStale();
+    const ids = patcher.boxes.map((b) => b.box.id);
     const valueof = (id: string) =>
       (box(id)?.saved_attribute_attributes as { valueof: unknown } | undefined)
         ?.valueof;
@@ -148,6 +149,17 @@ describe("buildPluginHostDevice", () => {
     expect(box("knob17")).toBeUndefined();
     expect(box("knoblabel16")?.text).toBe("Slot 016");
     expect(box("knobname16")?.text).toBe("—");
+    // Behind the whole cell, with the knob's Info View text.
+    expect(box("knobhelp16")).toStrictEqual(
+      expect.objectContaining({
+        maxclass: "ubutton",
+        hltcolor: [0, 0, 0, 0],
+        presentation_rect: [396, 98, 56, 67],
+        annotation: box("knob16")?.annotation,
+      }),
+    );
+    // A later box sits behind an earlier one: in front, it would take the turns.
+    expect(ids.indexOf("knobhelp16")).toBeGreaterThan(ids.indexOf("knob16"));
     expect(box("knobprep16")?.text).toBe("prepend knob 16");
     expect(valueof("knob16")).toStrictEqual(
       expect.objectContaining({ parameter_mmax: 1, parameter_invisible: 2 }),

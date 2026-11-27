@@ -96,8 +96,13 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   saved `valueof` block (Max writes both). The text is static.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
   by the tabs. Each has a `knoblabel` ("Slot 003") and a `knobname` (the mapped
-  param, or "—"). A knob for an unmapped slot is inactive (`active 0`) and
-  reads 0.
+  param, or "—"). A knob for an unmapped slot is greyed out (`active 0`), can't
+  be turned (`ignoreclick 1`) and reads 0.
+  - `active 0` alone leaves the knob turnable, and an inactive dial sends
+    nothing, so it can't be turned back either. `ignoreclick 1` also hides the
+    knob from the hover, so each cell has an invisible `ubutton` (`knobhelp<n>`)
+    behind it with the same Info View text. It gets the hover over an unmapped
+    knob and over the labels. A transparent `panel` shows no Info View text.
   - A name gets two lines. `live.comment` doesn't clip, so a third line would
     draw over the row below. It wraps at spaces only, and breaks a word wider
     than a line wherever the line fills. The wrapper works out the wrapping from
