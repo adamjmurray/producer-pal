@@ -43,7 +43,9 @@ const TABS_HELP =
 
 const KNOB_TITLE = "Automation Slot";
 
-const KNOB_HELP =
+// Keep the knob help in wrapper.js in step: it rewrites this text as slots are
+// mapped and unmapped.
+export const KNOB_HELP =
   "Shows and sets the plug-in parameter this slot automates. Inactive until Producer Pal assigns a parameter to the slot.";
 const PANEL_BOX =
   /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name|help)?\d+)$/;

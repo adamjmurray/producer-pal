@@ -1132,6 +1132,11 @@ const NAME_FONT_PT = 9;
 // A knob cell's width (CELL_WIDTH in plugin-host-panel.ts) less the label's
 // 8 pt of padding, and 1 pt more because the widths leave out kerning.
 const NAME_LINE_PT = 47;
+// A knob's Info View text. Unmapped, it is KNOB_HELP in plugin-host-panel.ts.
+// Mapped, it gives the param's whole name, since the one under the knob may be
+// cut.
+const KNOB_HELP = "Shows and sets the plug-in parameter this slot automates.";
+const UNMAPPED_HELP = `${KNOB_HELP} Inactive until Producer Pal assigns a parameter to the slot.`;
 let knobPage = 0;
 let knobsShown = null; // the page and mapping the knobs last showed
 const turnedAt = {}; // knob -> when the user last turned it
@@ -1189,6 +1194,13 @@ function showKnobs(map) {
     // it can't be turned back. With the mouse ignored, the box behind the knob
     // gets the hover, and shows the same Info View text.
     knobBox?.message("ignoreclick", entry ? 0 : 1);
+
+    const help = entry
+      ? `${KNOB_HELP}\n\nMapped to: ${entry.name}`
+      : UNMAPPED_HELP;
+
+    knobBox?.message("annotation", help);
+    this.patcher.getnamed(`knobhelp${i}`)?.message("annotation", help);
   }
 }
 

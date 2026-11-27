@@ -4,12 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { CELL_WIDTH } from "../plugin-host-panel.ts";
+import { CELL_WIDTH, KNOB_HELP } from "../plugin-host-panel.ts";
 import { type Rig, loadWrapper } from "./wrapper-test-helpers.ts";
 
 // Slot 3 drives param 206, slot 19 (page 2, knob 3) drives param 300.
 const MAP =
   '{ "3": { index: 206, name: "Cutoff" }, "19": { index: 300, name: "Res" } }';
+
+const MAPPED_HELP =
+  "Shows and sets the plug-in parameter this slot automates.\n\nMapped to: ";
 
 function mapped(outlet?: (...args: unknown[]) => void): Rig {
   const rig = loadWrapper("Plug", outlet);
@@ -50,12 +53,14 @@ describe("wrapper panel knobs", () => {
       ["set", 0],
       ["active", 1],
       ["ignoreclick", 0],
+      ["annotation", `${MAPPED_HELP}Cutoff`],
     ]);
     // Greyed out alone, an unmapped knob still turns.
     expect(sentTo(rig, "knob1")).toStrictEqual([
       ["set", 0],
       ["active", 0],
       ["ignoreclick", 1],
+      ["annotation", KNOB_HELP],
     ]);
     expect(asked).toStrictEqual([[0, "get", 206]]);
 
@@ -117,6 +122,23 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knobname1")).toStrictEqual([["set", shown]]);
   });
 
+  it("names the whole param in a mapped knob's Info View text", () => {
+    const rig = mapped();
+    const name = "Oscillator 1 Wavetable Position";
+    const mappedHelp = `Shows and sets the plug-in parameter this slot automates.\n\nMapped to: ${name}`;
+
+    rig.run(`showKnobs({ "1": { index: 1, name: "${name}" } })`);
+
+    // The box behind the knob says the same, for the hover over the labels.
+    for (const box of ["knob1", "knobhelp1"]) {
+      expect(sentTo(rig, box)).toContainEqual(["annotation", mappedHelp]);
+    }
+
+    for (const box of ["knob2", "knobhelp2"]) {
+      expect(sentTo(rig, box)).toContainEqual(["annotation", KNOB_HELP]);
+    }
+  });
+
   it("wraps names to the width the panel gives them", () => {
     // 8 px of padding in the label, 1 px for the kerning the widths leave out
     expect(loadWrapper().run("NAME_LINE_PT")).toBe(CELL_WIDTH - 9);
@@ -175,6 +197,7 @@ describe("wrapper panel knobs", () => {
       ["set", 0.3],
       ["active", 1],
       ["ignoreclick", 0],
+      ["annotation", `${MAPPED_HELP}Cutoff`],
     ]);
 
     rig.sent.length = 0;

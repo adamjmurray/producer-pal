@@ -93,7 +93,10 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 - **Info View**: every control carries a title and text for Live's Info View:
   `annotation_name` and `annotation` on the box, and for the parameter-enabled
   tabs and knobs also `parameter_annotation_name` and `parameter_info` in the
-  saved `valueof` block (Max writes both). The text is static.
+  saved `valueof` block (Max writes both). The text is static, except a knob's:
+  mapped, the wrapper sets its `annotation` to the first sentence plus a "Mapped
+  to: <param>" paragraph, since the name under the knob may be cut; unmapped, it
+  puts the full text back.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
   by the tabs. Each has a `knoblabel` ("Slot 003") and a `knobname` (the mapped
   param, or "—"). A knob for an unmapped slot is greyed out (`active 0`), can't
