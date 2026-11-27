@@ -45,7 +45,7 @@ import {
   readEnvelopeRepeat,
   throwIfRepeatMisplaced,
 } from "#src/notation/barbeat/envelope/envelope-repeat.ts";
-import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
+import { formatEnvelopeValue } from "#src/notation/barbeat/envelope/envelope-value.ts";
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
@@ -224,7 +224,7 @@ function collapseEvents(events: EnvelopeNotationEvent[]): FormattedPoint[] {
     // jump itself replaces: one point, with the later value.
     if (
       previous != null &&
-      formatValue(previous.value) !== formatValue(first.value)
+      formatEnvelopeValue(previous.value) !== formatEnvelopeValue(first.value)
     ) {
       points.push({ ...first, jump: false });
     }
@@ -275,7 +275,7 @@ function formatConnector(
   // A curve on a flat segment draws nothing.
   if (
     previous.coefficients == null ||
-    formatValue(previous.value) === formatValue(point.value)
+    formatEnvelopeValue(previous.value) === formatEnvelopeValue(point.value)
   ) {
     return "/";
   }
@@ -301,37 +301,13 @@ function formatPoint(point: FormattedPoint, meter: EnvelopeMeter): string {
     meter.timeSigNumerator,
     meter.timeSigDenominator,
   );
-  const value = formatValue(point.value);
+  const value = formatEnvelopeValue(point.value);
   const display =
     point.display != null && point.display !== value
       ? ` (${point.display.replaceAll("(", "[").replaceAll(")", "]")})`
       : "";
 
   return `${time} ${value}${display}`;
-}
-
-/** Past this many decimals a value is float noise, and reads as 0. */
-const MAX_VALUE_DECIMALS = 6;
-
-/**
- * Format a raw parameter value: up to 3 decimals, no trailing zeros. A value
- * below 0.1 keeps 3 significant digits instead, so one on a fine raw range
- * doesn't read back as 0 and shift when the read is written again.
- * @param value - The raw value
- * @returns The value as it is written
- */
-function formatValue(value: number): string {
-  const size = Math.abs(value);
-  const formatted =
-    size > 0 && size < 0.1
-      ? value
-          .toFixed(
-            Math.min(MAX_VALUE_DECIMALS, 2 - Math.floor(Math.log10(size))),
-          )
-          .replace(/\.?0+$/, "")
-      : formatDecimal(value);
-
-  return formatted === "-0" ? "0" : formatted;
 }
 
 /** A segment of the notation: one point, and the connector before it. */
