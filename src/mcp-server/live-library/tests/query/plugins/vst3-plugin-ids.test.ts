@@ -17,6 +17,13 @@ describe("vst3PluginIds", () => {
     ).toStrictEqual([-472297922, -125317540]);
   });
 
+  // The second is what Max 9 on macOS lists for Repro-5.
+  it("takes a byte of 0x80 and up as negative", () => {
+    expect(
+      vst3PluginIds("device:vst3:instr:d39d5b69-d6af-42fa-1234-567875525f35"),
+    ).toStrictEqual([2036490990, 2132052000]);
+  });
+
   it("gives one id when both byte orders hash the same", () => {
     expect(vst3PluginIds(`device:vst3:instr:${"0".repeat(32)}`)).toStrictEqual([
       0,

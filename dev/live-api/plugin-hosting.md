@@ -221,11 +221,12 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   wrong id loads nothing, and a name in place of the id is ignored. The id is
   the `plug_id` in Max's `.vst3info`: JUCE's hash (`hash * 31 + byte`, as a
   signed 32-bit int) of the plug-in's 16-byte class id, which Live's
-  `dev_identifier` ends with. On Windows the bytes are hashed in COM order (the
-  first three fields byte-swapped). The wrapper is given that id and the
-  unswapped one and tries both; the unswapped one is a guess for macOS, untried.
-  `plug_vst` and `plug_vst3` take no path. Checked on Windows with both kinds of
-  scan; on macOS only the file's name has been seen to load.
+  `dev_identifier` ends with. Each byte counts as signed, so 0x80 and up are
+  negative. Windows hashes the bytes in COM order (the first three fields
+  byte-swapped) and macOS as written; the wrapper is given both ids and tries
+  both. `plug_vst` and `plug_vst3` take no path. Checked on Windows with both
+  kinds of scan, though only with a class id of bytes below 0x80 (Serum 2); on
+  macOS with one that has bytes above it (Repro-5).
 - **Coming back after a reload.** On Windows `vst~` doesn't bring the plug-in
   back from the stored state after a Set reload (it does after a duplicate), and
   nowhere can it bring back one loaded by path. So `vstname` also keeps the
