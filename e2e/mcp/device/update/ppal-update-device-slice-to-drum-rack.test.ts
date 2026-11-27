@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -57,6 +57,15 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("Simpler slices to Drum Rack", () => {
    * Make a Simpler on a new MIDI track.
    * @returns The Simpler's id
    */
+  // A Simpler holding the drum loop.
+  async function createLoopSimpler(): Promise<string> {
+    const id = await createSimpler();
+
+    await update(id, { params: [{ name: "sample", value: DRUM_LOOP_FILE }] });
+
+    return id;
+  }
+
   async function createSimpler(): Promise<string> {
     const { path } = parseToolResult<{ path: string }>(
       await ctx.client!.callTool({
@@ -122,9 +131,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("Simpler slices to Drum Rack", () => {
   }
 
   it("slices by region and reads the slices in seconds", async () => {
-    const id = await createSimpler();
+    const id = await createLoopSimpler();
 
-    await update(id, { params: [{ name: "sample", value: DRUM_LOOP_FILE }] });
     await update(id, {
       params: [
         { name: "playbackMode", value: "slicing" },
@@ -145,9 +153,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("Simpler slices to Drum Rack", () => {
   });
 
   it("setSlices switches to manual slices at the given seconds", async () => {
-    const id = await createSimpler();
-
-    await update(id, { params: [{ name: "sample", value: DRUM_LOOP_FILE }] });
+    const id = await createLoopSimpler();
 
     const entry = await update(id, {
       params: [{ name: "playbackMode", value: "slicing" }],
@@ -161,9 +167,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("Simpler slices to Drum Rack", () => {
   });
 
   it("converts a sliced Simpler to a Drum Rack with one pad per slice", async () => {
-    const id = await createSimpler();
-
-    await update(id, { params: [{ name: "sample", value: DRUM_LOOP_FILE }] });
+    const id = await createLoopSimpler();
 
     const entry = await update(id, {
       params: [
@@ -207,9 +211,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("Simpler slices to Drum Rack", () => {
   it.each(["sliceToDrumRack", "setSlices(1)"])(
     "refuses %s on a Simpler that isn't slicing, where it has no slices",
     async (action) => {
-      const id = await createSimpler();
-
-      await update(id, { params: [{ name: "sample", value: DRUM_LOOP_FILE }] });
+      const id = await createLoopSimpler();
 
       const result = await ctx.client!.callTool({
         name: "ppal-update-device",
