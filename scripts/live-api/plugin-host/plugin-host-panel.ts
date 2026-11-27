@@ -15,10 +15,13 @@ type Rect = [x: number, y: number, width: number, height: number];
 // Keep KNOBS in step with KNOB_COUNT in wrapper.js
 const KNOBS = 16;
 const COLUMNS = 8;
-const CELL_WIDTH = 46;
-const CELL_HEIGHT = 68;
-const GRID_TOP = 30;
+
+// Keep NAME_LINE_PT in wrapper.js in step with the cell width
+export const CELL_WIDTH = 56;
+const CELL_HEIGHT = 74;
+const GRID_TOP = 24;
 const LABEL_HEIGHT = 13;
+const KNOB_TOP = LABEL_HEIGHT + 2;
 const KNOB_SIZE = 28;
 const NAME_HEIGHT = 24; // two lines
 const TAB_WIDTH = 26;
@@ -80,11 +83,7 @@ export function panelBoxes(slots: number, nameWidth: number): Json[] {
         PREPEND_Y + 30 + Math.floor((i - 1) / 4) * 30,
       ]),
       text(`knoblabel${i}`, label(i), cellRect(i, 0, LABEL_HEIGHT)),
-      text(
-        `knobname${i}`,
-        "—",
-        cellRect(i, LABEL_HEIGHT + KNOB_SIZE, NAME_HEIGHT),
-      ),
+      text(`knobname${i}`, "—", cellRect(i, KNOB_TOP + KNOB_SIZE, NAME_HEIGHT)),
     ]),
   ];
 }
@@ -219,7 +218,7 @@ function knob(i: number): Json {
     shownumber: 0,
     ...placed([
       x + (CELL_WIDTH - KNOB_SIZE) / 2,
-      y + LABEL_HEIGHT,
+      y + KNOB_TOP,
       KNOB_SIZE,
       KNOB_SIZE,
     ]),

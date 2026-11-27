@@ -72,8 +72,8 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 
 `plugin-host-panel.ts` builds it; neither `vst~` nor the slot dials are in it.
 
-- **Layout**: 376 px wide. The top row is the Open button at the left, the name
-  row, and the tabs at the right; below it, 2 rows of 8 knob cells, each 46 px
+- **Layout**: 456 px wide. The top row is the Open button at the left, the name
+  row, and the tabs at the right; below it, 2 rows of 8 knob cells, each 56 px
   wide.
 - **Open** (`openeditor`, a `live.text` button reading "Open Plug-in", with
   `parameter_enable` 0, so no automation and no undo step; it must stay in
@@ -96,8 +96,13 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
   saved `valueof` block (Max writes both). The text is static.
 - **Knobs**: 16 `live.dial`s (`knob1`–`knob16`) show one page of slots, picked
   by the tabs. Each has a `knoblabel` ("Slot 003") and a `knobname` (the mapped
-  param, cut to about two lines, or "—"). A knob for an unmapped slot is
-  inactive (`active 0`) and reads 0.
+  param, or "—"). A knob for an unmapped slot is inactive (`active 0`) and
+  reads 0.
+  - A name gets two lines. `live.comment` doesn't clip, so a third line would
+    draw over the row below. It wraps at spaces only, and breaks a word wider
+    than a line wherever the line fills. The wrapper works out the wrapping from
+    a table of the font's character widths and cuts a longer name, ending it in
+    "…".
   - Knobs and tabs are Live parameters set to Hidden (`parameter_invisible` 2):
     Live neither stores nor automates them, they add no undo steps, and Live's
     parameter list stays Device On plus the slots. Without parameter mode,

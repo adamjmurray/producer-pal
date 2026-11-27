@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { CELL_WIDTH } from "../plugin-host-panel.ts";
 import { type Rig, loadWrapper } from "./wrapper-test-helpers.ts";
 
 // Slot 3 drives param 206, slot 19 (page 2, knob 3) drives param 300.
@@ -95,16 +96,27 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knob3")).toHaveLength(0);
   });
 
-  it("cuts a name too long for two lines under a knob", () => {
+  // Each cut name was seen to take two lines in Live, with no room to spare.
+  it.each([
+    ["Band 1 Frequency", "Band 1 Frequency"],
+    ["Mix (Dry/Wet) Amount", "Mix (Dry/We…"],
+    ["Band 1 Stereo Placement", "Band 1 Stereo Pl…"],
+    ["Oscillator 1 Wavetable Position", "Oscillator 1 Wavetab…"],
+    ["Verylongwordwithoutspaces", "Verylongwordwitho…"],
+    ["a b c d e f g h i j k l m n o p q r s", "a b c d e f g h i j k l m…"],
+    ["WWWWWWWWWWWWWWWW", "WWWWWWWWW…"],
+    ["日本語のパラメータ名前です", "日本語のパラメータ…"],
+  ])("cuts %j to two lines under a knob", (name, shown) => {
     const rig = mapped();
 
-    rig.run(
-      'showKnobs({ "1": { index: 1, name: "Oscillator 1 Wavetable Position" } })',
-    );
+    rig.run(`showKnobs({ "1": { index: 1, name: ${JSON.stringify(name)} } })`);
 
-    expect(sentTo(rig, "knobname1")).toStrictEqual([
-      ["set", "Oscillator 1 Wa…"],
-    ]);
+    expect(sentTo(rig, "knobname1")).toStrictEqual([["set", shown]]);
+  });
+
+  it("wraps names to the width the panel gives them", () => {
+    // 8 px of padding in the label, 1 px for the kerning the widths leave out
+    expect(loadWrapper().run("NAME_LINE_PT")).toBe(CELL_WIDTH - 9);
   });
 
   // Making a knob active sends the value it holds, which is not a turn.

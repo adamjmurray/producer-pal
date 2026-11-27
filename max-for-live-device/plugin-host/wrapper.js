@@ -1117,7 +1117,21 @@ const KNOB_COUNT = 16;
 // Echoes trail a drag by up to one speedlim interval; showing them would pull
 // the knob back under the mouse.
 const DRAG_HOLD_MS = 150;
-const NAME_CHARS = 16; // about two lines under a knob
+// A name gets two lines under its knob. Max doesn't clip a third: it draws it
+// over the row below. So a longer name is cut, which takes knowing how Max
+// wraps it: from these widths (Ableton Sans Medium, ASCII 32-126, in
+// hundredths of an em) at the label's font size.
+const CHAR_EM = [
+  23, 31, 46, 59, 59, 84, 72, 25, 40, 40, 45, 59, 31, 41, 30, 47, 59, 59, 59,
+  59, 59, 59, 59, 59, 59, 59, 30, 32, 60, 59, 59, 48, 92, 65, 61, 68, 68, 57,
+  55, 71, 70, 28, 54, 64, 50, 85, 72, 73, 60, 73, 64, 57, 59, 69, 65, 97, 63,
+  61, 60, 38, 47, 37, 59, 60, 60, 53, 58, 52, 57, 53, 38, 56, 56, 24, 24, 51,
+  24, 81, 56, 55, 58, 58, 40, 45, 40, 55, 50, 72, 48, 49, 46, 44, 40, 40, 60,
+];
+const NAME_FONT_PT = 9;
+// A knob cell's width (CELL_WIDTH in plugin-host-panel.ts) less the label's
+// 8 pt of padding, and 1 pt more because the widths leave out kerning.
+const NAME_LINE_PT = 47;
 let knobPage = 0;
 let knobsShown = null; // the page and mapping the knobs last showed
 const turnedAt = {}; // knob -> when the user last turned it
@@ -1177,7 +1191,56 @@ function showKnobs(map) {
 function knobName(entry) {
   const name = entry?.name ?? "—";
 
-  return name.length > NAME_CHARS ? `${name.slice(0, NAME_CHARS - 1)}…` : name;
+  if (nameLines(name) <= 2) return name;
+
+  for (let end = name.length - 1; end > 0; end--) {
+    const cut = `${name.slice(0, end).trimEnd()}…`;
+
+    if (nameLines(cut) <= 2) return cut;
+  }
+
+  return "…";
+}
+
+// How many lines Max wraps a name into. It breaks at spaces only, and a word
+// wider than a line wherever the line fills.
+function nameLines(name) {
+  let lines = 1;
+  let used = 0;
+
+  for (const word of name.split(" ")) {
+    const space = used > 0 ? textWidth(" ") : 0;
+
+    if (used + space + textWidth(word) <= NAME_LINE_PT) {
+      used += space + textWidth(word);
+      continue;
+    }
+
+    if (used > 0) {
+      lines++;
+      used = 0;
+    }
+
+    for (const char of word) {
+      if (used + textWidth(char) > NAME_LINE_PT) {
+        lines++;
+        used = 0;
+      }
+
+      used += textWidth(char);
+    }
+  }
+
+  return lines;
+}
+
+// Anything outside the table counts as a full em, wider than nearly all of it.
+function textWidth(text) {
+  let em = 0;
+
+  for (const char of text) em += CHAR_EM[char.charCodeAt(0) - 32] ?? 100;
+
+  return (em * NAME_FONT_PT) / 100;
 }
 
 // What a slot's knob shows: the param as the plug-in reports it, or the slot's
