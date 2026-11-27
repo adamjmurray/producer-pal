@@ -115,6 +115,14 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
     Live neither stores nor automates them, they add no undo steps, and Live's
     parameter list stays Device On plus the slots. Without parameter mode,
     `live.tab` shows no tabs and `live.dial` ignores its range.
+  - **When the panel is filled**: every time Live builds the device (Set load,
+    track or device duplicate, the `.amxd` replaced under an open Set) the boxes
+    start at the patch's defaults: "—" under greyed knobs, "No plug-in loaded".
+    The wrapper fills the name row and the knobs once the Set's restore has run,
+    1.5 s after it starts, so the panel is blank for that long. After that the
+    knobs are redrawn when the page or the mapping changes: on a tab press, a
+    `map` or `unmap`, and the 2 s poll. A replaced `.amxd` is only reloaded when
+    Live next becomes the front app; the old wrapper keeps running until then.
   - A knob shows `vst~`'s echo for its slot's param, so it follows automation,
     Producer Pal and the plug-in window alike. Echoes are ignored for 150 ms
     after a turn, so they don't pull the knob back mid-drag.

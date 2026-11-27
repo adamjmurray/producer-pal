@@ -613,6 +613,8 @@ function adoptStored() {
   // Don't push the dials into the plug-in here: a dial is synced only when
   // mapped, so its saved value can be older than the restored state.
   showName(pluginName());
+  // Fill the knobs now: until then the panel shows the patch's blank defaults.
+  readSlots();
 }
 
 function stateOf() {
