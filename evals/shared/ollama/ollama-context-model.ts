@@ -12,6 +12,7 @@
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root.ts";
 
 const QUICK_TIMEOUT_MS = 10_000;
 const CREATE_TIMEOUT_MS = 60_000;
@@ -29,7 +30,7 @@ interface OllamaReply {
  *
  * @param modelId - Base model id; a bare id means `:latest`
  * @param numCtx - Context size in tokens
- * @param baseUrl - Local server base URL (ends in `/v1`); only its origin is used
+ * @param baseUrl - Local server base URL (ends in `/v1`); a path prefix is kept
  * @returns The copy's model id, ready to use through `/v1`
  * @throws Error when the server isn't Ollama, the model is missing, the size
  *   exceeds the model's maximum, or the copy can't be created
@@ -39,21 +40,21 @@ export async function ensureOllamaContextModel(
   numCtx: number,
   baseUrl: string,
 ): Promise<string> {
-  const origin = new URL(baseUrl).origin;
+  const root = localServerRoot(baseUrl);
 
-  const version = await ollamaRequest(origin, "/api/version");
+  const version = await ollamaRequest(root, "/api/version");
 
   if (!version.ok || typeof version.json?.version !== "string") {
     throw new Error(
-      `--context only works with Ollama, and ${origin} isn't one (no /api/version).`,
+      `--context only works with Ollama, and ${root} isn't one (no /api/version).`,
     );
   }
 
-  const show = await ollamaRequest(origin, "/api/show", { model: modelId });
+  const show = await ollamaRequest(root, "/api/show", { model: modelId });
 
   if (!show.ok) {
     throw new Error(
-      `Model "${modelId}" not found on Ollama at ${origin}: ${serverError(show)}`,
+      `Model "${modelId}" not found on Ollama at ${root}: ${serverError(show)}`,
     );
   }
 
@@ -67,7 +68,7 @@ export async function ensureOllamaContextModel(
 
   const copy = contextModelName(modelId, numCtx);
   const create = await ollamaRequest(
-    origin,
+    root,
     "/api/create",
     {
       model: copy,
@@ -141,7 +142,7 @@ function serverError(reply: OllamaReply): string {
  * Server errors come back in the reply; a server that
  * can't be reached or doesn't answer in time throws.
  *
- * @param origin - Server origin
+ * @param root - Server root, including any path prefix
  * @param path - Endpoint path, e.g. "/api/show"
  * @param body - JSON body to POST; omit for a GET
  * @param timeoutMs - How long to wait for the reply
@@ -149,7 +150,7 @@ function serverError(reply: OllamaReply): string {
  * @throws Error when the server is unreachable or times out
  */
 async function ollamaRequest(
-  origin: string,
+  root: string,
   path: string,
   body?: unknown,
   timeoutMs = QUICK_TIMEOUT_MS,
@@ -157,7 +158,7 @@ async function ollamaRequest(
   let response: Response;
 
   try {
-    response = await fetch(new URL(path, origin), {
+    response = await fetch(`${root}${path}`, {
       signal: AbortSignal.timeout(timeoutMs),
       ...(body !== undefined && {
         method: "POST",
@@ -170,8 +171,8 @@ async function ollamaRequest(
 
     throw new Error(
       timedOut
-        ? `Ollama at ${origin} didn't answer ${path} within ${timeoutMs / 1000}s.`
-        : `Can't reach Ollama at ${origin}: ${errorMessage(error)}${causeCode(error)}`,
+        ? `Ollama at ${root} didn't answer ${path} within ${timeoutMs / 1000}s.`
+        : `Can't reach Ollama at ${root}: ${errorMessage(error)}${causeCode(error)}`,
       { cause: error },
     );
   }

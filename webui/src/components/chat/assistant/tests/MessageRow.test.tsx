@@ -263,6 +263,63 @@ describe("MessageRow token usage label", () => {
   });
 });
 
+describe("MessageRow cut-history warning", () => {
+  const model = (index: number, inputTokens: number): UIMessage => ({
+    role: "model",
+    parts: [{ type: "text", content: "ok" }],
+    rawHistoryIndex: index,
+    timestamp: 0,
+    usage: { inputTokens, outputTokens: 10, contextLength: 10_000 },
+  });
+  const user = (part: UIMessage["parts"][number]): UIMessage => ({
+    role: "user",
+    parts: [part],
+    rawHistoryIndex: 1,
+    timestamp: 0,
+  });
+
+  function renderLast(messages: UIMessage[]): string {
+    const last = messages.length - 1;
+
+    return render(
+      <MessageRow
+        message={messages[last]!}
+        originalIdx={last}
+        messages={messages}
+        isAssistantResponding={false}
+        showTimestamps={false}
+        showTokenUsage={true}
+        handleRetry={vi.fn()}
+        handleEdit={vi.fn()}
+        editingIndex={null}
+        setEditingIndex={vi.fn()}
+        editText=""
+        setEditText={vi.fn()}
+      />,
+    ).container.textContent;
+  }
+
+  it("warns when a turn starts with less input than the last one", () => {
+    const text = renderLast([
+      model(0, 9000),
+      user({ type: "text", content: "more" }),
+      model(2, 8000),
+    ]);
+
+    expect(text).toContain("dropped earlier messages");
+  });
+
+  it("doesn't warn across a compaction", () => {
+    const text = renderLast([
+      model(0, 9000),
+      user({ type: "compaction", content: "summary" }),
+      model(2, 3000),
+    ]);
+
+    expect(text).not.toContain("dropped earlier messages");
+  });
+});
+
 describe("MessageRow retry target", () => {
   it("skips back over earlier assistant turns to the last user message", () => {
     const user: UIMessage = {

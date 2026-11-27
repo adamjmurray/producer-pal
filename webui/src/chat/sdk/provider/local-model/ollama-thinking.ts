@@ -8,7 +8,7 @@ const SHOW_TIMEOUT_MS = 3000;
 /** What to do with the effort when the server can't say if the model thinks. */
 export type UnknownThinking = "keep" | "drop";
 
-// `origin model` -> whether the model thinks; null when the server didn't say.
+// `root model` -> whether the model thinks; null when the server didn't say.
 // A request that failed isn't kept, so it's asked again.
 const thinks = new Map<string, Promise<boolean | null>>();
 
@@ -17,14 +17,14 @@ const thinks = new Map<string, Promise<boolean | null>>();
  * think. Ollama refuses any effort but "none" for such a model (400), and says
  * which models think in `/api/show`. Imports nothing, so evals can use it.
  * @param body - Parsed request body (mutated in place)
- * @param baseUrl - The server's base URL (ends in `/v1`); only its origin is used
+ * @param serverRoot - The server's root URL, without `/v1` (see `localServerRoot`)
  * @param unknown - "drop" when the server is known to be Ollama; "keep" when it
  *   may be another server, such as LM Studio, which accepts any effort
  * @returns True if the body changed
  */
 export async function settleOllamaThinking(
   body: unknown,
-  baseUrl: string,
+  serverRoot: string,
   unknown: UnknownThinking,
 ): Promise<boolean> {
   const request = body as { model?: unknown; reasoning_effort?: unknown };
@@ -36,7 +36,7 @@ export async function settleOllamaThinking(
 
   const known =
     typeof request.model === "string"
-      ? await ollamaModelThinks(baseUrl, request.model)
+      ? await ollamaModelThinks(serverRoot, request.model)
       : null;
 
   if (known === true || (known == null && unknown === "keep")) {
@@ -57,19 +57,19 @@ export function resetOllamaThinkingCache(): void {
 
 /**
  * Ask Ollama whether a model thinks, once per model.
- * @param baseUrl - The server's base URL
+ * @param serverRoot - The server's root URL
  * @param model - Model id
  * @returns True or false, or null when the server didn't say
  */
 function ollamaModelThinks(
-  baseUrl: string,
+  serverRoot: string,
   model: string,
 ): Promise<boolean | null> {
-  const key = `${baseUrl} ${model}`;
+  const key = `${serverRoot} ${model}`;
   let known = thinks.get(key);
 
   if (known == null) {
-    known = requestOllamaModelThinks(baseUrl, model).catch(() => {
+    known = requestOllamaModelThinks(serverRoot, model).catch(() => {
       thinks.delete(key);
 
       return null;
@@ -82,15 +82,15 @@ function ollamaModelThinks(
 
 /**
  * Read a model's `capabilities` from `/api/show`.
- * @param baseUrl - The server's base URL
+ * @param serverRoot - The server's root URL
  * @param model - Model id
  * @returns Whether "thinking" is listed, or null on a bad shape
  */
 async function requestOllamaModelThinks(
-  baseUrl: string,
+  serverRoot: string,
   model: string,
 ): Promise<boolean | null> {
-  const response = await fetch(new URL("/api/show", baseUrl), {
+  const response = await fetch(`${serverRoot}/api/show`, {
     method: "POST",
     body: JSON.stringify({ model }),
     signal: AbortSignal.timeout(SHOW_TIMEOUT_MS),

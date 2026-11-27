@@ -22,8 +22,14 @@ import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothin
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withWriteQueue } from "./rpc/write-queue/write-queue.ts";
+import { markStillRunning } from "./rpc/write-queue/still-running.ts";
+import { endUndoStep } from "./rpc/remote-script/forwarded/end-undo-step.ts";
 import { nodeError, nodeInfo, nodeWarn } from "./node-for-max-logger.ts";
-import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
+import {
+  handleNodeRequest,
+  registerNodeRoute,
+} from "./rpc/node-request-protocol.ts";
+import { V8_STARTED_ROUTE } from "#src/shared/max/v8-started-contract.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
 export { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -70,6 +76,16 @@ const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 45_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map<string, PendingRequest>();
+
+/**
+ * How long to wait for V8 to answer a timed-out call before giving up on it.
+ * No single wait inside V8 runs longer than this, so a late answer that hasn't
+ * come by then isn't coming (V8's script was reloaded, or V8 is stuck).
+ */
+const LATE_ANSWER_CAP_MS = MAX_TIMEOUT_MS;
+
+/** Timed-out calls V8 may still be running; each entry takes the late answer. */
+const lateRequests = new Map<string, (answer: McpResponse | null) => void>();
 
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 
@@ -183,23 +199,81 @@ function sendToolCall(
         // it to HTTP 504. The message must not read as "nothing happened": V8
         // runs the tool synchronously with no cancellation channel, so the Set
         // is likely still being mutated as this resolves.
-        resolve(
-          formatErrorResponse(
-            `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms${queuedText}. ` +
-              `Live may still be applying it — wait, then re-read before acting.`,
-            "timeout",
-          ),
+        const response = formatErrorResponse(
+          `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms${queuedText}. ` +
+            `Live may still be applying it — wait, then re-read before acting.`,
+          "timeout",
         );
+
+        // So the write queue holds the next write until V8 is done.
+        markStillRunning(response, waitForLateAnswer(requestId, tool));
+        resolve(response);
       }, remainingMs),
     });
   });
 }
 
 /**
- * Every tool call into V8 goes through here, MCP and REST alike. Write calls
- * run one at a time (see write-queue.ts).
+ * Wait for V8 to answer a call Node already timed out, up to LATE_ANSWER_CAP_MS.
+ * @param requestId - The timed-out request
+ * @param tool - Tool name, for the log
+ * @returns V8's late answer, or null when the cap runs out
  */
-const callLiveApi = withWriteQueue(sendToolCall, () => timeoutMs);
+function waitForLateAnswer(
+  requestId: string,
+  tool: string,
+): Promise<McpResponse | null> {
+  return new Promise((resolve) => {
+    const cap = setTimeout(() => {
+      lateRequests.delete(requestId);
+      nodeWarn(
+        `No late answer for timed-out ${tool} after ${LATE_ANSWER_CAP_MS}ms; ` +
+          `giving up on it [requestId=${requestId}]`,
+      );
+      resolve(null);
+    }, LATE_ANSWER_CAP_MS);
+
+    // Don't keep Node alive just for this.
+    cap.unref();
+    lateRequests.set(requestId, (answer) => {
+      clearTimeout(cap);
+      lateRequests.delete(requestId);
+      resolve(answer);
+    });
+  });
+}
+
+/**
+ * Register the route V8 calls when its script loads. A load drops every call
+ * V8 had, so the ones still waiting are answered now and the timed-out ones
+ * stop holding the write queue for a late answer that can't come.
+ */
+export function registerV8StartedRoute(): void {
+  registerNodeRoute(V8_STARTED_ROUTE, () => {
+    for (const [requestId, pending] of pendingRequests) {
+      clearTimeout(pending.timeout);
+      pendingRequests.delete(requestId);
+      pending.resolve(
+        formatErrorResponse(
+          "Producer Pal's Live API adapter restarted while this call was running. " +
+            "It may have partly applied: re-read before acting.",
+        ),
+      );
+    }
+
+    for (const giveUp of lateRequests.values()) {
+      giveUp(null);
+    }
+
+    return {};
+  });
+}
+
+/**
+ * Every tool call into V8 goes through here, MCP and REST alike. Write calls
+ * run one at a time (see write-queue.ts), each closed as its own undo step.
+ */
+const callLiveApi = withWriteQueue(sendToolCall, () => timeoutMs, endUndoStep);
 
 /**
  * Handle Live API result from Max
@@ -220,42 +294,53 @@ function handleLiveApiResult(...args: unknown[]): void {
   }
 
   if (resolve) {
-    try {
-      const result = JSON.parse(reassembleChunks(params)) as WireResponse;
-      const warnings = result.warnings ?? [];
-
-      delete result.warnings;
-
-      if (result.changedNothing === true) {
-        markChangedNothing(result);
-      }
-
-      delete result.changedNothing;
-
-      const resultLength = result.content.reduce(
-        (sum: number, { text }: { text: string }) => sum + text.length,
-        0,
-      );
-      const warningTextLength = appendWarnings(result, warnings);
-
-      nodeInfo(
-        `Tool call result metrics: ${JSON.stringify({
-          resultLength,
-          warningCount: warnings.length,
-          warningTextLength,
-        })}`,
-      );
-
-      resolve(result);
-    } catch (error) {
-      resolve(
-        formatErrorResponse(
-          `Error parsing tool result from Max: ${String(error)}`,
-        ),
-      );
-    }
+    resolve(parseLiveApiResult(params));
+  } else if (lateRequests.has(requestId)) {
+    // Its caller already got the timeout; only the write queue is waiting.
+    nodeInfo(`Late answer for timed-out request ${requestId}`);
+    lateRequests.get(requestId)?.(parseLiveApiResult(params));
   } else {
     nodeInfo(`Received response for unknown request ID: ${requestId}`);
+  }
+}
+
+/**
+ * Turn V8's answer into a response, with its warnings appended.
+ * @param params - The payload chunks and END_OF_CHUNKS
+ * @returns The response, or an error response when it can't be read
+ */
+function parseLiveApiResult(params: unknown[]): McpResponse {
+  try {
+    const result = JSON.parse(reassembleChunks(params)) as WireResponse;
+    const warnings = result.warnings ?? [];
+
+    delete result.warnings;
+
+    if (result.changedNothing === true) {
+      markChangedNothing(result);
+    }
+
+    delete result.changedNothing;
+
+    const resultLength = result.content.reduce(
+      (sum: number, { text }: { text: string }) => sum + text.length,
+      0,
+    );
+    const warningTextLength = appendWarnings(result, warnings);
+
+    nodeInfo(
+      `Tool call result metrics: ${JSON.stringify({
+        resultLength,
+        warningCount: warnings.length,
+        warningTextLength,
+      })}`,
+    );
+
+    return result;
+  } catch (error) {
+    return formatErrorResponse(
+      `Error parsing tool result from Max: ${String(error)}`,
+    );
   }
 }
 

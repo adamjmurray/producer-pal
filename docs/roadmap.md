@@ -2,7 +2,6 @@
 
 ## Next
 
-- Slicing a sample to a drum rack
 - Richer automation notation: generated values and repeat patterns
 
 In consideration:

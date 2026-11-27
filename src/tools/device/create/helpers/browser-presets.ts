@@ -17,6 +17,7 @@ import {
   REMOTE_SCRIPT_ROUTES,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { whyUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { markMayHaveLanded } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import {
   remoteScriptExpiry,
   remoteScriptWait,
@@ -270,9 +271,13 @@ export async function hotswapPreset(
     const error = response.error ?? "the remote script returned nothing";
 
     // Past V8's wait, Live may still be loading it.
-    return !response.success && Date.now() - started >= waitMs
-      ? { error: `${error}; ${HOTSWAP_UNFINISHED}`, unfinished: true }
-      : { error };
+    if (!response.success && Date.now() - started >= waitMs) {
+      markMayHaveLanded();
+
+      return { error: `${error}; ${HOTSWAP_UNFINISHED}`, unfinished: true };
+    }
+
+    return { error };
   }
 
   const result = response.result;
@@ -284,6 +289,10 @@ export async function hotswapPreset(
   }
 
   if ("error" in result) {
+    if (result.unfinished === true) {
+      markMayHaveLanded();
+    }
+
     return {
       error:
         result.unfinished === true

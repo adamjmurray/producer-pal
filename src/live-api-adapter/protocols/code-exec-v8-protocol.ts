@@ -5,6 +5,7 @@
 
 // V8 asks Node to run user code in its sandboxed VM and awaits the result.
 
+import { warnNoteProblems } from "#src/notation/midi-json/note-problem-warnings.ts";
 import {
   CODE_EXEC_TOO_LARGE_ADVICE,
   MAX_SINGLE_MESSAGE_BYTES,
@@ -122,5 +123,13 @@ export async function executeNoteCodeWithData(
     return result;
   }
 
-  return validateCodeNotes(result.result);
+  const validated = validateCodeNotes(result.result);
+
+  if (!validated.success) {
+    return validated;
+  }
+
+  warnNoteProblems("code", validated.dropped, validated.clamped);
+
+  return { success: true, notes: validated.notes };
 }

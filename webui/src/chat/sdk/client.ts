@@ -42,6 +42,10 @@ import { DEFAULT_MAX_TOOL_STEPS } from "./step-budget";
 import { streamEndNotice } from "./streaming/stream-end-notice";
 import { createStreamInterrupt } from "./streaming/stream-interrupt";
 import {
+  modelName,
+  trackContextLength,
+} from "./provider/local-model/track-context-length";
+import {
   type ChatClientConfig,
   type ChatMessage,
   type UserMessage,
@@ -478,6 +482,9 @@ export class ChatSdkClient {
 
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
+    // Never await the lookup: a server whose own API hangs would hold up every
+    // reply. A step that ends before it answers just shows no %.
+    const contextLength = trackContextLength(this.config.lookupContextLength);
 
     const errorSignal = createStreamErrorSignal();
     const interrupt = createStreamInterrupt(abortSignal);
@@ -503,7 +510,11 @@ export class ChatSdkClient {
           const msg = this.chatHistory[i] as ChatMessage;
 
           if (msg.role === "assistant" && count++ === stepIndex) {
-            msg.usage = toTokenUsage(event.usage);
+            msg.usage = toTokenUsage(
+              event.usage,
+              contextLength.latest,
+              modelName(this.config.model),
+            );
 
             const timing = toStepTiming(event.performance);
 
@@ -520,6 +531,8 @@ export class ChatSdkClient {
         }
 
         stepIndex++;
+        // The model can be (re)loaded mid-chat, so read it again.
+        contextLength.refresh();
       },
     });
 

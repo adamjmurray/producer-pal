@@ -20,7 +20,7 @@ const getModelId = (model: unknown): string =>
 // "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
 // only implement Chat Completions and reject the Responses API's `input` field
 // with "Invalid type for 'input'". LM Studio, Ollama and custom endpoints route
-// through @ai-sdk/openai-compatible so their thinking shows.
+// through @ai-sdk/openai-compatible so their reasoning shows as thinking.
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 

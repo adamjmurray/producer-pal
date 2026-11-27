@@ -162,3 +162,47 @@ Actions via `update-device`'s new `actions: string[]` arg:
    after loading a sample; `can_warp_double/half` stayed `0`.)
 5. **`estimatedPlaybackLength` should be omitted from read output when `sample`
    is null** — `guess_playback_length` returns garbage / 0 with no sample.
+
+## Slicing
+
+On the `sample` child, reachable from Max. Measured on Live 12.4.16.
+
+| Param              | Live property           | Values                                   |
+| ------------------ | ----------------------- | ---------------------------------------- |
+| `sliceBy`          | `slicing_style`         | `transient`, `beat`, `region`, `manual`  |
+| `sliceSensitivity` | `slicing_sensitivity`   | 0–1, for transient                       |
+| `sliceDivision`    | `slicing_beat_division` | `1/16` … `4 bars` (index 0–10), for beat |
+| `sliceRegions`     | `slicing_region_count`  | 2–64, for region                         |
+| `slices`           | `slices`                | read-only: slice starts in seconds       |
+
+- **Slices exist only in slicing mode** (`playback_mode` 2). In any other mode
+  `slices` reads empty and `insert_slice` is dropped without a word, so `slices`
+  is left out of a read and the slice actions are refused. The four settings
+  read and write in any mode.
+- **Each style remembers its own setting** whatever style is in use, so no
+  setting is refused for the style.
+- **Live ignores out-of-range writes silently**: a style or division index out
+  of range and a region count outside 2–64 leave the old value, and a
+  sensitivity outside 0–1 is clamped. All are refused before the write.
+- `sliceDivision` in index order: 1/16, 1/16T, 1/8, 1/8T, 1/4, 1/4T, 1/2, 1/2T,
+  1 bar, 2 bars, 4 bars. Checked by slice counts on a 1-bar loop warped to 4
+  beats.
+- **At most 64 slices** in every style.
+- `slices` is in sample frames; the param divides by the sample's `sample_rate`,
+  so it is seconds into the file, warped or not.
+- A sliced transient 8-bar loop gave 64 slices at sensitivity 1 and 40 at 0.2
+  (12.4.6).
+
+Actions:
+
+- `setSlices(seconds, ...)`: sets `slicing_style` to manual, `clear_slices()`,
+  then `insert_slice(frame)` for each position. Live always keeps a slice at 0.
+  A position outside the sample is refused: Live would drop it silently.
+- `resetSlices`: `reset_slices()`, the style's own slices. In manual style that
+  is the one slice at 0.
+- `sliceToDrumRack`: Python only, so `update-device` runs it through the remote
+  script after the rest of the target's update. See
+  [conversions.md](../../conversions.md#sliced-simpler-to-drum-rack).
+
+`remove_slice(frame)` and `move_slice(old, new)` work too but aren't exposed:
+`setSlices` replaces the lot, and an action named twice in one call runs once.

@@ -23,16 +23,20 @@ from .http_server import BridgeHTTPServer
 PORTS = (3349, *range(3351, 3359))
 
 # How long a request waits for Live's main thread to run it, and then for it to
-# finish. A request that sends `expires_in_ms` waits to start until then, and
-# its run gets REQUEST_TIMEOUT from when it starts, so time queued behind other
-# jobs isn't charged to it. One without it waits REQUEST_TIMEOUT from queueing,
-# then REQUEST_TIMEOUT more if the job has started. Walking a big plugin folder
-# for the first time is the slow case.
+# finish. A request that sends `expires_in_ms` or `expires_at_ms` waits to start
+# until then, and its run gets REQUEST_TIMEOUT from when it starts, so time
+# queued behind other jobs isn't charged to it. One without either waits
+# REQUEST_TIMEOUT from queueing, then REQUEST_TIMEOUT more if the job has
+# started. Walking a big plugin folder for the first time is the slow case.
 REQUEST_TIMEOUT = 30.0
 
-# The longest `expires_in_ms` taken. A larger one would only tie up a thread, and
-# a huge one overflows the wait.
+# The longest `expires_in_ms` taken, or `expires_at_ms` from now. A larger one
+# would only tie up a thread, and a huge one overflows the wait.
 MAX_EXPIRES_IN_MS = 3_600_000
+
+# The earliest `expires_at_ms` taken (2020-01-01 UTC, in epoch ms). An earlier
+# one is a client mistake, such as seconds or a relative time, not a deadline.
+MIN_EXPIRES_AT_MS = 1_577_836_800_000
 
 # While the server has a request in flight, `update_display` keeps looping so
 # the HTTP threads don't wait a whole tick per hop. Live holds the GIL between
@@ -92,7 +96,9 @@ class ProducerPalBridge:
         if path in routes.POST_ONLY and method != "POST":
             return 405, {"error": "%s needs POST" % path}
         try:
-            expires_at = _expires_at(params.get("expires_in_ms"))
+            expires_at = _expires_at(
+                params.get("expires_in_ms"), params.get("expires_at_ms")
+            )
         except ValueError as err:
             return 400, {"error": str(err)}
         job = _Job(handler, self, params, expires_at)
@@ -299,27 +305,68 @@ class _Job:
         return self._expires_at is not None and time.monotonic() >= self._expires_at
 
 
-def _expires_at(expires_in_ms):
+def _expires_at(expires_in_ms, expires_at_ms=None):
     """When a job must start by, on the monotonic clock, or None when not sent.
 
-    Clients send a bit less than how long they'll wait, so a job Live starts in
-    time can still reply before they give up.
+    `expires_at_ms` is a deadline in epoch ms. It wins over `expires_in_ms`: the
+    request may sit in the socket while Live's main thread holds the GIL, and
+    only a deadline counts that wait. Taken here, it is converted by what is
+    left on the wall clock now, so a late-taken request starts already expired.
+    `expires_in_ms` is what an older client sends, counted from now. Clients
+    send a bit less than how long they'll wait, so a job Live starts in time can
+    still reply before they give up. Both are checked when both are sent.
     """
+    relative = _relative_ms(expires_in_ms)
+    if expires_at_ms is None or expires_at_ms == "":
+        if relative is None:
+            return None
+        return time.monotonic() + relative / 1000.0
+    deadline = _milliseconds("expires_at_ms", expires_at_ms)
+    if deadline < MIN_EXPIRES_AT_MS:
+        raise ValueError(
+            "expires_at_ms must be epoch milliseconds, got %r"
+            % (expires_at_ms,)
+        )
+    # Monotonic first: a pause between the two reads can only move the deadline
+    # earlier.
+    now = time.monotonic()
+    left = deadline - time.time() * 1000.0
+    _within_cap("expires_at_ms", expires_at_ms, left)
+    # Already past is fine: the job is skipped.
+    return now + left / 1000.0
+
+
+def _relative_ms(expires_in_ms):
+    """`expires_in_ms` as a number checked to be 0 or more and not too big,
+    or None when not sent."""
     if expires_in_ms is None or expires_in_ms == "":
         return None
-    error = ValueError(
-        "expires_in_ms must be a number, 0 or more, got %r" % (expires_in_ms,)
-    )
-    if isinstance(expires_in_ms, bool):
-        raise error
+    ms = _milliseconds("expires_in_ms", expires_in_ms)
+    if ms < 0:
+        raise _not_a_number("expires_in_ms", expires_in_ms)
+    return _within_cap("expires_in_ms", expires_in_ms, ms)
+
+
+def _not_a_number(name, value):
+    return ValueError("%s must be a number, 0 or more, got %r" % (name, value))
+
+
+def _milliseconds(name, value):
+    if isinstance(value, bool):
+        raise _not_a_number(name, value)
     try:
-        ms = float(str(expires_in_ms).strip())
+        ms = float(str(value).strip())
     except ValueError:
-        raise error
-    if not math.isfinite(ms) or ms < 0:
-        raise error
+        raise _not_a_number(name, value)
+    if not math.isfinite(ms):
+        raise _not_a_number(name, value)
+    return ms
+
+
+def _within_cap(name, value, ms):
     if ms > MAX_EXPIRES_IN_MS:
         raise ValueError(
-            "expires_in_ms must be at most %d, got %r" % (MAX_EXPIRES_IN_MS, expires_in_ms)
+            "%s must be at most %d from now, got %r"
+            % (name, MAX_EXPIRES_IN_MS, value)
         )
-    return time.monotonic() + ms / 1000.0
+    return ms

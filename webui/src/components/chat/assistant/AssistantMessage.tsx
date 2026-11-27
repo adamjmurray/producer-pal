@@ -21,7 +21,6 @@ import {
   type ToolGroupRenderItem,
   groupToolParts,
 } from "./helpers/group-tool-parts";
-import { calcStepNewContent } from "./helpers/step-usage";
 import { StepUsageLabel } from "./StepUsageLabel";
 import { AssistantSubagentCall } from "./tool-calls/AssistantSubagentCall";
 import { AssistantToolCall } from "./tool-calls/AssistantToolCall";
@@ -102,11 +101,7 @@ function renderToolGroup(
               key={idx}
               usage={part.usage}
               timing={part.timing}
-              newContentTokens={calcStepNewContent(
-                idx,
-                part.usage,
-                stepPrevUsages,
-              )}
+              prevUsage={stepPrevUsages.get(idx)}
             />
           );
         })}
@@ -175,7 +170,7 @@ function renderSinglePart(
         key={i}
         usage={part.usage}
         timing={part.timing}
-        newContentTokens={calcStepNewContent(i, part.usage, stepPrevUsages)}
+        prevUsage={stepPrevUsages.get(i)}
       />
     );
   } else if (part.type === "text") {

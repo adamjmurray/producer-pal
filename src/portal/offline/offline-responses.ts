@@ -33,6 +33,18 @@ export function offlineResult(result: object): McpResponse {
 }
 
 /**
+ * The answer to a call the device already had when the connection dropped. A
+ * drop doesn't mean the device is gone (switching Remote Control drops every
+ * open connection), so this never says it is.
+ * @returns The error response
+ */
+export function droppedMidCallResponse(): McpResponse {
+  return offlineError(
+    "the connection to Producer Pal dropped while this call was running. It may still have taken effect: read the current state before trying again.",
+  );
+}
+
+/**
  * @param httpUrl - The device's MCP URL the portal was given
  * @returns The error response for a URL the portal can't reach a device at
  */

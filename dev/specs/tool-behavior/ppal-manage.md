@@ -276,7 +276,9 @@ to ask the user first, unless the user already asked for it.
 Step Live's own history, through the remote script's `/undo/undo` and
 `/undo/redo`. The history holds the user's edits in Live as well as Producer
 Pal's, so an undo can revert something the user did; the tool description says
-so. One step is one write call, since each is closed as one undo step.
+so. One step is one write call that changed something, parallel calls included,
+since each is closed as its own undo step. A call that changed nothing (every
+target skipped, refused up front, or not run) makes no step.
 
 - **`steps`:** how many steps, a whole number from 1 to 50, default 1. Above 50
   (or below 1, or not whole) is refused, never cut down: the caller would think
@@ -322,6 +324,11 @@ the device doesn't. It does this only when the failure is a connection failure,
 not an error the device sent, and only for `ppal-manage` when this portal lists
 it (small-model mode and `--disable-tools` drop it).
 
+- **A call the device already had when the connection dropped** (any tool) gets
+  `Error: the connection to Producer Pal dropped while this call was running. It may still have taken effect: read the current state before trying again.`
+  It doesn't say the device is gone: switching Remote Control drops every
+  connection while the device keeps running. The next call gets the answers
+  below if it really is gone.
 - **`ppal-manage` args are checked first**, by the same code the device uses
   (`manage-args.ts`), so a bad call reads the same either way. Errors read
   `Error: <why>`, as on the device.

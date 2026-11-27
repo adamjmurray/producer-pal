@@ -57,11 +57,11 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerNetworkAccessRoutes } from "./routes/config/network-access-route.ts";
+import { registerLocalAiRelayRoute } from "./helpers/http/browser/local-ai-relay-route.ts";
 import { registerLocalModelProxyRoute } from "./helpers/http/browser/local-model-proxy-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
-import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
 import { registerGenUiRoutes } from "./rpc/gen-ui/gen-ui-routes.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
@@ -177,8 +177,7 @@ function applyLiveApiEnabled(next: boolean): void {
  *
  * Notation is also pushed down as a request override (withDefaultOverrides), so
  * the notation the skills teach is the one V8 actually parses and formats notes
- * in. It wraps the inner call, inside the connect-enrichment chain. Write calls
- * also end Live's pending undo step (withUndoStepEnd), so each is one undo.
+ * in. It wraps the inner call, inside the connect-enrichment chain.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
@@ -197,7 +196,7 @@ function buildEnrichedCall(
   getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
   const enriched = enrichConnect(
-    withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
+    withDefaultOverrides(callLiveApi, () => {
       const overrides: RequestOverrides = {
         notation: getNotation(),
         manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),
@@ -267,9 +266,10 @@ export function createExpressApp(): Express {
   // middleware for the reasoning).
   app.use(corsMiddleware);
 
-  // Before the JSON parser below: it streams the request body through itself,
-  // and a long chat history can pass the parser's 2 MB limit.
+  // Before the JSON parser below: they stream the request body through
+  // themselves, and a long chat history can pass the parser's 2 MB limit.
   registerLocalModelProxyRoute(app);
+  registerLocalAiRelayRoute(app);
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.

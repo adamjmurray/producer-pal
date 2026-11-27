@@ -8,6 +8,7 @@
 from . import browser, hot_reload, hotswap, undo
 from .conversions import ROUTES as _CONVERSION_ROUTES
 from .device_basics import ROUTES as _DEVICE_BASICS_ROUTES
+from .device_conversions import ROUTES as _DEVICE_CONVERSION_ROUTES
 from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
@@ -481,6 +482,7 @@ ROUTES = {
     **_DEVICE_BASICS_ROUTES,
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
+    **_DEVICE_CONVERSION_ROUTES,
     **_UNDO_ROUTES,
     **_GEN_UI_ROUTES,
 }
@@ -496,6 +498,9 @@ POST_ONLY = (
     "/envelope/clear",
     "/clip/convert",
     "/device/simpler/write",
+    "/device/simpler/to-drum-rack",
+    "/track/to-drum-rack",
+    "/device/drum-pad/to-track",
     "/undo/end",
     "/undo/undo",
     "/undo/redo",

@@ -46,7 +46,7 @@ Haven't installed the device yet? Do
    - URL: leave it as `http://localhost:11434` (to run Ollama on another
      computer, see
      [the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic))
-   - Model: the name you downloaded, like `qwen3.8`
+   - Model: pick the one you downloaded, like `qwen3.8`
 
 <img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
@@ -82,7 +82,7 @@ the settings are the same. Prefer Bionic's own chat window? See
 5. Settings to use in step 4:
    - Provider: **Bionic / LM Studio (local)**
    - URL: the Base URL you copied
-   - Model: a model that supports tools, such as `qwen/qwen3.8-27b`,
+   - Model: pick a model that supports tools, such as `qwen/qwen3.8-27b`,
      `thinkingmachines/inkling-2-mini`, `google/gemma-4-e4b`,
      `mistralai/devstral-small-2-2512`, or `zai-org/glm-4.7-flash`
 

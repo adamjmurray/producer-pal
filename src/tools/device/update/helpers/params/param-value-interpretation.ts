@@ -25,9 +25,10 @@ import {
   PARAM_DISABLED_REASON,
   isParamEnabled,
 } from "#src/tools/shared/device/helpers/param-writing.ts";
-import { setNumericParamValue } from "./param-numeric-write.ts";
+import { numericRawValue } from "./param-numeric-write.ts";
 import {
   type ParamWriteOutcome,
+  type RawParamValue,
   writeParam,
 } from "./param-write-verification.ts";
 
@@ -51,6 +52,27 @@ export function setParamValue(
     return { reason: PARAM_DISABLED_REASON };
   }
 
+  const found = rawValueForParam(param, inputValue, writtenText, deviceName);
+
+  return "reason" in found ? found : writeParam(param, found.raw, found.report);
+}
+
+/**
+ * Work out the raw value a written value stands for on a param, in whichever
+ * way the param displays: an option, a note, a pan position, a division, or a
+ * number in its display units. Reads only; nothing is written.
+ * @param param - The parameter
+ * @param inputValue - The value, as a number when it reads as one
+ * @param writtenText - The value as the caller wrote it, unit and all
+ * @param deviceName - The device's class_display_name
+ * @returns The raw value and what a write should report, or why there is none
+ */
+export function rawValueForParam(
+  param: LiveAPI,
+  inputValue: string | number,
+  writtenText: string,
+  deviceName: string | undefined,
+): RawParamValue {
   // Only a bare number can be compared with what the param reads back. A unit,
   // a note name, an enum label or a division is a spelling of the value, not
   // the same number, so those always report what landed.
@@ -77,7 +99,7 @@ export function setParamValue(
       };
     }
 
-    return writeParam(param, index);
+    return { raw: index };
   }
 
   // 2. No display range to convert from, so take the raw value read-device
@@ -88,7 +110,7 @@ export function setParamValue(
   const maxLabel = strForValue(param, rawMax);
 
   if (isDisplayCollapsed(rawMin, rawMax, minLabel, maxLabel)) {
-    return setRawParamValue(param, requested, rawMin, rawMax, writtenText);
+    return rawValueInRange(requested, rawMin, rawMax, writtenText);
   }
 
   // 3. Note - string matching note pattern (e.g., "C4", "F#-1")
@@ -99,7 +121,7 @@ export function setParamValue(
       return { reason: `invalid note name "${inputValue}"` };
     }
 
-    return writeParam(param, midi);
+    return { raw: midi };
   }
 
   // 4. Pan - detect via current label, convert -1/1 to internal range
@@ -107,7 +129,7 @@ export function setParamValue(
   const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
-    return setPanParamValue(param, inputValue, requested);
+    return panRawValue(param, inputValue, requested);
   }
 
   // 5. Division params - string input matching fraction format (e.g., "1/8")
@@ -118,7 +140,7 @@ export function setParamValue(
       return { reason: `"${inputValue}" is not a valid division option` };
     }
 
-    return writeParam(param, rawValue);
+    return { raw: rawValue };
   }
 
   // 6. Numeric - convert display value to raw value. A param with no numeric
@@ -127,7 +149,7 @@ export function setParamValue(
   const range = readNumericRange(param, rawMin, rawMax, minLabel, maxLabel);
 
   if (typeof inputValue === "number") {
-    return setNumericParamValue({
+    return numericRawValue({
       param,
       inputValue,
       requested,
@@ -147,7 +169,7 @@ export function setParamValue(
   const sentinelRaw = range && sentinelRawValue(range, inputValue);
 
   if (sentinelRaw != null) {
-    return writeParam(param, sentinelRaw);
+    return { raw: sentinelRaw };
   }
 
   // 8. Uninterpretable string — Live silently rejects string writes to numeric
@@ -158,45 +180,43 @@ export function setParamValue(
 }
 
 /**
- * Write a raw value to a param whose display gives nothing to convert from.
+ * The raw value for a param whose display gives nothing to convert from.
  * Out-of-range values are refused, not clamped: 30 here most likely means
  * 30 % on the plug-in's display, not "as high as it goes".
- * @param param - Parameter to set
  * @param requested - The value asked for, when the call wrote a bare number
  * @param rawMin - Raw minimum value
  * @param rawMax - Raw maximum value
  * @param writtenText - The value as the caller wrote it, unit and all
- * @returns The param the write landed on, or why it landed nowhere
+ * @returns The raw value, or why there is none
  */
-function setRawParamValue(
-  param: LiveAPI,
+function rawValueInRange(
   requested: number | undefined,
   rawMin: number,
   rawMax: number,
   writtenText: string,
-): ParamWriteOutcome {
+): RawParamValue {
   if (requested == null || requested < rawMin || requested > rawMax) {
     return {
       reason: `has no readable display range, so it takes a plain number from ${rawMin} to ${rawMax} — "${writtenText}" was not written`,
     };
   }
 
-  return writeParam(param, requested, { requested, verifyRaw: true });
+  return { raw: requested, report: { requested, verifyRaw: true } };
 }
 
 /**
- * Write a pan parameter, converting the -1..1 scale read-device reports (or a
+ * A pan parameter's raw value, converting the -1..1 scale read-device reports (or a
  * directional label like "50L") into the parameter's own raw range.
  * @param param - Parameter to set
  * @param inputValue - Value to set
  * @param requested - The value asked for, when the call wrote a bare number
- * @returns The param the write landed on, or why it landed nowhere
+ * @returns The raw value, or why there is none
  */
-function setPanParamValue(
+function panRawValue(
   param: LiveAPI,
   inputValue: string | number,
   requested: number | undefined,
-): ParamWriteOutcome {
+): RawParamValue {
   const min = param.getProperty("min") as number;
   const max = param.getProperty("max") as number;
 
@@ -223,10 +243,18 @@ function setPanParamValue(
     numValue = inputValue;
   }
 
+  // Live ignores a value past the range, so keep to it and say so.
+  const clamped = Math.min(Math.max(numValue, -1), 1);
+  const changed =
+    clamped === numValue
+      ? undefined
+      : `only goes from ${strForValue(param, min)} to ${strForValue(param, max)}, so ${String(inputValue)} was set to the nearest valid value`;
+
   // Convert -1 to 1 → internal range
-  return writeParam(param, ((numValue + 1) / 2) * (max - min) + min, {
-    requested,
-  });
+  return {
+    raw: ((clamped + 1) / 2) * (max - min) + min,
+    report: { requested, ...(changed != null && { changed }) },
+  };
 }
 
 /**

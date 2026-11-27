@@ -31,6 +31,8 @@ export type PluginHostOp =
   | "params"
   | "set"
   | "write"
+  | "find"
+  | "lookup"
   | "raw"
   | "map"
   | "unmap"

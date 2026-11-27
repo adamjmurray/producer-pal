@@ -140,3 +140,51 @@ a Simpler is a 400 and nothing is written.
 ```sh
 curl -s -X POST localhost:3349/device/simpler/write -d '{"device_path": "live_set tracks 0 devices 0", "pitch_bend_range": 12}'
 ```
+
+## `POST /device/simpler/to-drum-rack`
+
+Replaces a sliced Simpler with a Drum Rack, one pad per slice, using
+`Live.Conversions.sliced_simpler_to_drum_rack`. Takes one `device_path` and
+answers `{pads}`, the new rack's pad count. Live converts in place before the
+route answers. A device that isn't a Simpler is a 400; a Simpler that isn't in
+slicing mode, a Live without the conversion, or a refusal from Live is a 409.
+
+The route must never load a sample: Live crashes when a Simpler's sample is
+replaced and converted in the same main-thread call. See
+[conversions.md](../../dev/live-api/conversions.md#sliced-simpler-to-drum-rack).
+
+```sh
+curl -s -X POST localhost:3349/device/simpler/to-drum-rack -d '{"device_path": "live_set tracks 0 devices 0"}'
+```
+
+## `POST /track/to-drum-rack`
+
+Puts a track's devices on pad C1 of a new Drum Rack, on a new track right after
+it, using `Live.Conversions.move_devices_on_track_to_new_drum_rack_pad`. Takes
+`track` (`t0`, `t1`...) and answers `{track_index, source_removed}`: where the
+new track is now, and whether Live deleted the source, which it does when the
+source has no clips. Live selects and arms the new track.
+
+A group track, a track with no devices, a track holding the Producer Pal device
+(directly or inside a rack, found by name), or a refusal from Live is a 409. So
+is a track with no clips that is the only track in its group: Live crashes on
+that one, so the route never asks. See
+[conversions.md](../../dev/live-api/conversions.md#track-devices-to-a-drum-rack-pad).
+
+```sh
+curl -s -X POST localhost:3349/track/to-drum-rack -d '{"track": "t3"}'
+```
+
+## `POST /device/drum-pad/to-track`
+
+Copies a drum pad's chain onto a new MIDI track after the last track, using
+`Live.Conversions.create_midi_track_from_drum_pad`. Takes the Drum Rack's
+`device_path` and the pad's `note` (0-127), and answers `{track_index}`. The pad
+keeps its chain and no clips are copied. Live selects and arms the new track. A
+device that isn't a Drum Rack, a rack with no pads of its own (one nested in
+another rack), an empty pad, or a pad holding the Producer Pal device (found by
+name) is a 409.
+
+```sh
+curl -s -X POST localhost:3349/device/drum-pad/to-track -d '{"device_path": "live_set tracks 0 devices 0", "note": 36}'
+```

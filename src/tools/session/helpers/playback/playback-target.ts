@@ -83,6 +83,7 @@ const PLAY_SCENE = "play-scene";
 const TARGETING_ACTIONS = new Set([
   PLAY_SCENE,
   "play-session-clips",
+  "play-session-clips-synced",
   "stop-session-clips",
 ]);
 
@@ -432,10 +433,9 @@ function assertClipPath(
     return;
   }
 
-  const wholeScene =
-    action === "play-session-clips"
-      ? `, or use action "${PLAY_SCENE}" for the whole scene`
-      : "";
+  const wholeScene = action.startsWith("play-session-clips")
+    ? `, or use action "${PLAY_SCENE}" for the whole scene`
+    : "";
 
   throw pathError(
     source.label,

@@ -50,9 +50,11 @@ snake_case; the forwarding route translates.
    the table disagree.
 
 **Every route that changes the Set carries an expiry.** `remoteScriptChange()`
-sends `expiresInMs`; Node passes it as `expires_in_ms`. If Live hasn't started
-the job by then, it skips it, so a change V8 already reported as failed doesn't
-land late. A Node route for a change throws if `expiresInMs` is missing
+sends `expiresInMs`; Node passes it as `expires_in_ms` and, counted from the
+call, as the epoch deadline `expires_at_ms` (which the script prefers, as it may
+take the request late; a script without it counts from arrival). If Live hasn't
+started the job by then, it skips it, so a change V8 already reported as failed
+doesn't land late. A Node route for a change throws if `expiresInMs` is missing
 (`requireExpiry`). Reads carry none.
 
 ## Availability and old scripts

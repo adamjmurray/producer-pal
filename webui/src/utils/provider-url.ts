@@ -3,6 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LOCAL_AI_DEFAULT_URLS } from "#src/shared/config";
+import { relayLocalAiUrl } from "#webui/chat/sdk/provider/local-model/local-ai-relay";
+
 /** Placeholder API key for local providers that don't require authentication */
 export const LOCAL_PROVIDER_API_KEY = "not-needed";
 
@@ -105,15 +108,12 @@ export function getBaseUrl(
     return undefined;
   }
 
-  if (provider === "lmstudio") {
+  if (provider === "lmstudio" || provider === "ollama") {
     return normalizeLocalProviderUrl(
-      withDefaultUrl(baseUrl, "http://localhost:1234"),
-    );
-  }
-
-  if (provider === "ollama") {
-    return normalizeLocalProviderUrl(
-      withDefaultUrl(baseUrl, "http://localhost:11434"),
+      relayLocalAiUrl(
+        provider,
+        withDefaultUrl(baseUrl, LOCAL_AI_DEFAULT_URLS[provider]),
+      ),
     );
   }
 

@@ -12,7 +12,7 @@
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { clampMidi, isValidMidi } from "#src/shared/pitch.ts";
+import { isValidMidi } from "#src/shared/pitch.ts";
 
 /**
  * Note format exposed to user code and the MIDI JSON notation. Uses camelCase
@@ -80,20 +80,41 @@ export function codeNoteToNoteEvent(
   };
 }
 
+type NoteKeys = Record<keyof CodeNote, string>;
+
+const SHORT_KEYS: NoteKeys = {
+  pitch: "p",
+  start: "t",
+  duration: "d",
+  velocity: "v",
+  velocityDeviation: "vd",
+  probability: "c",
+};
+
+const LONG_KEYS: NoteKeys = {
+  pitch: "pitch",
+  start: "start",
+  duration: "duration",
+  velocity: "velocity",
+  velocityDeviation: "velocityDeviation",
+  probability: "probability",
+};
+
 /**
  * Result of validating a raw value as a notes array. Either the sanitized notes
  * or an error message describing why the value was rejected.
  */
 export type ValidateCodeNotesResult =
-  | { success: true; notes: CodeNote[] }
+  | { success: true; notes: CodeNote[]; dropped: string[]; clamped: string[] }
   | { success: false; error: string };
 
 /**
- * Validate a raw value (parsed user code result or MIDI JSON) as a notes array.
- * Filters out invalid notes and clamps values to valid ranges.
+ * Validate the value user code returned as a notes array. Filters out invalid
+ * notes and clamps values to valid ranges, listing both for the caller to warn
+ * about.
  *
  * @param result - Raw value to validate
- * @returns Validated result
+ * @returns The valid notes, plus why notes were dropped and what was clamped
  */
 export function validateCodeNotes(result: unknown): ValidateCodeNotesResult {
   if (!Array.isArray(result)) {
@@ -103,18 +124,22 @@ export function validateCodeNotes(result: unknown): ValidateCodeNotesResult {
     };
   }
 
-  const validatedNotes: CodeNote[] = [];
+  const notes: CodeNote[] = [];
+  const dropped: string[] = [];
+  const clamped: string[] = [];
 
   for (const note of result) {
-    const validated = validateAndSanitizeNote(note);
+    const validated = validateAndSanitizeNote(note, { longKeys: true });
 
     if (validated.valid) {
-      validatedNotes.push(validated.note);
+      notes.push(validated.note);
+      clamped.push(...validated.clamped);
+    } else {
+      dropped.push(validated.reason);
     }
-    // Invalid notes are silently filtered out
   }
 
-  return { success: true, notes: validatedNotes };
+  return { success: true, notes, dropped, clamped };
 }
 
 /** Options for {@link validateAndSanitizeNote}. */
@@ -123,44 +148,50 @@ export interface ValidateNoteOptions {
    * Treat a velocity of 0 or less as a delete marker (MIDI JSON's `v:0`) and
    * keep it at 0 instead of clamping it up to 1, matching the transform rule
    * that `velocity <= 0` deletes. Off by default: user code returns notes to
-   * play, and Live rejects velocity 0.
+   * play, and Live rejects velocity 0, so it is clamped up to 1.
    */
   allowVelocityZero?: boolean;
   /**
-   * Drop a note whose pitch is outside 0-127 instead of clamping it: a clamped
-   * pitch is a note nobody wrote. On for MIDI JSON, whose drops are warned. Off
-   * by default: user code's invalid notes are dropped without a word, and a
-   * clamped note there is at least heard.
+   * Name fields in reasons by a code note's long keys (`pitch`, `velocity`)
+   * instead of MIDI JSON's short ones (`p`, `v`).
    */
-  skipPitchOutOfRange?: boolean;
+  longKeys?: boolean;
 }
 
 /**
  * Validate and sanitize a single note.
- * Returns a valid note with clamped values, or invalid if note is malformed.
+ * Returns a valid note with clamped values, or invalid if note is malformed or
+ * its pitch is outside 0-127: a clamped pitch is a note nobody wrote.
  *
- * An invalid result carries a short `reason`. Callers decide whether to report
- * it: {@link interpretMidiJson} aggregates the reasons into one warning, since
- * dropping a note the caller asked for should never be silent. It is phrased for
- * a model reading a `WARNING:` block, so it names the MIDI JSON keys (`p`, `d`)
- * rather than the internal field names.
+ * An invalid result carries a short `reason`; a valid one lists what was
+ * `clamped`. Callers decide whether to report them: {@link interpretMidiJson}
+ * aggregates each into one warning, since changing or dropping a note the
+ * caller asked for should never be silent. Both are phrased for a model reading
+ * a `WARNING:` block, so they name the keys the caller wrote.
  *
  * @param note - The note object to validate
  * @param options - Validation options
- * @returns Valid note with sanitized values, or invalid plus the reason why
+ * @returns Valid note with sanitized values and what was clamped, or invalid
+ *   plus the reason why
  */
 export function validateAndSanitizeNote(
   note: unknown,
   options: ValidateNoteOptions = {},
-): { valid: true; note: CodeNote } | { valid: false; reason: string } {
+):
+  | { valid: true; note: CodeNote; clamped: string[] }
+  | { valid: false; reason: string } {
   if (typeof note !== "object" || note == null) {
     return { valid: false, reason: "not an object" };
   }
 
   const n = note as Record<string, unknown>;
+  const key = options.longKeys === true ? LONG_KEYS : SHORT_KEYS;
 
   if (!hasPitchAndStart(n)) {
-    return { valid: false, reason: "missing or non-numeric p/t" };
+    return {
+      valid: false,
+      reason: `missing or non-numeric ${key.pitch}/${key.start}`,
+    };
   }
 
   // Default duration, velocity, and probability if not provided
@@ -180,7 +211,10 @@ export function validateAndSanitizeNote(
     !Number.isFinite(velocity) ||
     !Number.isFinite(probability)
   ) {
-    return { valid: false, reason: "non-finite d, v, or c" };
+    return {
+      valid: false,
+      reason: `non-finite ${key.duration}, ${key.velocity}, or ${key.probability}`,
+    };
   }
 
   // Tested on the RAW velocity, before rounding: a quiet fractional velocity
@@ -191,38 +225,53 @@ export function validateAndSanitizeNote(
   // a note that already exists, so `d:0` must still delete instead of being
   // dropped here — the marker is filtered out before the write either way.
   if (!isDeleteMarker && duration <= 0) {
-    return { valid: false, reason: "d must be greater than 0" };
+    return { valid: false, reason: `${key.duration} must be greater than 0` };
   }
 
-  // A marker names a note that already exists, so an out-of-range pitch names
-  // nothing — clamping it into 0-127 would delete a note the caller never
-  // mentioned. Rounding is still fine: p:127.4 means 127.
-  if (
-    (isDeleteMarker || options.skipPitchOutOfRange === true) &&
-    !isValidMidi(Math.round(n.pitch))
-  ) {
+  // Never clamped: that would write a note nobody asked for, or (for a marker)
+  // delete one the caller never mentioned. Rounding is fine: p:127.4 means 127.
+  if (!isValidMidi(Math.round(n.pitch))) {
     return {
       valid: false,
       reason: `${isDeleteMarker ? "delete marker " : ""}pitch ${n.pitch} is outside 0-127`,
     };
   }
 
-  // Sanitize by clamping values
+  // Sanitize by clamping values, noting each one that moved
+  const clamped: string[] = [];
+
+  const clamp = (
+    name: string,
+    value: number,
+    min: number,
+    max: number,
+  ): number => {
+    if (value >= min && value <= max) {
+      return value;
+    }
+
+    clamped.push(`${name} outside ${min} to ${max}`);
+
+    return Math.max(min, Math.min(max, value));
+  };
+
   const sanitized: CodeNote = {
-    pitch: clampMidi(Math.round(n.pitch)),
+    pitch: Math.round(n.pitch),
     start: n.start,
     duration: Math.max(0.001, duration),
     velocity: isDeleteMarker
       ? 0
-      : Math.max(1, Math.min(127, Math.round(velocity))),
-    velocityDeviation: Math.max(
+      : clamp(key.velocity, Math.round(velocity), 1, 127),
+    velocityDeviation: clamp(
+      key.velocityDeviation,
+      Math.round(Number(n.velocityDeviation) || 0),
       -127,
-      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
+      127,
     ),
-    probability: Math.max(0, Math.min(1, probability)),
+    probability: clamp(key.probability, probability, 0, 1),
   };
 
-  return { valid: true, note: sanitized };
+  return { valid: true, note: sanitized, clamped };
 }
 
 /**

@@ -6,22 +6,20 @@
 import {
   type ClientRequest,
   type IncomingMessage,
-  type Server,
-  type ServerResponse,
   createServer,
   request,
 } from "node:http";
 import { type AddressInfo } from "node:net";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isOwnServer } from "../../../helpers/http/browser/local-model-proxy-route.ts";
 import { createExpressApp } from "../../../create-express-app.ts";
-import {
-  type HttpListeners,
-  startHttpListeners,
-} from "../../../helpers/http/http-listeners.ts";
 import { readResponse } from "../../express-app-test-helpers.ts";
-
-type Handler = (req: IncomingMessage, res: ServerResponse) => void;
+import {
+  errorBodyMessage,
+  itStreamsUnbuffered,
+  useFakeModelServer,
+  useListeningApp,
+} from "./model-server-forwarding-test-helpers.ts";
 
 interface Sent {
   status: number;
@@ -32,15 +30,10 @@ interface Sent {
 // The route inside the whole app, in front of a fake model server, so the
 // rebinding guard, CORS and the JSON parser run as they do for a real request.
 describe("/local-model-proxy", () => {
-  let listeners: HttpListeners;
-  let port = 0;
-  let upstream: Server;
-  let upstreamPort = 0;
-  let upstreamHandler: Handler;
-  let upstreamHits: { method?: string; url?: string; headers: object }[];
+  const fake = useFakeModelServer();
 
   const target = (path = "/v1/models"): string =>
-    `http://127.0.0.1:${upstreamPort}${path}`;
+    `http://127.0.0.1:${fake.port()}${path}`;
 
   // fetch won't let a test choose Host or Origin, so use node:http.
   const open = (
@@ -51,11 +44,11 @@ describe("/local-model-proxy", () => {
     const req = request(
       {
         host: "127.0.0.1",
-        port,
+        port: appPort(),
         path: "/local-model-proxy",
         method: options.method ?? "GET",
         agent: false,
-        headers: { host: `localhost:${port}`, ...headers },
+        headers: { host: `localhost:${appPort()}`, ...headers },
       },
       (res) => onResponse(res, req),
     );
@@ -88,62 +81,32 @@ describe("/local-model-proxy", () => {
     );
   };
 
-  const message = (sent: Sent): string =>
-    (JSON.parse(sent.text) as { error: { message: string } }).error.message;
+  const message = (sent: Sent): string => errorBodyMessage(sent.text);
 
-  beforeEach(async () => {
-    upstreamHits = [];
-
-    upstreamHandler = (_req, res) => {
-      res.setHeader("Content-Type", "application/json");
-      res.end('{"data":[]}');
-    };
-
-    upstream = createServer((req, res) => {
-      upstreamHits.push({
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-      });
-      upstreamHandler(req, res);
-    });
-    await new Promise<void>((resolve) =>
-      upstream.listen(0, "127.0.0.1", resolve),
-    );
-    upstreamPort = (upstream.address() as AddressInfo).port;
-
-    listeners = await startHttpListeners(createExpressApp(), { port: 0 });
-    port = listeners.addresses()[0]?.port ?? 0;
-  });
-
-  afterEach(async () => {
-    await listeners.close();
-    upstream.closeAllConnections();
-    await new Promise((resolve) => upstream.close(resolve));
-  });
+  const appPort = useListeningApp(createExpressApp);
 
   describe("forwarding", () => {
     it("forwards a GET with its status and content type", async () => {
-      upstreamHandler = (_req, res) => {
+      fake.answerWith((_req, res) => {
         res.statusCode = 201;
         res.setHeader("Content-Type", "text/x-test");
         res.end("hello");
-      };
+      });
 
       const res = await send({ "x-local-model-url": target("/v1/models?a=1") });
 
       expect(res.status).toBe(201);
       expect(res.headers["content-type"]).toBe("text/x-test");
       expect(res.text).toBe("hello");
-      expect(upstreamHits[0]).toStrictEqual(
+      expect(fake.hits()[0]).toStrictEqual(
         expect.objectContaining({ method: "GET", url: "/v1/models?a=1" }),
       );
     });
 
     it("forwards a POST body", async () => {
-      upstreamHandler = (req, res) => {
+      fake.answerWith((req, res) => {
         req.pipe(res);
-      };
+      });
 
       const res = await send(
         {
@@ -154,16 +117,16 @@ describe("/local-model-proxy", () => {
       );
 
       expect(res.text).toBe('{"model":"m"}');
-      expect(upstreamHits[0]?.method).toBe("POST");
+      expect(fake.hits()[0]?.method).toBe("POST");
     });
 
     it("passes a body past the app's 2 MB JSON limit", async () => {
-      upstreamHandler = (req, res) => {
+      fake.answerWith((req, res) => {
         let bytes = 0;
 
         req.on("data", (chunk: Buffer) => (bytes += chunk.length));
         req.on("end", () => res.end(String(bytes)));
-      };
+      });
 
       const body = Buffer.alloc(5 * 1024 * 1024, "a");
       const res = await send(
@@ -185,19 +148,19 @@ describe("/local-model-proxy", () => {
           accept: "text/event-stream",
           "content-type": "application/json",
           cookie: "session=secret",
-          origin: `http://localhost:${port}`,
-          referer: `http://localhost:${port}/chat`,
+          origin: `http://localhost:${appPort()}`,
+          referer: `http://localhost:${appPort()}/chat`,
           "x-extra": "1",
         },
         { method: "POST", body: "{}" },
       );
 
-      const headers = upstreamHits[0]?.headers as Record<string, string>;
+      const headers = fake.hits()[0]?.headers as Record<string, string>;
 
       expect(headers.authorization).toBe("Bearer k");
       expect(headers.accept).toBe("text/event-stream");
       expect(headers["content-type"]).toBe("application/json");
-      expect(headers.host).toBe(`127.0.0.1:${upstreamPort}`);
+      expect(headers.host).toBe(`127.0.0.1:${fake.port()}`);
 
       for (const name of [
         "cookie",
@@ -210,46 +173,13 @@ describe("/local-model-proxy", () => {
       }
     });
 
-    it("streams chunks as they arrive, before the upstream ends", async () => {
-      let finish = (): void => undefined;
-
-      upstreamHandler = (_req, res) => {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.write("data: one\n\n");
-        finish = () => res.end("data: two\n\n");
-      };
-
-      const first = await new Promise<string>((resolve) => {
-        stream((res) => {
-          res.once("data", (chunk: Buffer) => resolve(chunk.toString()));
-        });
-      });
-
-      // The upstream hasn't ended: only the first chunk has crossed.
-      expect(first).toBe("data: one\n\n");
-      finish();
-    });
-
-    it("stops the upstream request when the browser disconnects", async () => {
-      const closed = new Promise<void>((resolve) => {
-        upstreamHandler = (_req, res) => {
-          res.write("data: one\n\n");
-          res.on("close", resolve);
-        };
-      });
-
-      stream((res, req) => {
-        res.once("data", () => req.destroy());
-      });
-
-      await expect(closed).resolves.toBeUndefined();
-    });
+    itStreamsUnbuffered(fake, stream);
 
     it("cuts the browser's stream when the upstream dies mid-answer", async () => {
-      upstreamHandler = (_req, res) => {
+      fake.answerWith((_req, res) => {
         res.write("data: one\n\n");
         setTimeout(() => res.destroy(), 10);
-      };
+      });
 
       const ended = await new Promise<string>((resolve) => {
         stream((res) => {
@@ -295,11 +225,11 @@ describe("/local-model-proxy", () => {
       );
       const elsewherePort = (elsewhere.address() as AddressInfo).port;
 
-      upstreamHandler = (_req, res) => {
+      fake.answerWith((_req, res) => {
         res.statusCode = 302;
         res.setHeader("Location", `http://127.0.0.1:${elsewherePort}/`);
         res.end();
-      };
+      });
 
       const res = await send({ "x-local-model-url": target() });
 
@@ -332,7 +262,7 @@ describe("/local-model-proxy", () => {
       expect(res.status).toBe(400);
       expect(res.headers["x-producer-pal-proxy-error"]).toBe("true");
       expect(message(res)).toMatch(/only reaches servers on this computer/);
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
 
     it.each([
@@ -347,7 +277,7 @@ describe("/local-model-proxy", () => {
       const res = await send({ "x-local-model-url": target(path) });
 
       expect(res.status).toBe(200);
-      expect(upstreamHits[0]?.url).toBe(path);
+      expect(fake.hits()[0]?.url).toBe(path);
     });
 
     it.each([
@@ -369,12 +299,12 @@ describe("/local-model-proxy", () => {
       expect(message(res)).toMatch(
         /\/models, \/chat\/completions, \/completions, \/responses or \/messages/,
       );
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
 
     it("refuses Producer Pal's own port", async () => {
       const res = await send({
-        "x-local-model-url": `http://127.0.0.1:${port}/v1/models`,
+        "x-local-model-url": `http://127.0.0.1:${appPort()}/v1/models`,
       });
 
       expect(res.status).toBe(400);
@@ -395,7 +325,7 @@ describe("/local-model-proxy", () => {
 
       expect(res.status).toBe(405);
       expect(res.headers.allow).toBe("GET, POST");
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
   });
 
@@ -403,7 +333,7 @@ describe("/local-model-proxy", () => {
     it("serves Producer Pal's own page", async () => {
       const res = await send({
         "x-local-model-url": target(),
-        origin: `http://localhost:${port}`,
+        origin: `http://localhost:${appPort()}`,
       });
 
       expect(res.status).toBe(200);
@@ -463,7 +393,7 @@ describe("/local-model-proxy", () => {
         const res = await fromDevServer();
 
         expect(res.status).toBe(403);
-        expect(upstreamHits).toHaveLength(0);
+        expect(fake.hits()).toHaveLength(0);
       });
 
       it("is refused on a non-loopback host, even in a dev build", async () => {
@@ -491,17 +421,17 @@ describe("/local-model-proxy", () => {
 
       expect(res.status).toBe(403);
       expect(message(res)).toMatch(/computer running Live/);
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
 
     it("refuses a Host a website could rebind", async () => {
       const res = await send({
         "x-local-model-url": target(),
-        host: `evil.example:${port}`,
+        host: `evil.example:${appPort()}`,
       });
 
       expect(res.status).toBe(403);
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
 
     it("refuses a tunnel's Host", async () => {
@@ -511,7 +441,7 @@ describe("/local-model-proxy", () => {
       });
 
       expect(res.status).toBe(403);
-      expect(upstreamHits).toHaveLength(0);
+      expect(fake.hits()).toHaveLength(0);
     });
   });
 });

@@ -7,6 +7,7 @@
 import Max from "max-api";
 import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { registerV8StartedRoute } from "./max-api-adapter.ts";
 import { syncDeviceInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { registerDeviceReportRoute } from "./rpc/device-install/device-report-route.ts";
 import { askDeviceToReport } from "./rpc/device-install/device-source.ts";
@@ -29,6 +30,7 @@ registerDeviceReportRoute();
 registerGlobalContextNodeRoutes();
 registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();
+registerV8StartedRoute();
 
 // Cast process to access Node.js argv (max-globals.d.ts has limited process type)
 const { port } = parseServerArgs(
@@ -48,6 +50,7 @@ const devFlags = [
   ["ENABLE_WARP_MARKERS", process.env.ENABLE_WARP_MARKERS],
   ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
   ["ENABLE_OBJECT_PROBE", process.env.ENABLE_OBJECT_PROBE],
+  ["ENABLE_STALE_LIVE_API_CHECK", process.env.ENABLE_STALE_LIVE_API_CHECK],
 ].filter(([, value]) => value === "true");
 
 if (devFlags.length > 0) {

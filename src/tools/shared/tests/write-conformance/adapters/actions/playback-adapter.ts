@@ -16,6 +16,7 @@ import {
 } from "#src/tools/session/tests/playback/playback-test-helpers.ts";
 import {
   LIVE_FAILURE,
+  failOnSet,
   manyScenario,
   repeatScenario,
 } from "../../write-conformance-fixtures.ts";
@@ -54,6 +55,16 @@ export const playbackAdapter: WriteToolAdapter = {
     wrongLength:
       "takes no per-target list: every other param applies to the call",
     countWithDestinations: "takes no count",
+  },
+
+  wholeCallThrows: () => {
+    failOnSet(setupPlaybackLiveSet());
+
+    return {
+      args: { action: "stop", startTime: "5|1" },
+      message: LIVE_FAILURE,
+      landed: "transport stopped",
+    };
   },
 
   many: (n) => {

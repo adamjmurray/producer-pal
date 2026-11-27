@@ -42,7 +42,7 @@ export interface ToolOptions {
   // For a tool that isn't read-only: whether a call with these args can change
   // the Set. Omitted means every call can. A call that can't skips the write
   // queue (write-queue.ts) and gets no undo step closed after it
-  // (with-undo-step-end.ts).
+  // (end-undo-step.ts).
   changesSet?: (args: Record<string, unknown>) => boolean;
   // Param descriptions/exclusions/enum-trims are co-located on each param via
   // param() (see modal-config.ts) — there is no separate override config.

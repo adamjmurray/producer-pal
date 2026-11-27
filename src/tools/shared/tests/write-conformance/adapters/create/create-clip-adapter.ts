@@ -85,6 +85,8 @@ export const createClipAdapter: WriteToolAdapter = {
   tool: "ppal-create-clip",
   run: (args) => createClip({ length: "1bar", ...args }),
   na: {
+    wholeCallThrows:
+      "a failed `auto` launch is caught and warned; nothing else is written outside a target's turn",
     unparsableDestination:
       "path is the destination, which the unparsable case covers",
     newTwice:

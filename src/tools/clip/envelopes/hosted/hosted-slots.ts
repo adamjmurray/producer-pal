@@ -26,7 +26,7 @@ import {
   trackObject,
   trackText,
 } from "../envelope-track.ts";
-import { type EnvelopeTarget } from "../envelope-targets.ts";
+import { type EnvelopeTarget } from "../targets/envelope-targets.ts";
 import {
   ENVELOPE_ROUTES,
   type EnvelopeListResult,

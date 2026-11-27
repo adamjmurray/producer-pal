@@ -7,13 +7,6 @@
 // headers (DwarfStar's ds4-server, for one): the browser calls this route and
 // the server makes the call.
 
-import {
-  type IncomingHttpHeaders,
-  type IncomingMessage,
-  type OutgoingHttpHeaders,
-  request as httpRequest,
-} from "node:http";
-import { request as httpsRequest } from "node:https";
 import { type Express, type Request, type Response } from "express";
 import {
   LOCAL_MODEL_PROXY_ERROR_HEADER,
@@ -21,23 +14,15 @@ import {
   LOCAL_MODEL_URL_HEADER,
   parseLocalModelUrl,
 } from "#src/shared/config.ts";
-import { isSameOriginRequest, isViteDevOrigin } from "./request-origin.ts";
+import { isOwnPageOrigin } from "./request-origin.ts";
 import { isLocalPeerRequest } from "../test-switch-guard.ts";
-
-// What a model server needs. Never the browser's cookie, origin, host or
-// referer. `content-length` is only framing, so the request body can be
-// streamed through at any size (a long chat history passes 2 MB).
-const FORWARDED_HEADERS = [
-  "content-type",
-  "accept",
-  "authorization",
-  "content-length",
-];
+import {
+  forwardToModelServer,
+  refuseProxyRequest as refuse,
+} from "./model-server-forwarding.ts";
 
 const MODEL_API_PATH =
   /\/(?:models|chat\/completions|completions|responses|messages)$/;
-
-const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 
 /**
  * Register the local model proxy route. Mount it before the app's JSON body
@@ -45,10 +30,7 @@ const REDIRECTS = new Set([301, 302, 303, 307, 308]);
  *
  * Only Producer Pal's own chat page on this computer may use it (see
  * {@link isFromOwnPage}), and only for a model API on `localhost`, `127.0.0.1`
- * or `[::1]`, never Producer Pal itself. Redirects aren't followed, since one
- * could lead off this computer. The upstream response is streamed
- * back as it arrives, so SSE isn't buffered. A browser that disconnects takes
- * the upstream request with it.
+ * or `[::1]`, never Producer Pal itself.
  *
  * @param app - Express application
  */
@@ -108,7 +90,9 @@ export function registerLocalModelProxyRoute(app: Express): void {
       return;
     }
 
-    forward(req, res, target);
+    forwardToModelServer(req, res, target, {
+      serverName: `the local model server at ${target.origin}`,
+    });
   });
 }
 
@@ -124,17 +108,7 @@ export function registerLocalModelProxyRoute(app: Express): void {
  * @returns true when the request may use the proxy
  */
 function isFromOwnPage(req: Request): boolean {
-  if (!isLocalPeerRequest(req)) {
-    return false;
-  }
-
-  const origin = req.get("Origin");
-
-  return (
-    origin == null ||
-    isSameOriginRequest(origin, req) ||
-    isViteDevOrigin(origin)
-  );
+  return isLocalPeerRequest(req) && isOwnPageOrigin(req);
 }
 
 /**
@@ -152,101 +126,4 @@ export function isOwnServer(
   const port = target.port || (target.protocol === "https:" ? "443" : "80");
 
   return Number(port) === localPort;
-}
-
-function refuse(res: Response, status: number, message: string): void {
-  res
-    .status(status)
-    .set(LOCAL_MODEL_PROXY_ERROR_HEADER, "true")
-    // The AI SDK reads error.message from an OpenAI-style error body.
-    .json({ error: { message } });
-}
-
-function forwardedHeaders(headers: IncomingHttpHeaders): OutgoingHttpHeaders {
-  const out: OutgoingHttpHeaders = {};
-
-  for (const name of FORWARDED_HEADERS) {
-    const value = headers[name];
-
-    if (value != null) {
-      out[name] = value;
-    }
-  }
-
-  return out;
-}
-
-function forward(req: Request, res: Response, target: URL): void {
-  const send = target.protocol === "https:" ? httpsRequest : httpRequest;
-  // `redirect` has no option here: node:http never follows one.
-  const upstream = send(target, {
-    method: req.method,
-    headers: forwardedHeaders(req.headers),
-    agent: false,
-  });
-
-  upstream.on("response", (upstreamRes) => {
-    relay(upstreamRes, res, target);
-  });
-
-  upstream.on("error", () => {
-    if (res.headersSent) {
-      res.destroy();
-
-      return;
-    }
-
-    refuse(
-      res,
-      502,
-      `Couldn't reach the local model server at ${target.origin}. ` +
-        "Is it running?",
-    );
-  });
-
-  // The browser went away mid-request: stop the model server's work too.
-  res.on("close", () => {
-    if (!res.writableFinished) {
-      upstream.destroy();
-    }
-  });
-
-  if (req.method === "POST") {
-    req.pipe(upstream);
-  } else {
-    upstream.end();
-  }
-}
-
-function relay(upstreamRes: IncomingMessage, res: Response, target: URL): void {
-  const status = upstreamRes.statusCode ?? 502;
-
-  if (REDIRECTS.has(status)) {
-    upstreamRes.resume();
-    refuse(
-      res,
-      502,
-      `The local model server at ${target.origin} sent a redirect, which ` +
-        "the proxy doesn't follow. Check the URL in the connection settings.",
-    );
-
-    return;
-  }
-
-  res.status(status);
-
-  const contentType = upstreamRes.headers["content-type"];
-
-  if (contentType != null) {
-    // setHeader, not set(): set() adds a charset to text types.
-    res.setHeader("Content-Type", contentType);
-  }
-
-  // Tell any buffering proxy in front of this one to pass SSE straight on.
-  res.set("Cache-Control", "no-store");
-  res.set("X-Accel-Buffering", "no");
-  res.flushHeaders();
-
-  upstreamRes.on("error", () => res.destroy());
-  upstreamRes.pipe(res);
 }

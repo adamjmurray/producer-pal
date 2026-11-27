@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E tests for one undo step per write tool call. After each write call, Node
- * asks the remote script to end Live's pending undo step, so a single undo
- * reverts one call instead of everything since the Set opened.
+ * E2E tests for one undo step per write tool call, parallel calls included.
+ * After each write call, Node asks the remote script to end Live's pending undo
+ * step, so a single undo reverts one call instead of everything since the Set
+ * opened.
  *
  * Every test opens a fresh Set and only undoes its own track creations.
  *
@@ -24,6 +25,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
+import { connectTimingClient } from "../device/helpers/in-flight-calls-test-helpers.ts";
 import { readTrackCount } from "../device/helpers/track-count-test-helpers.ts";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
@@ -70,6 +72,40 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
 
   it("undoes only the last of two write calls", async () => {
     expect(await undoAfterTwoCalls()).toBe(1);
+  });
+
+  it("undoes only one of two write calls sent in parallel", async () => {
+    const before = await trackCount();
+
+    // The bigger call runs long enough for the other to arrive and queue.
+    // Calls that never overlapped get a step each anyway, so the test checks
+    // at the HTTP level that both requests were in flight together.
+    const { client, toolCalls } = await connectTimingClient();
+
+    try {
+      await Promise.all([
+        appendTracksInOneCall(client, 12),
+        appendTracksInOneCall(client, 1),
+      ]);
+    } finally {
+      await client.close();
+    }
+
+    expect(toolCalls).toHaveLength(2);
+    expect(
+      toolCalls.every(({ answeredAt }) => answeredAt > 0),
+      "a response was never read",
+    ).toBe(true);
+    expect(
+      Math.max(...toolCalls.map(({ sentAt }) => sentAt)),
+      "the second request left after the first was answered; they didn't overlap",
+    ).toBeLessThan(Math.min(...toolCalls.map(({ answeredAt }) => answeredAt)));
+    expect(await trackCount()).toBe(before + 13);
+
+    await undoOnce();
+
+    // Whichever call ran last is undone; both together would be 13.
+    expect([1, 12]).toContain(before + 13 - (await trackCount()));
   });
 
   it("undoes a call that makes several changes in one undo", async () => {

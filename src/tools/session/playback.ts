@@ -5,20 +5,18 @@
 
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
-import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   blankTargetIgnores,
   type TargetParams,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { awaitLaunchWindow } from "./helpers/playback/synced-launch.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
-  type AppliedTarget,
   type Call,
   type Done,
+  type MaybePromise,
   type PipelineResult,
-  type Step,
   type Target,
   type WriteSpec,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
@@ -35,10 +33,6 @@ import {
   type TimelineWrites,
 } from "./helpers/playback/arrangement-playback.ts";
 import {
-  firedGroupSlotDetail,
-  stoppedGroupSlotDetail,
-} from "./helpers/playback/group-slot-effects.ts";
-import {
   handlePlayScene,
   sceneToPlay,
   type FiredScene,
@@ -49,6 +43,16 @@ import {
   refusePlaybackParamsOutsideAction,
 } from "./helpers/playback/playback-action-params.ts";
 import { resolvePlaybackTarget } from "./helpers/playback/playback-target.ts";
+import {
+  CLIPS_STOPPED,
+  FIRE_ACTIONS,
+  PLAY_SESSION_CLIPS,
+  PLAY_SYNCED,
+  syncedLaunchFor,
+  syncReport,
+  writeSessionClip,
+  type ClipWriteState,
+} from "./helpers/playback/session-clip-writes.ts";
 import {
   type ClipSlotEntry,
   type SlotPayload,
@@ -83,6 +87,8 @@ interface PlaybackResult {
   loopStart?: string;
   loopEnd?: string;
   scene?: FiredScene;
+  /** play-session-clips-synced: when the clips start, or why they aren't synced */
+  sync?: string;
   /** One entry per clip slot named, in order; a lone one is unwrapped */
   clip?: PipelineResult<ClipSlotEntry>;
 }
@@ -92,6 +98,7 @@ interface PlaybackOutcome {
   playing: boolean;
   startTime?: string;
   scene?: FiredScene;
+  sync?: string;
   loop: ReturnType<typeof reportArrangementLoop>;
 }
 
@@ -116,7 +123,7 @@ interface PlaybackCall {
 }
 
 /** What the call shares between its hooks. */
-interface PlaybackChecked extends PlaybackCall {
+interface PlaybackChecked extends PlaybackCall, ClipWriteState {
   liveSet: LiveAPI;
   /** Read before the action: Live updates is_playing asynchronously */
   isPlayingBefore: boolean;
@@ -124,16 +131,11 @@ interface PlaybackChecked extends PlaybackCall {
   plan: TimelinePlan;
   writes: TimelineWrites;
   state: PlaybackState;
-  /** The tracks stop-session-clips has already stopped, by Live path */
-  stopped: Set<string>;
 }
 
-const PLAY_SESSION_CLIPS = "play-session-clips";
 const PLAY_SCENE = "play-scene";
 const STOP = "stop";
-const CLIPS_FIRED = "session clips fired";
-const CLIPS_STOPPED = "session clips stopped";
-const SESSION_CLIP_ACTIONS = [PLAY_SESSION_CLIPS, "stop-session-clips"];
+const SESSION_CLIP_ACTIONS = [...FIRE_ACTIONS, "stop-session-clips"];
 
 const ACTIONS = new Set([
   PLAY_ARRANGEMENT,
@@ -163,27 +165,62 @@ const ACTIONS = new Set([
  * @param args.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param args.focus - Switch to arrangement or session view based on action
  * @param ctx - Internal context object, for the request deadline
+ * @returns Result with transport state; a synced launch that has to wait for
+ *   its loop start answers as a promise
+ */
+export function playback(
+  args: PlaybackArgs & { action: typeof PLAY_SYNCED },
+  ctx?: Partial<ToolContext>,
+): MaybePromise<PlaybackResult>;
+/**
+ * Every other action answers at once.
+ * @param args - Tool arguments
+ * @param ctx - Internal context object, for the request deadline
  * @returns Result with transport state
+ */
+export function playback(
+  args?: PlaybackArgs,
+  ctx?: Partial<ToolContext>,
+): PlaybackResult;
+
+/**
+ * @param args - Tool arguments
+ * @param ctx - Internal context object, for the request deadline
+ * @returns Result with transport state, as a promise only when a synced launch
+ *   had to wait for its loop start
  */
 export function playback(
   args: PlaybackArgs = {},
   ctx: Partial<ToolContext> = {},
-): PlaybackResult {
+): MaybePromise<PlaybackResult> {
   const run: PlaybackRun = { args };
-  // No hook awaits, so the answer is never a promise.
-  const clip = runWrite(
-    PLAYBACK_WRITE,
-    run,
-    ctx,
-  ) as PipelineResult<ClipSlotEntry>;
+
+  const clip = runWrite(PLAYBACK_WRITE, run, ctx);
+
+  // Only a synced launch that has to wait for its loop start awaits.
+  return clip instanceof Promise
+    ? clip.then((entries) => playbackResult(run, entries))
+    : playbackResult(run, clip);
+}
+
+/**
+ * @param run - The call, once it has run
+ * @param clip - What the pipeline answered: an entry per clip slot named
+ * @returns What the tool answers
+ */
+function playbackResult(
+  run: PlaybackRun,
+  clip: PipelineResult<ClipSlotEntry>,
+): PlaybackResult {
   // Missing when the final step threw: leave out what only it can say.
-  const { playing, startTime, scene, loop } = run.outcome ?? {};
+  const { playing, startTime, scene, sync, loop } = run.outcome ?? {};
 
   return {
     ...(playing != null && { playing }),
     ...(startTime != null && { startTime }),
     // Which scene fired, since a scene id or a clip in it can name it
     ...(scene && { scene }),
+    ...(sync != null && { sync }),
     // One entry per clip slot the call named, in the order it named them
     ...(Array.isArray(clip) && clip.length === 0 ? {} : { clip }),
     ...loop,
@@ -203,7 +240,7 @@ const PLAYBACK_WRITE: WriteSpec<
   targets: playbackTargets,
   check: checkPlayback,
   before: beforeTargets,
-  write: writeClip,
+  write: writeSessionClip,
   settle: settlePlayback,
 };
 
@@ -272,7 +309,7 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
     throw new Error(idOrPathRequired("clip", call.action));
   }
 
-  if (call.action !== PLAY_SESSION_CLIPS) {
+  if (!FIRE_ACTIONS.includes(call.action)) {
     return call.clips;
   }
 
@@ -302,11 +339,19 @@ function playsNothing(slot: LiveAPI): boolean {
 /**
  * Resolve the timeline, which reads Live but writes nothing, so a position or
  * loop bound that can't be read refuses the call whatever the action. So does
- * play-scene with no scene to fire.
+ * play-scene with no scene to fire. A synced launch also works out here where
+ * the clips are to start, and refuses when it can't.
  * @param call - The call
+ * @param targets - The clip slots the call acts on
+ * @param shared - The call's shared state, for the request deadline
+ * @param shared.ctx - The request's context
  * @returns The call with what the hooks share
  */
-function checkPlayback(call: PlaybackCall): PlaybackChecked {
+function checkPlayback(
+  call: PlaybackCall,
+  targets: Array<Target<SlotPayload>>,
+  { ctx }: Call,
+): PlaybackChecked {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   if (call.action === PLAY_SCENE) {
@@ -316,6 +361,9 @@ function checkPlayback(call: PlaybackCall): PlaybackChecked {
   return {
     ...call,
     liveSet,
+    ...(call.action === PLAY_SYNCED && {
+      launch: syncedLaunchFor(liveSet, targets, ctx.deadline),
+    }),
     plan: planArrangementTimeline(liveSet, call.timeline),
     isPlayingBefore: false,
     writes: { wroteLoop: false },
@@ -330,9 +378,13 @@ function checkPlayback(call: PlaybackCall): PlaybackChecked {
  * stop sends the start position to the top, wiping one written first.
  * @param checked - The checked call
  * @param call - The call's shared state
+ * @returns Nothing, as a promise only when a synced launch has to wait
  */
-function beforeTargets(checked: PlaybackChecked, call: Call): void {
-  const { action, liveSet, plan, sceneIndex } = checked;
+function beforeTargets(
+  checked: PlaybackChecked,
+  call: Call,
+): MaybePromise<void> {
+  const { action, liveSet, plan, sceneIndex, launch } = checked;
 
   checked.writes =
     action === STOP
@@ -369,92 +421,11 @@ function beforeTargets(checked: PlaybackChecked, call: Call): void {
       checked.state = stopTransport(liveSet, call.landed);
       break;
 
+    case PLAY_SYNCED:
+      return launch && awaitLaunchWindow(liveSet, launch);
+
     default:
   }
-}
-
-/**
- * Fire or stop one clip slot.
- * @param target - The slot
- * @param step - The call's state for this target
- * @returns The slot's entry: its clip, when it holds one, and where it is
- */
-function writeClip(
-  target: AppliedTarget<SlotPayload>,
-  step: Step<PlaybackChecked>,
-): ClipSlotEntry {
-  const { slot, position, path } = target.data;
-  const { action, stopped } = step.checked;
-  const clip = slot.child("clip");
-  const clipId = clip.exists() ? clip.id : undefined;
-  let detail: string | undefined;
-
-  // A return track's slot only ever holds an envelope clip: no group slots.
-  if (isReturnSlotPosition(position)) {
-    if (action === PLAY_SESSION_CLIPS) {
-      slot.call("fire");
-      step.call.landed(CLIPS_FIRED);
-      step.coverLanded();
-    } else {
-      stopTrackOnce(
-        LiveAPI.from(livePath.returnTrack(position.returnIndex)),
-        step,
-      );
-    }
-
-    return {
-      ...(clipId != null && { id: clipId }),
-      path,
-    };
-  }
-
-  if (action === PLAY_SESSION_CLIPS) {
-    // A group track's slot holds no clip. Read what it reaches before firing.
-    if (clipId == null && slot.getProperty("controls_other_clips")) {
-      detail = firedGroupSlotDetail(
-        LiveAPI.from(livePath.track(position.trackIndex)),
-        position.sceneIndex,
-      );
-    }
-
-    slot.call("fire");
-    step.call.landed(CLIPS_FIRED);
-    step.coverLanded();
-  } else {
-    const track = LiveAPI.from(livePath.track(position.trackIndex));
-
-    if (!stopped.has(track.path) && isGroupTrack(track)) {
-      detail = stoppedGroupSlotDetail(track);
-    }
-
-    stopTrackOnce(track, step);
-  }
-
-  return {
-    ...(clipId != null && { id: clipId }),
-    path,
-    ...(detail != null && { detail }),
-  };
-}
-
-/**
- * Stop every clip on a track, unless this call already has. A track stops all
- * its clips at once, so two slots on it are one Live call. Not ClipSlot.stop or
- * Clip.stop: they can't cancel a queued launch, on a return track either.
- * @param track - The track, regular or return
- * @param step - The slot's step in the call
- */
-function stopTrackOnce(track: LiveAPI, step: Step<PlaybackChecked>): void {
-  const { stopped } = step.checked;
-
-  if (stopped.has(track.path)) {
-    return;
-  }
-
-  track.call("stop_all_clips");
-  // Only once it went through: after a throw, the next slot tries again.
-  stopped.add(track.path);
-  step.call.landed(CLIPS_STOPPED);
 }
 
 /**
@@ -471,12 +442,16 @@ function settlePlayback(
   const { action, liveSet, plan, timeline, sceneIndex } = checked;
   let { isPlaying } = checked.state;
 
-  if (action === PLAY_SESSION_CLIPS) {
+  if (FIRE_ACTIONS.includes(action)) {
     const fired = done.outcomes.filter((outcome) => outcome === "written");
 
     // Clips fired after the first are subject to launch quantization, so
-    // restart the transport to keep them in sync.
-    if (fired.length > 1) {
+    // restart the transport to keep them in sync. A synced launch only does
+    // from a stopped transport: it must not restart what is playing.
+    if (
+      fired.length > 1 &&
+      (action === PLAY_SESSION_CLIPS || !checked.isPlayingBefore)
+    ) {
       stopTransport(liveSet, call.landed);
       liveSet.call("start_playing");
     }
@@ -511,6 +486,7 @@ function settlePlayback(
     playing: isPlaying,
     startTime,
     scene: checked.state.scene,
+    sync: syncReport(checked),
     loop: reportArrangementLoop(
       liveSet,
       action,
@@ -533,7 +509,7 @@ function handleFocus(action: string, focus?: boolean): void {
 
   if (action === PLAY_ARRANGEMENT) {
     focusSelect({ view: "arrangement" });
-  } else if (action === PLAY_SCENE || action === PLAY_SESSION_CLIPS) {
+  } else if (action === PLAY_SCENE || FIRE_ACTIONS.includes(action)) {
     focusSelect({ view: "session" });
   }
 }

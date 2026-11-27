@@ -38,6 +38,9 @@ This makes them suitable only for local QA testing, not automated CI.
 - `quick-connect.spec.ts` - Tests Quick Connect across multiple providers/models
   (includes OpenRouter paid models; free models excluded due to rate limits, and
   the Vercel AI Gateway models)
+- `local-ai-relay.spec.ts` - Quick Connect with Ollama from a page opened at
+  another device's address, through the device's local AI relay. Needs Ollama
+  running with `OLLAMA_MODEL` pulled (default `lfm2.5`); skips otherwise
 
 ## Adding New Provider/Model Tests
 

@@ -23,6 +23,7 @@ import {
   noteEventToCodeNote,
   validateAndSanitizeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
+import { warnNoteProblems } from "#src/notation/midi-json/note-problem-warnings.ts";
 import {
   type MidiJsonRawNote,
   parse as parseMidiJson,
@@ -30,7 +31,6 @@ import {
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 const DEFAULT_DENOMINATOR = 4;
 
@@ -62,8 +62,9 @@ export interface MidiJsonInterpretOptions extends MidiJsonOptions {
  * per-note; nothing in MIDI JSON is sticky.
  *
  * A malformed note is skipped rather than thrown on (matching the update tools'
- * warn-and-keep-going rule), but never silently: {@link warnDroppedNotes}
- * reports the count and reasons so the caller can fix its input.
+ * warn-and-keep-going rule), but never silently: {@link warnNoteProblems}
+ * reports the count and reasons so the caller can fix its input. An
+ * out-of-range `v`, `vd` or `c` is clamped, also with a warning.
  *
  * @param input - MIDI JSON array string
  * @param options - Interpretation options
@@ -78,21 +79,22 @@ export function interpretMidiJson(
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;
   const events: NoteEvent[] = [];
   const dropped: string[] = [];
+  const clamped: string[] = [];
 
   for (const raw of parsed) {
     const validated = validateAndSanitizeNote(normalizeMidiJsonNote(raw), {
       allowVelocityZero: true,
-      skipPitchOutOfRange: true,
     });
 
     if (validated.valid) {
       events.push(codeNoteToNoteEvent(validated.note, timeSigDenominator));
+      clamped.push(...validated.clamped);
     } else {
       dropped.push(validated.reason);
     }
   }
 
-  warnDroppedNotes(dropped);
+  warnNoteProblems("MIDI JSON", dropped, clamped);
 
   return options.keepV0Deletes === true ? events : applyV0Deletions(events);
 }
@@ -114,49 +116,6 @@ export function parseMidiJsonNotes(input: string): MidiJsonRawNote[] {
       cause: error,
     });
   }
-}
-
-// At most this many distinct reasons are named; the rest collapse into a count.
-// A model only needs to see what KIND of thing it got wrong, and the warning
-// spends the user's context window.
-const MAX_REPORTED_REASONS = 3;
-
-/**
- * Warn once about notes dropped during interpretation, naming each distinct
- * reason with its count. Silence here is the failure mode worth avoiding: a
- * dropped note used to leave the tool reporting plain success, so a model that
- * wrote 8 notes and got 7 had nothing to notice, let alone correct.
- *
- * @param reasons - One reason per dropped note, in input order
- */
-function warnDroppedNotes(reasons: string[]): void {
-  if (reasons.length === 0) {
-    return;
-  }
-
-  const counts = new Map<string, number>();
-
-  for (const reason of reasons) {
-    counts.set(reason, (counts.get(reason) ?? 0) + 1);
-  }
-
-  // Biggest first. In input order the reason behind most of the drops gets
-  // collapsed into "and N more" behind whatever happened to fail first, which
-  // steers the model at the wrong mistake.
-  const listed = [...counts.entries()]
-    .toSorted(([, a], [, b]) => b - a)
-    .slice(0, MAX_REPORTED_REASONS)
-    .map(([reason, count]) => (count > 1 ? `${reason} (${count})` : reason));
-
-  const hidden = counts.size - listed.length;
-  const detail =
-    hidden > 0 ? `${listed.join(", ")}, and ${hidden} more` : listed.join(", ");
-
-  emitWarning(
-    `ignoring ${reasons.length} invalid MIDI JSON ${
-      reasons.length === 1 ? "note" : "notes"
-    }: ${detail}`,
-  );
 }
 
 /**

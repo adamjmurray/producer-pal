@@ -81,7 +81,8 @@ gives you this shape.
   in place and keeps your project context. Your AI offers this when the device
   is older. Needs the remote script.
 - Undo and redo in Live's own history, one step or several at a time. One
-  Producer Pal tool call that changed the Live Set is one step. It never removes
+  Producer Pal tool call that changed the Live Set is one step, or two when it
+  converted devices and changed something else as well. It never removes
   Producer Pal itself. The history also holds your own edits in Live, so an undo
   can revert something you did. Needs the remote script.
 - Not available in [small model mode](/features#small-model-mode).
@@ -96,6 +97,9 @@ gives you this shape.
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
+- Start clips in sync with what's already playing, at the next loop start and
+  without restarting anything (`play-session-clips-synced`). It can wait a few
+  seconds for that loop start
 - Set loop points and playback position
 - Jump to arrangement locators by ID or name
 - Set loop start/end using locators
@@ -208,6 +212,8 @@ be copied when the Producer Pal remote script is running.
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
+- Copy a drum pad's devices to a new MIDI track with `toPath: "t+"`, to give one
+  drum sound its own track. Needs the [remote script](/guide/remote-script)
 - Copy a chain of any rack with `type: "chain"`, carrying its name, color,
   mute/solo, chain trim, and devices. `toPath` names the destination rack and
   may cross racks of the same kind; omit it to append to the chain's own rack.
@@ -289,6 +295,9 @@ be copied when the Producer Pal remote script is running.
   only param a lane takes
 - Says when a write overrides arrangement automation: Live then ignores that
   lane until you press **Re-Enable Automation**
+- Put a track's devices on a pad of a new Drum Rack (`convert: "drum-rack"`), on
+  a new track right after it. A track with clips is kept; one with none is
+  replaced by the new track. Needs the [remote script](/guide/remote-script)
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->
@@ -353,6 +362,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   `created`
 - Give a MIDI clip its own scale with `scale` (Live 12.4.15 or later). A new
   clip starts with the Live Set's scale otherwise
+- Play the new session clip when it's made: `auto: "play-clip"` fires it,
+  `"play-scene"` launches its scene, and `"play-clip-synced"` starts it at the
+  next loop start of the clips already playing, restarting nothing
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 
@@ -484,6 +496,9 @@ sounding.
   racks)
 - Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
   parameters (needs the remote script)
+- Read how a Simpler slices its sample (`sliceBy`, `sliceSensitivity`,
+  `sliceDivision`, `sliceRegions`) and where the slices fall (`slices`, in
+  seconds)
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
 
@@ -509,8 +524,13 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
+- Slice a Simpler's sample by transients, beat divisions, equal regions, or at
+  positions you give, then turn the slices into a Drum Rack with one pad per
+  slice (the conversion needs the [remote script](/guide/remote-script))
 - Swap a preset onto a device (needs the [remote script](/guide/remote-script)),
   found by name the same way as in Create Device
+- Copy one device's param values onto other devices of the same type with
+  `copyParamsFrom`
 - Says when a write overrides arrangement automation: Live then ignores that
   lane until you press **Re-Enable Automation**
 

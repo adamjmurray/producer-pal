@@ -200,6 +200,25 @@ describe("updateClip - envelopes", () => {
     });
   });
 
+  it("writes a repeated point with a fresh rand() value per step", async () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(1);
+
+    await updateClip({
+      id: "123",
+      envelopes: "volume: 1|1x2@n/16 rand(0.5, 1)",
+    });
+
+    expect(routeArgs(ENVELOPE_ROUTES.write)).toStrictEqual(
+      expect.objectContaining({
+        points: [
+          { time: 0, value: 0.5 },
+          { time: 0.25, value: 1, jump: true },
+        ],
+      }),
+    );
+    vi.restoreAllMocks();
+  });
+
   it("names a mixer parameter reached by id the way the routes do", async () => {
     await updateClip({ id: "123", envelopes: `${PAN_ID}: ${NOTATION}` });
 

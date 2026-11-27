@@ -10,9 +10,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createTrack } from "#src/tools/track/create/create-track.ts";
 import {
-  LIVE_FAILURE,
   failCall,
   failOnCreated,
+  LIVE_FAILURE,
+  NO_WHOLE_CALL_WRITES,
   registerTracks,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -28,6 +29,7 @@ export const createTrackAdapter: WriteToolAdapter = {
   tool: "ppal-create-track",
   run: (args) => createTrack(args),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     leftBehind:
       "a track that lands keeps its entry; nothing is made on the way to one",
     unparsableDestination:

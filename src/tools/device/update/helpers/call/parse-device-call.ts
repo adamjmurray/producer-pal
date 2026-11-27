@@ -5,6 +5,9 @@
 
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
+import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { validateSendParams } from "#src/tools/shared/helpers/send-validation.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
@@ -18,6 +21,7 @@ import { type UpdateDeviceArgs } from "../../update-device.ts";
 import { validateParamEntries } from "../params/param-entry-validation.ts";
 import { refuseMacroVariationParams } from "../rack-macro-updates.ts";
 import { type UpdateTargetOptions } from "../update-device-properties.ts";
+import { resolveNamedTarget } from "./resolve-device-target.ts";
 
 /** An update-device call, read once and refused if it was written wrong. */
 export interface DeviceCall {
@@ -34,6 +38,9 @@ export interface DeviceCall {
   wrapInRack?: boolean;
   focus?: boolean;
 }
+
+/** An id is all digits; anything else is a path. */
+const ID_ONLY = /^\d+$/;
 
 /** Args a wrap can take: `force` only unlocks a params write, refused anyway. */
 const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
@@ -70,6 +77,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
 
   validateSendParams(options);
   options.params = validateParamEntries(options.params);
+  options.copyParamsFrom = copySourceId(options.copyParamsFrom);
 
   // Checked for the whole call, so a per-target skip wouldn't repeat itself
   // down the list. Refused before any target is touched.
@@ -117,6 +125,7 @@ function updateOptionsOf(args: UpdateDeviceArgs): UpdateTargetOptions {
     macroVariationIndex: args.macroVariationIndex,
     macroCount: args.macroCount,
     abCompare: args.abCompare,
+    copyParamsFrom: args.copyParamsFrom,
     mute: args.mute,
     solo: args.solo,
     color: args.color,
@@ -130,6 +139,36 @@ function updateOptionsOf(args: UpdateDeviceArgs): UpdateTargetOptions {
     force: args.force,
     preset: args.preset,
   };
+}
+
+/**
+ * Resolve the device `copyParamsFrom` names to its id, which is all the call
+ * keeps of it: the object itself is built again where it is used.
+ * @param named - The id or path, as sent
+ * @returns The device's id, or undefined when the arg names nothing
+ * @throws Error when it names nothing there, or something that isn't a device
+ */
+function copySourceId(named: string | undefined): string | undefined {
+  const value = namedParam(named, "copyParamsFrom");
+
+  if (value == null) {
+    return undefined;
+  }
+
+  const resolved = resolveNamedTarget({
+    param: ID_ONLY.test(value) ? "id" : "path",
+    value,
+    sent: "copyParamsFrom",
+  });
+  const type = resolved.kind === "object" ? resolved.target.type : "DrumPad";
+
+  if (resolved.kind === "drum-pad" || !isDeviceClass(type)) {
+    throw new Error(
+      `copyParamsFrom must name a device, not ${liveObjectWords(type)}: "${value}"`,
+    );
+  }
+
+  return resolved.target.id;
 }
 
 /**

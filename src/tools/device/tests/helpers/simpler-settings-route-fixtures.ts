@@ -12,7 +12,7 @@ import {
   SIMPLER_SETTINGS_ROUTES,
   type SimplerSettingsEntry,
   type SimplerWriteRequest,
-} from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 
 /** What the remote script says for one Simpler it was asked to read. */
 export type SimplerReadEntry = SimplerSettingsEntry | { error: string };

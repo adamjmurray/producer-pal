@@ -5,7 +5,10 @@
 
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
-import { registerTracks } from "../../write-conformance-fixtures.ts";
+import {
+  NO_WHOLE_CALL_WRITES,
+  registerTracks,
+} from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
 
 const ONE_TARGET = "takes one selection per call: no list, so no entries";
@@ -14,6 +17,7 @@ export const selectAdapter: WriteToolAdapter = {
   tool: "ppal-select",
   run: (args) => select(args),
   na: {
+    wholeCallThrows: NO_WHOLE_CALL_WRITES,
     leftBehind: "only selects; makes nothing on the way to a target",
     unparsableDestination:
       "no destination list: path names what is selected, which the unparsable case covers",

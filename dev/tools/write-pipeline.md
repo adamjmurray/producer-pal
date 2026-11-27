@@ -31,7 +31,7 @@ Refusals (stages 1 to 4a) happen before the first write. Once targets are being
 written, a failed target costs only its own entry; the rest still run. A
 `settle` that throws after any target was written costs nothing either: the
 pipeline returns every entry with a `WARNING:`
-(`Final step failed: ...; results may be incomplete and paths or ids out of date; read them again before relying on them.`).
+(`Final step failed: ...; results may be incomplete or out of date; read them again before relying on them.`).
 With nothing written, the throw ends the call. A tool that fills call-level
 result fields in `settle` (`playing`) must leave them out until then, not
 default them: a placeholder would be reported as fact.
@@ -118,7 +118,10 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   even if the target ends as a skip (empty chains or scenes made on the way, a
   stray copy, a temp track or scratch clip Live won't delete). The entry is
   unchanged; only the undo verdict is. Call it where the change is made: it
-  marks the request, so a deep helper needs no `step`.
+  marks the request, so a deep helper needs no `step`. A remote-script change
+  that never answered calls `markMayHaveLanded()` (`remote-script-route.ts`)
+  instead: it may have landed, so its step is closed. `remoteScriptChange` does
+  this itself.
 - `withPieces(entry, extra)`: return the target's own entry plus extra entries
   that ride behind it (a clip split into pieces).
 - `call.ignored(params, why)`: warn that a whole-call param did nothing, as
@@ -127,8 +130,10 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   transport) has changed Live. A throw from `before`, or from `settle` when no
   target was written, then ends the call with `; already changed: <phrases>`,
   since no entry can carry it. A target's own throw still becomes that target's
-  entry. Only `ppal-playback` and `ppal-update-live-set` record these so far;
-  the other write tools do not yet.
+  entry. Every tool whose `before` or `settle` writes must call it; one that
+  catches the failure and says it on the target's entry (duplicate's routing)
+  has nothing to record. The conformance suite makes each tool show it or say
+  why not.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.
@@ -163,20 +168,29 @@ A hook that adds an await without these breaks warnings silently.
 ## One undo step per call
 
 Live merges every change into one undo step until something closes it. Node
-closes it after each write call: `withUndoStepEnd`
-([`with-undo-step-end.ts`](../../src/mcp-server/rpc/remote-script/forwarded/with-undo-step-end.ts))
-sends `POST /undo/end` to the remote script once the last running write call
-settles, so overlapping calls share a step. It never begins a step (a begin left
-open by a crash or timeout would merge everything after it, and it would have to
-be awaited, adding a round trip to every write) and doesn't wait for the answer.
-So calls sent closer together than one round trip can still share a step: the
-end lands after the next call started. No end follows a timeout, since V8 may
-still be changing the Set. A Live without the remote script keeps one merged
-step. Checked on Live 12.3 and 12.4. How Live groups steps is in
+closes it after each write call: the write queue runs `endUndoStep`
+([`end-undo-step.ts`](../../src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts))
+once V8 is done with a write, which sends `POST /undo/end` to the remote script.
+The next write waits for the answer (up to 1 s), so parallel calls get a step
+each; the caller and held reads don't wait. Past 1 s, the next write's changes
+may join the step: the end carries a deadline just under that second, and Live
+skips an end it reaches after it. One that starts runs whole before the next
+write changes anything, so the next write's step is never closed halfway. (A
+script older than the deadline field counts from when it takes the request, so
+it can't promise this.) It never begins a step: a begin left open by a crash or
+timeout would merge everything after it. A timed-out write gets its end once V8
+answers late; none if Node gives up waiting, since V8 may still be changing the
+Set. A Live without the remote script keeps one merged step. Checked on Live
+12.3 and 12.4. How Live groups steps is in
 [Undo steps](../live-api/python-remote-script-api/README.md#undo-steps). A tool
 that is not read-only (`readOnlyHint`) gets this with no code of its own, except
 `ppal-manage`: an end clears the guard that stops its next undo from removing
 Producer Pal.
+
+One exception: a call that converts devices (a track's devices to a Drum Rack, a
+drum pad to a track, a Simpler's slices to a Drum Rack) and also changes
+something else is two steps, the other changes and then the conversion. Live
+won't merge them; see [Undo](../live-api/conversions.md#undo).
 
 A call that changes nothing gets no end, because an end also clears the undo
 guard that `ppal-manage` keeps (see
@@ -186,13 +200,12 @@ guard that `ppal-manage` keeps (see
   changed nothing when it was refused before the first write (stages 1 to 4a),
   or when no target was written and nothing was noted with `call.landed` or
   `markSetChanged()`. V8 puts `changedNothing` on the response, Node notes it,
-  and the end is skipped when every call in the group proved it. Anything else
-  (a throw from `before` or `settle`, a write that landed then threw, a response
-  V8 never marked) counts as a change. This is why `write` must say
-  `step.landed`, and `before` and `settle` must say `call.landed`, for every
-  change they make: a change not noted looks like none, and so does a skip that
-  left something behind without `markSetChanged()`. A tool that writes outside
-  `runWrite()` calls `recordWriteRun(false)`.
+  and skips the end. Anything else (a throw from `before` or `settle`, a write
+  that landed then threw, a response V8 never marked) counts as a change. This
+  is why `write` must say `step.landed`, and `before` and `settle` must say
+  `call.landed`, for every change they make: a change not noted looks like none,
+  and so does a skip that left something behind without `markSetChanged()`. A
+  tool that writes outside `runWrite()` calls `recordWriteRun(false)`.
 - **The def says so.** A tool outside the pipeline, or one whose actions never
   touch the Set, declares `changesSet(args)` in its def (`ppal-context`: reads,
   and global or memory writes; `ppal-playback`: session clip actions;
@@ -218,7 +231,8 @@ the call's other changes.
    (targets and destinations), unappliable, failure midway and after a change,
    wrong list length, refusals write nothing (and change nothing), count with
    destinations, lone skip, a skip that left something behind, final step
-   throws. A case that can't apply is listed under `na` with why.
+   throws, a whole-call step throws after changing Live. A case that can't apply
+   is listed under `na` with why.
 4. Add per-tool tests for what the hooks do. Cover the pipeline's rules through
    the conformance suite, not by re-testing them per tool.
 5. Add a behavior case to `e2e/mcp/` for any change to what the tool does in

@@ -460,6 +460,9 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
       expect(fake.requests.at(-1)?.query).toStrictEqual({
         expires_in_ms: "600",
       });
+      // The deadline is the call's start plus the whole expiry: finding the
+      // port comes off the time left, not off the deadline.
+      expect(fake.deadlines.at(-1)).toBe(1000);
     });
 
     it("gives up unsent when finding the port used the time up", async () => {

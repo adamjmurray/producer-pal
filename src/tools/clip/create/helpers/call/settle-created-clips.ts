@@ -10,6 +10,7 @@ import { type ClipSlotPosition } from "#src/tools/shared/validation/position-par
 import {
   type Call,
   type Done,
+  type MaybePromise,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type ClipResultObject } from "../created-clip-result.ts";
 import { launchCreatedClips } from "../create-clip-validation.ts";
@@ -32,22 +33,35 @@ interface MadeEntry {
  * @param run - The call's shared state
  * @param done - What the call did
  * @param call - The call's shared state, for its warnings
+ * @returns Nothing, as a promise only when a synced launch had to wait
  */
 export function settleCreatedClips(
   run: CreateRun,
   done: CreateDone,
   call: Call,
-): void {
+): MaybePromise<void> {
   reportOverwritten(run, done);
 
   const { args } = done.checked;
   const made = madeEntries(done);
 
-  if (args.auto) {
-    launchSession(args.auto, made, call);
-  }
+  const launched = args.auto ? launchSession(args.auto, made, call) : undefined;
 
-  if (args.focus) {
+  // The focus follows the launch, so it waits for one that waits.
+  return launched instanceof Promise
+    ? launched.then(() => focusLastMade(args.focus, made))
+    : focusLastMade(args.focus, made);
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Focus the last clip the call made, when it asks.
+ * @param focus - Whether the call asked
+ * @param made - The clips the call made
+ */
+function focusLastMade(focus: boolean | undefined, made: MadeEntry[]): void {
+  if (focus) {
     // The arrangement is where the final song lives, so it wins whatever order
     // the call named them in.
     const last =
@@ -59,8 +73,6 @@ export function settleCreatedClips(
     }
   }
 }
-
-// --- Helpers below main export ---
 
 /**
  * The clips the call made and still has: an entry that names none (a skip, one
@@ -87,8 +99,13 @@ function madeEntries(done: CreateDone): MadeEntry[] {
  * @param auto - The auto action
  * @param made - The clips the call made
  * @param call - The call's shared state, for its warnings
+ * @returns Nothing, as a promise only when a synced launch had to wait
  */
-function launchSession(auto: string, made: MadeEntry[], call: Call): void {
+function launchSession(
+  auto: string,
+  made: MadeEntry[],
+  call: Call,
+): MaybePromise<void> {
   const slots = made.flatMap(({ payload }): ClipSlotPosition[] =>
     payload.ref.view === "session"
       ? [
@@ -106,11 +123,17 @@ function launchSession(auto: string, made: MadeEntry[], call: Call): void {
     return;
   }
 
-  try {
-    launchCreatedClips(auto, slots);
-  } catch (error) {
-    // The clips are made; failing the call would hide them.
+  // The clips are made; failing the call would hide them.
+  const ignore = (error: unknown): void => {
     call.ignored("auto", errorMessage(error));
+  };
+
+  try {
+    const launched = launchCreatedClips(auto, slots, call.ctx.deadline);
+
+    return launched instanceof Promise ? launched.catch(ignore) : launched;
+  } catch (error) {
+    ignore(error);
   }
 }
 

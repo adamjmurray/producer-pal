@@ -22,10 +22,11 @@ export function isSwitchedOff(param: string, value: unknown): boolean {
   return SWITCHES.has(param) && value === false;
 }
 
-/** Destinations, positions and splits: a blank one names nothing, so it is
- * unsent (unlike a blank `name`, which clears it). */
+/** Destinations, positions, splits and sources: a blank one names nothing, so
+ * it is unsent (unlike a blank `name`, which clears it). */
 const NAMING_PARAMS = new Set([
   "toPath",
+  "copyParamsFrom",
   "toSlot",
   "arrangementStart",
   "arrangementLength",

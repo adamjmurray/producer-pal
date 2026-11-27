@@ -505,3 +505,19 @@ export function parseLocalModelUrl(url: string): URL | null {
 export function isLocalModelUrl(url: string): boolean {
   return parseLocalModelUrl(url) != null;
 }
+
+// The local AI relay: from a phone or another computer, `localhost` is that
+// device, so the chat UI reaches Ollama or Bionic on Live's computer through
+// the Producer Pal server. Default addresses only: settings live per browser.
+
+/** The relay's route prefix: `/local-ai/<server>/<path>`. */
+export const LOCAL_AI_RELAY_PATH = "/local-ai";
+
+/** Where Ollama and Bionic / LM Studio listen by default. */
+export const LOCAL_AI_DEFAULT_URLS = {
+  ollama: "http://localhost:11434",
+  lmstudio: "http://localhost:1234",
+} as const;
+
+/** A local AI server the relay reaches. */
+export type LocalAiServer = keyof typeof LOCAL_AI_DEFAULT_URLS;

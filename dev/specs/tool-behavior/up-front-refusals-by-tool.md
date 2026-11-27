@@ -149,9 +149,11 @@ code; when it disagrees with a tool, the tool wins.
   weighed together.
 - **`createClip` refuses a `path` entry it can't parse** before anything is
   made, as well as an arrangement position that won't parse or is past Live's
-  last, a list that doesn't pair, and an unknown `auto`. A destination that
-  parses but can't take its clip (no such track, the wrong kind of track, a take
-  lane past the cap) skips only its own target.
+  last, a list that doesn't pair, and an unknown `auto` (`play-scene`,
+  `play-clip` and `play-clip-synced` are the known ones). A synced `auto` that
+  can't find a loop start only warns, `auto ignored: …`, with the clips made. A
+  destination that parses but can't take its clip (no such track, the wrong kind
+  of track, a take lane past the cap) skips only its own target.
 - **Three tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the
@@ -180,8 +182,11 @@ The tables sit next to each tool's code and feed one helper,
 - **`ppal-playback`** (`playback-action-params.ts`): `startTime`, `loop`,
   `loopStart`, `loopEnd` and the retired `*Locator` params are for
   `play-arrangement`, `update-arrangement` and `stop`. `id`, `path`, `slots` and
-  the plurals are for `play-scene`, `play-session-clips` and
-  `stop-session-clips`; `sceneIndex` for `play-scene` only.
+  the plurals are for `play-scene`, `play-session-clips`,
+  `play-session-clips-synced` and `stop-session-clips`; `sceneIndex` for
+  `play-scene` only. `play-session-clips-synced` also refuses, before firing,
+  playing loops that don't restart together and a loop start too far off to wait
+  for.
 - **`ppal-context`** (`context-action-params.ts`): `name` is for scope `memory`,
   `description` for a memory `write`, `content` for `write`, `force` for a
   project or global `write`. `delete` outside `memory` is refused as

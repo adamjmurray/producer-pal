@@ -71,6 +71,23 @@ describe("toTokenUsage", () => {
     });
   });
 
+  it("adds the local model's context length when known, with its model", () => {
+    expect(
+      toTokenUsage(makeUsage({ inputTokens: 5 }), 8192, "ollama/qwen"),
+    ).toStrictEqual({
+      inputTokens: 5,
+      outputTokens: undefined,
+      contextLength: 8192,
+      contextModel: "ollama/qwen",
+    });
+  });
+
+  it("names no model without a context length", () => {
+    expect(
+      toTokenUsage(makeUsage({ inputTokens: 5 }), undefined, "ollama/qwen"),
+    ).not.toHaveProperty("contextModel");
+  });
+
   it("converts nullish values to undefined", () => {
     const raw = makeUsage();
 

@@ -204,7 +204,7 @@ export function reportTargetNotes<T extends EntryWithDetail>(
  * @param refused - The params that did nothing to it
  * @returns True when something else was asked for
  */
-function askedAnythingElse(asked: object, refused: string[]): boolean {
+export function askedAnythingElse(asked: object, refused: string[]): boolean {
   return Object.entries(asked).some(
     ([key, value]: [string, unknown]) =>
       key !== "force" && isParamSent(value) && !refused.includes(key),

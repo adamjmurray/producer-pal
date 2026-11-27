@@ -113,3 +113,22 @@ export function registerReturnChains(...names: (string | number)[]): void {
 export function chainApi(): LiveAPI {
   return LiveAPI.from(chainPath);
 }
+
+const silent = { value: 0, display_value: -70 };
+
+/**
+ * Register the chain with two silent sends and name the rack's return chains
+ * @param returnNames - Return chain names in send order
+ * @returns The registered send parameters
+ */
+export function registerChainWithSends(
+  returnNames: string[] = ["a Delay", "b Reverb"],
+): RegisteredMockObject[] {
+  registerChainWithMixer({ sends: [silent, silent] });
+  registerReturnChains(...returnNames);
+
+  return [
+    registerMockObject("send-0", { type: "DeviceParameter" }),
+    registerMockObject("send-1", { type: "DeviceParameter" }),
+  ];
+}

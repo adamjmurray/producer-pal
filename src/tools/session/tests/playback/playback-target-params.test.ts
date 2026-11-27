@@ -27,8 +27,9 @@ describe("playback target params on actions that have no target", () => {
   // format error. Now the leftover param is the refusal, before anything runs.
   it("refuses slots on stop without stopping", () => {
     expect(() => playback({ action: "stop", slots: "bogus" })).toThrow(
-      'slots is only for action "play-scene", "play-session-clips" or ' +
-        '"stop-session-clips"; this call has action "stop". Change the ' +
+      'slots is only for action "play-scene", "play-session-clips", ' +
+        '"play-session-clips-synced" or "stop-session-clips"; this call has ' +
+        'action "stop". Change the ' +
         "action or drop slots.",
     );
     expect(liveSet.call).not.toHaveBeenCalled();

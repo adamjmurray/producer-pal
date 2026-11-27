@@ -13,7 +13,11 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
+import {
+  answerEnvelopeRoutes,
+  expectSameParameterRefused,
+  expectTargetRefused,
+} from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupMidiClipMock,
@@ -141,39 +145,20 @@ describe("updateClip - envelopes on a rack chain's own mixer", () => {
   });
 
   it("refuses the path and the id of one parameter together", async () => {
-    const result = await updateClip({
-      id: "123",
-      envelopes: `t0/d0/c1/volume: ${NOTATION}\n${CHAIN_VOLUME_ID}: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: expect.stringContaining("are the same parameter") as string,
-      }),
+    await expectSameParameterRefused(
+      `t0/d0/c1/volume: ${NOTATION}\n${CHAIN_VOLUME_ID}: ${NOTATION}`,
     );
   });
 
   it.each([
     ["t0/d0/c1/send3", "t0/d0/c1 has no send3"],
     ["t0/d0/c5/volume", 'chain at envelopes target "t0/d0/c5" does not exist'],
-    ["t0/d0/volume", 'envelopes target "t0/d0" resolves to device, not chain'],
+    ["t0/d0/volume", 't0/d0 has no param named "volume"'],
     [
       "t1/d0/c0/volume",
       "t1/d0/c0 is not on the clip's track (t0), and a clip can only automate its own track",
     ],
   ])("says why %s reaches nothing", async (target, why) => {
-    const result = await updateClip({
-      id: "123",
-      envelopes: `${target}: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail: `envelope "${target}": ${why}`,
-      }),
-    );
+    await expectTargetRefused(target, NOTATION, why);
   });
 });

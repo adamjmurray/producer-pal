@@ -19,12 +19,34 @@
 // left out when it is just the printed value again. Round brackets inside a
 // display are written as square ones, so it stays one group. A curve that
 // isn't one Live draws reads as the nearest amount.
+//
+// On write a point may give the display alone, `1|1 (112 Hz)`, for the caller
+// to turn into a raw value; its square brackets turn back into round ones.
+// With both, the raw value is the one written.
+//
+// A write may also repeat a point, `1|1x16@n/16 0.5`, and roll its value,
+// `rand(0.5, 1)`, afresh for each point (a curve amount too:
+// `~rand(-0.5, 0.5)`). The connector before a repeat arrives at every one of
+// its points; a repeat that starts the line holds.
 
 import {
   type CurveCoefficients,
   coefficientsToCurve,
 } from "#src/notation/barbeat/envelope/envelope-curves.ts";
-import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
+import {
+  type EnvelopeRand,
+  ENVELOPE_VALUE,
+  isRawRand,
+  readEnvelopeRand,
+  rollEnvelopeRand,
+} from "#src/notation/barbeat/envelope/envelope-rand.ts";
+import {
+  type EnvelopeRepeat,
+  envelopeRepeatTimes,
+  readEnvelopeRepeat,
+  throwIfRepeatMisplaced,
+} from "#src/notation/barbeat/envelope/envelope-repeat.ts";
+import { formatEnvelopeValue } from "#src/notation/barbeat/envelope/envelope-value.ts";
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
@@ -35,9 +57,6 @@ import {
 /** Two times count as one, within float noise. */
 const EPSILON = 1e-9;
 
-/** A point's value: a plain decimal, or an exponent form we still accept. */
-const VALUE = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
-
 /** A display that is only a number: no exponent, hex, Infinity or unit. */
 const PLAIN_DECIMAL = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/;
 
@@ -47,8 +66,9 @@ const CONNECTOR = /^(?:\/|_|~.*)$/;
 /** A curve token `~N`: a signed decimal, no space after the `~`. */
 const CURVE = /^~([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/;
 
-/** "bar|beat value", with an optional "(display)" a read may have written. */
-const POINT = /^(\S+)\s+([^\s()]+)(?:\s*\(([^()]*)\))?$/;
+/** "time value", "time value (display)" or "time (display)"; a value may be a rand() call. */
+const POINT =
+  /^(\S+)\s+(?:(rand(?:om)?\((?:[^()]|\([^()]*\))*\)|[^\s()]+)(?:\s*\([^()]*\))?|\(([^()]*)\))$/;
 
 /** The clip meter the times are spelled in. */
 export interface EnvelopeMeter {
@@ -72,12 +92,28 @@ export interface EnvelopeNotationEvent {
 export interface EnvelopeNotationPoint {
   /** Ableton beats from the clip start */
   time: number;
+  /** Raw min..max */
   value: number;
   /** Hold the previous value until `time`, then jump to `value` */
   jump: boolean;
   /** The `~N` amount of the ramp that arrives here; absent for a straight one */
   curve?: number;
 }
+
+/**
+ * A point with its raw value, or the display that stands for one (`(112 Hz)`),
+ * which only the parameter can turn into a raw value.
+ */
+export type DisplayEnvelopePoint = Omit<EnvelopeNotationPoint, "value"> &
+  ({ value: number } | { display: string });
+
+/**
+ * A point as it was written: it may also give a range to roll its value from,
+ * which only the parameter can say it takes.
+ */
+export type WrittenEnvelopePoint =
+  | DisplayEnvelopePoint
+  | (Omit<EnvelopeNotationPoint, "value"> & { rand: EnvelopeRand });
 
 /**
  * Write a clip's envelope events as notation.
@@ -106,35 +142,38 @@ export function formatEnvelopeNotation(
  * Read envelope notation back into points.
  * @param text - The notation
  * @param meter - The clip meter the times are spelled in
- * @returns One point per `bar|beat value`, in the order they were written
+ * @returns The points in the order they were written, a repeat as one per step
  * @throws If a point, a value or the time order is malformed
  */
 export function parseEnvelopeNotation(
   text: string,
   meter: EnvelopeMeter,
-): EnvelopeNotationPoint[] {
+): WrittenEnvelopePoint[] {
   if (text.trim() === "") {
     return [];
   }
 
-  const points: EnvelopeNotationPoint[] = [];
+  const points: WrittenEnvelopePoint[] = [];
 
   for (const segment of splitOnConnectors(text)) {
     const connector = readConnector(segment.connector);
-    const point = parsePoint(segment.text, meter);
-    const previous = points.at(-1);
 
-    checkOrder(points, point, segment.text.trim());
+    for (const [index, point] of parsePoints(segment.text, meter).entries()) {
+      const previous = points.at(-1);
 
-    // Two points at one time are a jump, and a jump has no ramp to curve.
-    const jump =
-      connector.jump || (previous != null && sameTime(previous, point));
+      checkOrder(points, point, segment.text.trim());
 
-    points.push({
-      ...point,
-      jump,
-      ...(connector.curve != null && !jump && { curve: connector.curve }),
-    });
+      // Two points at one time are a jump, and a jump has no ramp to curve. A
+      // repeat with no connector before it holds between its own points.
+      const jump =
+        connector.jump ||
+        (index > 0 && segment.connector == null) ||
+        (previous != null && sameTime(previous, point));
+
+      const curve = jump ? 0 : rollCurve(connector.curve);
+
+      points.push({ ...point, jump, ...(curve !== 0 && { curve }) });
+    }
   }
 
   return points;
@@ -154,7 +193,7 @@ export function checkEnvelopeNotation(text: string): void {
 
   for (const segment of splitOnConnectors(text)) {
     readConnector(segment.connector);
-    readBarBeat(readPoint(segment.text).barBeat);
+    readBarBeat(readPoint(segment.text).repeat.barBeat);
   }
 }
 
@@ -189,7 +228,7 @@ function collapseEvents(events: EnvelopeNotationEvent[]): FormattedPoint[] {
     // jump itself replaces: one point, with the later value.
     if (
       previous != null &&
-      formatValue(previous.value) !== formatValue(first.value)
+      formatEnvelopeValue(previous.value) !== formatEnvelopeValue(first.value)
     ) {
       points.push({ ...first, jump: false });
     }
@@ -240,7 +279,7 @@ function formatConnector(
   // A curve on a flat segment draws nothing.
   if (
     previous.coefficients == null ||
-    formatValue(previous.value) === formatValue(point.value)
+    formatEnvelopeValue(previous.value) === formatEnvelopeValue(point.value)
   ) {
     return "/";
   }
@@ -266,7 +305,7 @@ function formatPoint(point: FormattedPoint, meter: EnvelopeMeter): string {
     meter.timeSigNumerator,
     meter.timeSigDenominator,
   );
-  const value = formatValue(point.value);
+  const value = formatEnvelopeValue(point.value);
   const display =
     point.display != null && !repeatsValue(point.display, value)
       ? ` (${point.display.replaceAll("(", "[").replaceAll(")", "]")})`
@@ -280,7 +319,7 @@ function formatPoint(point: FormattedPoint, meter: EnvelopeMeter): string {
  * decimal, no unit, equal to the value as written. A display with more or other
  * digits ("0.20" for 0.203) says something, so it stays.
  * @param display - Live's display
- * @param value - The value as {@link formatValue} wrote it
+ * @param value - The value as {@link formatEnvelopeValue} wrote it
  * @returns True when the display adds nothing
  */
 function repeatsValue(display: string, value: string): boolean {
@@ -290,17 +329,6 @@ function repeatsValue(display: string, value: string): boolean {
     display === value ||
     (PLAIN_DECIMAL.test(text) && Number(text) === Number(value))
   );
-}
-
-/**
- * Format a raw parameter value: up to 3 decimals, no trailing zeros.
- * @param value - The raw value
- * @returns The value as it is written
- */
-function formatValue(value: number): string {
-  const formatted = formatDecimal(value);
-
-  return formatted === "-0" ? "0" : formatted;
 }
 
 /** A segment of the notation: one point, and the connector before it. */
@@ -381,7 +409,7 @@ function splitOnSpaces(text: string): string[] {
  */
 function readConnector(token: string | null): {
   jump: boolean;
-  curve?: number;
+  curve?: number | EnvelopeRand<number>;
 } {
   if (token == null || token === "/") {
     return { jump: false };
@@ -389,6 +417,22 @@ function readConnector(token: string | null): {
 
   if (token === "_") {
     return { jump: true };
+  }
+
+  const range = readEnvelopeRand(token.slice(1));
+
+  if (range != null) {
+    if (
+      !isRawRand(range) ||
+      Math.abs(range.min) > 1 ||
+      Math.abs(range.max) > 1
+    ) {
+      throw new Error(
+        `Invalid envelope curve "${token}": the amount is plain numbers from -1 to 1, like "~rand(-0.5, 0.5)"`,
+      );
+    }
+
+    return { jump: false, curve: range };
   }
 
   const amount = CURVE.exec(token)?.[1];
@@ -411,36 +455,64 @@ function readConnector(token: string | null): {
 }
 
 /**
- * Read one "bar|beat value (display)" segment.
+ * The curve amount for one point: as written, or a fresh roll of its rand().
+ * @param curve - The connector's curve, if it has one
+ * @returns The amount, 0 for a straight ramp
+ */
+function rollCurve(curve: number | EnvelopeRand<number> | undefined): number {
+  if (curve == null || typeof curve === "number") {
+    return curve ?? 0;
+  }
+
+  return rollEnvelopeRand(curve.min, curve.max);
+}
+
+/**
+ * Read one "time value (display)" segment into its points: one, or one per
+ * step of a repeat.
  * @param segment - The text between two connectors
  * @param meter - The clip meter the time is spelled in
- * @returns The point, with its time in Ableton beats
- * @throws If the segment isn't a point, or its value isn't a finite number
+ * @returns The points, with their times in Ableton beats
+ * @throws If the segment isn't a point, or its value or repeat is malformed
  */
-function parsePoint(
+function parsePoints(
   segment: string,
   meter: EnvelopeMeter,
-): EnvelopeNotationPoint {
-  const { barBeat, value } = readPoint(segment);
+): WrittenEnvelopePoint[] {
+  const { repeat, value } = readPoint(segment);
+  const { timeSigNumerator, timeSigDenominator } = meter;
+  const start = barBeatToAbletonBeats(
+    repeat.barBeat,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
-  return {
-    time: barBeatToAbletonBeats(
-      barBeat,
-      meter.timeSigNumerator,
-      meter.timeSigDenominator,
-    ),
-    value,
+  return envelopeRepeatTimes(
+    start,
+    repeat,
+    timeSigNumerator,
+    timeSigDenominator,
+  ).map((time) => ({
+    time,
+    ...("min" in value ? { rand: value } : value),
     jump: false,
-  };
+  }));
+}
+
+/** A point as its text spells it, before the clip's meter places it. */
+interface ReadPoint {
+  repeat: EnvelopeRepeat;
+  /** The raw value, the display that stands for one, or the range to roll one from */
+  value: { value: number } | { display: string } | EnvelopeRand;
 }
 
 /**
  * Read one segment's time text and value, leaving the time unconverted.
  * @param segment - The text between two connectors
- * @returns The bar|beat text and the value
- * @throws If the segment isn't a point, or its value isn't a finite number
+ * @returns The time as written, and the value or what stands for it
+ * @throws If the segment isn't a point, or its value or repeat is malformed
  */
-function readPoint(segment: string): { barBeat: string; value: number } {
+function readPoint(segment: string): ReadPoint {
   const token = segment.trim();
 
   if (token === "") {
@@ -452,17 +524,46 @@ function readPoint(segment: string): { barBeat: string; value: number } {
   const match = POINT.exec(token);
 
   if (match == null) {
+    throwIfRepeatMisplaced(token);
+
     throw new Error(
-      `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5"`,
+      `Invalid envelope point: "${token}". Expected "bar|beat value", like "1|1 0.5" (or a display value in parentheses: "1|1 (-6 dB)")`,
     );
   }
 
-  const barBeat = match[1] as string;
-  const valueText = match[2] as string;
+  const repeat = readEnvelopeRepeat(match[1] as string);
+  const display = match[3]?.trim();
 
-  if (!VALUE.test(valueText)) {
+  if (display != null) {
+    if (display === "") {
+      throw new Error(
+        `Invalid envelope point: "${token}". The parentheses are empty; put a display value in them, like "1|1 (-6 dB)"`,
+      );
+    }
+
+    validateBarBeatPosition(repeat.barBeat);
+
+    // A read prints a display's round brackets as square ones; undo that.
+    return {
+      repeat,
+      value: { display: display.replaceAll("[", "(").replaceAll("]", ")") },
+    };
+  }
+
+  const valueText = match[2] as string;
+  const range = readEnvelopeRand(valueText);
+
+  if (range != null) {
+    validateBarBeatPosition(repeat.barBeat);
+
+    return { repeat, value: range };
+  }
+
+  if (!ENVELOPE_VALUE.test(valueText)) {
+    throwIfRepeatMisplaced(token, valueText);
+
     throw new Error(
-      `Invalid envelope value: "${valueText}" in "${token}". Expected a number, like 0.5 or -1`,
+      `Invalid envelope value: "${valueText}" in "${token}". Expected a number, like 0.5 or -1, or rand(min, max)`,
     );
   }
 
@@ -474,9 +575,9 @@ function readPoint(segment: string): { barBeat: string; value: number } {
     );
   }
 
-  validateBarBeatPosition(barBeat);
+  validateBarBeatPosition(repeat.barBeat);
 
-  return { barBeat, value };
+  return { repeat, value: { value } };
 }
 
 /**
@@ -488,8 +589,8 @@ function readPoint(segment: string): { barBeat: string; value: number } {
  * @throws If the point goes back in time, or is the third at its time
  */
 function checkOrder(
-  points: EnvelopeNotationPoint[],
-  point: EnvelopeNotationPoint,
+  points: { time: number }[],
+  point: { time: number },
   token: string,
 ): void {
   const previous = points.at(-1);

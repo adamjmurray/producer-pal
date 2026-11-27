@@ -4,13 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { type LocalModel } from "#webui/chat/sdk/provider/local-model/local-model-catalog";
+import { useLocalModels } from "#webui/hooks/settings/helpers/use-local-models";
 import {
   OTHER_MODEL_OPTION,
   PROVIDER_MODELS,
 } from "#webui/lib/constants/models";
+import { compactNumber } from "#webui/lib/utils/compact-number";
 import { type Provider } from "#webui/types/settings";
 
-const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
+// Example model ids for wherever the model is typed: "Other..." or a text box.
+const MODEL_PLACEHOLDERS: Record<Provider, string> = {
   anthropic: "e.g., claude-sonnet-5-5",
   gemini: "e.g., gemini-4-carbon",
   openai: "e.g., gpt-6-luna",
@@ -18,14 +22,16 @@ const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   openrouter: "e.g., openai/gpt-6-luna",
   vercel: "e.g., openai/gpt-6-luna",
   ollama: "e.g., qwen3.8",
-  lmstudio: "", // Not used (has dedicated input)
-  custom: "", // Not used (has dedicated input)
+  lmstudio: "e.g., qwen/qwen3.8-27b",
+  custom: "e.g., openai/gpt-oss-120b",
 };
 
 export interface ModelSelectorProps {
   provider: Provider;
   model: string;
   setModel: (model: string) => void;
+  /** URL setting of a local provider, whose server lists its models */
+  baseUrl?: string | null;
 }
 
 /**
@@ -34,17 +40,24 @@ export interface ModelSelectorProps {
  * @param {Provider} props.provider - Current provider
  * @param {string} props.model - Current model
  * @param {(model: string) => void} props.setModel - Model setter callback
+ * @param {string | null} [props.baseUrl] - Local provider's URL setting
  * @returns {JSX.Element} - React component
  */
 export function ModelSelector({
   provider,
   model,
   setModel,
+  baseUrl,
 }: ModelSelectorProps) {
-  // Determine preset models for this provider
+  const localModels = useLocalModels(provider, baseUrl);
+
+  // A local server's own model list wins over the presets.
   const presetModels = useMemo(
-    () => PROVIDER_MODELS[provider] ?? [],
-    [provider],
+    () =>
+      localModels != null && localModels.length > 0
+        ? [...localModels.map(localModelOption), OTHER_MODEL_OPTION]
+        : (PROVIDER_MODELS[provider] ?? []),
+    [provider, localModels],
   );
 
   // Track whether custom input is shown (for non-custom providers)
@@ -59,9 +72,10 @@ export function ModelSelector({
     );
   });
 
-  // Ref for autofocusing the custom input when "Other..." is selected
   const customInputRef = useRef<HTMLInputElement>(null);
-  const previousShowCustomInputRef = useRef(showCustomInput);
+  // Set only when the user picks "Other...". The input also opens when a model
+  // list loads without the saved model, and that must not steal focus.
+  const focusCustomInputRef = useRef(false);
 
   // What the user typed in the custom input. Typing through a preset name
   // (gpt-5 on the way to gpt-5-mini) must not close the input.
@@ -92,37 +106,25 @@ export function ModelSelector({
     setShowCustomInput(isCustom);
   }, [model, provider, presetModels]);
 
-  // Autofocus custom input when user selects "Other..." (but not on initial load)
   useEffect(() => {
-    if (
-      showCustomInput &&
-      !previousShowCustomInputRef.current &&
-      customInputRef.current
-    ) {
-      customInputRef.current.focus();
+    if (focusCustomInputRef.current && showCustomInput) {
+      customInputRef.current?.focus();
     }
 
-    previousShowCustomInputRef.current = showCustomInput;
+    focusCustomInputRef.current = false;
   }, [showCustomInput]);
 
-  // For custom and local providers, use free-form text input
-  if (provider === "custom" || provider === "lmstudio") {
-    const placeholder =
-      provider === "lmstudio"
-        ? "e.g., qwen/qwen3.8-27b"
-        : "e.g., openai/gpt-oss-120b";
-
+  // Free-form text for custom, and for LM Studio when its server can't list
+  if (
+    provider === "custom" ||
+    (provider === "lmstudio" && presetModels.length === 0)
+  ) {
     return (
-      <div>
-        <label className="mb-2 block text-sm">Model</label>
-        <input
-          type="text"
-          value={model}
-          onInput={(e) => setModel((e.target as HTMLInputElement).value)}
-          placeholder={placeholder}
-          className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
-        />
-      </div>
+      <ModelTextInput
+        model={model}
+        setModel={setModel}
+        placeholder={MODEL_PLACEHOLDERS[provider]}
+      />
     );
   }
 
@@ -131,6 +133,7 @@ export function ModelSelector({
 
   const handleDropdownChange = (value: string) => {
     if (value === OTHER_MODEL_OPTION.value) {
+      focusCustomInputRef.current = true;
       setShowCustomInput(true);
       // Keep current model value - user will edit in text input
     } else {
@@ -168,10 +171,58 @@ export function ModelSelector({
             typedRef.current = { provider, value };
             setModel(value);
           }}
-          placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
+          placeholder={MODEL_PLACEHOLDERS[provider]}
           className="mt-2 w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />
       )}
     </div>
   );
+}
+
+/**
+ * Free-form model input, for providers with no list to pick from.
+ * @param props - Component props
+ * @param props.model - Current model
+ * @param props.setModel - Model setter callback
+ * @param props.placeholder - Example model id
+ * @returns Input element
+ */
+function ModelTextInput({
+  model,
+  setModel,
+  placeholder,
+}: {
+  model: string;
+  setModel: (model: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm">Model</label>
+      <input
+        type="text"
+        value={model}
+        onInput={(e) => setModel((e.target as HTMLInputElement).value)}
+        placeholder={placeholder}
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
+      />
+    </div>
+  );
+}
+
+/**
+ * A dropdown option for a local model, marking the loaded ones.
+ * @param model - Local model
+ * @returns Dropdown option
+ */
+function localModelOption(model: LocalModel): { value: string; label: string } {
+  const context =
+    model.contextLength != null
+      ? `, ${compactNumber(model.contextLength)} context`
+      : "";
+
+  return {
+    value: model.id,
+    label: model.loaded ? `${model.id} (loaded${context})` : model.id,
+  };
 }

@@ -34,6 +34,7 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         "update-arrangement",
         "play-scene",
         "play-session-clips",
+        "play-session-clips-synced",
         "stop-session-clips",
         "stop-all-session-clips",
         "stop",
@@ -43,8 +44,9 @@ export const toolDefPlayback = defineTool("ppal-playback", {
 update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s); a group track's slot fires the tracks inside it
+play-session-clips-synced: same, but they come in at the next loop start of the clips already playing, restarting nothing; may wait for it
 stop-session-clips: by id(s) or path(s); stops each slot's whole track (a group track: all inside it)
-(both answer with clip: {id, path} per target, in order; {id|path, ok:false, detail} for one not reached)
+(all three answer with clip: {id, path} per target, in order; {id|path, ok:false, detail} for one not reached)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),

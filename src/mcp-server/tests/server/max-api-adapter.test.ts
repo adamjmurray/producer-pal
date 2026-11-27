@@ -23,6 +23,13 @@ import {
 const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
+// Tested on its own. A real undo-step end here holds the queue between tests
+// while its request fails, so the next test's write waits.
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/forwarded/end-undo-step.ts"),
+  () => ({ endUndoStep: vi.fn(() => undefined) }),
+);
+
 vi.mock(import("../../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
@@ -32,6 +39,7 @@ vi.mock(import("../../rpc/node-request-protocol.ts"), () => ({
 }));
 
 import { isChangedNothing } from "../../rpc/remote-script/forwarded/changed-nothing.ts";
+import { endUndoStep } from "../../rpc/remote-script/forwarded/end-undo-step.ts";
 import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 import { handleNodeRequest } from "../../rpc/node-request-protocol.ts";
 
@@ -271,7 +279,7 @@ describe("Max API Adapter", () => {
         "Tool call 'test-tool' args too large for a single Max IPC message",
       );
       expect(result.content[0]!.text).toMatch(/Nothing changed\.$/);
-      // Not run, so the undo-step wrapper must not treat it as a change.
+      // Not run, so ending the undo step must not treat it as a change.
       expect(isChangedNothing(result)).toBe(true);
     });
 
@@ -449,6 +457,25 @@ describe("Max API Adapter", () => {
       await second;
     });
 
+    it("should end a write's undo step with its answer, but not a read's", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      const outlet = vi.mocked(Max.outlet);
+      const write = callLiveApi("ppal-create-track", { a: 1 });
+
+      await vi.waitFor(() => expect(outlet).toHaveBeenCalledTimes(1));
+      handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);
+      const answer = await write;
+
+      expect(endUndoStep).toHaveBeenCalledExactlyOnceWith(
+        "ppal-create-track",
+        { a: 1 },
+        answer,
+      );
+
+      await resolveWithResult({ content: [] });
+      expect(endUndoStep).toHaveBeenCalledTimes(1);
+    });
+
     it("should count queue time in a queued write's timeout", async () => {
       vi.useFakeTimers();
 
@@ -474,6 +501,9 @@ describe("Max API Adapter", () => {
             "waiting for other writes). Live may still be applying it — " +
             "wait, then re-read before acting.",
         );
+
+        // V8's late answer frees the queue for the tests after this one.
+        handleLiveApiResult(outlet.mock.calls[1]![1], "{}", END_OF_CHUNKS);
       } finally {
         vi.useRealTimers();
       }

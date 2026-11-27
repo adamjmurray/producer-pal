@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-contract.ts";
-import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptDeviceRoutes } from "../../forwarded/remote-script-device-routes.ts";
 import {
@@ -285,5 +285,46 @@ describe("remoteScript.device.simplerWrite", () => {
         expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: false, error: "devicePath must be a string" });
+  });
+});
+
+describe("remoteScript.device.simplerToDrumRack", () => {
+  it("sends the Simpler's path and hands back the pad count", async () => {
+    const remote = await answerWith({ body: { pads: 8 } });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.toDrumRack, {
+        devicePath: PATHS[0],
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, result: { pads: 8 } },
+    });
+    expect(remote.requests).toStrictEqual([
+      {
+        method: "POST",
+        route: "/device/simpler/to-drum-rack",
+        query: {},
+        body: { device_path: PATHS[0], expires_in_ms: EXPIRES_IN_MS },
+      },
+    ]);
+  });
+
+  it("hands back why the remote script refused", async () => {
+    await answerWith({
+      status: 409,
+      body: { error: "the Simpler isn't in slicing mode" },
+    });
+
+    expect(
+      await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.toDrumRack, {
+        devicePath: PATHS[0],
+        expiresInMs: EXPIRES_IN_MS,
+      }),
+    ).toStrictEqual({
+      success: true,
+      result: { available: true, error: "the Simpler isn't in slicing mode" },
+    });
   });
 });

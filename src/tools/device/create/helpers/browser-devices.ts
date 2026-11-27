@@ -40,6 +40,7 @@ import {
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
+import { markMayHaveLanded } from "#src/tools/shared/remote-script/remote-script-route.ts";
 import {
   REQUEST_OUT_OF_TIME,
   unreachedDetail,
@@ -487,7 +488,13 @@ async function loadOnto(
  * @returns The reason
  */
 function stranded(why: string, timedOut: boolean): string {
-  return timedOut ? `${why}; ${LOAD_STRANDED}` : why;
+  if (!timedOut) {
+    return why;
+  }
+
+  markMayHaveLanded();
+
+  return `${why}; ${LOAD_STRANDED}`;
 }
 
 /**

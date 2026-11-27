@@ -11,6 +11,8 @@ import { VERSION } from "#src/shared/config.ts";
 import { partialModule } from "./helpers/partial-module-test-helpers.ts";
 import {
   callToolRequest,
+  expectDroppedMidCall,
+  expectSetupGuidance,
   mockServer,
   mockStandardTools,
   mockTransport,
@@ -26,6 +28,7 @@ interface FakeClient {
   listTools: ReturnType<typeof vi.fn>;
   callTool: ReturnType<typeof vi.fn>;
   getServerVersion: ReturnType<typeof vi.fn>;
+  onerror?: (error: Error) => void;
 }
 
 const state = vi.hoisted(() => ({
@@ -33,6 +36,8 @@ const state = vi.hoisted(() => ({
   // What the first client answers to ppal-slow; every other call answers at once
   slow: null as Promise<unknown> | null,
   oldVersion: "",
+  // Whether a new client's connect fails, as with the device gone
+  connectFails: false,
 }));
 const clients = state.clients;
 
@@ -40,13 +45,29 @@ vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () =>
   partialModule({
     Client: vi.fn(function () {
       const client: FakeClient = {
-        connect: vi.fn().mockResolvedValue(undefined),
+        connect: vi.fn(() =>
+          state.connectFails
+            ? Promise.reject(new Error("ECONNREFUSED"))
+            : Promise.resolve(),
+        ),
         close: vi.fn().mockResolvedValue(undefined),
         listTools: vi.fn(),
-        callTool: vi.fn((request: { name: string }) =>
-          request.name === "ppal-slow" && clients.length === 1
-            ? state.slow
-            : Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
+        callTool: vi.fn(
+          (
+            request: { name: string },
+            _schema: unknown,
+            options?: { signal?: AbortSignal },
+          ) =>
+            request.name === "ppal-slow" && clients.length === 1
+              ? new Promise((resolve, reject) => {
+                  const signal = options?.signal;
+
+                  signal?.addEventListener("abort", () => {
+                    reject(signal.reason as Error);
+                  });
+                  void state.slow?.then(resolve, reject);
+                })
+              : Promise.resolve({ content: [{ type: "text", text: "ok" }] }),
         ),
         getServerVersion: vi.fn(() => ({
           name: "d",
@@ -92,6 +113,14 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () =>
     CallToolRequestSchema: "CallToolRequestSchema",
     ListToolsRequestSchema: "ListToolsRequestSchema",
     ErrorCode: { ConnectionClosed: -32000 },
+    McpError: class extends Error {
+      constructor(
+        readonly code: number,
+        message: string,
+      ) {
+        super(message);
+      }
+    },
   }),
 );
 
@@ -148,6 +177,7 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     clients.length = 0;
     state.slow = null;
     state.oldVersion = OLD;
+    state.connectFails = false;
     // The update hint asks the device's GET /config whether it is small-model.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
     mockServer.connect.mockResolvedValue(undefined);
@@ -208,6 +238,33 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     expect(clients[1]?.close).not.toHaveBeenCalled();
   });
 
+  it("says a call may have run when its response stream drops", async () => {
+    const { handler, first, bridge } = await startSlowCall();
+
+    clients[0]?.onerror?.(
+      new Error("SSE stream disconnected: TypeError: terminated"),
+    );
+
+    expectDroppedMidCall(await first);
+    expect(bridge.isConnected).toBe(false);
+
+    // A fresh call with the device gone still gets the offline answer.
+    state.connectFails = true;
+    expectSetupGuidance(await handler(callToolRequest("ppal-read-live-set")));
+  });
+
+  it("leaves calls alone on any other client error", async () => {
+    const { slow, first } = await startSlowCall();
+
+    clients[0]?.onerror?.(new Error("Unknown message type"));
+    slow.resolve(SLOW_RESULT);
+
+    expect(await first).toBe(SLOW_RESULT);
+
+    // A drop with nothing in flight has nothing to fail.
+    clients[0]?.onerror?.(new Error("SSE stream disconnected: closed"));
+  });
+
   it("closes a client still waiting on a call when the bridge stops", async () => {
     const slow = deferred<unknown>();
 
@@ -240,12 +297,12 @@ async function startSlowCall() {
 
   state.slow = slow.promise;
 
-  const { handler } = await startBridge();
+  const { handler, bridge } = await startBridge();
   const first = handler(SLOW);
 
   await vi.waitFor(() => {
     expect(clients[0]?.callTool).toHaveBeenCalledTimes(1);
   });
 
-  return { handler, slow, first };
+  return { handler, bridge, slow, first };
 }

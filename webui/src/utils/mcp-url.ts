@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { DEFAULT_MCP_URL, LOCAL_MODEL_PROXY_PATH } from "#src/shared/config";
+import {
+  DEFAULT_MCP_URL,
+  isLocalModelUrl,
+  LOCAL_AI_RELAY_PATH,
+  LOCAL_MODEL_PROXY_PATH,
+  type LocalAiServer,
+} from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
 
@@ -14,6 +20,18 @@ const VITE_DEV_PORT = "5173";
 export function isViteDevServer(): boolean {
   return (
     typeof window !== "undefined" && window.location.port === VITE_DEV_PORT
+  );
+}
+
+/**
+ * Whether the chat page was opened from a phone or another computer (over the
+ * network or a tunnel), not on Live's computer. There `localhost` is that
+ * device, and the device refuses changes to its own settings.
+ * @returns True for a page whose host isn't localhost, 127.0.0.1 or [::1]
+ */
+export function isPageOnAnotherDevice(): boolean {
+  return (
+    typeof window !== "undefined" && !isLocalModelUrl(window.location.origin)
   );
 }
 
@@ -267,6 +285,15 @@ export function getSubagentBriefingUrl(mcpUrl?: string): string {
  */
 export function getLocalModelProxyUrl(): string {
   return serverUrl(LOCAL_MODEL_PROXY_PATH);
+}
+
+/**
+ * Gets the local AI relay's URL for one server; append the server's own path.
+ * @param server - The local AI server
+ * @returns {string} The relay URL, without a trailing slash
+ */
+export function getLocalAiRelayUrl(server: LocalAiServer): string {
+  return serverUrl(`${LOCAL_AI_RELAY_PATH}/${server}`);
 }
 
 /**

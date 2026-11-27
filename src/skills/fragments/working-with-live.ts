@@ -22,7 +22,7 @@
 export const workingWithLive = `## Working with Ableton Live
 
 **Views and Playback:**
-- Session View: jam, try ideas, build scenes. Launching a scene restarts every clip in it — say so before doing it mid-session
+- Session View: jam, try ideas, build scenes. Launching a scene restarts every clip in it — say so before doing it mid-session; to add a clip without restarting what's playing, start it in sync at the next loop start
 - Arrangement View: structure songs on a timeline. Playing session clips overrides Arrangement playback on those tracks until they're stopped
 
 **Creating Music:**

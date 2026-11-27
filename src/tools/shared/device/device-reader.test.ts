@@ -631,6 +631,7 @@ describe("device-reader", () => {
       const sampleChild = {
         getProperty: (prop: string) =>
           prop === "file_path" ? (opts.samplePath ?? null) : null,
+        getPropertyList: () => [],
       };
 
       return {

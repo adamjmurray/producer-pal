@@ -338,6 +338,9 @@ describe("readSpecializedActions", () => {
       "warpDouble",
       "warpHalf",
       "warpAs",
+      "setSlices",
+      "resetSlices",
+      "sliceToDrumRack",
     ]);
     expect(actions).toContainEqual({
       name: "warpAs",

@@ -271,7 +271,7 @@ function hostedIdentity(
  *   plug-in or can't say
  */
 function slotsOf(track: EnvelopeTrack, device: string): SlotMap | null {
-  const wrapper = deviceAt(trackObject(track), device);
+  const wrapper = envelopeDevice(trackObject(track), device);
 
   if (wrapper == null || detectHostedPlugin(wrapper) == null) {
     return null;
@@ -318,6 +318,9 @@ function envelopeEntry(
   unwarped: boolean,
 ): ClipEnvelope {
   const { numerator, denominator } = clipMeter();
+  // A slot shows its own 0-1 number, not what the plug-in shows there, and a
+  // display in parentheses is what a write reads in the plug-in's units.
+  const hosted = identity.slot != null;
 
   return {
     ...identity,
@@ -327,7 +330,7 @@ function envelopeEntry(
       (read.events ?? []).map((event) => ({
         time: event.time,
         value: event.value,
-        display: event.display_str,
+        display: hosted ? undefined : event.display_str,
         coefficients: event.coefficients,
       })),
       { timeSigNumerator: numerator, timeSigDenominator: denominator },
@@ -347,20 +350,37 @@ function parameterId(
   track: EnvelopeTrack,
   entry: ListedEnvelope,
 ): string | null {
-  const object = trackObject(track);
+  const parameter = envelopeParameter(
+    trackObject(track),
+    entry.device,
+    entry.parameter_name ?? entry.parameter_index ?? 0,
+  );
+
+  return parameter != null && parameter.exists() ? parameter.id : null;
+}
+
+/**
+ * The Live parameter at the address the remote script uses for an envelope.
+ * @param track - The clip's track
+ * @param device - The remote script's device or chain path, if any
+ * @param parameter - The parameter's index on its device, or volume/pan/send0..
+ * @returns The parameter, or null when the address isn't one we can walk
+ */
+export function envelopeParameter(
+  track: LiveAPI,
+  device: string | undefined,
+  parameter: string | number,
+): LiveAPI | null {
   // A name is a mixer parameter: the track's, or the chain's `device` ends on.
-  const holder = entry.device == null ? object : deviceAt(object, entry.device);
+  const holder = device == null ? track : envelopeDevice(track, device);
 
   if (holder == null) {
     return null;
   }
 
-  const parameter =
-    entry.parameter_name == null
-      ? holder.child("parameters", String(entry.parameter_index ?? 0))
-      : mixerParameter(holder, entry.parameter_name);
-
-  return parameter != null && parameter.exists() ? parameter.id : null;
+  return typeof parameter === "number"
+    ? holder.child("parameters", String(parameter))
+    : mixerParameter(holder, parameter);
 }
 
 /**
@@ -369,7 +389,7 @@ function parameterId(
  * @param device - The remote script's device path
  * @returns The device or chain, or null when the path isn't one we can walk
  */
-function deviceAt(track: LiveAPI, device: string): LiveAPI | null {
+export function envelopeDevice(track: LiveAPI, device: string): LiveAPI | null {
   let container = track;
 
   for (const segment of device.split("/")) {

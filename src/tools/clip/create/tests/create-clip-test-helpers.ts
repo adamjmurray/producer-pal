@@ -92,6 +92,14 @@ export function setupArrangementClipMocks({
   return { liveSet, track, clip };
 }
 
+/** Register a Live Set in 4/4. */
+export function registerLiveSetInFourFour(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+}
+
 /**
  * Register a track whose main-lane create_midi_clip returns a distinct
  * arrangement clip. Use for the second track of a multi-destination call.

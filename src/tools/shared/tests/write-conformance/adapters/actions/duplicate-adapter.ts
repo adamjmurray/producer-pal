@@ -41,6 +41,8 @@ export const duplicateAdapter: WriteToolAdapter = {
   tool: "ppal-duplicate",
   run: (args) => duplicate({ type: "track", ...args }),
   na: {
+    wholeCallThrows:
+      "routing, transforms and spare cleanup report a failure on the copy's own entry",
     namedTwice:
       "a source named twice is two copies, one per destination; copies never write the same place",
     newTwice: "copies are made of existing sources; nothing new is named",

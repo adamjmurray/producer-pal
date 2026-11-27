@@ -117,6 +117,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
       smallModel: null,
     }),
+    copyParamsFrom: param(z.coerce.string().optional(), {
+      default:
+        "id or path of a device of the same type (plug-ins and Max devices must match exactly): copies its param values (and the settings listed as params by read-device) onto each target, before `params`. Skips params mapped to a rack macro. Not copied: rack chains, plug-in or Max device internal state, sidechain routing, modulation matrices",
+      smallModel: null,
+    }),
 
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),

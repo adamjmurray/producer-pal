@@ -6,8 +6,9 @@ joined by connectors. It is hand-parsed, not a Peggy grammar, so no parity test
 holds it: update this file when the syntax changes.
 
 Code: [src/notation/barbeat/envelope/](../../src/notation/barbeat/envelope/)
-(`envelope-notation.ts`, `envelope-curves.ts`). How the tools answer a call
-(refusals, partial writes, arrangement clips) is in
+(`envelope-notation.ts`, `envelope-curves.ts`, `envelope-repeat.ts`,
+`envelope-rand.ts`). How the tools answer a call (refusals, partial writes,
+arrangement clips) is in
 [tool-behavior](tool-behavior/clips-playback-and-sends/clip-envelopes.md); what
 Live allows is in [clip-envelopes.md](../live-api/clip-envelopes.md).
 
@@ -26,11 +27,15 @@ A point is `bar|beat value`, in the clip's own meter.
 - **Value** is the parameter's raw value, not Live's display units. It is a
   plain decimal (`0.5`, `-1`, `.5`, `1e-2`). Range is not checked here; the tool
   refuses a value outside the parameter's range.
-- **Display**, read only: a read may add Live's display in parentheses,
+- **Display**: a read may add Live's display in parentheses,
   `1|1 0.25 (112 Hz)`. It is left out when it is a plain number equal to the
   printed value (`0.20` for `0.2`). Round brackets inside it are written as
-  square ones. A write accepts and ignores it.
-- Values print with up to 3 decimals and no trailing zeros.
+  square ones. A write ignores a display that follows a value, and takes one
+  written in place of the value, `1|1 (112 Hz)`, as the value to convert to raw,
+  turning its square brackets back into round ones (`(1/4 [dotted])` is
+  `1/4 (dotted)`).
+- Values print with up to 3 decimals and no trailing zeros. A value below 0.1
+  keeps 3 significant digits instead (`0.0004`, `0.0123`).
 
 ## Connectors
 
@@ -52,14 +57,43 @@ is the cubic Bezier Live stores on the event that starts the segment
 - A `/` inside a time (`2|1+n/12`) has no spaces around it, so it is not a
   connector.
 
+## Repeats and random values (write only)
+
+```
+1|1x128@n/16 rand(0.5, 1)
+1|1 0 / 1|2x7@n/4 rand()
+```
+
+- **Repeat**: `bar|beat x count @ step` writes `count` points, `step` apart,
+  each with the point's value. The step is a note-value duration as in the notes
+  grammar's [repeat patterns](barbeat/repeat-patterns.md) (`@n/16`, `@1bar`,
+  `@1bar+n/4`) and is always written: an envelope has no duration to default to.
+  The count is 1 to 1000, the most points one write takes. A step that is zero
+  or less in the clip's meter is an error.
+- **Connector**: the connector before a repeat arrives at every one of its
+  points. A repeat that starts the line has none, so its points hold (`_`): flat
+  steps.
+- **`rand(min, max)`** in place of a value is a random raw value, rolled once
+  per point when the envelope is written, so each point of a repeat gets its
+  own. As in transforms, `rand(max)` is 0 to max, `rand()` is -1 to 1, and
+  `random` is accepted. An end can be a display value in parentheses,
+  `rand((200 Hz), (2 kHz))`, which is converted to raw first, so the roll is
+  even in raw values; a display end needs both ends written. The parser only
+  passes the range on: the tool rolls once it knows the parameter, and on an
+  option list it rolls a whole option. A rolled value keeps 6 significant
+  digits. There is no seed.
+- **`~rand(min, max)`** rolls the curve amount, once per point the connector
+  arrives at. Its ends are plain numbers inside -1..1.
+- A read never prints any of these: it lists every point.
+
 ## Order
 
 - Points run forwards in time. A point earlier than the one before it is an
   error.
 - Two points at one time are a jump: the second is the value after it. A third
   at that time is an error.
-- Syntax (points, values, curves, connectors) can be checked without a clip
-  (`checkEnvelopeNotation`). Times and order need the clip's meter
+- Syntax (points, values, repeats, curves, connectors) can be checked without a
+  clip (`checkEnvelopeNotation`). Times and order need the clip's meter
   (`parseEnvelopeNotation`).
 - An empty string is no points. On a write that means clear.
 

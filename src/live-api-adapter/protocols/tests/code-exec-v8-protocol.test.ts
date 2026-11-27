@@ -6,6 +6,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import {
+  beginWarningCapture,
+  endWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import {
@@ -370,6 +374,30 @@ describe("code-exec-v8-protocol executeNoteCodeWithData", () => {
         },
       ],
     });
+  });
+
+  it("warns on the calling request about dropped notes and clamped values", async () => {
+    const capture = beginWarningCapture();
+    const promise = executeNoteCodeWithData("return notes;", [], CONTEXT);
+
+    handleCodeExecResult(
+      latestRequestId(),
+      JSON.stringify({
+        success: true,
+        result: [
+          { pitch: 128, start: 0 },
+          { pitch: 60, start: 0, velocity: 200 },
+        ],
+      }),
+    );
+
+    const result = await promise;
+
+    expect(result.success && result.notes).toHaveLength(1);
+    expect(endWarningCapture(capture)).toStrictEqual([
+      "ignoring 1 invalid code note: pitch 128 is outside 0-127",
+      "clamped 1 out-of-range code value: velocity outside 1 to 127",
+    ]);
   });
 });
 

@@ -9,11 +9,11 @@ import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts
 import {
   lookUpSimplerSettings,
   writeSimplerSettings,
-} from "#src/tools/shared/remote-script/simpler-settings.ts";
+} from "#src/tools/shared/remote-script/simpler-settings/simpler-settings.ts";
 import { REMOTE_SCRIPT_REQUEST_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { MAX_SIMPLERS_PER_CALL } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
+import { MAX_SIMPLERS_PER_CALL } from "#src/tools/shared/remote-script/simpler-settings/simpler-settings-contract.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),

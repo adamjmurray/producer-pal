@@ -30,6 +30,7 @@ vi.mock(import("#webui/chat/sdk/mcp-tools"), async () => {
 type Route = "lmstudio" | "custom" | "ollama";
 type Wire = Array<Record<string, unknown>>;
 
+// Every route uses @ai-sdk/openai-compatible, which reads the model's thinking.
 const USAGE = { inputTokens: 100, outputTokens: 50, reasoningTokens: 42 };
 
 const ALL_ROUTES: Route[] = ["lmstudio", "custom", "ollama"];
@@ -62,7 +63,6 @@ afterEach(() => {
   restoreSdkWarnings();
 });
 
-// Ollama streams its thinking in `reasoning`; LM Studio in `reasoning_content`.
 describe.each(ALL_ROUTES)("%s stream to history", (route) => {
   it.each(["reasoning_content", "reasoning"])(
     "reads thinking from the `%s` field",

@@ -58,6 +58,16 @@ export const updateLiveSetAdapter: WriteToolAdapter = {
     countWithDestinations: "takes no count",
   },
 
+  wholeCallThrows: () => {
+    failOnSet(setUpLocators(0), "signature_numerator");
+
+    return {
+      args: { tempo: 120, timeSignature: "3/4" },
+      message: LIVE_FAILURE,
+      landed: "tempo",
+    };
+  },
+
   many: (n) => {
     setUpLocators(4);
 

@@ -111,7 +111,7 @@ function settleThenFinish(id, result) {
 
 // Ops that change nothing. They never save: a write would add an undo step to
 // a read and mark the Set changed. The poll saves any other change.
-const READ_OPS = new Set(["info", "params", "slots"]);
+const READ_OPS = new Set(["info", "params", "slots", "find", "lookup"]);
 
 function isRead(req, result) {
   return READ_OPS.has(req.op) || result.unchanged === true;
@@ -227,6 +227,10 @@ function handle(req) {
       return { params: setParams(req.params ?? []) };
     case "write":
       return { params: writeParams(req.params ?? []) };
+    case "find":
+      return findValues(req);
+    case "lookup":
+      return lookupName(req);
     case "raw":
       return raw(req.message ?? []);
     case "map":
@@ -484,6 +488,48 @@ function loadNames() {
   outlet(0, "params");
 }
 
+// Plug-ins repeat names across modules (two envelopes, each with "Attack"),
+// and a name has to reach one param. A repeat gets " (2)", " (3)" in the
+// plug-in's own order, skipping any name another param already has. Every
+// name read or matched goes through here; state.names keeps the plug-in's
+// own, for spotting stand-ins.
+let named = { from: null, names: [] };
+
+function paramNames() {
+  if (named.from !== state.names || named.names.length !== state.names.length) {
+    named = { from: state.names, names: uniqueNames(state.names) };
+  }
+
+  return named.names;
+}
+
+function uniqueNames(names) {
+  const used = new Set(names);
+  const seen = new Map();
+
+  return names.map((name) => {
+    let count = seen.get(name);
+
+    if (count == null) {
+      seen.set(name, 1);
+
+      return name;
+    }
+
+    let candidate;
+
+    do {
+      count++;
+      candidate = `${name} (${count})`;
+    } while (used.has(candidate));
+
+    seen.set(name, count);
+    used.add(candidate);
+
+    return candidate;
+  });
+}
+
 // VST3 plug-ins expose a stand-in param per MIDI CC, pitch bend and
 // aftertouch, usually per channel: one unbroken block of 132 or 2080 near the
 // end. Vendors name them differently ("CC 1, CH 4", "MIDI CC 0|0", "CC107
@@ -537,7 +583,7 @@ function readParams({ names, search, all, offset = 0, limit = DEFAULT_LIMIT }) {
   const [hideFrom, hideTo] = standInRange(state.names);
   const isStandIn = (i) => i >= hideFrom && i < hideTo;
 
-  state.names.forEach((name, i) => {
+  paramNames().forEach((name, i) => {
     if (wanted ? wanted.has(name) : all === true || !isStandIn(i)) {
       if (!needle || name.toLowerCase().includes(needle)) matches.push(i + 1);
     }
@@ -559,7 +605,7 @@ function readParam(index, name) {
 
   return {
     index,
-    name: name ?? state.names[index - 1],
+    name: name ?? paramNames()[index - 1],
     value: read.value,
     display: read.display,
   };
@@ -1303,7 +1349,7 @@ function setParams(changes) {
     const index =
       change.index != null
         ? Number(change.index)
-        : state.names.indexOf(String(change.name)) + 1;
+        : paramNames().indexOf(String(change.name)) + 1;
 
     if (!Number.isInteger(index) || index < 1 || index > state.names.length) {
       throw new Error(`no param ${change.name ?? change.index}`);
@@ -1326,7 +1372,8 @@ function setParams(changes) {
 // number is in the unit the param shows now: 3 on "2.50 kHz" means 3 kHz.
 // Result per entry: {ok, index, name, value, display, scale?}, where `scale`
 // is what a bare number was multiplied by to reach the compare units.
-// | {ok: false, kind: "missing" | "ambiguous" | "nomatch", error, matches?}
+// | {ok: false, kind: "missing" | "ambiguous" | "nomatch" | "unreadable" |
+//   "failed" | "changed", error, matches?}
 // | {superseded: <position of the entry that replaces it>, index, name}.
 const SAMPLES = 128;
 const BISECT_STEPS = 30;
@@ -1354,7 +1401,7 @@ function lastOf(targets, index) {
 }
 
 function identity(target) {
-  return { index: target.index, name: state.names[target.index - 1] };
+  return { index: target.index, name: paramNames()[target.index - 1] };
 }
 
 function failure(target) {
@@ -1379,14 +1426,7 @@ function resolveEntry(entry) {
       : { kind: "missing", error: `no param ${entry.index}` };
   }
 
-  const name = String(entry.name ?? "");
-  const exact = indexesOf((n) => n === name);
-  const loose = () => {
-    const wanted = name.trim().toLowerCase();
-
-    return indexesOf((n) => n.trim().toLowerCase() === wanted);
-  };
-  const found = exact.length > 0 ? exact : loose();
+  const found = namedIndexes(String(entry.name ?? ""));
 
   if (found.length === 1) return { index: found[0] };
   if (found.length > 1) {
@@ -1398,43 +1438,152 @@ function resolveEntry(entry) {
   return { kind: "missing", error: "no param with that name" };
 }
 
+// Which params a name reaches, as {matches: [{index, name}]}.
+function lookupName({ name }) {
+  if (loadedFile() == null) throw new Error("no plug-in loaded");
+  if (state.names.length === 0) loadNames();
+
+  return {
+    matches: namedIndexes(String(name ?? "")).map((index) => identity({ index })),
+  };
+}
+
+// The params a name reaches: the ones named exactly so, else ignoring case
+// and padding.
+function namedIndexes(name) {
+  const exact = indexesOf((n) => n === name);
+
+  if (exact.length > 0) return exact;
+
+  const wanted = name.trim().toLowerCase();
+
+  return indexesOf((n) => n.trim().toLowerCase() === wanted);
+}
+
 function indexesOf(test) {
   const found = [];
 
-  state.names.forEach((name, i) => {
+  paramNames().forEach((name, i) => {
     if (test(name)) found.push(i + 1);
   });
 
   return found;
 }
 
+// A throw answers for this entry alone, so the entries already written are
+// still reported. One after `keep()` left the param moved: kind "changed".
 function writeOne(target, entry) {
   const { index } = target;
-  const original = readParam(index);
-  const found = searchValue(index, entry, original.display);
+  let kept = false;
 
-  if (found.error) {
-    outlet(0, index, Number(original.value));
+  try {
+    const original = readOriginal(index);
 
-    return { ok: false, kind: "nomatch", error: found.error };
+    if (original == null) {
+      return { ok: false, kind: "unreadable", error: UNREADABLE };
+    }
+
+    return searching(index, original, (keep) => {
+      const found = searchValue(index, entry, original.display);
+
+      if (found.error) return { ok: false, kind: "nomatch", error: found.error };
+
+      outlet(0, index, found.value);
+      keep();
+      kept = true;
+
+      const landed = readParam(index);
+
+      return {
+        ok: true,
+        ...identity(target),
+        value: landed.value,
+        display: landed.display,
+        ...(found.scale ? { scale: found.scale } : {}),
+      };
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      kind: kept ? "changed" : "failed",
+      error: String(error?.message ?? error),
+    };
   }
-
-  outlet(0, index, found.value);
-
-  const landed = readParam(index);
-
-  return {
-    ok: true,
-    ...identity(target),
-    value: landed.value,
-    display: landed.display,
-    ...(found.scale ? { scale: found.scale } : {}),
-  };
 }
 
-// Where in 0-1 does the param show this text or number? `before` is what it
-// showed before the search moved it.
-function searchValue(index, { text, number, bare }, before) {
+const UNREADABLE = "the plug-in gave no value for this param, so it wasn't moved";
+
+// A param before a search moves it, with `back` (a number) to put it back to.
+// Null when the plug-in gave no value: with nothing to put back, the search
+// must not start.
+function readOriginal(index) {
+  const read = readParam(index);
+  const back = read.value == null ? NaN : Number(read.value);
+
+  return Number.isFinite(back) ? { ...read, back } : null;
+}
+
+// Runs a search that moves the param, then puts the param back where
+// `original` had it, even if the search throws. `run` calls `keep()` once it
+// has set the param to stay.
+function searching(index, original, run) {
+  let keeping = false;
+
+  try {
+    return run(() => {
+      keeping = true;
+    });
+  } finally {
+    if (!keeping) outlet(0, index, original.back);
+  }
+}
+
+// Where a param shows each text or number, without leaving it moved: the
+// search moves the param, then it goes back to where it was.
+// Request: {index | name, values: [{text?, number?, bare?}]}.
+// Result: {index, name, low, high, values}, where low and high are what the
+// param shows at 0 and 1, and each value is {value, display, outside?} or
+// {error}. `outside` says the number is past every value the param shows, so
+// `value` is the nearest end.
+function findValues({ index, name, values = [] }) {
+  if (loadedFile() == null) throw new Error("no plug-in loaded");
+  if (state.names.length === 0) loadNames();
+
+  const target = resolveEntry(index != null ? { index } : { name });
+
+  if (target.error) throw new Error(target.error);
+
+  const original = readOriginal(target.index);
+
+  if (original == null) throw new Error(UNREADABLE);
+
+  return searching(target.index, original, () => {
+    const samples = sampleParam(target.index);
+    const found = values.map((wanted) => {
+      const hit = searchValue(target.index, wanted, original.display, samples);
+
+      if (hit.error) return { error: hit.error };
+
+      outlet(0, target.index, hit.value);
+
+      return {
+        value: hit.value,
+        display: readParam(target.index).display,
+        ...(hit.outside ? { outside: true } : {}),
+      };
+    });
+
+    return {
+      ...identity(target),
+      low: samples[0].display,
+      high: samples[SAMPLES].display,
+      values: found,
+    };
+  });
+}
+
+// What the param shows at SAMPLES + 1 values across 0-1.
+function sampleParam(index) {
   const samples = [];
 
   for (let i = 0; i <= SAMPLES; i++) {
@@ -1444,8 +1593,16 @@ function searchValue(index, { text, number, bare }, before) {
     samples.push({ value, display: String(readParam(index).display ?? "") });
   }
 
+  return samples;
+}
+
+// Where in 0-1 does the param show this text or number? `before` is what it
+// showed before the search moved it.
+function searchValue(index, { text, number, bare }, before, samples = sampleParam(index)) {
   const wanted = text == null ? null : looseText(text);
-  const hit = wanted && samples.find((s) => matchesText(s.display, wanted));
+  const hit =
+    (wanted && samples.find((s) => matchesText(s.display, wanted))) ||
+    infiniteEnd(samples, text);
 
   if (hit) return { value: hit.value };
   if (number == null) return { error: noMatch(samples, text) };
@@ -1465,6 +1622,23 @@ function searchValue(index, { text, number, bare }, before) {
 
 function looseText(text) {
   return String(text).replace(/\s+/g, "").toLowerCase();
+}
+
+// "-inf" lands on the sample that shows "-inf dB" (or "-Inf", "-∞").
+const INFINITE = /^\s*([-+]?)\s*(inf|∞)/i;
+
+function infiniteEnd(samples, text) {
+  const asked = INFINITE.exec(String(text ?? ""));
+
+  if (!asked) return null;
+
+  const negative = asked[1] === "-";
+
+  return samples.find((s) => {
+    const shown = INFINITE.exec(s.display);
+
+    return shown != null && (shown[1] === "-") === negative;
+  });
 }
 
 // The whole text, or a part of it that stands alone ("[-17.9dB]").
@@ -1545,27 +1719,15 @@ function bisect(index, samples, target) {
 
   if (numeric.length < 2) return null;
 
-  // The first neighbouring pair that brackets the target; past either end, the
-  // closest sample.
-  let pair = -1;
-
-  for (let i = 0; i < samples.length - 1; i++) {
-    const a = shown[i];
-    const b = shown[i + 1];
-
-    if (a != null && b != null && Math.min(a, b) <= target && target <= Math.max(a, b)) {
-      pair = i;
-      break;
-    }
-  }
-
+  const bracket = bracketOf(shown, target);
   let best = closest(samples, shown, target);
 
-  if (pair < 0) return { value: best.value };
+  // Past every number the param shows: the closest sample.
+  if (bracket == null) return { value: best.value, outside: best.diff > 0 };
 
-  let lo = samples[pair].value;
-  let hi = samples[pair + 1].value;
-  const loIsLow = shown[pair] <= shown[pair + 1];
+  const { from, to, loIsLow } = bracket;
+  let lo = samples[from].value;
+  let hi = samples[to].value;
 
   for (let step = 0; step < BISECT_STEPS && best.diff > 0; step++) {
     const mid = (lo + hi) / 2;
@@ -1574,7 +1736,14 @@ function bisect(index, samples, target) {
 
     const n = displayNumber(String(readParam(index).display ?? ""));
 
-    if (n == null) break;
+    // No number: past the last one, toward the end that shows none. Between
+    // two numbers it's a gap ("Off"), and the closest so far stands.
+    if (n == null) {
+      if (shown[from] == null) lo = mid;
+      else if (shown[to] == null) hi = mid;
+      else break;
+      continue;
+    }
 
     const diff = Math.abs(n - target);
 
@@ -1584,6 +1753,38 @@ function bisect(index, samples, target) {
   }
 
   return { value: best.value };
+}
+
+// The samples the target lies between, as {from, to, loIsLow}: the first two
+// numbers in a row that bracket it (samples between them showing none are
+// skipped), else an end that shows no number ("-inf dB") beside the first or
+// last number, when the target is past it. Null when it is past every number.
+function bracketOf(shown, target) {
+  const at = shown.flatMap((n, i) => (n == null ? [] : [i]));
+
+  for (let k = 0; k < at.length - 1; k++) {
+    const a = shown[at[k]];
+    const b = shown[at[k + 1]];
+
+    if (Math.min(a, b) <= target && target <= Math.max(a, b)) {
+      return { from: at[k], to: at[k + 1], loIsLow: a <= b };
+    }
+  }
+
+  const first = at[0];
+  const last = at[at.length - 1];
+  const upFirst = shown[first] <= shown[at[1]];
+  const upLast = shown[at[at.length - 2]] <= shown[last];
+
+  if (first > 0 && (upFirst ? target < shown[first] : target > shown[first])) {
+    return { from: first - 1, to: first, loIsLow: upFirst };
+  }
+
+  if (last < shown.length - 1 && (upLast ? target > shown[last] : target < shown[last])) {
+    return { from: last, to: last + 1, loIsLow: upLast };
+  }
+
+  return null;
 }
 
 function closest(samples, shown, target) {

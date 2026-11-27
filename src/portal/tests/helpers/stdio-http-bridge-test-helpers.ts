@@ -251,6 +251,23 @@ export function expectSetupGuidance(response: unknown): void {
 }
 
 /**
+ * Assert that a response is the answer to a call whose connection dropped while
+ * the device had it: it may have run, and nothing claims the device is gone.
+ * @param response - What the bridge returned for the call
+ */
+export function expectDroppedMidCall(response: unknown): void {
+  expect(response).toStrictEqual({
+    content: [
+      {
+        type: "text",
+        text: "Error: the connection to Producer Pal dropped while this call was running. It may still have taken effect: read the current state before trying again.",
+      },
+    ],
+    isError: true,
+  });
+}
+
+/**
  * Before each test, reset the SDK stand-ins and quiet the console.
  * @param connectFails - Whether the client's connect rejects
  */

@@ -4,26 +4,47 @@
 // SPDX-License-Identifier: MIT
 
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
-import { calcNewContentTokens } from "#webui/lib/utils/compact-number";
+
+/** Context use (percent) that turns the label amber. */
+export const CONTEXT_WARN_PERCENT = 70;
+
+/** Context use (percent) that turns it red and points at compaction. */
+export const CONTEXT_FULL_PERCENT = 90;
 
 /**
- * Calculate new content tokens for a step-usage part using the prev usages map.
- * @param partIndex - The original index of the step-usage part
- * @param usage - The usage data for this step
- * @param stepPrevUsages - Map from part index to previous step's usage
- * @returns New content token count, or null
+ * How full the local model's context window was at the end of a step: its
+ * input plus what it wrote, since both fill the window.
+ * @param usage - The step's usage
+ * @returns Whole percent, or undefined when the window size is unknown
  */
-export function calcStepNewContent(
-  partIndex: number,
-  usage: TokenUsage,
-  stepPrevUsages: Map<number, TokenUsage>,
-): number | null {
-  const prev = stepPrevUsages.get(partIndex);
+export function contextPercent(usage: TokenUsage): number | undefined {
+  const { inputTokens, outputTokens, contextLength } = usage;
 
-  return calcNewContentTokens(
-    usage.inputTokens ?? 0,
-    prev?.inputTokens,
-    prev?.outputTokens,
+  return contextLength != null && inputTokens != null
+    ? Math.round(((inputTokens + (outputTokens ?? 0)) / contextLength) * 100)
+    : undefined;
+}
+
+/**
+ * Whether a local server likely cut the history to fit: the input stayed flat
+ * or shrank between steps, though the conversation only grows. Only compares
+ * steps whose window size is known, so cloud models never warn, and steps of
+ * one model: another model counts the same history differently.
+ * @param usage - The step's usage
+ * @param prev - The step before it, if any (none across a compaction)
+ * @returns True when the history was probably cut
+ */
+export function looksTruncated(
+  usage: TokenUsage,
+  prev: TokenUsage | undefined,
+): boolean {
+  return (
+    usage.contextLength != null &&
+    prev?.contextLength != null &&
+    usage.contextModel === prev.contextModel &&
+    usage.inputTokens != null &&
+    prev.inputTokens != null &&
+    usage.inputTokens <= prev.inputTokens
   );
 }
 

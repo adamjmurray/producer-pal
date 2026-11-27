@@ -37,8 +37,8 @@ const SHOW = {
 
 /** Answer each endpoint by path; unlisted paths are 404 */
 function stubServer(routes: Record<string, unknown>): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn(async (url: URL) => {
-    const body = routes[url.pathname];
+  const fetchMock = vi.fn(async (url: string) => {
+    const body = routes[new URL(url).pathname];
 
     return body === undefined
       ? { ok: false }
@@ -68,6 +68,26 @@ describe("fetchOllamaModelInfo", () => {
       memoryBytes: 18982214040,
       contextLength: 262144,
     });
+  });
+
+  // Behind a proxy the server's API sits under the same prefix as `/v1`.
+  it.each([
+    "https://host/ollama/v1",
+    "https://host/ollama/v1/",
+    "https://host/ollama",
+    "https://host/ollama/",
+  ])("keeps the path prefix of %s", async (baseUrl) => {
+    const fetchMock = stubServer({
+      "/ollama/api/ps": { models: [{ ...LOADED, name: "other:latest" }] },
+      "/ollama/api/show": SHOW,
+    });
+
+    await fetchOllamaModelInfo("qwen3.8", baseUrl);
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual([
+      "https://host/ollama/api/ps",
+      "https://host/ollama/api/show",
+    ]);
   });
 
   it("treats a bare id as :latest, case-insensitively", async () => {

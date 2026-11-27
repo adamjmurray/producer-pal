@@ -61,6 +61,8 @@ part is a file beside it.
   be learned about rack macro mappings.
 - [live-api/plugin-hosting.md](live-api/plugin-hosting.md) — reaching every
   VST/AU parameter by hosting the plug-in in a Max for Live wrapper.
+- [live-api/launch-quantization.md](live-api/launch-quantization.md) — why a
+  synced launch sets a clip's own quantization, and how it picks one.
 - [live-api/generated-plugin-devices.md](live-api/generated-plugin-devices.md) —
   spike findings: a device generated per plug-in, with a Live param per plug-in
   param.

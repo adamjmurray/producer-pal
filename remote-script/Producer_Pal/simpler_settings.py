@@ -7,7 +7,13 @@
 Python API does, as `SimplerDevice.pitch_bend_range` (semitones the pitch wheel
 bends, 0-24) and `note_pitch_bend_range` (MPE per-note bend, 0-48). Both are
 ints. Live clamps an out-of-range write silently, so writes are checked here.
+
+Also turns a sliced Simpler into a Drum Rack, which only `Live.Conversions` can
+do. See dev/live-api/conversions.md.
+
 Main thread only."""
+
+import Live
 
 from . import hotswap
 from .errors import RouteError
@@ -15,6 +21,9 @@ from .params import parse_device_paths, parse_whole
 
 # Simpler's class_name, as Max reports it too.
 SIMPLER_CLASS = "OriginalSimpler"
+
+# Simpler's `playback_mode` when it plays slices.
+SLICING_MODE = 2
 
 # Each setting's inclusive range.
 RANGES = {"pitch_bend_range": (0, 24), "note_pitch_bend_range": (0, 48)}
@@ -61,6 +70,34 @@ def write(bridge, params):
         raise RouteError(500, _failed("read-back", done))
 
 
+def to_drum_rack(bridge, params):
+    """Replace a sliced Simpler with a Drum Rack, one pad per slice.
+
+    Live does it before the call returns, in the Simpler's place. Answers how
+    many pads the rack has.
+
+    Never load a sample here: Live crashes when a Simpler's sample is replaced
+    and converted in the same main-thread call.
+    """
+    device_path = params.get("device_path")
+    device = _simpler_at(bridge.song, device_path)
+    if int(device.playback_mode) != SLICING_MODE:
+        raise RouteError(409, "the Simpler isn't in slicing mode")
+
+    convert = getattr(getattr(Live, "Conversions", None), "sliced_simpler_to_drum_rack", None)
+    if convert is None:
+        raise RouteError(409, "this Live version can't convert a Simpler's slices")
+    try:
+        convert(bridge.song, device)
+    except RuntimeError as err:
+        raise RouteError(409, "Live refused the conversion: %s" % err)
+
+    try:
+        return {"pads": len(hotswap.device_at(bridge.song, device_path).chains)}
+    except Exception:
+        raise RouteError(500, "converted, but Live couldn't read the Drum Rack back")
+
+
 def _failed(name, done):
     """What went wrong, and which settings were already written."""
     what = (
@@ -103,4 +140,5 @@ def _settings(device):
 ROUTES = {
     "/device/simpler/read": read,
     "/device/simpler/write": write,
+    "/device/simpler/to-drum-rack": to_drum_rack,
 }

@@ -586,6 +586,12 @@ describe("buildSkills - undo and redo gating", () => {
     expect(skills).toContain("one edit the user made in Live");
   });
 
+  it("counts only the write calls that changed something", () => {
+    expect(buildSkills({ tools: [...TOOL_NAMES] })).toContain(
+      "one of your write calls that changed something",
+    );
+  });
+
   it("sends the user to install-producer-pal for the remote script, not the retired name", () => {
     const skills = buildSkills({ tools: [...TOOL_NAMES] });
 

@@ -15,7 +15,9 @@ path cleared, onto a free list the next request retargets. Nothing holds a
 `LiveAPI` across requests (`live-api-adapter/live-api-release.ts`). A stale
 reference fails quietly: just after release it reads as nonexistent, and once
 recycled it points at a different Live object, with no error. Hence "build them
-where you use them".
+where you use them". Debug builds wrap every object handed out and warn in the
+Max console when one is used after its request ended
+(`live-api-adapter/live-api-stale-check.ts`).
 
 - Both path and id targets retarget a pooled object (`retargetToId`,
   `buildOrReuse` in `live-api-adapter/live-api-build.ts`).

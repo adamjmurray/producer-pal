@@ -14,7 +14,6 @@ import { EditButton } from "#webui/components/chat/EditButton";
 import { UserImages } from "#webui/components/chat/assistant/UserImages";
 import { UserMessageEditor } from "#webui/components/chat/UserMessageEditor";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
-import { calcNewContentTokens } from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -330,11 +329,7 @@ function TokenUsageLabel({
   return (
     <StepUsageLabel
       usage={usage}
-      newContentTokens={calcNewContentTokens(
-        usage.inputTokens ?? 0,
-        prevUsage?.inputTokens,
-        prevUsage?.outputTokens,
-      )}
+      prevUsage={prevUsage}
       timing={timing}
       className="pb-1"
     />
@@ -379,7 +374,8 @@ function findPreviousUserMessageIndex(
 }
 
 /**
- * Get the last usage from the previous model message.
+ * Get the last usage from the previous model message, stopping at a
+ * compaction, which legitimately shrinks the input.
  * @param messages - All messages
  * @param currentIdx - Current message index
  * @returns Previous model message's last usage
@@ -390,6 +386,10 @@ function getPrevModelUsage(
 ): TokenUsage | undefined {
   for (let i = currentIdx - 1; i >= 0; i--) {
     const msg = messages[i];
+
+    if (msg?.parts.some((p) => p.type === "compaction")) {
+      return undefined;
+    }
 
     if (msg?.role !== "model") {
       continue;

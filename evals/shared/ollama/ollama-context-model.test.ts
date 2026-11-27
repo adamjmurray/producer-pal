@@ -15,8 +15,8 @@ type Reply = { status?: number; body?: unknown };
 
 /** Answer each endpoint by path; unlisted paths are 404 with a non-JSON body */
 function stubServer(routes: Record<string, Reply>): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn(async (url: URL) => {
-    const route = routes[url.pathname];
+  const fetchMock = vi.fn(async (input: string) => {
+    const route = routes[new URL(input).pathname];
     const status = route?.status ?? (route ? 200 : 404);
     const text =
       route?.body === undefined
@@ -52,16 +52,38 @@ describe("ensureOllamaContextModel", () => {
     );
 
     const create = fetchMock.mock.calls.find(
-      ([url]) => (url as URL).pathname === "/api/create",
+      ([url]) => url === "http://localhost:11434/api/create",
     );
 
-    expect(create?.[0].href).toBe("http://localhost:11434/api/create");
+    expect(create).toBeDefined();
     expect(JSON.parse(create?.[1].body as string)).toStrictEqual({
       model: "lfm2.5-ctx65536",
       from: "lfm2.5",
       parameters: { num_ctx: 65536 },
       stream: false,
     });
+  });
+
+  // Behind a proxy the server's API sits under the same prefix as `/v1`.
+  it.each([
+    "https://host/ollama/v1",
+    "https://host/ollama/v1/",
+    "https://host/ollama",
+    "https://host/ollama/",
+  ])("keeps the path prefix of %s", async (baseUrl) => {
+    const prefixed = Object.fromEntries(
+      Object.entries(OLLAMA).map(([path, reply]) => [`/ollama${path}`, reply]),
+    );
+    const fetchMock = stubServer(prefixed);
+
+    await expect(
+      ensureOllamaContextModel("lfm2.5", 65536, baseUrl),
+    ).resolves.toBe("lfm2.5-ctx65536");
+    expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual([
+      "https://host/ollama/api/version",
+      "https://host/ollama/api/show",
+      "https://host/ollama/api/create",
+    ]);
   });
 
   it("allows a size equal to the model's maximum", async () => {
@@ -215,7 +237,9 @@ describe("ensureOllamaContextModel", () => {
   it("reports a timeout of the create call with its longer limit", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: URL) => {
+      vi.fn(async (input: string) => {
+        const url = new URL(input);
+
         if (url.pathname === "/api/create") {
           throw new DOMException("timed out", "TimeoutError");
         }

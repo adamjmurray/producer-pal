@@ -30,6 +30,54 @@ Part of [Skip entries, tool by tool](README.md).
   `that chain is now <path> (id N)`; see
   [Tool Behavior](../skips-and-replaced-targets.md). A bare pad path is its
   note, which no move changes, so it gets no clause.
+- **update-device's `sliceToDrumRack` action runs last, through the remote
+  script.** It converts once the target's other writes are done and read back,
+  wherever it sits in `actions`. When it converts, its entry is the action alone
+  and the target's `id` is the new Drum Rack's; the path is unchanged. It is
+  `ok: false` with the reason when the Simpler isn't in slicing mode (nothing is
+  sent), the remote script isn't running or is out of date, or Live refused
+  (`not converted: …`). With no answer the entry says it _may have converted_.
+  If that leaves the target with nothing landed, the target is a skip.
+- **update-device's `copyParamsFrom` copies one device's settings onto each
+  target.** It takes an id or a path, resolved before anything is written; a
+  source that doesn't exist, or is a chain or drum pad, refuses the call
+  (`copyParamsFrom must name a device, not a chain: "t0/d0/c0"`), and so does
+  `wrapInRack` beside it. Each target then gets its settings first (the named
+  settings `params` also takes, such as `globalMode` or a Simpler's `sample`),
+  then its params, both ahead of `params`, so a param the call names wins. A
+  target's entry says
+  `copied: { params: <how many changed>, settings?: [...], skipped?: [...] }`; a
+  target that already matches is `copied: { params: 0 }`, a success. Values
+  within about six significant digits count as matching, since that is all Max
+  passes. `skipped` names each param a rack macro owns
+  (`Threshold: mapped to a macro`), each setting or param Live refused
+  (`<name>: <reason>`), and, when the two devices list different params, one
+  `N params not on both devices` for those with no partner by name. Sidechain
+  routing and a Simpler's pitch bend ranges are not copied. A copy that overrode
+  arrangement automation adds
+  `copyParamsFrom: arrangement automation overridden` and the params. A target
+  is refused, with nothing written to it, when it is the source
+  (`not copied: this is the source device`), is another type
+  (`not copied: the source is Compressor, not EQ Eight`), or the source is gone
+  by its turn (`not copied: the source device is gone`). A built-in device's
+  type is its class. Every VST, AU and Max device of a kind shares one class, so
+  those must also have the same type name (not the user-editable `name`) and
+  list the same params in the same order
+  (`not copied: both are Serum, but they list different params`). Live gives Max
+  devices a generic type name, so for them the param list is what tells them
+  apart. A plug-in host wrapper (told by its numbered slot params, so one that
+  hasn't answered still counts) must also host the same plug-in with every slot
+  driving the same plug-in param
+  (`not copied: the source hosts Serum 2, not Diva`). One that doesn't answer,
+  whose slots can't be read, or that has no plug-in loaded is refused, naming
+  the side (`not copied: the target plug-in host didn't answer`). So a Max
+  device that lists `Slot NNN` params is treated as a plug-in host, and two such
+  devices that aren't hosts are refused. Two hosts of one plug-in can be refused
+  too, when one reports it by file name after a Set reload and the other by its
+  own name. The Producer Pal device itself (not a rack holding it) is refused as
+  a source or a target. On a chain or pad the arg is ignored, as any arg a chain
+  has no use for. If the refusal is all the call asked of the target, the target
+  is a skip.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes
@@ -56,21 +104,30 @@ Part of [Skip entries, tool by tool](README.md).
   The wrapper finds the value that displays as asked, so a number or the
   plug-in's text works. A bare number is in the unit the param shows when the
   write starts (3 is 3 kHz on a param reading `2.50 kHz`, 0.8 is 0.8 s on
-  `0.50 s`); a number with a unit (`3000 Hz`, `800 ms`) is as written. Entries
-  answer as any param's do: `{ id, name }` for a bare number that displays as
-  asked, otherwise the display text as `value`, and always the text when text or
-  a number with a unit was sent. A number, bare or with a unit, that doesn't
-  show as that number also gets a `detail` (a clamp). A number with a unit is
-  compared in its unit family (`3000 Hz` on `3.00 kHz`, `800 ms` on `0.80 s`)
-  and to within half the display's last digit; one that can't be compared (an
-  unknown unit, another family, a display with no number) gets none. `ok: false`
-  says why: a Live param id (not an `h` id) is refused unsent; no such param
-  (`not found on <target>`); a name more than one param has lists the ids and
-  asks for an `id`; no value displays as asked (`not set:` plus what it does
-  show), or a number has a unit the param doesn't show (`800 ms` on a Hz param:
+  `0.50 s`); a number with a unit (`3000 Hz`, `800 ms`) is as written. Names the
+  plug-in repeats are numbered in its order ("Attack", "Attack (2)"), so every
+  name is distinct and the plain name is the first; Live's own devices still
+  refuse a name two params share. Entries answer as any param's do:
+  `{ id, name }` for a bare number that displays as asked, otherwise the display
+  text as `value`, and always the text when text or a number with a unit was
+  sent. A number, bare or with a unit, that doesn't show as that number also
+  gets a `detail` (a clamp). A number with a unit is compared in its unit family
+  (`3000 Hz` on `3.00 kHz`, `800 ms` on `0.80 s`) and to within half the
+  display's last digit; one that can't be compared (an unknown unit, another
+  family, a display with no number) gets none. `ok: false` says why: a Live
+  param id (not an `h` id) is refused unsent; no such param
+  (`not found on <target>`); a name that reaches more than one param only once
+  case is ignored lists the ids and asks for an `id`; no value displays as asked
+  (`not set:` plus what it does show), or a number has a unit the param doesn't
+  show (`800 ms` on a Hz param:
   `not set: wrong unit: the param shows Hz/kHz, not ms`), and the param is left
-  as it was. Two entries reaching one param, by name and by id, write the last.
-  A wrapper that doesn't answer may have written: the entries say
+  as it was. A param the plug-in gives no value for isn't searched or moved
+  (`not set: the plug-in gave no value for this param, so it wasn't moved`). A
+  plug-in error on one param fails only that entry, and the others still land:
+  `not set: <error>` with the param put back, or
+  `may have changed: <error>; read the device to check` when it came after the
+  param was set. Two entries reaching one param, by name and by id, write the
+  last. A wrapper that doesn't answer may have written: the entries say
   `may have changed` and the hosted devices after it say they weren't tried. A
   list too big for one request (a few hundred entries; Max cuts a message near
   30 KB) is refused unsent, each entry

@@ -75,8 +75,11 @@ export interface RemoteScriptRequest {
   timeoutMs?: number;
   /**
    * How long Live may leave the job queued before skipping it. Sent as
-   * `expires_in_ms`, and it sets the wait for the reply, so it replaces
-   * `timeoutMs`. Nothing is sent when it is 0 or less.
+   * `expires_in_ms` (what is left when it leaves) and `expires_at_ms` (the
+   * deadline, counted from this call). The script keeps to the deadline, which
+   * a busy Live can't stretch by taking the request late; one that only knows
+   * `expires_in_ms` counts from when it takes it. It sets the wait for the
+   * reply, so it replaces `timeoutMs`. Nothing is sent when it is 0 or less.
    */
   expiresInMs?: number;
   /** Skip finding the port and use this one. For probing a port. */
@@ -126,7 +129,7 @@ export async function remoteScriptRequest(
   const started = Date.now();
 
   const send = (target: number, elapsedMs: number): Promise<WireReply> =>
-    sendWithin(request, target, elapsedMs);
+    sendWithin(request, target, elapsedMs, started);
 
   const fixedPort = port ?? remoteScriptPortFromEnv();
 
@@ -406,6 +409,8 @@ async function pingPort(
  * @param request - What to send
  * @param target - The port to send to
  * @param elapsedMs - How much of `expiresInMs` finding the port used
+ * @param startedAt - When the call began, in epoch ms: the deadline counts
+ *   from it
  * @returns The reply, or `available: false`
  * @throws RemoteScriptTimeout when finding the port used the time up
  */
@@ -413,6 +418,7 @@ function sendWithin(
   request: RemoteScriptRequest,
   target: number,
   elapsedMs: number,
+  startedAt: number,
 ): Promise<WireReply> {
   const {
     method = "GET",
@@ -438,10 +444,17 @@ function sendWithin(
   if (left != null) {
     wait = remoteScriptReplyWait(left);
 
+    // `left` plus what finding the port used is the whole `expiresInMs`.
+    const deadline = Math.floor(startedAt + elapsedMs + left);
+
     if (body == null) {
-      search = `?${new URLSearchParams({ ...query, expires_in_ms: String(Math.floor(left)) })}`;
+      search = `?${new URLSearchParams({ ...query, expires_in_ms: String(Math.floor(left)), expires_at_ms: String(deadline) })}`;
     } else {
-      payload = JSON.stringify({ ...body, expires_in_ms: left });
+      payload = JSON.stringify({
+        ...body,
+        expires_in_ms: left,
+        expires_at_ms: deadline,
+      });
     }
   }
 

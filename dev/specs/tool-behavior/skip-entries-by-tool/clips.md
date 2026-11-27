@@ -108,9 +108,13 @@ Part of [Skip entries, tool by tool](README.md).
   scenes made to reach the slot are named in its `detail`. A scratch clip or
   scene Live won't clear after the replacement landed is a `detail` on the new
   clip's entry, not a failure. `auto` that launched nothing (no clip slot got a
-  clip) is a whole-call warning, `auto ignored: …`. A clip meter Live changed (a
-  numerator it clamps) is reported as read back, but the clip's region is still
-  laid out in the meter asked for.
+  clip) is a whole-call warning, `auto ignored: …`. So is a `play-clip-synced`
+  that is refused (loops out of step, loop start too far off) or whose fire
+  threw; one with a loop start on no usable launch grid fires plainly and warns
+  `auto: … fired without sync`, and so does one whose loop start was missed
+  (`auto: the loop start was missed; fired without sync`). A clip meter Live
+  changed (a numerator it clamps) is reported as read back, but the clip's
+  region is still laid out in the meter asked for.
 - **Live 12.3: a clip placed inside another.** Live 12.3 crashes when it creates
   an arrangement clip with both edges strictly inside an existing clip (12.4
   doesn't). create-clip, and a move or duplicate that re-creates a clip (to or

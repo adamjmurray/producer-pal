@@ -443,14 +443,16 @@ describe("playback sceneIndex on an action that acts on clips", () => {
     registerClipSlot(0, 1);
   });
 
-  it.each(["play-session-clips", "stop-session-clips", "stop"])(
-    "refuses it on %s",
-    (action) => {
-      registerMockObject(livePath.track(0), { path: livePath.track(0) });
+  it.each([
+    "play-session-clips",
+    "play-session-clips-synced",
+    "stop-session-clips",
+    "stop",
+  ])("refuses it on %s", (action) => {
+    registerMockObject(livePath.track(0), { path: livePath.track(0) });
 
-      expect(() => playback({ action, path: "t0/s1", sceneIndex: 3 })).toThrow(
-        `sceneIndex is only for action "play-scene"; this call has action "${action}"`,
-      );
-    },
-  );
+    expect(() => playback({ action, path: "t0/s1", sceneIndex: 3 })).toThrow(
+      `sceneIndex is only for action "play-scene"; this call has action "${action}"`,
+    );
+  });
 });

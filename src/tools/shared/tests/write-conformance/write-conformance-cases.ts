@@ -47,6 +47,7 @@ export const writeConformanceCases: Record<
   loneSkipped: expectLoneSkipThrows,
   leftBehind: expectLeftBehindIsAChange,
   settleThrows: expectSettleThrowKeepsEntries,
+  wholeCallThrows: expectWholeCallThrowSaysWhatLanded,
 };
 
 /**
@@ -384,7 +385,21 @@ async function expectSettleThrowKeepsEntries(
   // A tool that records what the whole call changed adds it after the message.
   expect(capturedWarnings()).toContainEqual(
     expect.stringMatching(
-      /^Final step failed: final step refused(; already changed: .+)?; results may be incomplete and paths or ids out of date; read them again before relying on them\.$/,
+      /^Final step failed: final step refused(; already changed: .+)?; results may be incomplete or out of date; read them again before relying on them\.$/,
     ),
   );
+}
+
+async function expectWholeCallThrowSaysWhatLanded(
+  adapter: WriteToolAdapter,
+): Promise<void> {
+  const { args, message, landed } = needs(adapter, "wholeCallThrows")();
+  const unchanged = await changedNothingAfter(async () => {
+    // No entry can carry it, so the error itself says what the caller now has.
+    await expect(runTool(adapter, args)).rejects.toThrow(
+      `${message}; already changed: ${landed}`,
+    );
+  });
+
+  expect(unchanged).toBe(false);
 }

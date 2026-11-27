@@ -5,6 +5,7 @@
 
 import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { type ChainMixerReport } from "./chain/chain-mixer-report.ts";
+import { type CopiedParams } from "./params/copy-device-params.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
@@ -44,6 +45,7 @@ interface UpdateTargetResult extends ChainMixerReport {
   created?: string;
   params?: ParamResult[];
   actions?: ActionResult[];
+  copied?: CopiedParams;
 }
 
 /** Whether a `toPath` move happened, and what it made getting there. */
@@ -131,7 +133,7 @@ export function updateDeviceTarget(
     return { entry: result, written };
   }
 
-  const { params, actions } = updateDeviceProperties(
+  const { params, actions, copied } = updateDeviceProperties(
     target,
     type,
     options,
@@ -151,6 +153,10 @@ export function updateDeviceTarget(
 
   if (actions.length > 0) {
     result.actions = actions;
+  }
+
+  if (copied != null) {
+    result.copied = copied;
   }
 
   return { entry: reportTargetNotes(result, notes, options), written };

@@ -3,13 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { localServerRoot } from "#webui/chat/sdk/provider/local-model/local-server-root.ts";
+
 const LOOKUP_TIMEOUT_MS = 3000;
 
 /**
  * Fetch JSON from a local model server with a short timeout. Never throws.
  *
  * @param path - Absolute path on the server, e.g. "/api/ps"
- * @param baseUrl - Local server base URL; only its origin is used
+ * @param baseUrl - Local server base URL, with or without `/v1`; a path prefix is kept
  * @param body - JSON body to POST; omit for a GET
  * @returns The parsed response, or undefined on any failure
  */
@@ -19,7 +21,7 @@ export async function fetchLocalServerJson(
   body?: unknown,
 ): Promise<unknown> {
   try {
-    const response = await fetch(new URL(path, baseUrl), {
+    const response = await fetch(`${localServerRoot(baseUrl)}${path}`, {
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
       ...(body !== undefined && {
         method: "POST",

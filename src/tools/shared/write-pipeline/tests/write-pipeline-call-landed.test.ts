@@ -103,7 +103,7 @@ describe("runWrite: what the whole call changed", () => {
     ]);
     expect(log.writes).toStrictEqual(["a", "b"]);
     expect(capturedWarnings()).toStrictEqual([
-      "Final step failed: restart refused; already changed: transport stopped; results may be incomplete and paths or ids out of date; read them again before relying on them.",
+      "Final step failed: restart refused; already changed: transport stopped; results may be incomplete or out of date; read them again before relying on them.",
     ]);
   });
 
@@ -127,7 +127,7 @@ describe("runWrite: what the whole call changed", () => {
       Promise.resolve(runWrite({ ...spec, settle }, { ids: "a" })),
     ).resolves.toStrictEqual({ id: "a", wrote: true });
     expect(capturedWarnings()).toStrictEqual([
-      "Final step failed: loop refused; already changed: loop; results may be incomplete and paths or ids out of date; read them again before relying on them.",
+      "Final step failed: loop refused; already changed: loop; results may be incomplete or out of date; read them again before relying on them.",
     ]);
   });
 
@@ -149,7 +149,7 @@ describe("runWrite: what the whole call changed", () => {
     await run;
 
     expect(endWarningCapture(mine)).toStrictEqual([
-      "Final step failed: loop refused; results may be incomplete and paths or ids out of date; read them again before relying on them.",
+      "Final step failed: loop refused; results may be incomplete or out of date; read them again before relying on them.",
     ]);
     expect(endWarningCapture(other)).toStrictEqual([]);
   });

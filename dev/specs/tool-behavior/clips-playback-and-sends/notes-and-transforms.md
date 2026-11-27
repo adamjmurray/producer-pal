@@ -113,9 +113,14 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
   rewrites write them back as they were. A transform-only update on a clip of
   only muted notes is ignored, and says so.
 - **A note whose pitch is outside 0-127 is skipped with a warning** in every
-  notation (bar|beat, MIDI JSON, Stark notes and chord symbols). It is never
-  clamped: a clamped pitch is a note nobody wrote. A transform is not a
-  notation: its `pitch` result is clamped to 0-127, like its other values.
+  notation (bar|beat, MIDI JSON, Stark notes and chord symbols) and in the notes
+  `code` returns. It is never clamped: a clamped pitch is a note nobody wrote. A
+  transform is not a notation: its `pitch` result is clamped to 0-127, like its
+  other values.
+- **An out-of-range velocity, velocity deviation or probability is clamped with
+  a warning** in bar|beat, MIDI JSON and `code` notes. MIDI JSON and `code` warn
+  once per clip, counting each key (`v outside 1 to 127 (2)`), and report
+  malformed notes they dropped the same way.
 - **A note written at a muted note's pitch and start replaces it**: the model
   asked for a note there. A delete marker aimed at one is a no-op, since the
   note doesn't exist to it. A transform that moves a note there replaces it too,

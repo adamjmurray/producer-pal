@@ -20,9 +20,16 @@ export {
   automationCcControlPitchBend,
 } from "./clip/automation/automation-cc-control.ts";
 export { automationClearOne } from "./clip/automation/automation-clear-one.ts";
+export {
+  automationDisplayValuesDeviceParam,
+  automationDisplayValuesMixer,
+} from "./clip/automation/automation-display-values.ts";
 export { automationNoRemoteScript } from "./clip/automation/automation-no-remote-script.ts";
 export { automationReadEnvelopes } from "./clip/automation/automation-read.ts";
-export { automationWriteCurve } from "./clip/automation/automation-write-curve.ts";
+export {
+  automationWriteCurve,
+  automationWriteRandomSteps,
+} from "./clip/automation/automation-write-curve.ts";
 export {
   automationWriteDeviceParam,
   automationWriteMixer,

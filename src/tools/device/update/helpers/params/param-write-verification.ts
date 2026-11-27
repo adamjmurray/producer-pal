@@ -24,6 +24,11 @@ export interface WriteReport {
   verifyRaw?: boolean;
 }
 
+/** The raw value a written value stands for, or why it stands for none. */
+export type RawParamValue =
+  | { raw: number; report?: WriteReport }
+  | { reason: string };
+
 /** A param one write landed on, or the reason it landed nowhere. */
 export type ParamWriteOutcome = WrittenParam | { reason: string };
 

@@ -23,7 +23,7 @@ describe("/local-model-proxy when the model server fails", () => {
     );
   });
 
-  it("cuts the answer when the connection resets after it started", async () => {
+  it("ends a streamed answer with an error event when the connection resets", async () => {
     fixture.answerWith((res) => {
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       res.write("data: one\n\n");
@@ -35,6 +35,17 @@ describe("/local-model-proxy when the model server fails", () => {
     );
 
     expect(res.status).toBe(200);
-    await expect(res.text()).rejects.toThrow("terminated");
+
+    const text = await res.text();
+    const events = text.split("\n\n").filter(Boolean);
+
+    expect(events[0]).toBe("data: one");
+    expect(
+      JSON.parse(events.at(-1)?.slice("data: ".length) ?? ""),
+    ).toStrictEqual({
+      error: {
+        message: `Lost the connection to the local model server at http://127.0.0.1:${fixture.modelPort()} in the middle of the reply.`,
+      },
+    });
   });
 });

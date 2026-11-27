@@ -14,6 +14,8 @@ import {
 } from "./remote-script-route-contract.ts";
 import { whyUnavailable } from "./outdated-remote-script.ts";
 import { remoteScriptExpiry, remoteScriptWait } from "./remote-script-wait.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 /** Why a request too large for one Max message was never sent. */
 const REQUEST_TOO_LARGE =
@@ -68,7 +70,8 @@ export function remoteScriptRoute<T>(
  * Call one remote-script route that changes the Set. It sends `expiresInMs`, so
  * Live skips the job if it hasn't started it by the time V8 stops waiting,
  * rather than make a change V8 already reported as failed. A change that fails
- * after Live may have started it comes back `stalled: "unanswered"`.
+ * after Live may have started it comes back `stalled: "unanswered"`, and counts
+ * as changing the Set (see markMayHaveLanded).
  * @param route - The Node route that forwards to the remote script
  * @param args - What to send it
  * @param deadline - The request deadline from ToolContext, if any
@@ -84,6 +87,36 @@ export function remoteScriptChange<T>(
   manage: boolean,
 ): Promise<RouteOutcome<T>> {
   return callRoute<T>(route, args, deadline, missing, manage, { change: true });
+}
+
+/**
+ * {@link remoteScriptChange} that never throws: a call that fails before an
+ * answer comes back as `stalled: "unanswered"`, since it may still have landed.
+ * @param route - The Node route that forwards to the remote script
+ * @param args - What to send it
+ * @param deadline - The request deadline from ToolContext, if any
+ * @param missing - What to say when the remote script isn't running
+ * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
+ * @returns The route's result, or why there isn't one
+ */
+export async function settledRemoteScriptChange<T>(
+  route: string,
+  args: object,
+  deadline: number | null | undefined,
+  missing: string,
+  manage: boolean,
+): Promise<RouteOutcome<T>> {
+  try {
+    return await remoteScriptChange<T>(route, args, deadline, missing, manage);
+  } catch (error) {
+    // Whether the request reached the remote script is unknown.
+    return {
+      ok: false,
+      reason: `${REMOTE_SCRIPT_UNANSWERED} (${errorMessage(error)})`,
+      available: true,
+      stalled: "unanswered",
+    };
+  }
 }
 
 // --- Helpers below main exports ---
@@ -140,6 +173,10 @@ async function callRoute<T>(
   }
 
   if (!response.success || reply == null) {
+    if (options.change === true) {
+      markMayHaveLanded();
+    }
+
     // The text on a failed response is V8's or Node's own, not ours to show.
     return {
       ok: false,
@@ -162,10 +199,25 @@ async function callRoute<T>(
     return { ok: true, result: reply.result };
   }
 
+  if (reply.unfinished === true && options.change === true) {
+    markMayHaveLanded();
+  }
+
   return {
     ok: false,
     reason: reply.error,
     available: true,
     ...(reply.unfinished === true && { stalled: "unanswered" as const }),
   };
+}
+
+/**
+ * Count a remote-script change that never answered as a change to the Set, so
+ * its undo step is closed: if it landed, an open step would join the next
+ * call's. If it didn't, the only cost is that the end clears ppal-manage's
+ * guard against an undo that removes Producer Pal, which the next such undo
+ * trips again.
+ */
+export function markMayHaveLanded(): void {
+  markSetChanged();
 }
