@@ -49,6 +49,8 @@ part is a file beside it.
   native devices with their own LOM class, and how Drum Racks are modeled.
 - [live-api/python-remote-script-api/](live-api/python-remote-script-api/README.md)
   — what only the Python API can do, and how to probe it.
+- [live-api/live-13.md](live-api/live-13.md) — what Live 13 changes in the API,
+  and what it can't do yet.
 - [live-api/clip-envelopes.md](live-api/clip-envelopes.md) — which clip
   envelopes the Python API reaches, their units, curves and undo.
 - [live-api/arrangement-automation.md](live-api/arrangement-automation.md) —

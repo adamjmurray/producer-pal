@@ -15,9 +15,10 @@
 //   `~N`  a curved ramp, N from -1 to 1 with no space after the `~`: positive
 //         bends above the straight line, negative below it, ~0 is straight
 //
-// On read a point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`.
-// Round brackets inside a display are written as square ones, so it stays one
-// group. A curve that isn't one Live draws reads as the nearest amount.
+// On read a point may carry Live's display in parentheses: `1|1 0.25 (112 Hz)`,
+// left out when it is just the printed value again. Round brackets inside a
+// display are written as square ones, so it stays one group. A curve that
+// isn't one Live draws reads as the nearest amount.
 //
 // On write a point may give the display alone, `1|1 (112 Hz)`, for the caller
 // to turn into a raw value; its square brackets turn back into round ones.
@@ -55,6 +56,9 @@ import {
 
 /** Two times count as one, within float noise. */
 const EPSILON = 1e-9;
+
+/** A display that is only a number: no exponent, hex, Infinity or unit. */
+const PLAIN_DECIMAL = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/;
 
 /** A connector token: a straight ramp, a step, or a curve (its amount checked later). */
 const CONNECTOR = /^(?:\/|_|~.*)$/;
@@ -303,11 +307,28 @@ function formatPoint(point: FormattedPoint, meter: EnvelopeMeter): string {
   );
   const value = formatEnvelopeValue(point.value);
   const display =
-    point.display != null && point.display !== value
+    point.display != null && !repeatsValue(point.display, value)
       ? ` (${point.display.replaceAll("(", "[").replaceAll(")", "]")})`
       : "";
 
   return `${time} ${value}${display}`;
+}
+
+/**
+ * Whether a display is just the printed value again ("0.20" for 0.2): a plain
+ * decimal, no unit, equal to the value as written. A display with more or other
+ * digits ("0.20" for 0.203) says something, so it stays.
+ * @param display - Live's display
+ * @param value - The value as {@link formatEnvelopeValue} wrote it
+ * @returns True when the display adds nothing
+ */
+function repeatsValue(display: string, value: string): boolean {
+  const text = display.trim();
+
+  return (
+    display === value ||
+    (PLAIN_DECIMAL.test(text) && Number(text) === Number(value))
+  );
 }
 
 /** A segment of the notation: one point, and the connector before it. */

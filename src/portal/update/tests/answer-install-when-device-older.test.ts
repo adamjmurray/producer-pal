@@ -101,6 +101,22 @@ describe("answerInstallWhenDeviceOlder", () => {
     expect(installRemoteScript).not.toHaveBeenCalled();
   });
 
+  it("answers for a device replaced by an older one since connecting", async () => {
+    const installRemoteScript = installs();
+    const response = await answerInstallWhenDeviceOlder(
+      {
+        name: "ppal-manage",
+        args: { ...INSTALL, userLibrary: LIBRARY },
+        manageOffered: true,
+      },
+      await connectedDevice(VERSION, OLD),
+      updateDeps({ installRemoteScript }),
+    );
+
+    expect(response?.isError).toBeUndefined();
+    expect(installRemoteScript).toHaveBeenCalledWith(LIBRARY);
+  });
+
   it("connects first when the version isn't known yet, and answers for an older device", async () => {
     const installRemoteScript = installs();
     const device = fakeDevice(OLD);

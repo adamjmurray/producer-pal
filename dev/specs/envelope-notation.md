@@ -28,11 +28,12 @@ A point is `bar|beat value`, in the clip's own meter.
   plain decimal (`0.5`, `-1`, `.5`, `1e-2`). Range is not checked here; the tool
   refuses a value outside the parameter's range.
 - **Display**: a read may add Live's display in parentheses,
-  `1|1 0.25 (112 Hz)`. It is left out when it matches the value. Round brackets
-  inside it are written as square ones. A write ignores a display that follows a
-  value, and takes one written in place of the value, `1|1 (112 Hz)`, as the
-  value to convert to raw, turning its square brackets back into round ones
-  (`(1/4 [dotted])` is `1/4 (dotted)`).
+  `1|1 0.25 (112 Hz)`. It is left out when it is a plain number equal to the
+  printed value (`0.20` for `0.2`). Round brackets inside it are written as
+  square ones. A write ignores a display that follows a value, and takes one
+  written in place of the value, `1|1 (112 Hz)`, as the value to convert to raw,
+  turning its square brackets back into round ones (`(1/4 [dotted])` is
+  `1/4 (dotted)`).
 - Values print with up to 3 decimals and no trailing zeros. A value below 0.1
   keeps 3 significant digits instead (`0.0004`, `0.0123`).
 

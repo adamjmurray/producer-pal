@@ -513,6 +513,8 @@ sounding.
   a new rack
 - Create, load, delete, revert, and randomize rack macro variations
 - Set how many macros a rack shows with `macroCount` (up to 32 on Live 13)
+- Turn round robin on or off for an instrument rack or MIDI effect rack, and set
+  its mode and reset interval, like any other parameter (Live 13 only)
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Set a rack chain's own volume, pan, and send levels, several sends at once

@@ -37,6 +37,7 @@ import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
+import { trimListedInputSchema } from "#src/tools/shared/schema/listed-input-schema.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 
 export type CallLiveApiFunction = (
@@ -201,16 +202,7 @@ type ListToolsHandler = (
 ) => Promise<{ tools: Array<{ inputSchema?: Record<string, unknown> }> }>;
 
 /**
- * Drop two things from every tool's `inputSchema` in `tools/list`, as Anthropic
- * and OpenAI bill for them and they say nothing:
- *
- * - `$schema`, which the SDK stamps on each tool with no switch to stop it.
- *   Clients then read the schemas as JSON Schema 2020-12, and every keyword we
- *   emit means the same there.
- * - the top-level `additionalProperties: {}` that `.loose()` adds. Absent means
- *   the same, and nested objects already omit it. Only the listing changes:
- *   validation still uses the loose zod schema, so unknown args keep reaching
- *   the handler.
+ * Trim every tool's `inputSchema` in `tools/list` (see trimListedInputSchema).
  *
  * Call after the tools are registered: the SDK installs its `tools/list`
  * handler on the first registration, and the only way to wrap it is its private
@@ -236,11 +228,7 @@ function trimListedSchemas(server: McpServer): void {
     const result = await original(request, extra);
 
     for (const tool of result.tools) {
-      delete tool.inputSchema?.$schema;
-
-      if (isEmptyObject(tool.inputSchema?.additionalProperties)) {
-        delete tool.inputSchema?.additionalProperties;
-      }
+      trimListedInputSchema(tool.inputSchema);
     }
 
     return result;
@@ -321,17 +309,4 @@ function getValidToolNames(liveApiEnabled: boolean): string[] {
     ...(liveApiEnabled ? [toolDefLiveApi.toolName] : []),
     ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
   ];
-}
-
-/**
- * @param value - Any value
- * @returns True for a plain `{}`
- */
-function isEmptyObject(value: unknown): boolean {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    !Array.isArray(value) &&
-    Object.keys(value).length === 0
-  );
 }

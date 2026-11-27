@@ -163,8 +163,25 @@ describe("withUpdateHint", () => {
     const result = await withUpdateHint(connected(), CONNECT, device);
 
     expect(result.content).toHaveLength(1);
-    expect(device.reset).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["the same version", VERSION],
+    ["a newer version", "99.0.0"],
+  ])(
+    "flags a device replaced by an older one after connecting to %s",
+    async (_why, first) => {
+      const result = await withUpdateHint(
+        connected(),
+        CONNECT,
+        await connectedDevice(first, "2.5.0-rc1"),
+      );
+
+      expect(result.content[1]?.text).toContain(
+        "The Producer Pal device (2.5.0-rc1) is older than this connector",
+      );
+    },
+  );
 
   it("says nothing when the device stops answering while it checks", async () => {
     const result = await withUpdateHint(

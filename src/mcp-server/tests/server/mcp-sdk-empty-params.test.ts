@@ -55,6 +55,27 @@ function authoredSchema(name: string, profile: Profile): z.ZodObject {
 }
 
 /**
+ * What tools/list should publish for a tool: the SDK's own converter, with the
+ * options it uses for tools/list, minus the $schema and top-level
+ * additionalProperties we drop (see trimListedInputSchema).
+ * @param name - Tool name
+ * @param profile - Server options
+ * @returns The expected JSON Schema
+ */
+function publishedSchema(name: string, profile: Profile): object {
+  const {
+    $schema: _dialect,
+    additionalProperties: _loose,
+    ...schema
+  } = toJsonSchemaCompat(authoredSchema(name, profile), {
+    strictUnions: true,
+    pipeStrategy: "input",
+  });
+
+  return schema;
+}
+
+/**
  * Call a tool and return the args the Live API received, if it was called.
  * @param args - Tool args
  * @param name - Tool name
@@ -168,28 +189,14 @@ describe("published JSON Schema", () => {
           isOfferedInMode(def, profile.smallModelMode === true),
         ).length,
       );
-      // The SDK's own converter, with the options it uses for tools/list,
-      // minus the $schema and top-level additionalProperties we drop
-      // (see trimListedSchemas in create-mcp-server.ts).
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) => {
-          const {
-            $schema: _dialect,
-            additionalProperties: _loose,
-            ...schema
-          } = toJsonSchemaCompat(authoredSchema(name, profile), {
-            strictUnions: true,
-            pipeStrategy: "input",
-          });
-
-          return schema;
-        }),
+        schemaTexts(tools, (name) => publishedSchema(name, profile)),
       );
     },
   );
 
   it.each(PROFILES)(
-    "the portal's offline list is unchanged too (%o)",
+    "the portal's offline list publishes them the same way (%o)",
     (profile) => {
       const { tools } = buildFallbackTools({
         ...profile,
@@ -197,9 +204,7 @@ describe("published JSON Schema", () => {
       });
 
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) =>
-          z.toJSONSchema(authoredSchema(name, profile)),
-        ),
+        schemaTexts(tools, (name) => publishedSchema(name, profile)),
       );
     },
   );

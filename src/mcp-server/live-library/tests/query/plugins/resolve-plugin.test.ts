@@ -86,6 +86,12 @@ const SEEDS: PluginSeed[] = [
   ["Lonely", "A Co", 1, "device:vst3:instr:k", `${DIR}/VST3/Lonely.vst3`],
   ["Lonely Ghost", "A Co", 0, "device:vst3:instr:l", `${DIR}/VST3/Lonely.vst3`],
   ["Mystery", "Nobody", 1, "device:vst3:", `${DIR}/VST3/Mystery.vst3`],
+  // One plug-in installed in two folders, neither file there.
+  ["Copy", "A Co", 1, "device:vst3:instr:m", `${DIR}/VST3/Copy.vst3`],
+  ["Copy", "A Co", 1, "device:vst3:instr:m", "/Elsewhere/Copy.vst3"],
+  // And one whose second copy is a file that exists (this one).
+  ["Moved", "A Co", 1, "device:vst3:instr:n", `${DIR}/VST3/Moved.vst3`],
+  ["Moved", "A Co", 1, "device:vst3:instr:n", import.meta.filename],
 ];
 
 describe("resolvePlugin", () => {
@@ -127,7 +133,28 @@ describe("resolvePlugin", () => {
       file: `${DIR}/VST3/Serum2.vst3`,
       shared: true,
       siblings: ["Serum 2 FX"],
+      // The fixture's class id is a stand-in, so there is nothing to hash.
+      ids: [],
     });
+  });
+
+  it("takes a plug-in installed in two folders as one plug-in", async () => {
+    useDb(goodDb);
+
+    await expect(resolvePlugin({ name: "Copy" })).resolves.toStrictEqual(
+      expect.objectContaining({
+        file: `${DIR}/VST3/Copy.vst3`,
+        shared: false,
+      }),
+    );
+  });
+
+  it("prefers the copy whose file is there", async () => {
+    useDb(goodDb);
+
+    await expect(resolvePlugin({ name: "Moved" })).resolves.toStrictEqual(
+      expect.objectContaining({ file: import.meta.filename }),
+    );
   });
 
   it("says a bundle is not shared when it holds one plug-in", async () => {

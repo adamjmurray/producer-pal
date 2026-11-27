@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // `envelopes` on a clip that automates a hosted plug-in's param through one of
@@ -181,7 +181,7 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
         id: "slot-2",
         device: "t0/d0",
         eventCount: 1,
-        events: "1|1 0.2 (0.20)",
+        events: "1|1 0.2",
       },
     ]);
   });

@@ -35,8 +35,9 @@ producer-pal-portal.js)
 **Tool names**: Must match `^[a-zA-Z0-9_-]{1,64}$` (use `ppal-create-clip`, not
 "Create Clip")
 
-**Schemas**: Fallback schemas must be JSON Schema (built with `z.toJSONSchema()`
-in `src/portal/fallback-tools.ts`)
+**Fallback tools**: Each entry must match the device's `tools/list` entry
+exactly, every field, so `src/portal/fallback-tools.ts` builds them the way the
+MCP SDK does (`listRegisteredTools()`)
 
 **Dependencies**: Zero runtime dependencies (all bundled, OAuth stubbed)
 

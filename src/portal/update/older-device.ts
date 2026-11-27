@@ -9,28 +9,18 @@ import { type RunningDevice } from "./running-device.ts";
 
 /**
  * @param device - The bridge's connection to the running device
- * @returns The running version when it is older than this portal's
+ * @returns The running version when it is older than this portal's. Throws
+ *   when the device doesn't answer.
  */
 export async function olderDevice(
   device: RunningDevice,
 ): Promise<string | null> {
-  if (!isOlder(device.version())) {
-    return null;
-  }
-
-  // The connection may predate a manual update, so ask the device afresh.
+  // Always ask afresh: the device answers each request on its own, so a
+  // connection made to one version keeps working after another replaces it.
   device.reset();
   await device.connect();
 
   const version = device.version();
 
-  return version != null && isOlder(version) ? version : null;
-}
-
-/**
- * @param version - A device version, if known
- * @returns True when it is known and older than this portal's
- */
-function isOlder(version: string | undefined): boolean {
-  return version != null && isNewerVersion(version, VERSION);
+  return version != null && isNewerVersion(version, VERSION) ? version : null;
 }

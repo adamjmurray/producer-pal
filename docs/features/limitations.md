@@ -4,15 +4,15 @@ description:
   What Producer Pal can't do, and the workarounds. No control over the internals
   of VST/AU plug-ins it didn't add, arrangement automation written but not read,
   no audio analysis or synthesis, no visibility into arrangement time signature
-  changes, one drum pitch map per track, and backslashes in names read back
-  changed.
+  changes, no access to the steps in Live 13's step sequencer clips, one drum
+  pitch map per track, and backslashes in names read back changed.
 ---
 
 # Limitations
 
 These are design boundaries, not bugs. They come from what the Live API and Max
-for Live expose, so they aren't waiting on a fix. For things that are broken or
-surprising, see [Known Issues](/support/known-issues).
+for Live expose. For things that are broken or surprising, see
+[Known Issues](/support/known-issues).
 
 ## VST/AU Plug-in Internals Can't Be Controlled Directly
 
@@ -143,6 +143,18 @@ and locator positions are the parts that go wrong.
 Live gives Producer Pal no way to put tracks into a group or take them out. The
 AI can read groups and work with the tracks inside them, but making or breaking
 a group is up to you in Live.
+
+## Step Sequencer Clips Can't Be Read or Edited
+
+Live 13 adds step sequencer clips. Producer Pal recognizes one, and can rename,
+recolor, move and copy it like any other clip. But it can't see or change the
+steps inside, can't create one, and can't turn a regular MIDI clip into one. Ask
+the AI to add notes to one and it will tell you it can't.
+
+If you want the AI to write a pattern, have it use a regular MIDI clip.
+
+This stays true until a Producer Pal update adds it, even if a later version of
+Live 13 opens up the steps.
 
 ## One Drum Rack Pitch Map Per Track
 

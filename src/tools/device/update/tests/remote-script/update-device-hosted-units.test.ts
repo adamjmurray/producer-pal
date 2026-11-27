@@ -5,7 +5,8 @@
 
 // A bare number on a hosted param is in the unit the plug-in shows, so the
 // wrapper is told which numbers had no unit, and a read-back that it scaled
-// is compared in that unit.
+// is compared in that unit. A number with a unit is compared in its own unit,
+// at the display's precision.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
@@ -136,6 +137,58 @@ describe("updateDevice hosted plug-in params in the displayed unit", () => {
     expect(await setFreq("-6")).toStrictEqual({
       ...HIT,
       params: [{ id: "h3", name: "Freq" }],
+    });
+  });
+
+  it.each([
+    ["99999 Hz", "30000 Hz"],
+    ["3 kHz", "2.50 kHz"],
+    ["0.5 s", "800 ms"],
+    ["-inf dB", "-60.0 dB"],
+  ])("says so when %s landed on %s", async (value, display) => {
+    wrapperAnswers({ ...ok, display });
+
+    expect(await setFreq(value)).toStrictEqual({
+      ...HIT,
+      params: [
+        {
+          id: "h3",
+          name: "Freq",
+          value: display,
+          detail: "value read back as shown, not as sent",
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ["3000 Hz", "3.00 kHz"],
+    ["2999.7 Hz", "3.00 kHz"],
+    ["800 ms", "0.80 s"],
+    ["0.5 s", "500 ms"],
+    ["-6 dB", "-6.0 dB"],
+    ["-6.25 dB", "-6.3 dB"],
+    ["+3 dB", "3.00 dB"],
+    ["50 %", "50.0 %"],
+    // Text, or a number that starts text
+    ["Ladder", "Ladder"],
+    ["24db", "24dB"],
+    ["LP 24db", "LP 24dB"],
+    ["1/4", "1/8"],
+    ["4th", "5th"],
+    // Can't be compared with what it shows
+    ["3 octaves", "2 octaves"],
+    ["500 ms", "20.0 Hz"],
+    ["3 st", "300 ct"],
+    ["-80 dB", "-inf dB"],
+    ["50L", "50R"],
+    ["50 %", "Off"],
+  ])("reports %s on %s with no detail", async (value, display) => {
+    wrapperAnswers({ ...ok, display });
+
+    expect(await setFreq(value)).toStrictEqual({
+      ...HIT,
+      params: [{ id: "h3", name: "Freq", value: display }],
     });
   });
 });

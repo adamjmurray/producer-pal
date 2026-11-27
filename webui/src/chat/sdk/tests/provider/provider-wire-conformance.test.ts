@@ -6,6 +6,7 @@
 import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import { streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetOllamaThinkingCache } from "#webui/chat/sdk/provider/local-model/ollama-thinking";
 import { resetOpenRouterReasoningCache } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
@@ -58,12 +59,14 @@ function presetModels(provider: Provider): string[] {
  * @param provider - Provider id
  * @param model - Model id
  * @param providerOptions - Options from `buildProviderOptions`
+ * @param capabilities - What Ollama's `/api/show` lists; it fails when omitted
  * @returns The JSON body the provider would have received
  */
 async function wireBody(
   provider: Provider,
   model: string,
   providerOptions: ReturnType<typeof buildProviderOptions>,
+  capabilities?: string[],
 ): Promise<Body> {
   let body: Body = {};
 
@@ -72,6 +75,10 @@ async function wireBody(
     vi.fn((url: unknown, init?: RequestInit) => {
       if (url === "https://openrouter.ai/api/v1/models") {
         return Promise.resolve(Response.json(OPENROUTER_LIST));
+      }
+
+      if (capabilities && String(url).endsWith("/api/show")) {
+        return Promise.resolve(Response.json({ capabilities }));
       }
 
       body = JSON.parse(init?.body as string) as Body;
@@ -98,6 +105,7 @@ async function wireBody(
 describe("provider wire conformance", () => {
   beforeEach(() => {
     resetOpenRouterReasoningCache();
+    resetOllamaThinkingCache();
   });
 
   afterEach(() => {
@@ -302,6 +310,24 @@ describe("provider wire conformance", () => {
 
       expect(body.reasoning_effort).toBe(effort);
     });
+
+    it.each([
+      ["Default", undefined],
+      ["Max", "high"],
+      ["Off", "none"],
+    ])(
+      "sends reasoning_effort for %s when the model thinks",
+      async (level, effort) => {
+        const body = await wireBody(
+          "ollama",
+          model,
+          buildProviderOptions("ollama", level, model),
+          ["completion", "thinking"],
+        );
+
+        expect(body.reasoning_effort).toBe(effort);
+      },
+    );
   });
 
   describe.each(presetModels("gemini"))("gemini %s", (model) => {

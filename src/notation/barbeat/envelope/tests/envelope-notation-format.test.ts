@@ -85,6 +85,67 @@ describe("formatEnvelopeNotation", () => {
     ).toBe("1|1 0.25 (112 Hz) / 5|1 0.85 (7.10 kHz) / 9|1 0.5");
   });
 
+  it.each([
+    [0.2, "0.20", "1|1 0.2"],
+    [1, "1.00", "1|1 1"],
+    [64, "64", "1|1 64"],
+    [0.2, " 0.2 ", "1|1 0.2"],
+    [0, "-0.0", "1|1 0"],
+    [0.2034, "0.203", "1|1 0.203"],
+    // Not a plain decimal, but the same text as the value.
+    [Infinity, "Infinity", "1|1 Infinity"],
+  ])("drops the display that only repeats %j (%j)", (value, display, text) => {
+    expect(formatEnvelopeNotation(events([0, value, display]), FOUR_FOUR)).toBe(
+      text,
+    );
+  });
+
+  it.each([
+    [0.25, "112 Hz", "0.25 (112 Hz)"],
+    [0.5, "50", "0.5 (50)"],
+    [0.5, "50 %", "0.5 (50 %)"],
+    [0.5, "0.5 %", "0.5 (0.5 %)"],
+    [0.203, "0.20", "0.203 (0.20)"],
+    [0.2, "0.2004", "0.2 (0.2004)"],
+    [0, "", "0 ()"],
+    [0, "  ", "0 (  )"],
+    [1000, "1e3", "1000 (1e3)"],
+    [16, "0x10", "16 (0x10)"],
+    [1, "On", "1 (On)"],
+    [-1, "-inf", "-1 (-inf)"],
+  ])("keeps a display that says more: %j (%j)", (value, display, written) => {
+    expect(formatEnvelopeNotation(events([0, value, display]), FOUR_FOUR)).toBe(
+      `1|1 ${written}`,
+    );
+  });
+
+  it("reads back a point whose repeated display was dropped", () => {
+    const text = formatEnvelopeNotation(
+      events([0, 0.2, "0.20"], [8, 0.9, "0.90"], [16, 0.2, "0.20"]),
+      FOUR_FOUR,
+    );
+
+    expect(text).toBe("1|1 0.2 / 3|1 0.9 / 5|1 0.2");
+    expect(parseEnvelopeNotation(text, FOUR_FOUR)).toStrictEqual([
+      { time: 0, value: 0.2, jump: false },
+      { time: 8, value: 0.9, jump: false },
+      { time: 16, value: 0.2, jump: false },
+    ]);
+  });
+
+  it("reads back a point that kept a numeric or empty display", () => {
+    const text = formatEnvelopeNotation(
+      events([0, 0.203, "0.20"], [8, 0, ""], [16, 0.5, "50"]),
+      FOUR_FOUR,
+    );
+
+    expect(parseEnvelopeNotation(text, FOUR_FOUR)).toStrictEqual([
+      { time: 0, value: 0.203, jump: false },
+      { time: 8, value: 0, jump: false },
+      { time: 16, value: 0.5, jump: false },
+    ]);
+  });
+
   it("rounds a value to 3 decimals and trims the zeros", () => {
     expect(
       formatEnvelopeNotation(

@@ -285,7 +285,14 @@ def replace_producer_pal(bridge, params):
     song = bridge.song
     found = top_level_producer_pals(song)
     if not found:
-        raise RouteError(409, "Producer Pal isn't in this Live Set")
+        # The device is found by name, so say what was looked for: the caller
+        # may be talking to a renamed one right now.
+        raise RouteError(
+            409,
+            "no device named Producer_Pal sits directly on a track - if it was "
+            "renamed, name it Producer_Pal again; if it's in a rack, move it "
+            "onto the track",
+        )
     if len(found) > 1:
         raise RouteError(
             409,

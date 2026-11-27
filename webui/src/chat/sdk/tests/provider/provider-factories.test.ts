@@ -282,11 +282,14 @@ describe("createProviderModel", () => {
 
   // Regression: without includeUsage, OpenAI-compatible servers (LM Studio,
   // custom) never report token usage in streaming responses, so the UI shows 0.
-  it("enables usage reporting for lmstudio (includeUsage)", () => {
-    const model = createProviderModel("lmstudio", "local-model", "");
+  it.each(["lmstudio", "ollama"] as const)(
+    "enables usage reporting for %s (includeUsage)",
+    (provider) => {
+      const model = createProviderModel(provider, "local-model", "");
 
-    expect(getIncludeUsage(model)).toBe(true);
-  });
+      expect(getIncludeUsage(model)).toBe(true);
+    },
+  );
 
   it("enables usage reporting for custom (includeUsage)", () => {
     const model = createProviderModel("custom", "m", "k", "https://x/v1");

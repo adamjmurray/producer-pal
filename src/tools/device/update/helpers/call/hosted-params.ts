@@ -23,7 +23,10 @@ import {
   skippedParamById,
   supersededParam,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { parseLabel } from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
+import {
+  type ParsedLabel,
+  parseLabel,
+} from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import {
   detectHostedPlugin,
   type HostedPlugin,
@@ -358,8 +361,8 @@ function failureReason(
 }
 
 /**
- * The outcome for a param that was written: it reports its value only when that
- * isn't the bare number asked for.
+ * The outcome for a param that was written: it reports its value unless the
+ * bare number asked for landed, and says so when a number landed elsewhere.
  * @param entry - The entry sent
  * @param result - What the wrapper answered
  * @param result.index - The plug-in's number for the param
@@ -377,25 +380,83 @@ function landed(
   const id = hostedParamId(index);
   const shown = (result.display ?? "").trim();
   const asked = entry.value.trim();
-  const requested =
-    asked !== "" && Number.isFinite(Number(asked))
-      ? Number(asked) * (result.scale ?? 1)
-      : null;
-  const read = parseLabel(shown).value;
-  const same =
-    requested != null &&
-    typeof read === "number" &&
-    !differsAtPublishedResolution(requested, read);
-  const reported: LandedParam | ParamValueResult = same
-    ? { id, name }
-    : {
-        id,
-        name,
-        value: shown,
-        ...(requested == null ? {} : { detail: readBackDetail(["value"]) }),
-      };
+  const bare = asked !== "" && Number.isFinite(Number(asked));
+  const moved = bare
+    ? bareMoved(Number(asked) * (result.scale ?? 1), shown)
+    : unitMoved(asked, shown);
+  const reported: LandedParam | ParamValueResult =
+    bare && !moved
+      ? { id, name }
+      : {
+          id,
+          name,
+          value: shown,
+          ...(moved && { detail: readBackDetail(["value"]) }),
+        };
 
   return { id, name, reported };
+}
+
+/**
+ * @param requested - The bare number asked for, in the unit compared in
+ * @param shown - What the plug-in shows
+ * @returns Whether it shows another number, or none
+ */
+function bareMoved(requested: number, shown: string): boolean {
+  return differsAtPublishedResolution(requested, parseLabel(shown).value);
+}
+
+/**
+ * Whether a number sent with a unit shows as another number. Text, a unit
+ * parseLabel doesn't know, a display in another unit or with no number can't
+ * be compared, so they count as landed: a false detail is worse than none.
+ * @param asked - What was sent, unit and all ("99999 Hz")
+ * @param shown - What the plug-in shows ("30000 Hz", "3.00 kHz")
+ * @returns Whether it landed on a different number
+ */
+function unitMoved(asked: string, shown: string): boolean {
+  const sent = parseLabel(asked);
+  const read = parseLabel(shown);
+  const step = displayStep(shown);
+
+  if (
+    sent.unit == null ||
+    sent.unit !== read.unit ||
+    sent.unit === "pan" ||
+    typeof sent.value !== "number" ||
+    typeof read.value !== "number" ||
+    typeof step !== "number"
+  ) {
+    return false;
+  }
+
+  const landedAt = read.value;
+  // Within half the display's last digit (plus float noise) shows as what
+  // landed: "3.00 kHz" is anything from 2995 to 3005 Hz.
+  const half = step / 2 + step * 1e-9;
+  const asShown = (value: number): number =>
+    Math.abs(value - landedAt) <= half ? landedAt : value;
+
+  return differsAtPublishedResolution(sent.value, landedAt, asShown);
+}
+
+/**
+ * The display's last digit, in the unit compared in: 10 for "3.00 kHz", 0.1
+ * for "-6.0 dB".
+ * @param shown - What the plug-in shows
+ * @returns The step, or null for a display that doesn't start with a number
+ */
+function displayStep(shown: string): ParsedLabel["value"] {
+  const number = /^[+-]?\d+(?:\.(\d+))?/.exec(shown);
+
+  if (number == null) {
+    return null;
+  }
+
+  const decimals = number[1]?.length ?? 0;
+  const digit = decimals === 0 ? "1" : `0.${"1".padStart(decimals, "0")}`;
+
+  return parseLabel(digit + shown.slice(number[0].length)).value;
 }
 
 /**

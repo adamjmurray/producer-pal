@@ -229,6 +229,14 @@ describe("installRemoteScript", () => {
     expect(existsSync(join(path, BUILD_COMMIT_FILE))).toBe(false);
   });
 
+  it("writes a commit the caller passes, as the dev installer does", () => {
+    const { path } = installRemoteScript(scratchDir, "1a2b3c4-dirty");
+
+    expect(readFileSync(join(path, BUILD_COMMIT_FILE), "utf8")).toBe(
+      "1a2b3c4-dirty\n",
+    );
+  });
+
   it("replaces the folder, so a removed module doesn't linger", () => {
     const { path } = installRemoteScript(scratchDir);
 

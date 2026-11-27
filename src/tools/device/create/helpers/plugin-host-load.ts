@@ -44,6 +44,12 @@ export interface PluginLoadRequest {
    */
   siblings?: string[];
   /**
+   * The ids Max may know this plug-in by, for a VST3 bundle that holds
+   * several. A load by path ignores `sub`, so the wrapper sends one of these
+   * with the path instead.
+   */
+  ids?: number[];
+  /**
    * The plug-in's name, as Live's browser shows it. Also what a newer Max scan
    * knows it by, so the wrapper tries it when `file` finds nothing.
    */
@@ -79,6 +85,7 @@ export async function resolvePluginPlan(name: string): Promise<PluginPlan> {
       }),
       ...(plugin.format === "VST3" && plugin.shared && { sub: plugin.name }),
       ...(plugin.siblings != null && { siblings: plugin.siblings }),
+      ...(plugin.ids != null && { ids: plugin.ids }),
       name: plugin.name,
       synth: plugin.category === "instrument",
     },

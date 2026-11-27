@@ -3,11 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { z } from "zod";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { toJsonSchemaCompat } from "@modelcontextprotocol/sdk/server/zod-json-schema-compat.js";
+import { type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { type z } from "zod";
 import {
   type CallLiveApiFunction,
   createMcpServer,
 } from "#src/mcp-server/create-mcp-server.ts";
+import { listedInputSchema } from "#src/tools/shared/schema/listed-input-schema.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { ALL_TOOL_IDS } from "#src/shared/tool-groups.ts";
 
@@ -16,12 +20,22 @@ export interface FallbackTool {
   title?: string;
   description: string;
   inputSchema: object;
+  annotations?: Tool["annotations"];
+  execution?: Tool["execution"];
+  _meta?: Tool["_meta"];
+  outputSchema?: object;
 }
 
+/** The SDK's private per-tool record, as its `tools/list` handler reads it. */
 interface RegisteredToolInfo {
   title?: string;
   description: string;
-  inputSchema?: z.ZodType;
+  inputSchema?: z.ZodObject;
+  outputSchema?: z.ZodObject;
+  annotations?: Tool["annotations"];
+  execution?: Tool["execution"];
+  _meta?: Tool["_meta"];
+  enabled: boolean;
 }
 
 export interface FallbackToolsOptions {
@@ -55,32 +69,61 @@ export function buildFallbackTools(options: FallbackToolsOptions = {}): {
     liveApiEnabled: options.liveApiEnabled,
     tools: enabledToolWhitelist(options.disabledTools),
   });
-  const tools: FallbackTool[] = [];
 
-  // Access private _registeredTools for fallback tool list. No filtering here:
-  // createMcpServer already applied the opt-in gating (ppal-live-api is
-  // registered only when liveApiEnabled), so the list mirrors the live server.
+  // No filtering here: createMcpServer already applied the opt-in gating
+  // (ppal-live-api is registered only when liveApiEnabled).
+  return { tools: listRegisteredTools(server) };
+}
+
+/**
+ * Every tool on the server, built field for field as the SDK's `tools/list`
+ * handler builds it, plus the device's `inputSchema` trim. Reads the SDK's
+ * private `_registeredTools`.
+ *
+ * @param server - A server with its tools registered
+ * @returns The tools, as the device lists them
+ */
+export function listRegisteredTools(server: McpServer): FallbackTool[] {
   const registeredTools = (
     server as unknown as {
       _registeredTools: Record<string, RegisteredToolInfo>;
     }
   )._registeredTools;
 
-  for (const [name, toolInfo] of Object.entries(registeredTools)) {
-    tools.push({
-      name: name,
-      title: toolInfo.title,
-      description: toolInfo.description,
-      inputSchema: toolInfo.inputSchema
-        ? z.toJSONSchema(toolInfo.inputSchema)
-        : {
-            type: "object",
-            properties: {},
-          },
-    });
-  }
+  return Object.entries(registeredTools)
+    .filter(([, tool]) => tool.enabled)
+    .map(([name, tool]) => listedTool(name, tool));
+}
 
-  return { tools };
+/**
+ * @param name - The tool's name
+ * @param tool - The SDK's record of it
+ * @returns The tool's `tools/list` entry, keys in the SDK's order
+ */
+function listedTool(name: string, tool: RegisteredToolInfo): FallbackTool {
+  const entry = {
+    name,
+    title: tool.title,
+    description: tool.description,
+    inputSchema: tool.inputSchema
+      ? listedInputSchema(tool.inputSchema)
+      : { type: "object", properties: {} },
+    annotations: tool.annotations,
+    execution: tool.execution,
+    _meta: tool._meta,
+    // The device trims only inputSchema, so this stays as the SDK makes it.
+    outputSchema: tool.outputSchema
+      ? toJsonSchemaCompat(tool.outputSchema, {
+          strictUnions: true,
+          pipeStrategy: "output",
+        })
+      : undefined,
+  };
+
+  // The device's JSON drops undefined fields, so leave them out here too.
+  return Object.fromEntries(
+    Object.entries(entry).filter(([, value]) => value !== undefined),
+  ) as unknown as FallbackTool;
 }
 
 /**

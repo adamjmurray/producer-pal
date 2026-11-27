@@ -127,19 +127,12 @@ export function defineTool(
       smallModelMode,
     });
 
-    // The SDK parses args against this before our handler runs, so a null or
-    // blank would already be coerced (null to 0 or "null") by the time
-    // unsetEmptyParams saw it. optionalParams applies the same rule here and
-    // leaves the JSON Schema unchanged. loose() lets extra args reach our
-    // handler (the SDK would strip them otherwise).
-    const passthroughSchema = z.object(optionalParams(publishedSchema)).loose();
-
     server.registerTool(
       name,
       {
         ...toolConfig,
         description: finalDescription,
-        inputSchema: passthroughSchema,
+        inputSchema: registeredInputSchema(publishedSchema),
       },
       async (args: Record<string, unknown>, extra): Promise<CallToolResult> => {
         // Detect unexpected arguments before stripping them. Hidden params are
@@ -209,6 +202,22 @@ export function defineTool(
   fn.toolOptions = options;
 
   return fn;
+}
+
+/**
+ * The params object a tool registers with the MCP SDK, which `tools/list`
+ * publishes. The SDK parses args against it before our handler runs, so a null
+ * or blank would already be coerced (null to 0 or "null") by the time
+ * unsetEmptyParams saw it. optionalParams applies the same rule here and leaves
+ * the JSON Schema unchanged. loose() lets extra args reach our handler (the SDK
+ * would strip them otherwise).
+ * @param published - The resolved published params
+ * @returns The object to register
+ */
+export function registeredInputSchema(
+  published: Record<string, ZodType>,
+): z.ZodObject {
+  return z.object(optionalParams(published)).loose();
 }
 
 /**

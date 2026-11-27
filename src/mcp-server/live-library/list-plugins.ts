@@ -53,6 +53,7 @@ import { openLiveDb } from "./live-db.ts";
 import { unknownCategoryNote } from "./query/notes/unknown-category-note.ts";
 import { filterPlugins } from "./query/plugins/filter-plugins.ts";
 import { mergeBrowserPlugins } from "./query/plugins/merge-browser-plugins.ts";
+import { pluginFolderFilter } from "./query/plugins/plugin-folder-filter.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Name of the plugin table in Live's DB (per spike notes — see file header). */
@@ -134,16 +135,15 @@ async function listFromDb(
   const db = await openLiveDb(source);
 
   try {
-    // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
-    // enabled = 1, so this surfaces all real plugins and would hide only ones
-    // Live has explicitly disabled.
+    // Every scanned plug-in has enabled = 1 (Live 12.3), even in a folder
+    // switched off in Live's settings: the folder filter hides those.
     const rows = db
       .prepare(
-        `SELECT name, vendor, version, scanstate, enabled,
-                subcategories, dev_identifier
-         FROM ${PLUGINS_TABLE}
-         WHERE enabled = 1
-         ORDER BY name COLLATE NOCASE ASC`,
+        `SELECT p.name, p.vendor, p.version, p.scanstate, p.enabled,
+                p.subcategories, p.dev_identifier
+         FROM ${PLUGINS_TABLE} p
+         WHERE p.enabled = 1 ${pluginFolderFilter(db, "p")}
+         ORDER BY p.name COLLATE NOCASE ASC`,
       )
       .all() as unknown as PluginRow[];
 
