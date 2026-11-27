@@ -17,17 +17,19 @@ const KNOBS = 16;
 const COLUMNS = 8;
 
 // Keep NAME_LINE_PT in wrapper.js in step with the cell width
-export const CELL_WIDTH = 56;
-const CELL_HEIGHT = 74;
-const GRID_TOP = 24;
+export const CELL_WIDTH = 64;
+const CELL_HEIGHT = 68;
+const GRID_TOP = 30;
 const LABEL_HEIGHT = 13;
 const KNOB_TOP = LABEL_HEIGHT + 2;
 const KNOB_SIZE = 28;
-const NAME_HEIGHT = 24; // two lines
-const TAB_WIDTH = 26;
+const NAME_HEIGHT = 13;
 const OPEN_WIDTH = 72;
+const MENU_WIDTH = 120;
 const TOP_HEIGHT = 16;
 const MARGIN = 4;
+const PANEL_RIGHT = MARGIN + COLUMNS * CELL_WIDTH;
+const MENU_LEFT = PANEL_RIGHT - MENU_WIDTH;
 // Knobs and tabs are Live parameters set to Hidden: Live neither stores nor
 // automates them, and they add no undo steps. Without parameter mode, live.tab
 // shows no tabs and live.dial ignores its range.
@@ -37,9 +39,8 @@ const PATCH_X = 1300;
 const PATCH_Y = 20;
 const PREPEND_Y = PATCH_Y + 180;
 const OPEN_HELP = "Opens the plug-in's own window.";
-const TABS_TITLE = "Automation Slots";
-const TABS_HELP =
-  "Picks which 16 automation slots the knobs show. Each tab is named for its first slot.";
+const PAGE_TITLE = "Knob Page";
+const PAGE_HELP = "Picks which parameters the knobs show.";
 
 const KNOB_TITLE = "Automation Slot";
 
@@ -61,24 +62,24 @@ export function isPanelBox(id: string): boolean {
 }
 
 /**
- * The device panel: an Open button, the plug-in's name (shown by the wrapper
- * only when it differs from the device's), tabs, and a page of knobs that
- * mirror the automation slots.
+ * The device panel: an Open button, a page menu, the plug-in's name (shown by
+ * the wrapper only when it differs from the device's), and a page of knobs
+ * that mirror the automation slots.
  *
- * @param slots - Number of automation slots
+ * @param pages - The page menu's items
  * @param nameWidth - Digits in a slot number
  * @returns The panel's boxes
  */
-export function panelBoxes(slots: number, nameWidth: number): Json[] {
+export function panelBoxes(pages: string[], nameWidth: number): Json[] {
   const knobs = Array.from({ length: KNOBS }, (_, i) => i + 1);
   const label = (n: number): string =>
     `Slot ${String(n).padStart(nameWidth, "0")}`;
 
   return [
-    pluginName(slots),
+    pluginName(),
     openButton(),
     openPrepend(),
-    pageTabs(slots),
+    pageMenu(pages),
     prependBox("knobpageprep", "prepend knobpage", [PATCH_X + 400, PREPEND_Y]),
     ...knobs.flatMap((i) => [
       knob(i),
@@ -113,11 +114,11 @@ export function panelLines(): Patchline[] {
   ];
 }
 
-// Between the button and the tabs. The wrapper hides it while the device is
+// Between the button and the menu. The wrapper hides it while the device is
 // named after the plug-in.
-function pluginName(slots: number): Json {
+function pluginName(): Json {
   const left = MARGIN + OPEN_WIDTH + MARGIN;
-  const right = tabsLeft(slots) - MARGIN;
+  const right = MENU_LEFT - MARGIN;
 
   return {
     ...text("pluginname", "No plug-in loaded", [
@@ -133,14 +134,6 @@ function pluginName(slots: number): Json {
     textjustification: 0,
     fontsize: 10,
   };
-}
-
-function tabsLeft(slots: number): number {
-  return MARGIN + COLUMNS * CELL_WIDTH - pageCount(slots) * TAB_WIDTH;
-}
-
-function pageCount(slots: number): number {
-  return Math.ceil(slots / KNOBS);
 }
 
 // What Live's Info View shows for a control. Max keeps it as annotation_name
@@ -175,31 +168,26 @@ function openPrepend(): Json {
   return prependBox("openprep", "prepend openeditor", [PATCH_X, PREPEND_Y]);
 }
 
-// Hidden, so the page isn't saved and adds no undo step.
-function pageTabs(slots: number): Json {
-  const pages = pageCount(slots);
-  // Each tab is named for its first slot.
-  const names = Array.from({ length: pages }, (_, p) => String(p * KNOBS + 1));
-
+// A menu, not tabs: a plug-in can have dozens of pages. Hidden, so the page
+// isn't saved and adds no undo step.
+function pageMenu(pages: string[]): Json {
   return {
     id: "knobpage",
-    maxclass: "live.tab",
+    maxclass: "live.menu",
     varname: "knobpage",
-    num_lines_patching: 1,
-    num_lines_presentation: 1,
     numinlets: 1,
     numoutlets: 3,
     outlettype: ["", "", "float"],
     parameter_enable: 1,
-    ...placed([tabsLeft(slots), MARGIN, pages * TAB_WIDTH, TOP_HEIGHT]),
-    ...help(TABS_TITLE, TABS_HELP),
+    ...placed([MENU_LEFT, MARGIN, MENU_WIDTH, TOP_HEIGHT]),
+    ...help(PAGE_TITLE, PAGE_HELP),
     saved_attribute_attributes: {
       valueof: {
-        ...parameterHelp(TABS_TITLE, TABS_HELP),
+        ...parameterHelp(PAGE_TITLE, PAGE_HELP),
         parameter_longname: "knobpage",
         parameter_shortname: "knobpage",
-        parameter_enum: names,
-        parameter_mmax: pages - 1,
+        parameter_enum: pages,
+        parameter_mmax: pages.length - 1,
         parameter_type: 2,
         parameter_invisible: HIDDEN,
       },

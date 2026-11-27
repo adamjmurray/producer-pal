@@ -23,6 +23,7 @@ from .producer_pal_device import (
 )
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
+from .spike_params import ROUTES as _SPIKE_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION, build_commit
 
@@ -483,6 +484,7 @@ ROUTES = {
     **_SIMPLER_ROUTES,
     **_UNDO_ROUTES,
     **_GEN_UI_ROUTES,
+    **_SPIKE_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an

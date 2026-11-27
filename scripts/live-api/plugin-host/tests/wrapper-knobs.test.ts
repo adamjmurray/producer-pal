@@ -104,17 +104,16 @@ describe("wrapper panel knobs", () => {
     expect(sentTo(rig, "knob3")).toHaveLength(0);
   });
 
-  // Each cut name was seen to take two lines in Live, with no room to spare.
   it.each([
-    ["Band 1 Frequency", "Band 1 Frequency"],
-    ["Mix (Dry/Wet) Amount", "Mix (Dry/We…"],
-    ["Band 1 Stereo Placement", "Band 1 Stereo Pl…"],
-    ["Oscillator 1 Wavetable Position", "Oscillator 1 Wavetab…"],
-    ["Verylongwordwithoutspaces", "Verylongwordwitho…"],
-    ["a b c d e f g h i j k l m n o p q r s", "a b c d e f g h i j k l m…"],
-    ["WWWWWWWWWWWWWWWW", "WWWWWWWWW…"],
-    ["日本語のパラメータ名前です", "日本語のパラメータ…"],
-  ])("cuts %j to two lines under a knob", (name, shown) => {
+    ["Band 1 Frequency", "Band 1 Fre…"],
+    ["Mix (Dry/Wet) Amount", "Mix (Dry/…"],
+    ["Band 1 Stereo Placement", "Band 1 Ste…"],
+    ["Oscillator 1 Wavetable Position", "Oscillator…"],
+    ["Verylongwordwithoutspaces", "Verylongw…"],
+    ["a b c d e f g h i j k l m n o p q r s", "a b c d e f g…"],
+    ["WWWWWWWWWWWWWWWW", "WWWWW…"],
+    ["日本語のパラメータ名前です", "日本語のパ…"],
+  ])("cuts %j to one line under a knob", (name, shown) => {
     const rig = mapped();
 
     rig.run(`showKnobs({ "1": { index: 1, name: ${JSON.stringify(name)} } })`);
