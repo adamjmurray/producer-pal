@@ -16,8 +16,10 @@ function rigThatLoads(answers: Record<string, string | null>): {
   const rig = loadWrapper(null, (...args) => {
     sent.push(args.slice(1));
 
-    const [, message, target] = args;
-    const key = `${String(message)} ${String(target)}`;
+    const [, message, target, id] = args;
+    const key = [message, target, ...(id == null ? [] : [id])]
+      .map(String)
+      .join(" ");
 
     if (message === "unplug") {
       current = null;
@@ -110,6 +112,55 @@ describe("wrapper load", () => {
     ).toThrow("loaded its first plug-in (Serum2.vst3) instead");
   });
 
+  const SERUM_FX = {
+    format: "VST3",
+    file: "Serum2",
+    path: "C:/VST3/Serum2.vst3",
+    sub: "Serum 2 FX",
+    name: "Serum 2 FX",
+    ids: [111, 222],
+    synth: true,
+  };
+
+  it("picks a shared file's plug-in by id when it only loads by path", () => {
+    const rig = rigThatLoads({
+      "plug C:/VST3/Serum2.vst3 222": "Serum2.vst3 222",
+    });
+
+    expect(rig.load(SERUM_FX)).toStrictEqual([
+      "Serum 2 FX",
+      {
+        format: "VST3",
+        file: "Serum2",
+        path: SERUM_FX.path,
+        sub: "Serum 2 FX",
+        id: 222,
+      },
+    ]);
+    expect(rig.sent.slice(-4)).toStrictEqual([
+      ["unplug"],
+      ["plug", SERUM_FX.path, 111],
+      ["unplug"],
+      ["plug", SERUM_FX.path, 222],
+    ]);
+  });
+
+  it("refuses a path load that ignored the id", () => {
+    const rig = rigThatLoads({
+      "plug C:/VST3/Serum2.vst3 111": "Serum2.vst3",
+    });
+
+    expect(() => rig.load({ ...SERUM_FX, ids: [111] })).toThrow(
+      "loaded its first plug-in (Serum2.vst3) instead",
+    );
+  });
+
+  it("refuses when no id loads anything", () => {
+    expect(() => rigThatLoads({}).load(SERUM_FX)).toThrow(
+      'could not load "Serum 2 FX": nothing loaded from "Serum2"',
+    );
+  });
+
   const VA = {
     format: "VST3",
     file: "Filterscape(x64)",
@@ -197,6 +248,9 @@ describe("wrapper loadedFile", () => {
   it("reads a path-loaded plug-in's bare file name without its extension", () => {
     expect(loadWrapper("Serum2.vst3").run("loadedFile()")).toBe("Serum2");
     expect(loadWrapper("Aalto_x64.dll").run("loadedFile()")).toBe("Aalto_x64");
+    expect(loadWrapper("Serum2.vst3 -472297922").run("loadedFile()")).toBe(
+      "Serum2",
+    );
   });
 });
 
@@ -250,6 +304,19 @@ describe("wrapper replugStored", () => {
         ["subname", "Q6"],
         ["plug", "C:/VST3/Diva.vst3"],
         ["subname", "Q6"],
+      ],
+    });
+  });
+
+  it("loads a shared file by path with the stored id, not the subname", () => {
+    expect(
+      replug({ ...STORED, sub: "Q6", id: "222" }, ["plug C:/VST3/Diva.vst3"]),
+    ).toStrictEqual({
+      result: true,
+      sent: [
+        ["plug_vst3", "Diva(x64)"],
+        ["subname", "Q6"],
+        ["plug", "C:/VST3/Diva.vst3", 222],
       ],
     });
   });

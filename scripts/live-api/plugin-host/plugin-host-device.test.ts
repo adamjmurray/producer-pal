@@ -132,7 +132,8 @@ describe("buildPluginHostDevice", () => {
   });
 
   it("adds a page of knobs, labels and tabs that Live doesn't store or automate", () => {
-    const { box, cords } = builtStale();
+    const { box, cords, patcher } = builtStale();
+    const ids = patcher.boxes.map((b) => b.box.id);
     const valueof = (id: string) =>
       (box(id)?.saved_attribute_attributes as { valueof: unknown } | undefined)
         ?.valueof;
@@ -148,6 +149,17 @@ describe("buildPluginHostDevice", () => {
     expect(box("knob17")).toBeUndefined();
     expect(box("knoblabel16")?.text).toBe("Slot 016");
     expect(box("knobname16")?.text).toBe("—");
+    // Behind the whole cell, with the knob's Info View text.
+    expect(box("knobhelp16")).toStrictEqual(
+      expect.objectContaining({
+        maxclass: "ubutton",
+        hltcolor: [0, 0, 0, 0],
+        presentation_rect: [396, 98, 56, 67],
+        annotation: box("knob16")?.annotation,
+      }),
+    );
+    // A later box sits behind an earlier one: in front, it would take the turns.
+    expect(ids.indexOf("knobhelp16")).toBeGreaterThan(ids.indexOf("knob16"));
     expect(box("knobprep16")?.text).toBe("prepend knob 16");
     expect(valueof("knob16")).toStrictEqual(
       expect.objectContaining({ parameter_mmax: 1, parameter_invisible: 2 }),
@@ -164,18 +176,18 @@ describe("buildPluginHostDevice", () => {
     expect(cords).toContain("knobpageprep>code");
   });
 
-  it("lays the panel out 376 px wide, the button first and the tabs last", () => {
+  it("lays the panel out 456 px wide, the button first and the tabs last", () => {
     const { box } = builtStale();
     const rect = (id: string) => box(id)?.presentation_rect as number[];
     const right = (id: string) => (rect(id)[0] ?? 0) + (rect(id)[2] ?? 0);
 
     expect(rect("openeditor")).toStrictEqual([4, 4, 72, 16]);
-    expect(rect("knobpage")).toStrictEqual([164, 4, 208, 16]);
-    expect(rect("knob1")[0]).toBe(4 + (46 - 28) / 2);
-    expect(right("knobname8")).toBe(372);
-    expect(right("knobpage")).toBe(372);
+    expect(rect("knobpage")).toStrictEqual([244, 4, 208, 16]);
+    expect(rect("knob1")[0]).toBe(4 + (56 - 28) / 2);
+    expect(right("knobname8")).toBe(452);
+    expect(right("knobpage")).toBe(452);
     // The name row fills the gap between the button and the tabs.
-    expect(rect("pluginname")).toStrictEqual([80, 4, 80, 16]);
+    expect(rect("pluginname")).toStrictEqual([80, 4, 160, 16]);
   });
 
   it("gives every control Info View text, on the box and its parameter", () => {

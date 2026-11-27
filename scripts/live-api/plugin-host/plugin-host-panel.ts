@@ -15,10 +15,13 @@ type Rect = [x: number, y: number, width: number, height: number];
 // Keep KNOBS in step with KNOB_COUNT in wrapper.js
 const KNOBS = 16;
 const COLUMNS = 8;
-const CELL_WIDTH = 46;
-const CELL_HEIGHT = 68;
-const GRID_TOP = 30;
+
+// Keep NAME_LINE_PT in wrapper.js in step with the cell width
+export const CELL_WIDTH = 56;
+const CELL_HEIGHT = 74;
+const GRID_TOP = 24;
 const LABEL_HEIGHT = 13;
+const KNOB_TOP = LABEL_HEIGHT + 2;
 const KNOB_SIZE = 28;
 const NAME_HEIGHT = 24; // two lines
 const TAB_WIDTH = 26;
@@ -37,11 +40,15 @@ const OPEN_HELP = "Opens the plug-in's own window.";
 const TABS_TITLE = "Automation Slots";
 const TABS_HELP =
   "Picks which 16 automation slots the knobs show. Each tab is named for its first slot.";
+
 const KNOB_TITLE = "Automation Slot";
-const KNOB_HELP =
+
+// Keep the knob help in wrapper.js in step: it rewrites this text as slots are
+// mapped and unmapped.
+export const KNOB_HELP =
   "Shows and sets the plug-in parameter this slot automates. Inactive until Producer Pal assigns a parameter to the slot.";
 const PANEL_BOX =
-  /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name)?\d+)$/;
+  /^(pluginname|openeditor|openprep|knobpage|knobpageprep|knob(prep|label|name|help)?\d+)$/;
 
 /**
  * Whether a box belongs to the device panel this module builds.
@@ -80,11 +87,8 @@ export function panelBoxes(slots: number, nameWidth: number): Json[] {
         PREPEND_Y + 30 + Math.floor((i - 1) / 4) * 30,
       ]),
       text(`knoblabel${i}`, label(i), cellRect(i, 0, LABEL_HEIGHT)),
-      text(
-        `knobname${i}`,
-        "—",
-        cellRect(i, LABEL_HEIGHT + KNOB_SIZE, NAME_HEIGHT),
-      ),
+      text(`knobname${i}`, "—", cellRect(i, KNOB_TOP + KNOB_SIZE, NAME_HEIGHT)),
+      knobHelp(i),
     ]),
   ];
 }
@@ -219,7 +223,7 @@ function knob(i: number): Json {
     shownumber: 0,
     ...placed([
       x + (CELL_WIDTH - KNOB_SIZE) / 2,
-      y + LABEL_HEIGHT,
+      y + KNOB_TOP,
       KNOB_SIZE,
       KNOB_SIZE,
     ]),
@@ -233,6 +237,23 @@ function knob(i: number): Json {
         parameter_invisible: HIDDEN,
       },
     },
+  };
+}
+
+// An invisible box behind a knob's whole cell, with the knob's Info View text.
+// It gets the hover over the labels, and over an unmapped knob, which ignores
+// the mouse. A ubutton, because a transparent panel shows no Info View text.
+function knobHelp(i: number): Json {
+  return {
+    id: `knobhelp${i}`,
+    maxclass: "ubutton",
+    varname: `knobhelp${i}`,
+    numinlets: 1,
+    numoutlets: 4,
+    outlettype: ["bang", "bang", "", "int"],
+    hltcolor: [0, 0, 0, 0],
+    ...placed(cellRect(i, 0, KNOB_TOP + KNOB_SIZE + NAME_HEIGHT)),
+    ...help(KNOB_TITLE, KNOB_HELP),
   };
 }
 

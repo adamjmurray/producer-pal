@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "2.6.0",
+  "version": "2.6.1-rc1",
   "description": "Producer Pal — Ableton MCP server bringing AI to Ableton Live via a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -179,7 +179,7 @@
     "@types/express": "5.0.6",
     "@types/node": "26.6.6",
     "@typescript/native": "npm:typescript@7.0.2",
-    "@vitest/coverage-v8": "5.1.0",
+    "@vitest/coverage-v8": "5.1.1",
     "chokidar-cli": "3.0.0",
     "commander": "15.1.0",
     "eslint-plugin-sonarjs": "4.2.2",
@@ -197,7 +197,7 @@
     "vite": "8.3.8",
     "vite-plugin-singlefile": "2.3.4",
     "vitepress": "1.6.4",
-    "vitest": "5.1.0",
+    "vitest": "5.1.1",
     "yaml": "2.9.1"
   },
   "overrides": {

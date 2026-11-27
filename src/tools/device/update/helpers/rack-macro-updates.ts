@@ -155,6 +155,9 @@ function executeMacroVariationAction(
  */
 const MIN_MACRO_LIMIT = 16;
 
+/** The fewest macros Live shows. `remove_macro` at this count only logs an error. */
+const MIN_VISIBLE_MACROS = 1;
+
 /**
  * Update visible macro count for rack devices.
  * Live steps the count in its own way (by 2 in Live 12, unevenly in Live 13),
@@ -261,11 +264,12 @@ function stepMacroCount(
   notes: TargetNotes,
 ): Pick<MacroCountWrite, "landed" | "stoppedBy" | "jump"> {
   const adding = target > before;
+  const floor = Math.max(target, MIN_VISIBLE_MACROS);
   let count = before;
   let from = before;
 
   try {
-    while (adding ? count < target : count > target) {
+    while (adding ? count < target : count > floor) {
       device.call(adding ? "add_macro" : "remove_macro");
 
       const next = device.getProperty("visible_macro_count") as number;

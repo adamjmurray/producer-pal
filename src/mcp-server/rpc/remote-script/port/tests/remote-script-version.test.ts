@@ -30,11 +30,14 @@ describe("outdatedScript", () => {
     );
   });
 
-  it.each(["2.5.0", "2.4.9", "2.4.1-rc1", "2.4.0"])("refuses %s", (version) => {
-    expect(outdatedScript(version)).not.toBeNull();
-  });
+  it.each(["2.6.0", "2.5.0", "2.4.9", "2.4.1-rc1", "2.4.0"])(
+    "refuses %s",
+    (version) => {
+      expect(outdatedScript(version)).not.toBeNull();
+    },
+  );
 
-  it.each([MIN_REMOTE_SCRIPT_VERSION, "2.6.0", "3.0.0"])(
+  it.each([MIN_REMOTE_SCRIPT_VERSION, "2.6.1", "3.0.0"])(
     "accepts %s",
     (version) => {
       expect(outdatedScript(version)).toBeNull();

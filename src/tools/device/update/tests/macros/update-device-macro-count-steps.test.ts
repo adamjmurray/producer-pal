@@ -54,6 +54,24 @@ describe("updateDevice macroCount on a Live 13 rack", () => {
     expect(rack.call).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [1, 0],
+    [2, 1],
+  ])("doesn't ask Live to go below 1: from %i, %i calls", (from, calls) => {
+    const rack = registerMacroRack("rack", {
+      count: from,
+      steps: LIVE_13_STEPS,
+      macros: 32,
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 0 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macroCount landed at 1, not 0; Live keeps at least 1",
+    });
+    expect(rack.call).toHaveBeenCalledTimes(calls);
+  });
+
   it("still rounds 3 up to 4, and says so", () => {
     registerMacroRack("rack", { count: 8, steps: LIVE_13_STEPS, macros: 32 });
 

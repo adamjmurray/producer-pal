@@ -26,7 +26,9 @@ update a 2.4 device, so do this by hand. It takes a few minutes.
 4. Reopen your Live Set and check the device shows v{{ $frontmatter.version }}.
 5. On the device, click **Finish installation…** (or **Open Chat UI**, then
    **Settings → Installation**). Click **Install** (or **Update**) next to
-   Remote script.
+   Remote script. If **Max for Live device** shows **Install the plug-in wrapper
+   devices**, click that too: the [plug-in wrapper devices](/guide/plugins) are
+   installed separately from the remote script.
 6. <!--@include: ../_partials/control-surface.md-->
    If you'd already set up the remote script, Live remembers your Control
    Surface choice, so only the restart is needed.
@@ -102,6 +104,8 @@ your version.
 - Claude Desktop: make sure you uninstalled the old extension first
 - Remote script says it's out of date: **Settings → Installation → Update**,
   then restart Live
+- **Finish installation…** still shows after updating the remote script:
+  **Settings → Installation → Install the plug-in wrapper devices**
 - Restart your AI app completely and start a fresh conversation
 
 See the [Troubleshooting Guide](/support/troubleshooting) for more help.
